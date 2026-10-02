@@ -134,6 +134,14 @@ export function speedOf(member) {
     // Tanda 10: Correr (la acción de 2024), lo suyo otra vez este turno.
     if (has('Corriendo')) speed += base;
     if (has('Ralentizado')) speed -= 10;
+    // Tanda 12: agarrado o sujeto, no anda (5e). Antes solo lo miraba el turno de los enemigos;
+    // ahora que ellos también agarran, vale igual para el grupo. Si quien le agarraba ha caído
+    // o ya no está a su lado, anda (el agarre se le quita del todo en el turno enemigo).
+    const holder = member?.grappledBy ? getEnemyByInstanceId(String(member.grappledBy)) : null;
+    const loose = Boolean(member?.grappledBy) && !(holder && (Number(holder.currentHp) || 0) > 0
+        && Math.max(Math.abs((Number(holder.gridX) || 0) - (Number(member?.mapPosition?.gridX) || 0)),
+            Math.abs((Number(holder.gridY) || 0) - (Number(member?.mapPosition?.gridY) || 0))) <= 1);
+    if ((has('Grappled') && !loose) || has('Restrained')) return 0;
     return Math.max(0, speed);
 }
 

@@ -45,7 +45,8 @@ describe('para qué nivel es la campaña', () => {
         const worlds = read('../public/mundos/mundos.json').worlds.filter(w => w.pack);
         expect(worlds.map(w => [w.id, readLevelRange(w.levels)])).toEqual([
             ['1387', { min: 1, max: 4 }],
-            ['strahd', { min: 1, max: 6 }],
+            // D-J56: la cripta es para nivel 6 a 7, así que Strahd llega hasta el 7.
+            ['strahd', { min: 1, max: 7 }],
         ]);
     });
 
@@ -65,11 +66,38 @@ describe('para qué nivel es la campaña', () => {
         expect(boardBand(plan, 'Tienda de Madam Eva')).toEqual({ low: 2, high: 3, act: 2 });
         expect(boardBand(plan, 'Plaza de Vallaki')).toEqual({ low: 3, high: 4, act: 3 });
         expect(boardBand(plan, 'Entrada a Ravenloft')).toEqual({ low: 4, high: 5, act: 4 });
-        expect(boardBand(plan, 'La Cripta de Strahd')).toEqual({ low: 5, high: 6, act: 5 });
+        expect(boardBand(plan, 'Comedor del Conde')).toEqual({ low: 5, high: 6, act: 5 });
         // Los tableros de los encargos también saben su acto.
         expect(boardBand(plan, 'El taller del ataudero')).toEqual({ low: 2, high: 3, act: 2 });
         // Uno que no sale en ningún acto es para todo el tramo.
-        expect(boardBand(plan, 'Un sótano cualquiera (encargo)')).toEqual({ low: 1, high: 6, act: 0 });
+        expect(boardBand(plan, 'Un sótano cualquiera (encargo)')).toEqual({ low: 1, high: 7, act: 0 });
+    });
+
+    test('D-J56: la cripta dice su propio nivel, 6 a 7, y los actos se reparten lo demás', () => {
+        const plan = levelPlanOf(strahdMeta, strahdRow.levels);
+        expect(plan.bandOf).toEqual({ 'la cripta de strahd': { low: 6, high: 7 } });
+        expect(plan.actsMax).toBe(6);
+        expect(boardBand(plan, 'La Cripta de Strahd')).toEqual({ low: 6, high: 7, act: 5 });
+        // Sin nada que diga su nivel, los actos llegan al final del tramo, como siempre.
+        const plain = levelPlanOf({ quests: [{ boardName: 'Uno', act: 1 }, { boardName: 'Dos', act: 2 }] }, [1, 4]);
+        expect(plain.actsMax).toBe(4);
+        expect(boardBand(plain, 'Dos')).toEqual({ low: 2, high: 4, act: 2 });
+        // Un tablero de en medio con su nivel no recorta a los actos.
+        const middle = levelPlanOf({ quests: [{ boardName: 'Uno', act: 1, levels: [2, 3] }, { boardName: 'Dos', act: 2 }] }, [1, 4]);
+        expect(middle.actsMax).toBe(4);
+        expect(boardBand(middle, 'Uno')).toEqual({ low: 2, high: 3, act: 1 });
+        // Un nivel mal escrito no cuenta.
+        expect(levelPlanOf({ quests: [{ boardName: 'Uno', act: 1, levels: [0, 3] }] }, [1, 4]).bandOf).toEqual({});
+    });
+
+    test('D-J56: a nivel 6, la cripta tal cual; a nivel 5, afloja sola, sin quitar a nadie', () => {
+        const atSix = fightFor('cripta_strahd', 6, 4);
+        expect(atSix.adjustment.steps).toBe(0);
+        expect(atSix.placements).toEqual(boardOf('cripta_strahd').enemies);
+        const atFive = fightFor('cripta_strahd', 5, 4);
+        expect(atFive.adjustment).toMatchObject({ steps: -1, hpFactor: 0.88, damage: -1, minions: 0 });
+        expect(atFive.placements.map(p => p.name)).toEqual(['Strahd von Zarovich', 'Engendro Vampírico']);
+        expect(atFive.enemies[0].maxHp).toBe(Math.round(90 * 0.88));
     });
 
     test('el nivel del grupo es la media de los que pelean', () => {
@@ -258,16 +286,31 @@ describe('J12.6: el mismo tablero con uno y con cuatro', () => {
         });
     };
 
-    test('para tres, como se escribió; con uno, menos; con cuatro, más', () => {
-        expect(WRITTEN_PARTY_SIZE).toBe(3);
+    test('D-J56: para cuatro, como se escribió; con tres, uno menos; con uno, menos; con cinco, uno más', () => {
+        expect(WRITTEN_PARTY_SIZE).toBe(4);
         // La mansión del burgomaestre: tres zombis.
-        expect(forSize('mansion_burgomaestre', 3).placements).toEqual(boardOf('mansion_burgomaestre').enemies);
+        expect(forSize('mansion_burgomaestre', 4).placements).toEqual(boardOf('mansion_burgomaestre').enemies);
+        expect(forSize('mansion_burgomaestre', 4).added).toEqual([]);
+        const three = forSize('mansion_burgomaestre', 3);
+        expect(three.placements.map(p => p.name)).toEqual(['Zombi de Strahd', 'Zombi de Strahd']);
+        expect(three.removed).toEqual(['Zombi de Strahd']);
         const alone = forSize('mansion_burgomaestre', 1);
         expect(alone.placements.map(p => p.name)).toEqual(['Zombi de Strahd']);
         expect(alone.removed).toEqual(['Zombi de Strahd', 'Zombi de Strahd']);
-        const four = forSize('mansion_burgomaestre', 4);
-        expect(four.placements.map(p => p.name)).toEqual(['Zombi de Strahd', 'Zombi de Strahd', 'Zombi de Strahd', 'Zombi de Strahd']);
-        expect(four.added).toEqual(['Zombi de Strahd']);
+        const five = forSize('mansion_burgomaestre', 5);
+        expect(five.placements.map(p => p.name)).toEqual(['Zombi de Strahd', 'Zombi de Strahd', 'Zombi de Strahd', 'Zombi de Strahd']);
+        expect(five.added).toEqual(['Zombi de Strahd']);
+    });
+
+    test('D-J56: uno de más o de menos por cada uno que sobra o que falta, como mucho', () => {
+        // La cima de Yester: un druida y cuatro plagas de agujas (amenaza 8, poca). Con tres
+        // cabrían dos plagas menos en el presupuesto, pero solo falta uno: se quita una.
+        expect(forSize('cima_yester', 3).removed).toEqual(['Plaga de agujas']);
+        expect(forSize('cima_yester', 5).added).toEqual(['Plaga de agujas']);
+        expect(forSize('cima_yester', 6).added).toEqual(['Plaga de agujas', 'Plaga de agujas']);
+        expect(forSize('cima_yester', 2).removed).toHaveLength(2);
+        // Con los que pide el tablero, nada.
+        expect(forSize('cima_yester', 4)).toMatchObject({ added: [], removed: [] });
     });
 
     test('más gente, más enemigos: nunca menos que con uno menos', () => {
@@ -302,11 +345,11 @@ describe('J12.6: el mismo tablero con uno y con cuatro', () => {
     });
 
     test('se dice llano', () => {
-        expect(sizeNotes({ partySize: 1, removed: ['Zombi de Strahd'] }))
-            .toEqual(['Este tablero está pensado para un grupo de 3 y el vuestro es de 1: hay un enemigo menos (Zombi de Strahd).']);
-        expect(sizeNotes({ partySize: 4, added: ['Lobo gris'] }))
-            .toEqual(['Este tablero está pensado para un grupo de 3 y el vuestro es de 4: hay un enemigo más (Lobo gris).']);
-        expect(sizeNotes({ partySize: 3 })).toEqual([]);
+        expect(sizeNotes({ partySize: 3, removed: ['Zombi de Strahd'] }))
+            .toEqual(['Este tablero está pensado para un grupo de 4 y el vuestro es de 3: hay un enemigo menos (Zombi de Strahd).']);
+        expect(sizeNotes({ partySize: 5, added: ['Lobo gris'] }))
+            .toEqual(['Este tablero está pensado para un grupo de 4 y el vuestro es de 5: hay un enemigo más (Lobo gris).']);
+        expect(sizeNotes({ partySize: 4 })).toEqual([]);
     });
 
     test('por el nivel y por cuántos sois a la vez: se dice lo que queda, una vez', () => {
@@ -317,7 +360,7 @@ describe('J12.6: el mismo tablero con uno y con cuatro', () => {
         expect(adjustmentNotes({ level: { added: ['Lobo gris'] }, size: { removed: ['Lobo gris'] }, partySize: 2 })).toEqual([]);
         // Solo el nivel, como siempre; solo el tamaño, con el tamaño.
         expect(adjustmentNotes({ level: { removed: ['Lobo gris'] }, partySize: 3 })).toEqual(['Por vuestro nivel, hay un enemigo menos: Lobo gris.']);
-        expect(adjustmentNotes({ size: { added: ['Lobo gris'] }, partySize: 4 }))
-            .toEqual(['Este tablero está pensado para un grupo de 3 y el vuestro es de 4: hay un enemigo más (Lobo gris).']);
+        expect(adjustmentNotes({ size: { added: ['Lobo gris'] }, partySize: 5 }))
+            .toEqual(['Este tablero está pensado para un grupo de 4 y el vuestro es de 5: hay un enemigo más (Lobo gris).']);
     });
 });

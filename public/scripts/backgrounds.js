@@ -1858,6 +1858,13 @@ export function initBackgrounds() {
         });
     });
 
+    // Fork (tanda 10): con `<base href="/">`, en una dirección con `?algo` (la app del móvil entra
+    // por `/?juego`) jQuery UI tomaba «#bg_global_tab» por otra página y la cargaba entera dentro
+    // de la pestaña: la página, repetida (dos tableros, dos chats, los mismos id dos veces). Las
+    // anclas, con la dirección de ahora, son de esta página.
+    $('#bg_tabs > ul a[href^="#"]').each(function () {
+        this.setAttribute('href', `${location.pathname}${location.search}${this.getAttribute('href')}`);
+    });
     $('#bg_tabs').tabs();
     $('#bg_tabs').on('tabsactivate', () => updateGroupFolderControlsVisibility());
     updateGroupFolderControlsVisibility();

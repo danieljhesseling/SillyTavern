@@ -3388,6 +3388,10 @@
       "id": "q_cripta",
       "name": "El Señor de Barovia",
       "act": 5,
+      "levels": [
+        6,
+        7
+      ],
       "boardId": "cripta_strahd",
       "description": "Bajo el castillo, en su cripta, Strahd os espera junto a su ataúd. O cae él, o caéis {vosotros|vosotras}.",
       "objectives": [

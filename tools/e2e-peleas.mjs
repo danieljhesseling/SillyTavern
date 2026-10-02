@@ -9,7 +9,7 @@
  *   en la placa, «Pelear» y tres salidas (hablar, pagar, saltar por la ventana), cada una con su
  *   tirada, quién tira y lo que cuesta → «Todavía no» la cierra sin más → saltar por la ventana
  *   con el dado en contra: os pillan, empieza la pelea y ellos van primero →
- *   J12.6: el grupo es de uno y el tablero es para tres: sale un guardia menos, y se dice →
+ *   J12.6 y D-J56: el grupo es de uno y el tablero es para cuatro: sale un guardia menos, y se dice →
  *   J8.5: en la barra del combate, «Hablar»: las cuatro formas; convencer sale y la pelea se
  *   acaba (el tablero, ganado; el hito del cáliz, cumplido) → otra vez (el tablero, sin ganar a
  *   mano): sobornar paga 8 de oro → engañar: se van, y Torres os la guarda → entregarse: se acaba,
@@ -356,7 +356,7 @@ try {
     check('J12.2: «Todavía no» cierra la ventana sin decidir: la pelea sigue esperando', closed && !(await fight()).active && !innWon(await state()));
 
     // 4. Saltar por la ventana con el dado en contra: os pillan y empiezan ellos (J12.2). Y el
-    // grupo es de uno para un tablero de tres: un guardia menos (J12.6).
+    // grupo es de uno para un tablero de cuatro: un guardia menos (J12.6, D-J56).
     await dice(0);
     const beforeCaught = await chatLength();
     await openAvoid();
@@ -368,9 +368,9 @@ try {
         /A pelear/.test(caught?.next ?? '') && caught?.lines.some(l => /Fallo/.test(l)) === true && caughtFight.active
         && caughtFight.order[0]?.isEnemy === true && /Os han pillado: ellos atacan primero/.test(caughtLog),
         JSON.stringify({ caught, order: caughtFight.order }));
-    check('J12.6: Bran va solo y el tablero es para tres: sale un guardia menos, y se dice',
+    check('J12.6 y D-J56: Bran va solo y el tablero es para cuatro: sale un guardia menos, y se dice',
         caughtFight.enemies.filter(e => /^Guardia de Montesclaros/.test(e.name)).length === 1
-        && /pensado para un grupo de 3 y el vuestro es de 1: hay un enemigo menos \(Guardia de Montesclaros\)/.test(caughtLog),
+        && /pensado para un grupo de 4 y el vuestro es de 1: hay un enemigo menos \(Guardia de Montesclaros\)/.test(caughtLog),
         JSON.stringify({ enemies: caughtFight.enemies, log: caughtLog.split('\n').filter(l => /⚖️/.test(l)) }));
 
     // 5. J8.5: en la barra del combate, «Hablar». Convencer, con el dado a favor.

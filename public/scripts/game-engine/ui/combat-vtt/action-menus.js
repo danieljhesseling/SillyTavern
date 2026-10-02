@@ -69,6 +69,17 @@
  * @property {boolean} enabled
  * @property {string} reason
  * @property {TargetView[]} targets Los posibles, cada uno con su veredicto.
+ * @property {Upcast[]} [upcasts] J19.3: los espacios con que se puede lanzar ahora (el suyo y
+ *   los mayores que quedan), con lo que hace con cada uno.
+ */
+
+/**
+ * @typedef {Object} Upcast Un conjuro lanzado con un espacio de ese nivel.
+ * @property {number} level
+ * @property {number} left Cuántos espacios de ese nivel quedan.
+ * @property {string} [damage]
+ * @property {string} [healing]
+ * @property {number} [targets] A cuántos alcanza.
  */
 
 /**
@@ -134,6 +145,8 @@
  * @property {string} [reason]
  * @property {{title: string, items: MenuItem[], empty?: string}} [next]
  * @property {string} [tone] El color de su icono: weapon, magic, action, bonus, fire, cold, heal…
+ * @property {{id: string, options: Array<{level: number, label: string, title: string, active: boolean}>}} [levels]
+ *   J19.3: con qué espacio lanzarlo, si hay más de uno; `id` es el del conjuro.
  */
 
 /**
@@ -475,33 +488,64 @@ function abilityIcon(a) {
 }
 
 /**
+ * J19.3: lo que cambia un conjuro con un espacio mayor, en palabras para el botón del nivel.
+ *
+ * @param {AbilityView} a
+ * @param {Upcast} up
+ * @returns {string}
+ */
+function upcastWords(a, up) {
+    const bits = [`Con un espacio de nivel ${up.level}`];
+    if (up.healing) bits.push(`cura ${up.healing}`);
+    else if (up.damage) bits.push(`${up.damage} ${damageWord(a.damageType || '')}`.trim());
+    if (Number(up.targets) > 1) bits.push(`a ${up.targets}`);
+    bits.push(`quedan ${up.left}`);
+    return bits.join(' · ');
+}
+
+/**
  * Una habilidad (conjuro o técnica) como tarjeta. Contra alguien, su paso siguiente es a quién.
+ * J19.3: si se puede lanzar con más de un espacio, la tarjeta lleva los niveles para elegir, y
+ * sus números (daño, curación) son los del nivel elegido.
  *
  * @param {AbilityView} a
  * @param {BarSnapshot} s
+ * @param {number} [chosenLevel] El espacio elegido; sin decir, el más bajo que queda.
  * @returns {MenuItem}
  */
-export function abilityItem(a, s) {
+export function abilityItem(a, s, chosenLevel = 0) {
     const turnWhy = !s.isPlayerTurn ? 'No es tu turno.'
         : a.cost === 'action' && !s.ready.action ? 'Ya has gastado la acción de este turno.'
             : a.cost === 'bonus' && !s.ready.bonus ? 'Ya has gastado la acción adicional de este turno.'
                 : '';
     const why = turnWhy || (a.enabled ? '' : a.reason);
+    const ups = (a.upcasts || []).filter(u => u.left > 0).sort((x, y) => x.level - y.level);
+    const up = ups.length > 1 ? (ups.find(u => u.level === chosenLevel) ?? ups[0]) : null;
+    const shown = up ? { ...a, damage: up.damage ?? a.damage, healing: up.healing ?? a.healing, slotLevel: up.level } : a;
     /** @type {Badge[]} */
     const badges = badgesOf([
-        a.healing ? { text: `Cura ${a.healing}`, kind: 'heal' } : damageBadge(a.damage || '', a.damageType || ''),
+        shown.healing ? { text: `Cura ${shown.healing}`, kind: 'heal' } : damageBadge(shown.damage || '', a.damageType || ''),
         { text: reachWords(a.rangeFeet, a.target), kind: 'reach' },
-        ...abilityCost(a),
+        ...abilityCost(shown),
     ]);
     /** @type {Badge[]} */
     const tags = [];
     if (a.concentration) tags.push({ text: 'Concentración', kind: 'plain' });
     if (a.area) tags.push({ text: a.area, kind: 'plain' });
-    const pick = `ability:${a.id}`;
+    if (up && Number(up.targets) > 1) tags.push({ text: `A ${up.targets}`, kind: 'plain' });
+    // Con el espacio más bajo, como siempre; con uno mayor, «cast:nivel:id».
+    const pick = up && up.level > ups[0].level ? `cast:${up.level}:${a.id}` : `ability:${a.id}`;
+    /** @type {MenuItem} */
     const item = {
         kind: /** @type {const} */ ('card'), key: pick, name: a.name, art: a.art || '', icon: abilityIcon(a), tone: abilityTone(a),
         desc: a.desc, tags, badges, enabled: !why, reason: why,
     };
+    if (up && !why) {
+        item.levels = {
+            id: a.id,
+            options: ups.map(u => ({ level: u.level, label: `Nivel ${u.level}`, title: upcastWords(a, u), active: u.level === up.level })),
+        };
+    }
     if (a.target === 'self') return { ...item, pick };
     const who = a.target === 'ally' ? '¿a quién de los tuyos?' : '¿contra quién?';
     return {
@@ -568,9 +612,10 @@ function optionItem(option, s, prefix, tone) {
  *
  * @param {BarSnapshot} s
  * @param {string} [filter] `todos`, `trucos`, `n1`…, `objetos`.
+ * @param {Record<string, number>} [slotChoice] J19.3: el espacio elegido para cada conjuro.
  * @returns {MenuView}
  */
-export function buildMagicMenu(s, filter = 'todos') {
+export function buildMagicMenu(s, filter = 'todos', slotChoice = {}) {
     const filters = magicFilters(s, filter);
     const active = filters.find(f => f.active)?.id ?? 'todos';
     const spells = (s.abilities || [])
@@ -582,7 +627,7 @@ export function buildMagicMenu(s, filter = 'todos') {
                 : [];
     /** @type {MenuView['sections']} */
     const sections = [];
-    if (shown.length > 0) sections.push({ title: '', items: shown.map(a => abilityItem(a, s)) });
+    if (shown.length > 0) sections.push({ title: '', items: shown.map(a => abilityItem(a, s, Number(slotChoice[a.id]) || 0)) });
     if ((active === 'todos' || active === 'objetos') && (s.magicItems || []).length > 0) {
         sections.push({ title: 'Objetos', items: s.magicItems.map(o => optionItem(o, s, 'maneuver', 'magic')) });
     }
@@ -710,9 +755,10 @@ export function buildActionsMenu(s, words, numbers) {
  * mano, y lo de tu clase y tus conjuros que se hace con la adicional o gratis.
  *
  * @param {BarSnapshot} s
+ * @param {Record<string, number>} [slotChoice] J19.3: el espacio elegido para cada conjuro.
  * @returns {MenuView}
  */
-export function buildBonusMenu(s) {
+export function buildBonusMenu(s, slotChoice = {}) {
     const blocked = bonusBlocked(s);
     /** @type {MenuItem[]} */
     const items = [];
@@ -754,7 +800,7 @@ export function buildBonusMenu(s) {
     /** @type {MenuView['sections']} */
     const sections = [{ title: '', items }];
     const bonus = (s.abilities || []).filter(a => a.cost === 'bonus');
-    if (bonus.length > 0) sections.push({ title: 'De tu clase y tu magia', items: bonus.map(a => abilityItem(a, s)) });
+    if (bonus.length > 0) sections.push({ title: 'De tu clase y tu magia', items: bonus.map(a => abilityItem(a, s, Number(slotChoice[a.id]) || 0)) });
     const free = (s.abilities || []).filter(a => a.cost === 'free');
     if (free.length > 0) sections.push({ title: 'Sin gastar nada', items: free.map(a => abilityItem(a, s)) });
     return { id: 'adicional', title: 'Acción adicional', icon: 'fa-bolt-lightning', sections };
@@ -812,10 +858,14 @@ export function buildBar(s) {
             pick: prone ? 'stand' : 'prone',
         },
         buttons: [
+            // Todo lo de Atacar gasta la acción: gastada, se apaga (y el turno se acaba con
+            // «Fin de turno», no abriendo una lista en la que no se puede pulsar nada).
             ...MENUS.map(m => ({
                 id: m.id, label: m.label, icon: m.icon, key: m.key, tone: m.tone,
-                enabled: mine && (m.id !== 'magia' || magicCount > 0),
-                title: mine ? `${menuTitle[m.id]} (${m.key})` : 'No es tu turno',
+                enabled: mine && (m.id !== 'magia' || magicCount > 0) && (m.id !== 'atacar' || Boolean(s.ready?.action)),
+                title: !mine ? 'No es tu turno'
+                    : m.id === 'atacar' && !s.ready?.action ? 'Ya has gastado la acción de este turno'
+                        : `${menuTitle[m.id]} (${m.key})`,
             })),
             { id: 'end', label: 'Fin de turno', icon: 'fa-forward-step', key: '', tone: 'end', enabled: mine, title: mine ? 'Pasar el turno' : 'No es tu turno' },
             { id: 'flee', label: 'Abandonar', icon: 'fa-person-running', key: '', tone: 'quiet', enabled: true, title: 'Salir de la pelea huyendo' },

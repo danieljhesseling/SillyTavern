@@ -50,8 +50,11 @@ const ITEM_FOLDERS = ['armas', 'armaduras', 'trastos'];
 /** El sitio del pueblo (`sitios/`) de cada servicio de `campaign/services.js`. */
 const SERVICE_PLACES = { posada: 'taberna', herreria: 'herreria', tienda: 'tienda', templo: 'templo', tablon: 'gremio' };
 
-/** Los biomas de las casillas del tablero: cada uno trae su suelo y su muro (`tablero/`). */
-export const BOARD_BIOMES = ['mazmorra', 'madera', 'exterior', 'cueva', 'calle', 'nieve', 'pantano', 'cripta'];
+/**
+ * Los biomas de las casillas del tablero: cada uno trae su suelo y su muro (`tablero/`). Tanda 12:
+ * el muelle (tablas sobre el mar, muro de sillares del puerto) y la playa (arena y rocas).
+ */
+export const BOARD_BIOMES = ['mazmorra', 'madera', 'exterior', 'cueva', 'calle', 'nieve', 'pantano', 'cripta', 'muelle', 'playa'];
 
 /**
  * Las palabras del nombre de un tablero que dicen dónde se pelea. Lo que no dice nada es
@@ -64,20 +67,50 @@ const BIOME_WORDS = [
     ['cripta', ['cripta', 'catacumba', 'catacumbas', 'tumba', 'mausoleo', 'panteon', 'osario', 'sepulcro']],
     ['cueva', ['cueva', 'gruta', 'caverna', 'mina', 'guarida', 'cubil', 'madriguera', 'tunel']],
     ['nieve', ['nieve', 'nevado', 'nevada', 'helado', 'helada', 'hielo', 'glaciar', 'ventisca', 'escarcha']],
-    ['pantano', ['pantano', 'cienaga', 'marisma', 'estanque', 'charca', 'turbera', 'lodazal']],
+    // Tanda 12: la choza de una bruja (la de Baba Lysaga) está en el barro, no en una mazmorra.
+    ['pantano', ['pantano', 'cienaga', 'marisma', 'estanque', 'charca', 'turbera', 'lodazal', 'choza']],
+    // Tanda 12: el muelle es de tablas, no de hierba; la playa y las salinas, de arena.
+    ['muelle', ['muelle', 'muelles', 'embarcadero', 'pantalan', 'atracadero', 'malecon', 'astillero', 'dique']],
+    ['playa', ['playa', 'playas', 'cala', 'salinas', 'salina', 'arenal', 'duna', 'dunas']],
     ['calle', ['calle', 'callejon', 'plaza', 'mercado', 'aldea', 'pueblo', 'ciudad', 'barrio', 'arrabal']],
+    // Tanda 12: las empalizadas, un islote, un viñedo y las puertas de una villa están al aire libre.
     ['exterior', ['bosque', 'claro', 'claros', 'camino', 'sendero', 'campo', 'prado', 'patio',
         'jardin', 'lago', 'orilla', 'rio', 'puente', 'colina', 'monte', 'cruce', 'peaje', 'campamento',
-        'puerto', 'muelle', 'playa', 'cementerio', 'huerto', 'granja', 'asedio', 'valle', 'ruinas']],
+        'puerto', 'cementerio', 'huerto', 'granja', 'asedio', 'valle', 'ruinas',
+        'empalizada', 'empalizadas', 'islote', 'isla', 'vinedo', 'vinedos', 'puertas']],
     ['madera', ['taberna', 'posada', 'casa', 'mansion', 'cuarto', 'habitacion', 'salon', 'comedor', 'tienda', 'molino',
-        'cabana', 'establo', 'almacen', 'burdel']],
+        'cabana', 'establo', 'almacen', 'burdel', 'taller', 'cocina', 'dormitorio', 'biblioteca']],
 ];
 
 /** Las casillas que tienen un solo dibujo, sea cual sea el bioma. */
 const TILE_FILES = {
     difficult: 'dificil', cover_half: 'cobertura-media', cover_three_quarters: 'cobertura-tres-cuartos', chasm: 'abismo',
-    stairs: 'escalera', water: 'agua', deep_water: 'agua', ice: 'hielo', brush: 'maleza', barrel: 'barril', chest: 'cofre', exit: 'salida',
+    stairs: 'escalera', water: 'agua', deep_water: 'agua-honda', ice: 'hielo', brush: 'maleza', barrel: 'barril', chest: 'cofre', exit: 'salida',
     lever: 'palanca', barricade: 'barricada',
+};
+
+/**
+ * Tanda 12: las casillas que cambian con el bioma. El dibujo de siempre es el de la mazmorra
+ * (escombros, una caja, una columna); fuera, otro (`dificil-exterior` son raíces y ramas,
+ * `cobertura-tres-cuartos-exterior` un árbol). Si el del bioma no está dibujado, el de siempre.
+ */
+const BIOME_TILES = ['difficult', 'cover_half', 'cover_three_quarters'];
+
+/**
+ * Tanda 12: el dibujo que hace las veces de otro que no está, antes que el de siempre: la
+ * playa y el pantano usan los del exterior (una peña, un árbol); el terreno difícil del
+ * pantano es barro; el agua honda sin el suyo, la poco honda.
+ *
+ * @type {Record<string, string[]>}
+ */
+const TILE_STAND_INS = {
+    'agua-honda': ['agua'],
+    'dificil-pantano': ['barro', 'dificil-exterior'],
+    'dificil-playa': ['dificil-exterior'],
+    'cobertura-media-playa': ['cobertura-media-exterior'],
+    'cobertura-tres-cuartos-playa': ['cobertura-tres-cuartos-exterior'],
+    'cobertura-media-pantano': ['cobertura-media-exterior'],
+    'cobertura-tres-cuartos-pantano': ['cobertura-tres-cuartos-exterior'],
 };
 
 /**
@@ -116,7 +149,10 @@ export function terrainTile(cell, { biome = 'mazmorra', edge = false } = {}) {
     if (type === 'wall') return `muro-${biome}`;
     if (type === 'door') return cell?.broken ? 'puerta-rota' : cell?.open ? 'puerta-abierta' : cell?.locked ? 'puerta-cerrojo' : 'puerta-cerrada';
     if (type === 'high') return edge ? 'alto-borde' : 'alto';
-    return /** @type {Record<string, string>} */ (TILE_FILES)[type] ?? '';
+    const file = /** @type {Record<string, string>} */ (TILE_FILES)[type] ?? '';
+    // Tanda 12: fuera de la mazmorra, el del bioma (`artFor` vuelve al de siempre si falta).
+    if (file && BIOME_TILES.includes(type) && biome !== 'mazmorra' && BOARD_BIOMES.includes(biome)) return `${file}-${biome}`;
+    return file;
 }
 
 /**
@@ -426,6 +462,11 @@ export function artFor(kind, query = {}, manifest = loaded) {
             // El suelo o el muro de un bioma sin dibujo: los de la mazmorra.
             const pair = /^(suelo|muro)-/.exec(id);
             if (pair) add('tablero', `${pair[1]}-mazmorra`);
+            // Tanda 12: lo que hace sus veces (la peña del exterior en la playa), y después el de
+            // siempre, sin el bioma (`dificil-nieve` sin dibujo es `dificil`).
+            for (const other of TILE_STAND_INS[id] ?? []) add('tablero', other);
+            const biome = BOARD_BIOMES.find(b => id.endsWith(`-${b}`));
+            if (!pair && biome) add('tablero', id.slice(0, -biome.length - 1));
             break;
         }
         case 'compendium': {

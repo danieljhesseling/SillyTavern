@@ -1153,7 +1153,10 @@ function strikeEnemy(member, target, opts = {}) {
 
     // Idea 47: lo aprendido a fuerza de tumbar a los de su clase.
     // Idea 120: el «+1» del arma suma al ataque y al daño.
-    const abilityMod = getPlayerAttackModifier(wielder, rangeFeet);
+    // Tanda 10: un arma de cuerpo a cuerpo que también se lanza (la daga, a 20 pies), contra
+    // quien tienes pegado, va con la regla de cuerpo a cuerpo (la mejor de Fuerza o Destreza).
+    const modFeet = weapon && distanceFeet <= 5 && !isRangedWeapon(weapon) ? 5 : rangeFeet;
+    const abilityMod = getPlayerAttackModifier(wielder, modFeet);
     const attackMod = abilityMod + traitBonus(member, target.name) + perkBonus(member, 'attack') + weaponBonus(wielder);
     const round = Number(combatEncounter.round) || 1;
     // Tanda 10: Molestar (la maestría de 2024) da ventaja en el siguiente golpe contra él.

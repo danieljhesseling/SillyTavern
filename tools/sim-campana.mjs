@@ -25,6 +25,7 @@ import { createRequire } from 'node:module';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { entrarEnLaPelea } from './e2e-entrar-pelea.mjs';
 
 
 /**
@@ -70,6 +71,9 @@ const START_LEVEL = Math.max(1, Math.min(20, Number(argAfter('--nivel', '1')) ||
 const ONLY_BOARDS = argAfter('--tableros', '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
 const XP_FOR = [0, 0, 300, 900, 2700, 6500, 14000, 23000, 34000, 48000, 64000];
 const MAX_ROUNDS = 30;
+// Tanda 12: con --sin-ia-2024, los enemigos y los compañeros pelean como antes (sin maestrías,
+// agarrar, empujar, esquivar…), para comparar cuántas peleas se ganan con y sin.
+const NO_AI_2024 = process.argv.includes('--sin-ia-2024');
 
 const require = createRequire(join(ROOT, 'tests/package.json'));
 const { chromium } = require('@playwright/test');
@@ -104,15 +108,16 @@ try {
     browser = await chromium.launch({ channel: 'msedge', headless: !HEADED });
     const context = await browser.newContext({ viewport: { width: 1400, height: 950 } });
     const page = await context.newPage();
-    await context.addInitScript(() => {
+    await context.addInitScript((noAi) => {
         try {
+            if (noAi) window.localStorage.setItem('sillytavern_ia2024', 'off');
             window.localStorage.setItem('sillytavern_gameTipsSeen', 'dialogue,exploration,combat,travel,prisoners,mesa,high,spell,pet,bill,move,attack,roll,talk,journal');
             window.localStorage.setItem('sillytavern_gameShellAutostart', 'true');
             window.localStorage.setItem('sillytavern_gameSucesos', 'off');
             // Las escenas del hilo y las charlas escritas (J9.2, J8) las mira e2e-historia; aquí taparían clics.
             window.localStorage.setItem('sillytavern_gameStoryWindows', 'off');
         } catch { /* nada */ }
-    });
+    }, NO_AI_2024);
 
     /** Un comando, sin esperar a que acabe: alguno abre una ventana y se quedaría esperando. */
     const slash = async (/** @type {string} */ command) => {
@@ -133,7 +138,6 @@ try {
         .map((/** @type {any} */ m) => ({ name: m.name, level: Number(m.level) || 1, hp: Number(m.hp) || 0, maxHp: Number(m.maxHp) || 0, dead: Boolean(m.dead), guest: Boolean(m.guest), xp: Number(m.xp) || 0 })));
     // El combate vivo, no el guardado en el chat: ese va con retraso y daba peleas por acabadas.
     const fighting = () => page.evaluate(async () => Boolean((await import('/scripts/party.js')).getCombatEncounter()?.active));
-    const chips = () => page.evaluate(() => [...document.querySelectorAll('#game-shell .gs-chip-action')].map(c => (c.textContent || '').trim()));
     const clickChip = (/** @type {RegExp} */ pattern) => page.evaluate((source) => {
         const chip = [...document.querySelectorAll('#game-shell .gs-chip-action')].find(b => new RegExp(source).test(b.textContent || ''));
         if (chip instanceof HTMLElement) chip.click();
@@ -156,20 +160,19 @@ try {
      */
     const playFight = async () => {
         const chatBefore = await page.evaluate(() => (window.SillyTavern.getContext().chat ?? []).length).catch(() => 0);
-        const offer = () => until(async () => (await chips()).some(c => /^Iniciar combate/.test(c)), 6000);
-        let offered = await offer();
+        // Tanda 10: ya no hay «Iniciar combate»: la pelea se abre sola (decidir, colocarse,
+        // iniciativa). Se entra como quien juega; la ficha vieja, por si el árbol es de antes.
+        const enter = async () => (await entrarEnLaPelea(page, { ms: 8000 }) && await until(fighting, 10000))
+            || (await clickChip(/^Iniciar combate/) && await until(fighting, 10000));
+        let entered = await enter();
         // Lo que duerme tras una puerta (el engendro del Sótano) se despierta abriéndola,
         // como haría quien juega yendo a por ello.
-        if (!offered) {
+        if (!entered) {
             await page.evaluate(async () => (await import('/scripts/party.js')).openBoardDoorsForSimulation?.() ?? 0);
             await page.waitForTimeout(1000);
             await closePopups();
-            if (!await fighting()) offered = await offer();
-            if (!offered && !await fighting()) return { result: 'sin pelea', rounds: 0 };
-        }
-        if (offered) {
-            await clickChip(/^Iniciar combate/);
-            await until(fighting, 10000);
+            entered = await fighting() || await enter();
+            if (!entered) return { result: 'sin pelea', rounds: 0 };
         }
         // J4.6: si el tablero se ajusta al nivel del grupo, lo que dice y con qué vida sale cada uno.
         const adjusted = await page.evaluate(async (from) => {
@@ -209,6 +212,29 @@ try {
             return [...new Set(lines.filter(l => foe(l) && /\blanza\b|se concentra en/.test(l)).map(l => l.replace(/^[^\p{L}]+/u, '').slice(0, 90)))].slice(0, 6);
         }, { from: chatBefore, names: adjusted.foes.map(f => f.replace(/\s+\d+pg.*$/, '').replace(/\s+\d+$/, '')) }).catch(() => []);
         if (cast.length > 0) console.log(`  conjuros: ${cast.join(' · ')}`);
+        // Tanda 12: lo de 2024 que se ha usado en la pelea, contado en el registro (los dos bandos).
+        const used = await page.evaluate((from) => {
+            const lines = (window.SillyTavern.getContext().chat ?? []).slice(from).flatMap((/** @type {any} */ m) => String(m?.mes ?? '').split('\n'))
+                .map(l => l.replace(/\[COMBAT\]\s*/g, '').trim());
+            /** @type {Array<[string, RegExp]>} */
+            const kinds = [
+                ['maestría enemiga', /^\S+\s(?:Molestar|Debilitar|Ralentizar|Derribar|Empujar|Rozar|Hender) \(/u],
+                ['maestría del grupo', /^\S+\s(?:Molestar|Debilitar|Ralentizar|Derribar|Empujar|Rozar|Hender|Mellar):/u],
+                ['otra mano', /con la otra mano|Otra mano/],
+                ['agarra', /: Agarra al que lanza/],
+                ['empuja', /Lo tiene al borde|Le empuja contra|Lo tienen rodeado/],
+                ['ayuda', /Le abre la guardia/],
+                ['se cubre', /Acorralado y malherido: se cubre/],
+                ['se esconde', /No llega a nadie: se (?:esconde|pierde)/],
+                ['se destraba', /se destraba/i],
+                ['poción', /se bebe una poción \(acción|se bebe la poción de un trago|le pasa una poción a/],
+                ['espacio mayor', /gasta un espacio de nivel \d/],
+                ['oportunidad del grupo', /aprovecha que se va y golpea/],
+            ];
+            return kinds.map(([name, re]) => [name, lines.filter(l => re.test(l)).length]).filter(([, n]) => Number(n) > 0)
+                .map(([name, n]) => `${name} ${n}`);
+        }, chatBefore).catch(() => []);
+        if (used.length > 0) console.log(`  2024: ${used.join(' · ')}`);
         // Ganada es ganada en el juego: el tablero queda apuntado como ganado. Leer el chat
         // confundía la victoria de la pelea anterior con esta.
         const won = await page.evaluate(() => {

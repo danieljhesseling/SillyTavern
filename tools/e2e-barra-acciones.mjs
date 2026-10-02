@@ -17,7 +17,8 @@
  *   - Cuerpo a tierra es gratis; levantarse cuesta la mitad;
  *   - atacar con la espada corta desde el menú gasta la acción; con la daga en la otra mano,
  *     Adicional ofrece el golpe con la otra mano, y beber una poción;
- *   - Magia (con la ficha hecha maga un momento): las gemas de los espacios y los filtros;
+ *   - Magia (con la ficha hecha maga un momento): las gemas de los espacios y los filtros; y,
+ *     de nivel 3, lanzar Proyectil mágico con un espacio de nivel 2 (J19.3): cuatro dardos;
  *   - con el teclado: 3 abre Acciones, Esc lo cierra, 1 abre Atacar;
  *   - y en 1920 × 1080 y en un teléfono (390 × 844 y tumbado) la barra cabe y el menú también.
  *
@@ -29,13 +30,14 @@
  *   node tools/e2e-barra-acciones.mjs --port 8411 --captura barra.png  # barra.1280.png, …
  */
 
-/* global window, document, HTMLElement */
+/* global window, document */
 
 import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { entrarEnLaPelea } from './e2e-entrar-pelea.mjs';
 
 const ROOT = new URL('..', import.meta.url).pathname.replace(/^[/]([A-Za-z]:)/, '$1');
 const argAfter = (/** @type {string} */ flag) => (process.argv.includes(flag) ? process.argv[process.argv.indexOf(flag) + 1] : '');
@@ -133,12 +135,6 @@ try {
         return false;
     };
     const fighting = () => page.evaluate(() => Boolean(window.SillyTavern.getContext().chatMetadata?.combatEncounter?.active));
-    const chips = () => page.evaluate(() => [...document.querySelectorAll('#game-shell .gs-chip-action')].map(c => (c.textContent || '').trim()));
-    const clickChip = (/** @type {RegExp} */ pattern) => page.evaluate((source) => {
-        const chip = [...document.querySelectorAll('#game-shell .gs-chip-action')].find(b => new RegExp(source).test(b.textContent || ''));
-        if (chip instanceof HTMLElement) chip.click();
-        return Boolean(chip);
-    }, pattern.source);
     const dropToasts = () => page.evaluate(() => document.querySelectorAll('#toast-container .toast').forEach(t => t.remove()));
     const clearDice = async () => {
         for (let i = 0; i < 40; i++) {
@@ -272,20 +268,9 @@ try {
     });
 
     // 2. La pelea de la bodega.
-    await until(async () => {
-        if (await fighting()) return true;
-        await dropToasts();
-        await clickChip(/^Iniciar combate|^Pelear/);
-        return false;
-    }, 60000);
-    if (!(await fighting())) {
-        // Si la pelea empieza de otra forma (colocar a los tuyos antes), se empieza con lo que espera.
-        await page.evaluate(async () => {
-            const view = await import('/scripts/party/board-view.js');
-            const flow = await import('/scripts/party/combat-flow.js');
-            if (view.lastWaiting.placements.length > 0) flow.startWaitingFight(view.lastWaiting.placements);
-        });
-    }
+    // Como quien juega: la pelea se abre sola (la decisión, «Pelear», colocar y «Empezar»).
+    await dropToasts();
+    await entrarEnLaPelea(page, { ms: 90000 });
     check('la pelea de la bodega empieza', await until(fighting, 20000));
     const mine = await heroTurn();
     check('le toca a Nerea', mine && (await turn()).mine, JSON.stringify(await turn()));
@@ -346,9 +331,21 @@ try {
     // Pulsar el mapa lo cierra, y ese toque no mueve a nadie.
     await openMenu('acciones');
     const before = await turn();
+    // Un punto del mapa que no tape nada del HUD (con el lienzo a pantalla completa, el menú
+    // está encima del mapa: pulsar en su sitio sería pulsar una tarjeta).
     const mapPoint = await page.evaluate(() => {
-        const r = document.querySelector('#game-shell .gs-scene-map .wm-container')?.getBoundingClientRect();
-        return r ? { x: r.left + r.width * 0.3, y: r.top + r.height * 0.45 } : null;
+        const box = document.querySelector('#game-shell .gs-scene-map .wm-container');
+        const r = box?.getBoundingClientRect();
+        if (!box || !r) return null;
+        for (let fy = 0.2; fy <= 0.8; fy += 0.05) {
+            for (let fx = 0.05; fx <= 0.95; fx += 0.05) {
+                const x = r.left + r.width * fx;
+                const y = r.top + r.height * fy;
+                const hit = document.elementFromPoint(x, y);
+                if (hit && box.contains(hit) && !hit.closest('.wm-token, .gs-grimoire, .gs-vtt-bar')) return { x, y };
+            }
+        }
+        return null;
     });
     if (mapPoint) await page.mouse.click(mapPoint.x, mapPoint.y);
     await page.waitForTimeout(500);
@@ -394,6 +391,8 @@ try {
     check('Adicional: beber una poción, con lo que cura', Boolean(drink && !drink.off && drink.badges.some(b => /Cura 2d4\+2/.test(b))), JSON.stringify(drink));
     const offhand = (bonus.menu?.cards ?? []).find(c => c.pick === 'offhand');
     check('Adicional: el golpe con la otra mano, apagado hasta atacar con la ligera', Boolean(offhand && offhand.off && /ataca/i.test(offhand.why)), JSON.stringify(offhand));
+    const ownBonus = (bonus.menu?.cards ?? []).filter(c => /^ability:/.test(c.pick)).map(c => c.name);
+    check('Adicional: lo de tu clase que va con la adicional (el guerrero, Segundo aliento)', ownBonus.includes('Segundo aliento'), JSON.stringify(ownBonus));
     if (drink) await pickCard(drink.pick);
     await page.waitForTimeout(500);
     await clearDice();
@@ -448,6 +447,20 @@ try {
             const one = (await bar()).menu?.id;
             check('con el teclado: 3 abre Acciones, Esc lo cierra y 1 abre Atacar', three === 'acciones' && closed && one === 'atacar', JSON.stringify({ three, closed, one }));
             await page.keyboard.press('Escape');
+            await page.waitForTimeout(300);
+            // Intro en un botón de la barra abre su menú; el foco entra en él y Tab no se sale.
+            await page.locator('#game-shell .gs-vtt-bar .gs-btn[data-menu="acciones"]').focus();
+            await page.keyboard.press('Enter');
+            await page.waitForTimeout(300);
+            const entered = (await bar()).menu?.id;
+            const inMenu = () => page.evaluate(() => Boolean(document.activeElement?.closest('#game-shell .gs-grimoire')));
+            const focusIn = await inMenu();
+            for (let i = 0; i < 12; i++) await page.keyboard.press('Tab');
+            const tabIn = await inMenu();
+            await page.keyboard.press('Escape');
+            await page.waitForTimeout(300);
+            check('con el teclado: Intro en «Acciones» lo abre, el foco entra en el menú y Tab no se sale de él',
+                entered === 'acciones' && focusIn && tabIn && !(await bar()).menu, JSON.stringify({ entered, focusIn, tabIn }));
         }
         // A por el más cercano: andar hasta él si hace falta, con el tablero.
         const near = now.enemies.sort((a, b) => Math.max(Math.abs(a.x - now.x), Math.abs(a.y - now.y)) - Math.max(Math.abs(b.x - now.x), Math.abs(b.y - now.y)))[0];
@@ -622,6 +635,104 @@ try {
     check('Agarrar (2024): falla la salvación contra la CD y queda agarrado', unarmed.grabbed.includes('Grappled'), JSON.stringify(unarmed));
     check('Empujar (2024): tirarlo al suelo, o apartarlo 5 pies', unarmed.prone.includes('Prone') && unarmed.pushed === 1, JSON.stringify(unarmed));
     check('Estudiar: con la tirada buena, algo que no se sabía de él', unarmed.studied, unarmed.said);
+    // La otra mano (2024): tras atacar con la espada corta (ligera), la daga; con Mellar, gratis.
+    const twoHands = await page.evaluate(async () => {
+        const state = await import('/scripts/party/state.js');
+        const rules = await import('/scripts/party/combat-rules.js');
+        const bar = await import('/scripts/party/combat-bar.js');
+        const enc = state.combatEncounter;
+        const hero = state.partyMembers[0];
+        const [a] = enc.enemies;
+        enc.tactics = {};
+        enc.turnState = { actorId: String(hero.id), isEnemy: false, movementSpentFeet: 0, actionUsed: false, bonusActionUsed: false, reactionUsed: false };
+        Object.assign(a, { gridX: (Number(hero.mapPosition?.gridX) || 0) + 1, gridY: Number(hero.mapPosition?.gridY) || 0, currentHp: 300, activeConditions: [], armorClass: 5 });
+        hero.equippedItems = { ...hero.equippedItems, weapon: (hero.items.find((/** @type {any} */ i) => i.name === 'Espada corta') ?? {}).id, shield: null };
+        const card = () => bar.buildCombatBarView().menu('adicional')?.sections[0].items.find((/** @type {any} */ i) => i.key === 'offhand');
+        const before = card();
+        rules.setRandomSource(() => 0.9);
+        bar.runCombatBarPick(`attack:${a.instanceId}`);
+        const ready = card();
+        bar.runCombatBarPick(`offhand:${a.instanceId}`);
+        rules.setRandomSource(null);
+        const said = String(window.SillyTavern.getContext().chat?.slice(-2).map((/** @type {any} */ m) => m.mes).join(' | ') ?? '');
+        return {
+            before: before?.enabled, ready: ready?.enabled, name: ready?.name, badges: (ready?.badges ?? []).map((/** @type {any} */ b) => b.text),
+            bonus: !enc.turnState.bonusActionUsed, again: card()?.enabled, said: said.slice(-300),
+            // La tirada de la otra mano lleva el modificador (lo que no lleva es el del daño).
+            offMod: (said.split('con la otra mano')[1] ?? '').match(/d20 \d+ ([+-]\d+)/)?.[1] ?? '',
+        };
+    });
+    // Cambiar de arma (2024): gratis, sin gastar la acción, una vez por turno; el menú de Atacar
+    // sigue abierto, con el arma nueva.
+    const swapped = await page.evaluate(async () => {
+        const state = await import('/scripts/party/state.js');
+        const bar = await import('/scripts/party/combat-bar.js');
+        const enc = state.combatEncounter;
+        const hero = state.partyMembers[0];
+        enc.tactics = {};
+        enc.turnState = { actorId: String(hero.id), isEnemy: false, movementSpentFeet: 0, actionUsed: false, bonusActionUsed: false, reactionUsed: false };
+        const dagger = hero.items.find((/** @type {any} */ i) => i.name === 'Daga');
+        const after = bar.runCombatBarPick(`swap:${dagger?.id}`);
+        const now = hero.items.find((/** @type {any} */ i) => i.id === hero.equippedItems?.weapon)?.name;
+        const head = bar.buildCombatBarView().menu('atacar')?.headAction;
+        return { keepOpen: after.keepOpen, now, action: !enc.turnState.actionUsed, again: head?.enabled, why: head?.reason };
+    });
+    check('cambiar de arma: gratis (la acción sigue), el menú de Atacar sigue abierto, y una vez por turno',
+        swapped.now === 'Daga' && swapped.action && swapped.keepOpen === 'atacar' && swapped.again === false && /Ya has cambiado/.test(String(swapped.why)), JSON.stringify(swapped));
+    check('la otra mano (2024): apagada hasta atacar con la espada corta; luego la daga (su tirada, con tu modificador), y con Mellar no gasta la adicional, una vez por turno',
+        twoHands.before === false && twoHands.ready === true && /daga/i.test(String(twoHands.name)) && twoHands.badges.includes('Gratis (Mellar)')
+        && twoHands.bonus && twoHands.again === false && /otra mano/.test(twoHands.said) && twoHands.offMod === '+3', JSON.stringify(twoHands));
+
+    // 10c. J19.3: lanzar a más nivel, por la barra. Nerea, maga de nivel 3 un momento (espacios
+    // de 1.º y de 2.º): en Magia, Proyectil mágico deja elegir el espacio; con el de 2.º, un dardo más.
+    await page.evaluate(async () => {
+        const state = await import('/scripts/party/state.js');
+        const enc = state.combatEncounter;
+        const hero = /** @type {any} */ (state.partyMembers[0]);
+        hero.class = 'Mago';
+        hero.level = 3;
+        hero.slotsUsed = {};
+        for (const key of ['spellbook', 'prepared']) {
+            const list = Array.isArray(hero[key]) ? hero[key] : [];
+            if (!list.includes('conj-proyectil-magico')) hero[key] = [...list, 'conj-proyectil-magico'];
+        }
+        const [a] = enc.enemies;
+        Object.assign(a, { currentHp: 300, activeConditions: [] });
+        const at = enc.turnOrder.findIndex((/** @type {any} */ e) => !e.isEnemy && String(e.id) === String(hero.id));
+        enc.currentTurnIndex = at;
+        enc.turnState = { actorId: String(hero.id), isEnemy: false, movementSpentFeet: 0, actionUsed: false, bonusActionUsed: false, reactionUsed: false };
+        (await import('/scripts/party/board-view.js')).renderLocationMapsPreview();
+    });
+    await page.waitForTimeout(600);
+    await openMenu('magia');
+    const levelPills = await page.evaluate(() => [...document.querySelectorAll('#game-shell .gs-grimoire .gs-level-pill[data-spell="conj-proyectil-magico"]')]
+        .map(b => `${(b.textContent || '').trim()}:${b.classList.contains('active') ? 'elegido' : ''}`));
+    await page.locator('#game-shell .gs-grimoire .gs-level-pill[data-spell="conj-proyectil-magico"][data-slot-level="2"]').click({ timeout: 5000 }).catch(() => {});
+    await page.waitForTimeout(300);
+    const upcast = ((await bar()).menu?.cards ?? []).find(c => /conj-proyectil-magico/.test(c.pick));
+    await shot('1280.nivel');
+    check('J19.3: Proyectil mágico deja elegir el espacio, y con el de nivel 2 son cuatro dardos',
+        levelPills.length >= 2 && levelPills[0] === 'Nivel 1:elegido' && upcast?.pick === 'cast:2:conj-proyectil-magico'
+        && upcast.badges.some(b => /^4 × 1d4\+1/.test(b)) && upcast.badges.includes('Espacio de nivel 2'), JSON.stringify({ levelPills, upcast }));
+    if (upcast) await pickCard(upcast.pick);
+    const castTarget = ((await bar()).menu?.cards ?? []).find(c => c.pick.startsWith('cast:2:conj-proyectil-magico:') && !c.off);
+    const hpBefore = await page.evaluate(async () => Number((await import('/scripts/party/state.js')).combatEncounter.enemies[0].currentHp));
+    if (castTarget) await pickCard(castTarget.pick);
+    await clearDice();
+    await page.waitForTimeout(400);
+    const cast = await page.evaluate(async () => {
+        const state = await import('/scripts/party/state.js');
+        const hero = /** @type {any} */ (state.partyMembers[0]);
+        const said = String(window.SillyTavern.getContext().chat?.slice(-3).map((/** @type {any} */ m) => m.mes).join(' | ') ?? '');
+        return { used: { ...(hero.slotsUsed ?? {}) }, hp: Number(state.combatEncounter.enemies[0].currentHp), action: !state.combatEncounter.turnState?.actionUsed, said: said.slice(-400) };
+    });
+    check('lanzado con el espacio de nivel 2: gasta ese, no uno de nivel 1, y los cuatro dardos le dan',
+        Number(cast.used[2]) === 1 && !Number(cast.used[1]) && /espacio de 2\.º/.test(cast.said) && (hpBefore - cast.hp) >= 8 && !cast.action,
+        JSON.stringify({ ...cast, hpBefore }));
+    await page.evaluate(async () => {
+        const { partyMembers } = await import('/scripts/party/state.js');
+        Object.assign(partyMembers[0], { class: 'Guerrero', level: 1 });
+    });
     await page.evaluate(async () => (await import('/scripts/party/combat-flow.js')).endCombat('ended'));
     await page.waitForTimeout(800);
     await clearDice();

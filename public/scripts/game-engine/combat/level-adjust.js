@@ -18,8 +18,12 @@
  *    ninguno de los que tenía: solo se quita la copia de uno repetido. Y no se copia a nadie
  *    con CA 15 o más (D-J21): con nivel 8, la Entrada a Ravenloft llegó a durar 20 rondas.
  *
- * 4. **El tamaño del grupo** (J12.6): el tablero está escrito para tres (`WRITTEN_PARTY_SIZE`);
- *    con más gente, algún esbirro de más, y con menos, de menos (`adjustForSize`).
+ * 4. **El tamaño del grupo** (J12.6, D-J56): el tablero está escrito para cuatro, como en D&D
+ *    (`WRITTEN_PARTY_SIZE`); con más gente, un esbirro de más por cada uno, y con menos, uno
+ *    de menos por cada uno que falte (`adjustForSize`).
+ *
+ * D-J56: un tablero puede decir su propio nivel (`levels` en su misión): la cripta de Strahd
+ * es para nivel 6 a 7 aunque su acto sea el 5. Fuera de su tramo se ajusta igual que todos.
  *
  * Puro: quien llama lo aplica y lo dice.
  */
@@ -61,6 +65,11 @@ const NEAR = 3;
  * @property {number} max El más alto.
  * @property {number} acts Cuántos actos tiene.
  * @property {Record<string, number>} actOf El acto de cada tablero, por su nombre en minúsculas.
+ * @property {Record<string, {low: number, high: number}>} [bandOf] D-J56: los tableros que dicen
+ *   su propio nivel, por su nombre en minúsculas.
+ * @property {number} [actsMax] D-J56: hasta dónde llegan los actos. Los últimos niveles del tramo
+ *   pueden ser solo de un tablero que dice el suyo (la cripta de Strahd, 6 a 7, en una campaña de
+ *   1 a 7): los actos se reparten lo demás, de 1 a 6.
  */
 
 /**
@@ -118,17 +127,37 @@ export function levelPlanOf(meta, levels) {
         const name = lower(board);
         if (name) actOf[name] = Math.max(actOf[name] ?? 0, n);
     };
-    for (const quest of Array.isArray(meta?.quests) ? meta.quests : []) note(quest?.boardName, quest?.act);
+    /** @type {Record<string, {low: number, high: number}>} */
+    const bandOf = {};
+    // D-J56: el nivel que dice el propio tablero, en su misión o en su encargo.
+    const own = (/** @type {any} */ board, /** @type {any} */ raw) => {
+        const band = readLevelRange(raw);
+        const name = lower(board);
+        if (band && name) bandOf[name] = { low: band.min, high: band.max };
+    };
+    for (const quest of Array.isArray(meta?.quests) ? meta.quests : []) {
+        note(quest?.boardName, quest?.act);
+        own(quest?.boardName, quest?.levels);
+    }
     for (const milestone of Array.isArray(meta?.plot?.milestones) ? meta.plot.milestones : []) {
         note(milestone?.asks?.kind === 'win' ? milestone.asks.board : '', milestone?.act);
     }
-    for (const contract of Array.isArray(meta?.writtenContracts) ? meta.writtenContracts : []) note(contract?.boardName, contract?.act);
+    for (const contract of Array.isArray(meta?.writtenContracts) ? meta.writtenContracts : []) {
+        note(contract?.boardName, contract?.act);
+        own(contract?.boardName, contract?.levels);
+    }
 
-    return { ...range, acts, actOf };
+    // D-J56: los niveles de arriba que son solo de un tablero con el suyo no se reparten entre
+    // los actos (Strahd, de 1 a 7: los actos van de 1 a 6, y la cripta, de 6 a 7).
+    const top = Object.values(bandOf).filter(band => band.high >= range.max).map(band => band.low);
+    const actsMax = top.length > 0 ? Math.max(range.min, Math.min(range.max, ...top)) : range.max;
+
+    return { ...range, acts, actOf, bandOf, actsMax };
 }
 
 /**
- * Para qué nivel es un tablero: el trozo del tramo que le toca a su acto.
+ * Para qué nivel es un tablero: el suyo, si lo dice (D-J56); si no, el trozo del tramo que le
+ * toca a su acto.
  *
  * @param {LevelPlan} plan
  * @param {string} boardName
@@ -136,12 +165,15 @@ export function levelPlanOf(meta, levels) {
  */
 export function boardBand(plan, boardName) {
     const act = plan.actOf[lower(boardName)] ?? 0;
+    const own = plan.bandOf?.[lower(boardName)];
+    if (own) return { low: own.low, high: own.high, act };
     if (!act || plan.acts <= 1) return { low: plan.min, high: plan.max, act };
-    const span = (plan.max - plan.min) / plan.acts;
+    const max = Math.max(plan.min, Math.min(plan.max, Number(plan.actsMax) || plan.max));
+    const span = (max - plan.min) / plan.acts;
     const k = Math.min(act, plan.acts);
     // El pequeño margen evita que 1 + 3 × 1,0 se quede en 3,9999 y redondee mal.
     const low = Math.max(plan.min, Math.floor(plan.min + (k - 1) * span + 1e-9));
-    const high = Math.min(plan.max, Math.max(low, Math.ceil(plan.min + k * span - 1e-9)));
+    const high = Math.min(max, Math.max(low, Math.ceil(plan.min + k * span - 1e-9)));
     return { low, high, act };
 }
 
@@ -346,11 +378,12 @@ export function levelNote({ adjustment, band, level }) {
 }
 
 /**
- * J12.6: para cuántos está escrito un tablero de campaña. Los de 1387 y Strahd se probaron
- * con tu personaje y dos mercenarios (`tools/sim-campana.mjs`), así que a ese grupo le sale
- * tal cual; con más gente, más enemigos, y con menos, menos.
+ * J12.6 y D-J56: para cuántos está escrito un tablero de campaña. Para cuatro, como las
+ * aventuras de D&D (antes, tres: tu personaje y dos mercenarios). A un grupo de cuatro le sale
+ * tal cual; con más gente, más enemigos, y con menos, menos (`tools/sim-campana.mjs` prueba
+ * los dos).
  */
-export const WRITTEN_PARTY_SIZE = 3;
+export const WRITTEN_PARTY_SIZE = 4;
 
 /** J12.6: los enemigos de más (o de menos, en negativo) que puede poner o quitar el tamaño del grupo. */
 export const SIZE_LIMITS = { min: -3, max: 2 };
@@ -365,6 +398,8 @@ export const SIZE_LIMITS = { min: -3, max: 2 };
  *   sigue teniendo a todos los que tenía.
  * - **Más gente**: una copia del más flojo que no sea jefe ni lleve CA 15 o más (D-J21),
  *   puesta al lado de uno suyo, mientras quepa en lo que sobra.
+ * - D-J56: como mucho, un enemigo de más o de menos por cada uno que sobra o que falta: con
+ *   tres, uno menos; con cinco, uno más.
  *
  * Puro: con el mismo grupo y el mismo tablero, la misma pelea.
  *
@@ -403,9 +438,11 @@ export function adjustForSize({
     const kinds = [...new Set(list.map(p => p.name))].filter(name => !isBoss(name))
         .sort((a, b) => threat(a) - threat(b));
     let slack = budgetFor({ partyLevel, partySize: size }) - budgetFor({ partyLevel, partySize: written });
+    // D-J56: uno por cada uno que sobra o que falta, y nunca más que los topes.
+    const most = Math.abs(size - written);
 
     if (slack < 0) {
-        while (removed.length < -SIZE_LIMITS.min) {
+        while (removed.length < Math.min(-SIZE_LIMITS.min, most)) {
             const repeated = kinds.find(name => list.filter(p => p.name === name).length > 1 && threat(name) <= -slack);
             if (!repeated) break;
             list.splice(list.map(p => p.name).lastIndexOf(repeated), 1);
@@ -426,7 +463,7 @@ export function adjustForSize({
         .filter(Boolean).map(c => `${Number(c.x) || 0},${Number(c.y) || 0}`));
     const free = (/** @type {number} */ x, /** @type {number} */ y) =>
         !used.has(`${x},${y}`) && (terrain ? isPassable(terrain, x, y, gridWidth, gridHeight) : (x >= 0 && y >= 0 && x < gridWidth && y < gridHeight));
-    while (added.length < SIZE_LIMITS.max && cost <= slack) {
+    while (added.length < Math.min(SIZE_LIMITS.max, most) && cost <= slack) {
         const cell = cellNear(list.filter(p => p.name === minion), free);
         if (!cell) break;
         list.push({ name: minion, x: cell.x, y: cell.y });

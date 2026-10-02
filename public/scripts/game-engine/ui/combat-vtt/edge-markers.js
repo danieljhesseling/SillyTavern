@@ -20,6 +20,7 @@
  * @property {number|string} id
  * @property {string} name
  * @property {string} text Lo que dice: el nombre y la distancia.
+ * @property {string} [feetText] Solo la distancia (« · 90 pies»), o nada: va en su propio trozo, que no encoge.
  * @property {number} left El centro del marcador.
  * @property {number} top
  * @property {number} angle Hacia dónde apunta su flecha, en grados (0 es a la derecha, 90 abajo).
@@ -43,8 +44,21 @@ function num(value) {
  * @returns {string}
  */
 export function edgeText(name, feet) {
+    const parts = edgeParts(name, feet);
+    return parts.name + parts.feet;
+}
+
+/**
+ * El marcador en dos trozos: el nombre (si no cabe, lleva puntos suspensivos) y la distancia
+ * (« · 90 pies», que siempre se lee entera).
+ *
+ * @param {string} name
+ * @param {number} [feet]
+ * @returns {{name: string, feet: string}}
+ */
+export function edgeParts(name, feet) {
     const said = String(name ?? '').trim() || 'Alguien';
-    return Number.isFinite(Number(feet)) && Number(feet) > 0 ? `${said} · ${Math.round(Number(feet))} pies` : said;
+    return { name: said, feet: Number.isFinite(Number(feet)) && Number(feet) > 0 ? ` · ${Math.round(Number(feet))} pies` : '' };
 }
 
 /**
@@ -87,6 +101,7 @@ export function placeEdgeMarkers({ targets, rect, inset = 22, gap = 34 }) {
             id: target.id,
             name: String(target.name ?? ''),
             text: edgeText(String(target.name ?? ''), target.feet),
+            feetText: edgeParts(String(target.name ?? ''), target.feet).feet,
             left: cx + dx * t,
             top: cy + dy * t,
             angle: Math.round((Math.atan2(dy, dx) * 180) / Math.PI),
@@ -139,14 +154,56 @@ export function markerBox(marker, width, height, bounds = null) {
 }
 
 /**
+ * @typedef {{left: number, top: number, right: number, bottom: number}} Box
+ */
+
+/**
+ * Aparta la caja de un marcador de las islas del HUD (la cámara, el minimapa, la barra de abajo):
+ * si pisa alguna, se corre a lo largo de su borde hasta el lado libre más cercano de esa isla.
+ * Si no hay sitio libre dentro de `bounds`, se queda donde estaba.
+ *
+ * @param {{x: number, y: number}} box La esquina de arriba a la izquierda (`markerBox`).
+ * @param {number} width
+ * @param {number} height
+ * @param {EdgeMarker['side']} side
+ * @param {Box[]} [avoid]
+ * @param {Box|null} [bounds]
+ * @returns {{x: number, y: number}}
+ */
+export function dodgeIslands(box, width, height, side, avoid = [], bounds = null) {
+    const w = Math.max(0, num(width));
+    const h = Math.max(0, num(height));
+    const islands = (Array.isArray(avoid) ? avoid : []).filter(r => r && num(r.right) > num(r.left) && num(r.bottom) > num(r.top));
+    const hits = (/** @type {{x: number, y: number}} */ at) => islands.find(r => at.x < num(r.right) && at.x + w > num(r.left) && at.y < num(r.bottom) && at.y + h > num(r.top)) ?? null;
+    const inside = (/** @type {{x: number, y: number}} */ at) => !bounds
+        || (at.x >= num(bounds.left) && at.x + w <= num(bounds.right) && at.y >= num(bounds.top) && at.y + h <= num(bounds.bottom));
+    let at = { x: num(box?.x), y: num(box?.y) };
+    // Unas pocas vueltas: al correrse de una isla puede caer en otra.
+    for (let round = 0; round < 4; round++) {
+        const hit = hits(at);
+        if (!hit) return at;
+        const alongY = side === 'left' || side === 'right';
+        const options = alongY
+            ? [{ x: at.x, y: num(hit.top) - h - 4 }, { x: at.x, y: num(hit.bottom) + 4 }]
+            : [{ x: num(hit.left) - w - 4, y: at.y }, { x: num(hit.right) + 4, y: at.y }];
+        options.sort((a, b) => Math.hypot(a.x - at.x, a.y - at.y) - Math.hypot(b.x - at.x, b.y - at.y));
+        const next = options.find(inside);
+        if (!next) break;
+        at = next;
+    }
+    return hits(at) ? { x: num(box?.x), y: num(box?.y) } : at;
+}
+
+/**
  * Pone los marcadores en su capa. Cada uno es un botón: pulsarlo llama a `onPick` con su ficha.
  *
  * @param {HTMLElement} layer
  * @param {EdgeMarker[]} markers
  * @param {(id: number|string) => void} onPick
- * @param {{left: number, top: number, right: number, bottom: number}|null} [bounds] De aquí no se salen.
+ * @param {Box|null} [bounds] De aquí no se salen.
+ * @param {Box[]} [avoid] Las islas del HUD que no pisan (contadas como `bounds`).
  */
-export function renderEdgeMarkers(layer, markers, onPick, bounds = null) {
+export function renderEdgeMarkers(layer, markers, onPick, bounds = null, avoid = []) {
     if (!layer) return;
     /** @type {Map<string, HTMLButtonElement>} */
     const before = new Map();
@@ -164,8 +221,14 @@ export function renderEdgeMarkers(layer, markers, onPick, bounds = null) {
             const icon = document.createElement('i');
             icon.className = 'vtt-edge-arrow fa-solid fa-location-arrow';
             icon.setAttribute('aria-hidden', 'true');
+            // El nombre encoge (puntos suspensivos); los pies, no.
             const label = document.createElement('span');
             label.className = 'vtt-edge-text';
+            const name = document.createElement('span');
+            name.className = 'vtt-edge-name';
+            const feet = document.createElement('span');
+            feet.className = 'vtt-edge-feet';
+            label.append(name, feet);
             button.append(icon, label);
             const id = marker.id;
             button.addEventListener('click', (event) => {
@@ -174,15 +237,21 @@ export function renderEdgeMarkers(layer, markers, onPick, bounds = null) {
             });
             layer.appendChild(button);
         }
-        const label = /** @type {HTMLElement} */ (button.querySelector('.vtt-edge-text'));
-        if (label.textContent !== marker.text) label.textContent = marker.text;
+        const feetText = String(marker.feetText ?? '');
+        const nameText = feetText && marker.text.endsWith(feetText) ? marker.text.slice(0, -feetText.length) : marker.text;
+        const nameNode = /** @type {HTMLElement} */ (button.querySelector('.vtt-edge-name'));
+        const feetNode = /** @type {HTMLElement} */ (button.querySelector('.vtt-edge-feet'));
+        if (nameNode.textContent !== nameText) nameNode.textContent = nameText;
+        if (feetNode.textContent !== feetText) feetNode.textContent = feetText;
+        feetNode.hidden = !feetText;
         button.title = `${marker.text}. Pulsa para ir a verlo`;
         button.setAttribute('aria-label', button.title);
         button.dataset.side = marker.side;
         // La flecha de Font Awesome apunta arriba a la derecha (-45°).
         const arrow = /** @type {HTMLElement} */ (button.querySelector('.vtt-edge-arrow'));
         arrow.style.transform = `rotate(${marker.angle + 45}deg)`;
-        const box = markerBox(marker, button.offsetWidth, button.offsetHeight, bounds);
+        const box = dodgeIslands(markerBox(marker, button.offsetWidth, button.offsetHeight, bounds),
+            button.offsetWidth, button.offsetHeight, marker.side, avoid, bounds);
         button.style.left = `${Math.round(box.x)}px`;
         button.style.top = `${Math.round(box.y)}px`;
     }

@@ -183,6 +183,8 @@ const RESOLVED = {
     // escenas, las escenas y pistas de sus hitos, y sus finales, que se resuelven como los del paquete.
     'compendio/actos.json': [
         /^\.rows\[\d+\]\.(gancho|pistas|encrucijada)\.beats\[\d+\]\.(text|options\[\d+\]\.(text|reply\.text))$/,
+        // D-J54: lo que se oye en la guarida, lo que dice cada contacto, los desenlaces y el «tarde».
+        /^\.rows\[\d+\]\.((guarida|golpe|bando_a|bando_b)\.)?beats\[\d+\]\.text$/,
         /^\.rows\[\d+\]\.(testigo|guarida|golpe|bando_a|bando_b)\.(scene|hint)$/,
         /^\.rows\[\d+\]\.(scene|hint)$/,
         /^\.rows\[\d+\]\.epilogos\[\d+\]\.text$/,

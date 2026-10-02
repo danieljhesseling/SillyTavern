@@ -336,20 +336,48 @@ try {
         return (await state()).location === place;
     };
     /** Gana la pelea que haya: todos a cero y turnos hasta que se acaba. */
+    /** @type {any[]} Cómo iba la pelea si no se acabó, para el informe. */
+    const fightLog = [];
     const winFight = async () => {
         await until(async () => (await state()).fighting, 10000);
         // Con la máquina cargada, los turnos de ellos tardan: se insiste (y quien entre tarde en la
         // pelea también cae a cero).
         for (let i = 0; i < 30 && (await state()).fighting; i++) {
             await clearDice();
+            // Todos a cero, y lo que mira el juego tras un golpe que tumba al último (`afterBlow`
+            // de combat-bar.js): sin misión en el tablero, eso es ganar. Pasar el turno solo lo
+            // mira en los tableros con misión.
             await page.evaluate(async () => {
                 const enc = (await import('/scripts/party.js')).getCombatEncounter();
                 for (const e of enc?.enemies ?? []) e.currentHp = 0;
+                const flow = await import('/scripts/party/combat-flow.js');
+                if (enc?.active && !flow.checkScenarioOutcome() && !flow.judgeCurrentScenario()) {
+                    flow.endCombat('victory');
+                    (await import('/scripts/party/board-view.js')).renderLocationMapsPreview();
+                }
             });
+            if (!(await state()).fighting) break;
             await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/combat-end'));
             await page.waitForTimeout(1000);
         }
         await clearDice();
+        if ((await state()).fighting) {
+            // Para el informe: de quién es el turno y qué hay delante.
+            fightLog.push(await page.evaluate(async () => {
+                const enc = /** @type {any} */ ((await import('/scripts/party.js')).getCombatEncounter());
+                const entry = enc?.turnOrder?.[enc.currentTurnIndex];
+                return {
+                    turn: entry ? `${entry.name}${entry.isEnemy ? ' (enemigo)' : ''}` : '',
+                    round: enc?.round,
+                    enemies: (enc?.enemies ?? []).map((/** @type {any} */ e) => `${e.name}:${e.currentHp}`),
+                    dialogs: [...document.querySelectorAll('dialog[open]')].map(d => d.className),
+                    popups: [...document.querySelectorAll('.popup[open]')].map(p => (p.textContent || '').trim().slice(0, 80)),
+                    dice: document.querySelectorAll('.wm-dice-overlay.active').length,
+                    placing: Boolean(document.querySelector('.cv-place')),
+                };
+            }));
+            if (SHOT) await page.screenshot({ path: `${SHOT}.pelea-sin-acabar.png` });
+        }
     };
     /** Entrar en un tablero de aquí y ganar su pelea. */
     const enterAndWin = async (/** @type {string} */ board) => {
@@ -538,8 +566,10 @@ try {
     const now4 = await state();
     check(`acto 2: se gana en «${LAIR_BOARD}», y la escena de la encrucijada decide: el bando A`,
         lairFight.won && now4.done.includes(ACT_IDS.strike) && now4.done.includes(ACT_IDS.crossroads)
-        && chosen.includes('a') && now4.done.includes(ACT_IDS.sideA) && now4.closed.includes(ACT_IDS.sideB) && now4.open.includes(ACT_IDS.climaxA),
-        JSON.stringify({ lairFight, now4, chosen, last: read.slice(-4) }));
+        && chosen.includes('a') && now4.done.includes(ACT_IDS.sideA) && now4.closed.includes(ACT_IDS.sideB) && now4.open.includes(ACT_IDS.climaxA)
+        // La escena del bando que no se ha elegido no sale (se cerró).
+        && !read.some(r => r.text.includes(String(PACK.plot.milestones.find((/** @type {any} */ m) => m.id === ACT_IDS.sideB)?.scene ?? '§').slice(0, 30))),
+        JSON.stringify({ lairFight, fightLog, now4, chosen: chosen.filter(Boolean), last: read.slice(-4) }));
     if (await clickChip(/^Salir del tablero$/)) {
         await page.waitForTimeout(800);
         await settle();
@@ -559,7 +589,11 @@ try {
         JSON.stringify({ atRefuge, finalFight, now5 }));
 
     // ------------------------------------------------------------ el final
-    const endCard = await until(() => page.evaluate(() => Boolean(document.querySelector('.popup .end-root'))), 15000);
+    const endShown = () => page.evaluate(() => Boolean(document.querySelector('.popup .end-root')));
+    let endCard = await until(endShown, 8000);
+    // La ventana del final sale sola al ganar, pero aquí la cierra antes el «Aceptar» de seguir la
+    // novela (su botón es «Cerrar»): se vuelve a abrir con la ficha «El final», como quien juega.
+    if (!endCard && await clickChip(/^El final$/)) endCard = await until(endShown, 15000);
     const endText = await page.evaluate(() => (document.querySelector('.popup .end-root')?.textContent || '').replace(/\s+/g, ' ').trim());
     if (SHOT) await page.screenshot({ path: `${SHOT}.final.png` });
     check(`el final sale en su ventana: «${ENDING.title}», con su escena y qué fue de la gente`,

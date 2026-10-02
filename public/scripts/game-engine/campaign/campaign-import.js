@@ -396,7 +396,8 @@ export async function readCampaignFile(content, { compendium = null, loadPixels 
 /**
  * Para qué nivel es una campaña: lo que diga (`world.levels`) o, si no, lo que sale del
  * desafío de sus bichos: del más flojo (como poco nivel 1) al más duro, redondeando arriba.
- * Con Strahd sale «1 a 6», que es lo que dice su fila del tablón.
+ * D-J56: y hasta donde llegue la misión que diga su propio nivel (`quests[].levels`). Con
+ * Strahd sale «1 a 7» (la cripta es para 6 a 7), que es lo que dice su fila del tablón.
  *
  * @param {any} pack
  * @returns {[number, number]|null} Null si no trae bichos ni lo dice.
@@ -408,8 +409,10 @@ export function levelsOfPack(pack) {
         .map((/** @type {any} */ b) => Number(b?.cr))
         .filter(n => Number.isFinite(n) && n >= 0);
     if (ratings.length === 0) return null;
+    const own = (Array.isArray(pack?.quests) ? pack.quests : [])
+        .map((/** @type {any} */ q) => readLevelRange(q?.levels)?.max ?? 0);
     const min = Math.min(20, Math.max(1, Math.floor(Math.min(...ratings))));
-    const max = Math.min(20, Math.max(min + 1, Math.ceil(Math.max(...ratings))));
+    const max = Math.min(20, Math.max(min + 1, Math.ceil(Math.max(...ratings)), ...own));
     return [min, max];
 }
 

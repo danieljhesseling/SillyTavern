@@ -239,6 +239,10 @@ export function buildPackEntries(pack) {
                 // J19.12: la bruja o el nigromante que lanzan conjuros de 5e, con sus espacios.
                 ...(enemy.spellcasting && typeof enemy.spellcasting === 'object' && !Array.isArray(enemy.spellcasting)
                     ? { spellcasting: enemy.spellcasting } : {}),
+                // Tanda 12: el arma con la que pega (su maestría de 2024) y las pociones que lleva.
+                // Sin `weapon`, el juego la saca de su descripción («empuña una horca»).
+                ...(text(enemy.weapon) ? { weapon: text(enemy.weapon) } : {}),
+                ...(Number(enemy.potions) > 0 ? { potions: Math.floor(Number(enemy.potions)) } : {}),
             },
         });
     }
@@ -574,6 +578,10 @@ export function buildImportPlan(raw, options = {}) {
                     description: text(quest.description),
                     act: Math.max(1, Math.floor(Number(quest.act) || 1)),
                     boardName: boardNameOf(pack, text(quest.boardId)),
+                    // D-J56: el nivel del propio tablero, si lo dice (la cripta de Strahd, 6 a 7).
+                    ...(Array.isArray(quest.levels) && Math.floor(Number(quest.levels[0]) || 0) >= 1
+                        ? { levels: quest.levels.slice(0, 2).map((/** @type {any} */ n) => Math.floor(Number(n) || 0)) }
+                        : {}),
                 })),
         },
         entries,

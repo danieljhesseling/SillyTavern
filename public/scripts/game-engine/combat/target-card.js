@@ -63,7 +63,7 @@ export function buildTargetCard({
     const action = (id, label, extra, extraReason) => {
         // The order of the reasons is the order somebody would notice them.
         const reason = !alive ? 'Ya está fuera de combate'
-            : !inRange ? `Fuera de alcance: ${distanceFeet} ft de ${rangeFeet} ft`
+            : !inRange ? `Fuera de alcance: ${distanceFeet} pies de ${rangeFeet} pies`
                 : !hasAction ? 'La acción de este turno ya está gastada'
                     : !extra ? extraReason : '';
         return { id, label, enabled: reason === '', reason };
@@ -102,5 +102,5 @@ export function buildTargetCard({
  */
 export function describeTargetCard(card) {
     const cover = card.cover > 0 ? ` (+${card.cover} por cobertura)` : '';
-    return `PG ${card.hp}/${card.maxHp} · CA ${card.armorClass + card.cover}${cover} · ${card.distanceFeet} ft`;
+    return `PG ${card.hp}/${card.maxHp} · CA ${card.armorClass + card.cover}${cover} · ${card.distanceFeet} pies`;
 }

@@ -21,7 +21,7 @@ describe('what the card says', () => {
     });
 
     test('and without cover it is not mentioned', () => {
-        expect(describeTargetCard(card())).toBe('PG 5/7 · CA 12 · 5 ft');
+        expect(describeTargetCard(card())).toBe('PG 5/7 · CA 12 · 5 pies');
     });
 
     test('junk in the target does not produce a card full of NaN', () => {
@@ -40,7 +40,7 @@ describe('the buttons, which are what actually spends', () => {
     test('out of range says how far, not just no', () => {
         const attack = card({ distanceFeet: 30, rangeFeet: 5 }).actions[0];
         expect(attack.enabled).toBe(false);
-        expect(attack.reason).toBe('Fuera de alcance: 30 ft de 5 ft');
+        expect(attack.reason).toBe('Fuera de alcance: 30 pies de 5 pies');
     });
 
     test('with the action spent, it says so', () => {

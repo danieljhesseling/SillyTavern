@@ -13,7 +13,7 @@ import { initialsFor } from './game-engine/ui/hero-face.js';
 import { attachBoardKeys } from './game-engine/ui/board-keys.js';
 import { keyboardInUse } from './game-engine/ui/keyboard-nav.js';
 import {
-    BUTTON_STEP, RECENT_HAND_MS, cellCenter, centerPoint, clampPan, clampScale, fitBoard, followDecision, isPointShown,
+    BUTTON_STEP, RECENT_HAND_MS, cellCenter, centerPoint, centerPointFit, clampPan, clampScale, fitBoard, followDecision, isPointShown,
     safeRect, toScreen, wheelScale, zoomAt, zoomLabel, zoomLimits,
 } from './game-engine/ui/combat-vtt/camera.js';
 import { createMinimap, minimapCells } from './game-engine/ui/combat-vtt/minimap.js';
@@ -765,6 +765,8 @@ export function renderLocationView(target, options) {
     let imgH = 0;
     /** Si alguien ha movido la vista a mano: mientras no, el tablero se encuadra solo. */
     let userMoved = false;
+    /** Tanda 10: el encuadre que se dejó para cuando el tablero tenga sitio (`fitView`). */
+    let fitPending = false;
     /**
      * J20.2: con qué se pulsó lo último (`mouse`, `touch`, `pen`). A toques no hay «pasar por
      * encima», así que lo que el ratón enseña al pasar, el dedo lo enseña con el primer toque.
@@ -832,7 +834,19 @@ export function renderLocationView(target, options) {
         const column = hud.topRight.getBoundingClientRect();
         if (column.width > 0 && column.height > 0) {
             if (column.left > box.left + box.width / 2 && column.height > box.height * 0.3) insets.right = Math.max(0, box.right - column.left + 8);
-            else if (column.width > box.width / 2) insets.top = Math.max(0, column.bottom - box.top + 6);
+            else if (column.width > box.width / 2) {
+                // El teléfono: el HUD de arriba va de lado a lado, en una columna (la iniciativa,
+                // el resumen y, debajo, el sitio): se mira lo que queda por debajo de todo él.
+                let lowest = column.bottom;
+                for (const part of [hud.topLeft, hud.topCenter]) {
+                    const r = part.getBoundingClientRect();
+                    if (r.height > 0 && r.top < box.top + box.height / 2) lowest = Math.max(lowest, r.bottom);
+                }
+                insets.top = Math.max(0, lowest - box.top + 6);
+                // Y por encima de la cámara y el minimapa, que ahí van en una fila al pie.
+                const low = hud.bottomLeft.getBoundingClientRect();
+                if (low.height > 0 && low.top > box.top + box.height / 2) insets.bottom = Math.max(0, box.bottom - low.top + 6);
+            }
         }
         for (const node of document.querySelectorAll('.gs-root .gs-actions')) {
             const bar = node.getBoundingClientRect();
@@ -885,6 +899,14 @@ export function renderLocationView(target, options) {
      */
     function fitView() {
         if (vttOn) {
+            // Tanda 10: sin medida (el tablero aún fuera de la página, o en una escena escondida)
+            // no se encuadra: se encuadraba a 300 × 420, y esa vista diminuta se quedaba para
+            // siempre. Se espera a que el tablero tenga sitio (`ResizeObserver`, abajo).
+            if (!container[0].isConnected || viewSize().width < 40 || viewSize().height < 40) {
+                fitPending = true;
+                return;
+            }
+            fitPending = false;
             fitVtt();
             return;
         }
@@ -916,7 +938,8 @@ export function renderLocationView(target, options) {
      * @returns {{x: number, y: number}|null}
      */
     function followCell() {
-        const wanted = [followTokenId, focusTokenId].filter(id => id !== null && id !== undefined);
+        // Tanda 10: en la mesa virtual, quien tiene el turno (también un enemigo) va primero.
+        const wanted = [vtt?.activeTokenId, followTokenId, focusTokenId].filter(id => id !== null && id !== undefined);
         const token = wanted.map(id => tokens.find(t => String(t.id) === String(id))).find(Boolean)
             ?? tokens.find(t => !t.isEnemy && !t.isNPC);
         return token ? { x: Number(token.gridX) || 0, y: Number(token.gridY) || 0 } : null;
@@ -939,8 +962,8 @@ export function renderLocationView(target, options) {
             const rect = lookRect();
             const margin = Math.min(rect.right - rect.left, rect.bottom - rect.top) * 0.2;
             if (isPointShown(state, cellCenter(cell, imgW / gridWidth, imgH / gridHeight), rect, margin)) return;
+            // Lo mueve el juego, no quien juega: el tablero puede volver a encuadrarse solo.
             Object.assign(state, centerCellIn(cell, rect));
-            userMoved = true;
             fullUpdate();
             return;
         }
@@ -971,14 +994,20 @@ export function renderLocationView(target, options) {
      *
      * @param {number|string} tokenId
      * @param {boolean} [smooth]
+     * @param {boolean} [auto] Si la mueve el juego (al empezar un turno) y no quien juega: entonces
+     *   no cuenta como movida a mano, y el tablero puede volver a encuadrarse solo (otra ventana).
      * @returns {boolean} Si estaba en el tablero.
      */
-    function centerOnToken(tokenId, smooth = false) {
+    function centerOnToken(tokenId, smooth = false, auto = false) {
         const token = tokens.find(t => String(t.id) === String(tokenId));
         if (!token || !imgW || !imgH) return false;
         const cell = { x: Number(token.gridX) || 0, y: Number(token.gridY) || 0 };
-        Object.assign(state, centerPoint(state, cellCenter(cell, imgW / gridWidth, imgH / gridHeight), lookRect()));
-        userMoved = true;
+        // Un tablero que cabe entero se queda centrado: se ve a todos igual, y en 1920 × 1080 el
+        // muelle quedaba pegado arriba por centrar a quien jugaba. Si la mueve el juego, uno más
+        // grande no se deja ver por fuera de sus bordes; pedido a mano, la ficha va al centro.
+        if (auto) Object.assign(state, centerCellIn(cell, lookRect()));
+        else Object.assign(state, centerPointFit(state, cellCenter(cell, imgW / gridWidth, imgH / gridHeight), lookRect(), { width: imgW, height: imgH }));
+        if (!auto) userMoved = true;
         glide(smooth);
         fullUpdate();
         return true;
@@ -1016,7 +1045,7 @@ export function renderLocationView(target, options) {
             memo.followed = String(vtt.turnKey);
             vttMemory.set(derivedViewStateKey, memo);
         }
-        if (decision.follow && token) centerOnToken(token.id, true);
+        if (decision.follow && token) centerOnToken(token.id, true, true);
     }
 
     // Terrain sits under everything: it is the board itself, not an overlay on it.
@@ -1085,6 +1114,10 @@ export function renderLocationView(target, options) {
     // Tactical overlays
     const highlightsLayer = $('<div class="wm-highlight-layer"></div>');
     content.append(highlightsLayer);
+    // Tanda 10: lo que cuesta la ruta («15 pies · toca otra vez para ir») va en su propia capa,
+    // encima de las fichas y de la niebla; en la de las casillas quedaba debajo de quien estuviera allí.
+    const pathCostLayer = $('<div class="wm-path-cost-layer"></div>');
+    content.append(pathCostLayer);
 
     // Tanda 10: hasta dónde llega tu ficha, en azul, al pasar el ratón por encima, sin pulsar.
     // Solo se mira: no responde a nada (para ir, se pulsa la ficha y luego la casilla).
@@ -1333,6 +1366,7 @@ export function renderLocationView(target, options) {
 
     function renderHighlights() {
         highlightsLayer.empty();
+        pathCostLayer.empty();
         if (!imgW || !imgH || !Array.isArray(highlightedCells) || highlightedCells.length === 0) return;
 
         const cellW = imgW / gridWidth;
@@ -1389,6 +1423,7 @@ export function renderLocationView(target, options) {
     /** Borra la ruta dibujada, si hay alguna. */
     function clearTrajectory() {
         highlightsLayer.find('.wm-path-step, .wm-path-cost').remove();
+        pathCostLayer.empty();
     }
 
     /**
@@ -1430,7 +1465,7 @@ export function renderLocationView(target, options) {
             .toggleClass('wm-path-provoke', provokes.length > 0)
             .toggleClass('wm-path-armed', armed)
             .css({ left: `${(last.gridX + 0.5) * cellW}px`, top: `${last.gridY * cellH}px` });
-        highlightsLayer.append(cost);
+        pathCostLayer.css({ width: imgW + 'px', height: imgH + 'px' }).append(cost);
     }
 
     function placeTokens() {
@@ -1556,7 +1591,7 @@ export function renderLocationView(target, options) {
             // Con el dedo no hay «pasar por encima»: el primer toque la elige y lo enciende.
             if (reachLayer && typeof vtt?.reachOf === 'function' && !token.isEnemy && !token.isNPC) {
                 el.on('mouseenter', () => {
-                    if (!touchy() && !state.isDragging && !el.hasClass('wm-token-selected')) showReach(token.id);
+                    if (!touchy() && !mouseDrag && !el.hasClass('wm-token-selected')) showReach(token.id);
                 });
                 el.on('mouseleave', () => showReach(null));
             }
@@ -1618,6 +1653,7 @@ export function renderLocationView(target, options) {
                     const tentGY = Math.max(0, Math.min(gridHeight - 1, Math.floor((startPY + dy) / cellH)));
                     const newCells = onTokenDragging(token.id, tentGX, tentGY);
                     highlightsLayer.empty();
+                    pathCostLayer.empty();
                     if (newCells && newCells.length > 0) {
                         highlightsLayer.css({ width: imgW + 'px', height: imgH + 'px' });
                         for (const cell of newCells) {
@@ -1791,6 +1827,14 @@ export function renderLocationView(target, options) {
     /** Tanda 10: cuánto se ha arrastrado con el ratón desde que se pulsó (para saber si fue un clic). */
     let mouseTravel = 0;
     /**
+     * Tanda 10: el arrastre con el ratón, aquí y no en `state.isDragging`: con ese, el arrastre de
+     * `createZoomableContainer` (sus oyentes siguen en el documento) movía el tablero antes que
+     * este, y este creía que el ratón no se había movido: soltar contaba como un clic en la casilla.
+     *
+     * @type {{x: number, y: number}|null}
+     */
+    let mouseDrag = null;
+    /**
      * Empieza a arrastrar el tablero con el ratón. En la mesa virtual, desde cualquier sitio de la
      * vista (también fuera del dibujo) y con el botón izquierdo o el de en medio.
      *
@@ -1800,9 +1844,7 @@ export function renderLocationView(target, options) {
         if (/** @type {HTMLElement} */ (e.target).closest('.wm-token, .wm-terrain-door-actionable, .wm-zoom-controls')) return;
         if (vttOn && e.button !== 0 && e.button !== 1) return;
         e.preventDefault();
-        state.isDragging = true;
-        state.lastX = e.pageX;
-        state.lastY = e.pageY;
+        mouseDrag = { x: e.pageX, y: e.pageY };
         mouseTravel = 0;
         content.addClass('grabbing');
         container.addClass('grabbing');
@@ -1812,18 +1854,19 @@ export function renderLocationView(target, options) {
     else content.on('mousedown', startMousePan);
 
     $(document).on(`mousemove.${nsId}`, function (e) {
-        if (!state.isDragging) return;
-        mouseTravel += Math.abs(e.pageX - state.lastX) + Math.abs(e.pageY - state.lastY);
-        state.offsetX += e.pageX - state.lastX;
-        state.offsetY += e.pageY - state.lastY;
-        state.lastX = e.pageX;
-        state.lastY = e.pageY;
+        if (!mouseDrag) return;
+        const dx = e.pageX - mouseDrag.x;
+        const dy = e.pageY - mouseDrag.y;
+        mouseTravel += Math.abs(dx) + Math.abs(dy);
+        state.offsetX += dx;
+        state.offsetY += dy;
+        mouseDrag = { x: e.pageX, y: e.pageY };
         noteHand();
         fullUpdate();
     });
     $(document).on(`mouseup.${nsId}`, function () {
-        if (!state.isDragging) return;
-        state.isDragging = false;
+        if (!mouseDrag) return;
+        mouseDrag = null;
         content.removeClass('grabbing');
         container.removeClass('grabbing');
         // Tanda 10: soltar tras arrastrar no es un clic. El tablero se mueve con el ratón, así que
@@ -1955,6 +1998,8 @@ export function renderLocationView(target, options) {
     // nadie ha movido la vista, se vuelve a encuadrar: el primer encuadre se hacía con el
     // tamaño que hubiera en ese momento, a veces ninguno, y ahí se quedaba.
     if (typeof ResizeObserver === 'function') {
+        /** Tanda 10: lo que medía la vista la última vez, para no perder lo que se miraba al girar. @type {{width: number, height: number}|null} */
+        let lastSize = null;
         const watcher = new ResizeObserver(() => {
             if (!document.body.contains(container[0])) {
                 watcher.disconnect();
@@ -1963,12 +2008,23 @@ export function renderLocationView(target, options) {
             // Ha cambiado de tamaño: lo apuntado ya no vale.
             sizeMemo = null;
             if (!imgW || !imgH || viewSize().width < 40 || viewSize().height < 40) return;
+            const before = lastSize;
+            lastSize = { ...viewSize() };
             // J20.6: la vista movida a mano se queda como está, pero al crecer el sitio (el teléfono,
             // tumbado) entra más tablero: sus números y, en uno grande, su terreno.
-            if (!userMoved) fitView();
+            if (!userMoved || fitPending) fitView();
+            // Tanda 10: en la mesa virtual, lo que estaba en el centro sigue en el centro (girar el
+            // teléfono, otra ventana): si no, se acababa mirando un trozo de muro.
+            else if (vttOn && before) {
+                state.offsetX += (lastSize.width - before.width) / 2;
+                state.offsetY += (lastSize.height - before.height) / 2;
+            }
             // Tanda 10: el minimapa se pinta otra vez a su medida (en el teléfono, tumbado, cambia).
             drawMinimap();
             fullUpdate();
+            // Tanda 10: el tablero acaba de tener sitio (la escena del tablero, tras la novela): si
+            // empezaba un turno, la cámara busca ahora a quien le toca.
+            if (vttOn) followTurn();
         });
         watcher.observe(container[0]);
     }
@@ -2161,7 +2217,22 @@ export function renderLocationView(target, options) {
             targets.push({ id: wanted.id, name: wanted.name, feet: wanted.feet, x: at.x, y: at.y });
         }
         renderEdgeMarkers(hud.edges, placeEdgeMarkers({ targets, rect: lookRect() }), (id) => centerOnToken(id, true),
-            { left: 0, top: 0, right: width, bottom: height });
+            { left: 0, top: 0, right: width, bottom: height }, targets.length > 0 ? islandBoxes() : []);
+    }
+
+    /**
+     * Tanda 10: dónde están las islas del HUD (y la barra de acciones, si flota encima), contadas
+     * desde la esquina del tablero: los marcadores de borde no se ponen encima de ellas.
+     *
+     * @returns {Array<{left: number, top: number, right: number, bottom: number}>}
+     */
+    function islandBoxes() {
+        if (!hud) return [];
+        const origin = hud.root.getBoundingClientRect();
+        const nodes = [...hud.root.querySelectorAll('.vtt-island:not(.vtt-edge)'), ...document.querySelectorAll('.gs-root .gs-actions')];
+        return nodes.map(node => node.getBoundingClientRect())
+            .filter(r => r.width > 0 && r.height > 0)
+            .map(r => ({ left: r.left - origin.left, top: r.top - origin.top, right: r.right - origin.left, bottom: r.bottom - origin.top }));
     }
 
     if (hasImage) {
@@ -2250,7 +2321,7 @@ export function renderLocationView(target, options) {
         if (vttOn) {
             // Tanda 10: con las islas del HUD ya puestas se sabe qué tapan: se encuadra otra vez.
             sizeMemo = null;
-            if (!userMoved && imgW && imgH) {
+            if ((!userMoved || fitPending) && imgW && imgH) {
                 fitView();
                 fullUpdate();
             }
@@ -2267,6 +2338,10 @@ export function renderLocationView(target, options) {
                 reveal: (cell) => {
                     if (!imgW || !imgH) return;
                     if (vttOn) {
+                        // Solo con el cursor del teclado en uso: al montarse el tablero, el cursor
+                        // se pinta solo, y eso movía la cámara (y la daba por movida a mano, sin
+                        // encuadrar el tablero nunca).
+                        if (document.activeElement !== container[0]) return;
                         const rect = lookRect();
                         if (isPointShown(state, cellCenter(cell, imgW / gridWidth, imgH / gridHeight), rect, 30)) return;
                         Object.assign(state, centerPoint(state, cellCenter(cell, imgW / gridWidth, imgH / gridHeight), rect));

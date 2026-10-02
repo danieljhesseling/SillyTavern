@@ -21,10 +21,14 @@
  *
  * Los hitos tienen el formato de `plot.js` (con escenas jugadas, J9.2), los capítulos (J9.3),
  * el presagio (idea 114), el villano que asoma entre actos (idea 115) y rumores que apuntan a
- * las pistas. Lo que la historia necesita y el mundo no tiene se añade: la gente (quien lo vio y
- * los dos contactos), los dos sitios escondidos, lo que se examina en cada sitio de pista y el
- * tablero de la guarida. El del refugio, y los bichos, los pone `pack-fill.js` como a cualquier
- * campaña de tu Gem.
+ * las pistas. Lo que la historia necesita y el mundo no tiene se añade: la gente (quien lo vio,
+ * los dos contactos y quien estaba en la guarida), los dos sitios escondidos, lo que se examina
+ * en cada sitio de pista y el tablero de la guarida. El del refugio, y los bichos, los pone
+ * `pack-fill.js` como a cualquier campaña de tu Gem.
+ *
+ * D-J54: las escenas las dice la gente (novela visual): quien lo vio en el acto 1, los de la
+ * guarida y quien tenían allí en el acto 2, y el contacto del bando al abrir el acto 3. El
+ * narrador solo dice el sitio en una línea corta cuando no hay nadie que hable (una bestia).
  *
  * Todo con la semilla: la misma campaña da siempre la misma historia, y otra semilla, otra.
  *
@@ -332,6 +336,9 @@ export function buildActThread({ pack, compendium, seed = '' }) {
         person.wants = fillActText(row?.quiere, vars);
         person.knows = fillActText(row?.sabe, vars);
     }
+    // D-J54: lo que se encuentra en la guarida lo cuenta alguien a quien tenían allí (o que se
+    // escondía). Se queda en la guarida, y se le puede hablar.
+    vars.cautivo = newPerson('cautivo', lairPlace.name, vars).name;
 
     // ------------------------------------------------------------ los textos
     /** @param {any} value */
@@ -345,6 +352,33 @@ export function buildActThread({ pack, compendium, seed = '' }) {
     }));
     /** @param {any[]} beats */
     const sceneOf = (beats) => beats.map(b => (b.who ? `${b.who}: «${b.text}»` : b.text)).join(' ');
+    /**
+     * La escena de una parte: en líneas si las trae (D-J54), y si no, su texto de siempre.
+     *
+     * @param {any} part
+     * @returns {{scene: string, beats?: any[]}}
+     */
+    const scenePart = (part) => {
+        const beats = beatsOf(part?.beats);
+        return beats.length > 0 ? { scene: sceneOf(beats), beats } : { scene: t(part?.scene) };
+    };
+    /**
+     * El acto 3 lo abre el contacto del bando (D-J54): lo que dice al recibir lo encontrado (el
+     * giro) y dónde se esconde el villano (el desenlace). No sale al abrirse su «habla con»: con
+     * él hablando, la escena ya sería la charla y cumpliría el hito (D-J39).
+     *
+     * @param {any} side `bando_a` o `bando_b` del giro.
+     * @param {any} row El desenlace.
+     * @param {string} contact
+     * @returns {{scene: string, beats?: any[]}}
+     */
+    const climaxScene = (side, row, contact) => {
+        const beats = [...beatsOf(side?.beats), ...beatsOf(row?.beats)];
+        // J13.7: si no se le había hablado (se eligió en la escena), aquí se le conoce.
+        const first = beats.find(b => b.who === contact);
+        if (first) Object.assign(first, { presenta: true });
+        return beats.length > 0 ? { scene: sceneOf(beats), beats } : { scene: t(row?.scene) };
+    };
 
     const hookBeats = beatsOf(trama.gancho?.beats);
     // J13.7: quien lo vio se presenta en el gancho («Soy Amosca»): desde ahí se sabe su nombre.
@@ -352,6 +386,9 @@ export function buildActThread({ pack, compendium, seed = '' }) {
     if (introduces) Object.assign(introduces, { presenta: true });
     const clueBeats = beatsOf(trama.pistas?.beats);
     const crossBeats = beatsOf(giro.encrucijada?.beats);
+    // J13.7: y quien estaba en la guarida, al empezar a hablar («Me llamo…»).
+    const freed = crossBeats.find(b => b.who === vars.cautivo);
+    if (freed) Object.assign(freed, { presenta: true });
     // La decisión de la escena: la opción a cumple el bando A; la b, el B; pensarlo no cumple nada.
     for (const beat of crossBeats) {
         for (const option of list(beat.options)) {
@@ -381,6 +418,7 @@ export function buildActThread({ pack, compendium, seed = '' }) {
             opens: { kind: 'start' }, asks: { kind: 'none' }, changes: {},
         },
         {
+            // Sin escena al abrirse: «búscame luego» ya lo dice en el gancho (D-J54, D-J39).
             id: ACT_IDS.witness, act: 1, title: t(trama.testigo?.title), hint: t(trama.testigo?.hint),
             scene: t(trama.testigo?.scene),
             opens: { kind: 'after', milestone: ACT_IDS.hook }, asks: { kind: 'talk', npc: witness, place: start }, changes: {},
@@ -394,12 +432,12 @@ export function buildActThread({ pack, compendium, seed = '' }) {
         },
         {
             id: ACT_IDS.lair, act: 2, title: t(trama.guarida?.title), hint: t(trama.guarida?.hint),
-            scene: t(trama.guarida?.scene), backdrop: lairPlace.name,
+            ...scenePart(trama.guarida), backdrop: lairPlace.name,
             opens: { kind: 'after', milestone: ACT_IDS.clues }, asks: { kind: 'arrive', place: lairPlace.name }, changes: {},
         },
         {
             id: ACT_IDS.strike, act: 2, title: t(trama.golpe?.title), hint: t(trama.golpe?.hint),
-            scene: t(trama.golpe?.scene), backdrop: lairPlace.name,
+            ...scenePart(trama.golpe), backdrop: lairPlace.name,
             opens: { kind: 'after', milestone: ACT_IDS.lair }, asks: { kind: 'win', board: boardName, place: lairPlace.name }, changes: {},
         },
         {
@@ -418,16 +456,19 @@ export function buildActThread({ pack, compendium, seed = '' }) {
             changes: { reveal: [refugePlace.name], standing: standing(factionB, factionA), close: [ACT_IDS.sideA] },
         },
         {
-            id: ACT_IDS.climaxA, act: 3, title: t(climaxA?.title), hint: t(climaxA?.hint), scene: t(climaxA?.scene), backdrop: refugePlace.name,
+            id: ACT_IDS.climaxA, act: 3, title: t(climaxA?.title), hint: t(climaxA?.hint),
+            ...climaxScene(giro.bando_a, climaxA, contactA.name), backdrop: contactA.where,
             opens: { kind: 'after', milestone: ACT_IDS.sideA }, asks: fight, changes: { ending: ACT_ENDINGS.a },
         },
         {
-            id: ACT_IDS.climaxB, act: 3, title: t(climaxB?.title), hint: t(climaxB?.hint), scene: t(climaxB?.scene), backdrop: refugePlace.name,
+            id: ACT_IDS.climaxB, act: 3, title: t(climaxB?.title), hint: t(climaxB?.hint),
+            ...climaxScene(giro.bando_b, climaxB, contactB.name), backdrop: contactB.where,
             opens: { kind: 'after', milestone: ACT_IDS.sideB }, asks: fight, changes: { ending: ACT_ENDINGS.b },
         },
         ...(late ? [{
             id: ACT_IDS.late, act: 3, title: t(endingRow('tarde')?.title) || 'Demasiado tarde', hint: '',
-            scene: t(endingRow('tarde')?.scene),
+            // Lo dice quien lo vio; la escena de la ventana del final sigue siendo `scene`.
+            ...scenePart(endingRow('tarde')),
             opens: { kind: 'clock', faction: text(factionB.id) }, asks: { kind: 'none' }, changes: { ending: ACT_ENDINGS.late },
         }] : []),
     ];
@@ -464,7 +505,9 @@ export function buildActThread({ pack, compendium, seed = '' }) {
         return { act, title: t(row?.title) || `Acto ${act}`, summary: t(row?.summary) };
     });
     const appears = [2, 3].map(act => {
-        const row = pickWeighted(rows('asoma').filter((/** @type {any} */ r) => Number(r.acto) === act), rng('asoma', String(act)));
+        // D-J54: una persona lo dice (entre comillas); una bestia no habla: la de su clase.
+        const fits = (/** @type {any} */ r) => Number(r.acto) === act && (!text(r.villano) || text(r.villano) === kind);
+        const row = pickWeighted(rows('asoma').filter(fits), rng('asoma', String(act)));
         return row ? { act, scene: t(row.text) } : null;
     }).filter(Boolean);
 

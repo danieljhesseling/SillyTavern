@@ -150,6 +150,17 @@ describe('lineToEntry', () => {
         expect(lineToEntry('🎲 Tirada de ataque: d20(7) +3 = 10')).toBeNull();
     });
 
+    test('the turn note for the model (slash commands, feet as «ft») is not for the player', () => {
+        expect(lineToEntry('💬 [COMBAT] Irene, elige accion. Usa /combat-attack <objetivo>, /combat-move <x> <y> y /combat-end. Movimiento restante: 30 ft.')).toBeNull();
+        expect(lineToEntry('🛡️ [COMBAT] Turno de Irene (Jugador)')).not.toBeNull();
+    });
+
+    test('distances in the summary are said in «pies», not «ft» (tanda 10)', () => {
+        expect(lineToEntry('🚶 Ratero del muelle avanza a (5, 6). Acorta la distancia y ataca. (15 ft)')?.text)
+            .toBe('Ratero del muelle avanza a (5, 6). Acorta la distancia y ataca. (15 pies)');
+        expect(lineToEntry('Tessa sale del alcance de Ratero (5 ft → 10 ft).')?.text).toBe('Tessa sale del alcance de Ratero (5 pies → 10 pies).');
+    });
+
     test('blank lines produce nothing', () => {
         expect(lineToEntry('')).toBeNull();
         expect(lineToEntry('   ')).toBeNull();

@@ -1,7 +1,7 @@
 import { describe, test, expect } from '@jest/globals';
 import { createEmptyTerrain } from '../public/scripts/game-engine/board/terrain.js';
 import {
-    planAllyTurn, stanceOf, STANCES, DEFAULT_STANCE,
+    planAllyTurn, stanceOf, STANCES, DEFAULT_STANCE, planAlly2024, allyDrinks,
 } from '../public/scripts/game-engine/combat/ally-ai.js';
 
 const terrain = createEmptyTerrain();
@@ -212,5 +212,68 @@ describe('M4: «a mi lado» sin nadie al lado', () => {
         });
         expect(plan.action).not.toBe('dodge');
         expect(plan.rationale).toBe('Malherido y sin a dónde ir: se la juega.');
+    });
+});
+
+describe('tanda 12: los compañeros que van solos, con las reglas de 2024', () => {
+    const board = {
+        isFree: (/** @type {number} */ x, /** @type {number} */ y) => x >= 0 && y >= 0 && x < 10 && y < 10,
+    };
+    /** @param {object} o */
+    const me = (o = {}) => ({ id: 'bruna', x: 4, y: 5, reachFeet: 5, avgDamage: 7, potions: 0, attacks: true, stance: 'cerca', shoveDC: 13, ...o });
+    /** @param {object} o */
+    const enemy = (o = {}) => ({ id: 'g1', x: 5, y: 5, hp: 12, maxHp: 12, saveMod: 0, avgDamage: 4, ...o });
+    const attack = { action: 'attack', targetId: 'g1' };
+
+    test('malherida y con poción, se la bebe; entera, o sin la adicional, no', () => {
+        expect(allyDrinks({ hp: 5, maxHp: 20, potions: 1 })).toBe(true);
+        expect(allyDrinks({ hp: 15, maxHp: 20, potions: 1 })).toBe(false);
+        expect(allyDrinks({ hp: 5, maxHp: 20, potions: 0 })).toBe(false);
+        expect(allyDrinks({ hp: 5, maxHp: 20, potions: 1, hasBonus: false })).toBe(false);
+        // En el suelo no bebe nadie: eso es darle la poción (Utilizar).
+        expect(allyDrinks({ hp: 0, maxHp: 20, potions: 1 })).toBe(false);
+    });
+
+    test('a quien cae a su lado le da la poción, antes que pegar', () => {
+        const down = { id: 'hero', x: 4, y: 6, hp: 0 };
+        const plan = planAlly2024({ actor: me({ potions: 1 }), plan: attack, enemies: [enemy()], allies: [down], ground: board });
+        expect(plan).toMatchObject({ kind: 'give-potion', targetId: 'hero' });
+        // Muerto del todo, no; lejos, tampoco.
+        expect(planAlly2024({ actor: me({ potions: 1 }), plan: attack, enemies: [enemy()], allies: [{ ...down, dead: true }], ground: board })).toBeNull();
+        expect(planAlly2024({ actor: me({ potions: 1 }), plan: attack, enemies: [enemy()], allies: [{ ...down, x: 9 }], ground: board })).toBeNull();
+    });
+
+    test('al enemigo que está al borde del vacío, le empuja', () => {
+        const ground = { ...board, isChasm: (/** @type {number} */ x) => x === 6 };
+        expect(planAlly2024({ actor: me(), plan: attack, enemies: [enemy()], ground })).toMatchObject({ kind: 'shove', targetId: 'g1', why: 'chasm' });
+        // Un familiar no empuja a nadie.
+        expect(planAlly2024({ actor: me({ attacks: false, shoveDC: 0 }), plan: attack, enemies: [enemy()], ground })).toBeNull();
+    });
+
+    test('contra lo que quema, solo si no lo tumba antes a golpes', () => {
+        const ground = { ...board, isHazard: (/** @type {number} */ x) => x === 6 };
+        expect(planAlly2024({ actor: me({ shoveDC: 15 }), plan: attack, enemies: [enemy()], ground })).toMatchObject({ kind: 'shove', why: 'hazard' });
+        expect(planAlly2024({ actor: me({ shoveDC: 15 }), plan: attack, enemies: [enemy({ hp: 3 })], ground })).toBeNull();
+    });
+
+    test('un familiar le abre la guardia a quien pega; un mercenario, solo si el otro pega el triple', () => {
+        const hero = { id: 'hero', x: 6, y: 5, hp: 30, avgDamage: 9, reachFeet: 5 };
+        expect(planAlly2024({ actor: me({ attacks: false, avgDamage: 0, shoveDC: 0 }), plan: { action: 'none', targetId: null }, enemies: [enemy()], allies: [hero], ground: board }))
+            .toMatchObject({ kind: 'help', targetId: 'g1' });
+        expect(planAlly2024({ actor: me({ avgDamage: 6 }), plan: attack, enemies: [enemy()], allies: [hero], ground: board })).toBeNull();
+        expect(planAlly2024({ actor: me({ avgDamage: 2 }), plan: attack, enemies: [enemy()], allies: [hero], ground: board })).toMatchObject({ kind: 'help' });
+    });
+
+    test('quien se queda atrás sin nadie a tiro se esconde, si hay dónde', () => {
+        const archer = me({ reachFeet: 60, stance: 'atras' });
+        const far = enemy({ x: 9, y: 9 });
+        const none = { action: 'none', targetId: null };
+        expect(planAlly2024({ actor: archer, plan: none, enemies: [far], ground: board, sight: { canHide: true } })).toMatchObject({ kind: 'hide' });
+        expect(planAlly2024({ actor: archer, plan: none, enemies: [far], ground: board, sight: {} })).toBeNull();
+        expect(planAlly2024({ actor: archer, plan: attack, enemies: [far], ground: board, sight: { canHide: true } })).toBeNull();
+    });
+
+    test('sin nada mejor, pega', () => {
+        expect(planAlly2024({ actor: me(), plan: attack, enemies: [enemy()], ground: board })).toBeNull();
     });
 });

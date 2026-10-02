@@ -173,16 +173,21 @@ export function lineToEntry(line) {
     const text = String(line ?? '').trim();
     if (!text) return null;
     if (text.startsWith(SKIPPED_LINE_PREFIX)) return null;
+    // Tanda 10: la nota del turno para el modelo («elige accion. Usa /combat-attack…», en «ft»)
+    // no es para quien juega: lo que le queda ya lo dice la barra de acciones.
+    if (/\s\/combat-[a-z]/.test(text)) return null;
+    // Tanda 10 (el resumen del combate): en pies, como habla el juego, no en «ft».
+    const said = text.replace(/(\d+) ft\b/g, '$1 pies');
 
     for (const [icon, kind] of LINE_KINDS) {
-        if (text.startsWith(icon)) {
+        if (said.startsWith(icon)) {
             // The tag the chat needs is noise in a panel already titled "Registro de combate".
-            const stripped = text.slice(icon.length).replace('[COMBAT]', '').trim();
-            return entry(kind, stripped || text);
+            const stripped = said.slice(icon.length).replace('[COMBAT]', '').trim();
+            return entry(kind, stripped || said);
         }
     }
 
-    return entry('info', text.replace('[COMBAT]', '').trim());
+    return entry('info', said.replace('[COMBAT]', '').trim());
 }
 
 /**

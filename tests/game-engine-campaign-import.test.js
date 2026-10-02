@@ -142,7 +142,9 @@ describe('leer el archivo de una campaña (J5.4)', () => {
 describe('lo que el paquete no trae para su tarjeta', () => {
     test('los niveles, de lo que diga o del desafío de sus bichos', () => {
         expect(levelsOfPack({ world: { levels: [3, 7] } })).toEqual([3, 7]);
-        expect(levelsOfPack(JSON.parse(read('../public/mundos/strahd.pack.json')))).toEqual([1, 6]);
+        // D-J56: la cripta dice que es para nivel 6 a 7, y eso sube el tramo hasta el 7.
+        expect(levelsOfPack(JSON.parse(read('../public/mundos/strahd.pack.json')))).toEqual([1, 7]);
+        expect(levelsOfPack({ bestiary: [{ cr: 1 }, { cr: 4 }], quests: [{ levels: [5, 6] }, { levels: 'nada' }] })).toEqual([1, 6]);
         expect(levelsOfPack({ bestiary: [{ cr: 0.125 }] })).toEqual([1, 2]);
         expect(levelsOfPack({ bestiary: [{ cr: 9 }, { cr: 30 }] })).toEqual([9, 20]);
         expect(levelsOfPack({ bestiary: [] })).toBeNull();

@@ -32,6 +32,8 @@ const FORK_FILES = [
     'public/scripts/game-engine/combat/turn-machine.js',
     'public/scripts/game-engine/combat/enemy-ai.js',
     'public/scripts/game-engine/combat/ally-ai.js',
+    // Tanda 12: la IA juega con las reglas de 2024.
+    'public/scripts/game-engine/combat/ai-2024.js',
     'public/scripts/game-engine/combat/maneuvers.js',
     'public/scripts/game-engine/combat/enemy-abilities.js',
     'public/scripts/game-engine/combat/roll-guard.js',

@@ -99,7 +99,7 @@ describe('si se puede usar, y si no por que', () => {
     test('fuera de alcance lo dice con los numeros', () => {
         const verdict = canUseAbility({ member: hero(), ability, distanceFeet: 200 });
         expect(verdict.ok).toBe(false);
-        expect(verdict.reason).toBe('Fuera de alcance: 200 ft de 120 ft.');
+        expect(verdict.reason).toBe('Fuera de alcance: 200 pies de 120 pies.');
     });
 
     test('sin accion, tampoco', () => {
@@ -214,10 +214,10 @@ describe('contada en una linea', () => {
     test('dice lo que cuesta, cuanto alcanza y que hace', () => {
         expect(describeAbility(normalizeAbility(rayo)))
             // R3: y su elemento, que es lo que decide qué le hace al tablero.
-            .toBe('Acción · a voluntad · 120 ft · fuego · 1d10 de daño');
+            .toBe('Acción · a voluntad · 120 pies · fuego · 1d10 de daño');
         expect(describeAbility(normalizeAbility(escudo)))
             // La condición en castellano, no con su clave de 5e.
-            .toBe('Acción · 1x por descanso corto · 5 ft · 1d4 de daño · deja derribado · salvación CD 13');
+            .toBe('Acción · 1x por descanso corto · 5 pies · 1d4 de daño · deja derribado · salvación CD 13');
         expect(describeAbility(normalizeAbility(aliento)))
             .toBe('Acción adicional · 1x por descanso corto · sobre ti · cura 1d10+2');
     });

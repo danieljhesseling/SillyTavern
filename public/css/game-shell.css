@@ -3502,10 +3502,13 @@ body[data-narrator-font="maquina"] #chat .mes:not([is_user="true"]) .mes_text {
         display: none;
     }
 
+    /* Tanda 10: la barra toma lo que miden sus botones y lo que tienes entre manos, el resto (se
+       corta con puntos). Con `flex: 1.4 1 0` medía 411 px para 489 de botones en 844 × 390, y el
+       dado y «?» quedaban fuera, sin barra para llegar a ellos. */
     .gs-head-bar {
         display: flex;
         order: 2;
-        flex: 1.4 1 0;
+        flex: 0 1 auto;
         gap: 6px;
         min-width: 0;
         overflow-x: auto;

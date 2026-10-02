@@ -49,11 +49,15 @@ const memory = {
     steps: /** @type {string[]} */ ([]),
     /** El filtro de Magia. */
     filter: 'todos',
+    /** J19.3: el espacio elegido para cada conjuro (por su id), en este turno. */
+    slots: /** @type {Record<string, number>} */ ({}),
     /** De quién era el turno al abrirlo: si cambia, el menú se cierra. */
     turn: '',
 };
 
-/** @type {{footer: HTMLElement|null, view: {bar: BarView, menu: (id: string, filter?: string) => MenuView|null}|null, handlers: BarHandlers|null}} */
+/** @typedef {(id: string, filter?: string, slots?: Record<string, number>) => MenuView|null} MenuMaker */
+
+/** @type {{footer: HTMLElement|null, view: {bar: BarView, menu: MenuMaker}|null, handlers: BarHandlers|null}} */
 const current = { footer: null, view: null, handlers: null };
 
 /** Si los oyentes de la página ya están puestos. */
@@ -198,6 +202,38 @@ function card(item, number) {
 }
 
 /**
+ * J19.3: los niveles de espacio con que lanzar un conjuro, debajo de su tarjeta (la tarjeta es
+ * un botón: dentro no puede ir otro). Elegir uno repinta el menú con sus números.
+ *
+ * @param {NonNullable<MenuItem['levels']>} levels
+ * @returns {HTMLElement}
+ */
+function levelRow(levels) {
+    const row = el('div', 'gs-card-levels');
+    row.setAttribute('role', 'radiogroup');
+    row.setAttribute('aria-label', 'Con qué espacio lanzarlo');
+    row.appendChild(el('span', 'gs-card-levels-word', 'Espacio:'));
+    for (const option of levels.options) {
+        const chip = button(`gs-level-pill${option.active ? ' active' : ''}`);
+        chip.textContent = option.label;
+        chip.title = option.title;
+        chip.dataset.slotLevel = String(option.level);
+        chip.dataset.spell = levels.id;
+        chip.setAttribute('role', 'radio');
+        chip.setAttribute('aria-checked', String(option.active));
+        chip.addEventListener('click', () => {
+            memory.slots = { ...memory.slots, [levels.id]: option.level };
+            paintMenu();
+            // El foco, al nivel elegido (el menú se ha dibujado de nuevo).
+            const again = /** @type {HTMLElement|null} */ (current.footer?.querySelector(`.gs-level-pill[data-spell="${CSS.escape(levels.id)}"][data-slot-level="${option.level}"]`) ?? null);
+            again?.focus();
+        });
+        row.appendChild(chip);
+    }
+    return row;
+}
+
+/**
  * Pulsar una tarjeta: dentro de su paso siguiente, o hacer lo suyo.
  *
  * @param {MenuItem} item
@@ -241,7 +277,7 @@ function paintMenu() {
     const view = current.view;
     footer?.querySelector('.gs-grimoire')?.remove();
     if (!footer || !view || !memory.open) return;
-    const menu = view.menu(memory.open, memory.filter);
+    const menu = view.menu(memory.open, memory.filter, memory.slots);
     if (!menu) {
         memory.open = '';
         return;
@@ -342,6 +378,7 @@ function paintMenu() {
             const node = card(item, index >= 0 && index < 9 ? index + 1 : 0);
             if (item.kind !== 'weapon') node.addEventListener('click', () => activate(item));
             body.appendChild(node);
+            if (item.levels) body.appendChild(levelRow(item.levels));
             shown++;
         }
     }
@@ -386,7 +423,7 @@ function pressNumber(n) {
     const view = current.view;
     if (!view || !view.bar.isPlayerTurn) return false;
     if (memory.open) {
-        const menu = view.menu(memory.open, memory.filter);
+        const menu = view.menu(memory.open, memory.filter, memory.slots);
         const list = menu ? currentList(menu) : null;
         const item = list ? pickable(list.items)[n - 1] : null;
         if (!item) return true;
@@ -462,7 +499,7 @@ function listen() {
  * Dibujar la barra en el pie del juego.
  *
  * @param {HTMLElement} footer `.gs-actions`
- * @param {{bar: BarView, menu: (id: string, filter?: string) => MenuView|null}} view
+ * @param {{bar: BarView, menu: MenuMaker}} view
  * @param {BarHandlers} handlers
  */
 export function renderCombatActionBar(footer, view, handlers) {
@@ -475,6 +512,7 @@ export function renderCombatActionBar(footer, view, handlers) {
     const turnKey = `${bar.turnLabel}|${bar.isPlayerTurn}`;
     if (turnKey !== memory.turn) {
         memory.turn = turnKey;
+        memory.slots = {};
         memory.open = '';
         memory.steps = [];
     }
@@ -587,5 +625,5 @@ export function releaseCombatActionBar(footer) {
 
 /** Para las pruebas: el estado del menú. */
 export function actionMenuState() {
-    return { open: memory.open, steps: [...memory.steps], filter: memory.filter };
+    return { open: memory.open, steps: [...memory.steps], filter: memory.filter, slots: { ...memory.slots } };
 }

@@ -228,6 +228,11 @@ function extractWorldMonsterTemplates(data) {
             ...(d.domable !== undefined && d.domable !== null ? { domable: String(d.domable) } : {}),
             // J19.12: si lanza conjuros de 5e, su bloque (`combat/enemy-spells.js`).
             ...(d.spellcasting && typeof d.spellcasting === 'object' ? { spellcasting: d.spellcasting } : {}),
+            // Tanda 12: con qué pega (la maestría de su arma), las pociones que lleva y lo que se
+            // dice de él (de ahí sale el arma si la ficha no la dice: «usa dagas untadas»).
+            ...(String(d.weapon || '').trim() ? { weapon: String(d.weapon).trim() } : {}),
+            ...(Number(d.potions) > 0 ? { potions: Math.floor(Number(d.potions)) } : {}),
+            description: String(entry.content || '').slice(0, 600),
         });
     }
 

@@ -32,7 +32,7 @@ describe('J3.7: el rango del gremio', () => {
 
     test('terminar una campaña da tres y la mitad de su nivel más alto', () => {
         expect(campaignRenown(r1387)).toBe(5);
-        expect(campaignRenown(strahd)).toBe(6);
+        expect(campaignRenown(strahd)).toBe(7);
         expect(campaignRenown(veterana)).toBe(10);
         // Sin niveles escritos, como una corta.
         expect(campaignRenown({ id: 'x' })).toBe(4);

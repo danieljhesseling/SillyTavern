@@ -1119,6 +1119,29 @@ export function spellAbilitiesOf(member) {
 }
 
 /**
+ * J19.3: un conjuro de alguien lanzado con un espacio mayor que el suyo, con lo que hace de
+ * más (más dados, más objetivos, más área). Nulo si no es un conjuro de 5e con nivel.
+ *
+ * @param {any} member
+ * @param {string} spellId
+ * @param {number} slotLevel
+ * @returns {import('../game-engine/rules/abilities.js').Ability|null}
+ */
+export function spellAbilityAt(member, spellId, slotLevel) {
+    const classRow = classRowOf(member);
+    const spell = spellFor(spellId);
+    if (!spell || spell.level < 1 || !casterOf(classRow)) return null;
+    const stats = spellcastingStats(member, classRow);
+    return normalizeAbilities([spellToAbility(spell, {
+        slotLevel: Math.max(spell.level, Math.floor(Number(slotLevel) || 0)),
+        casterLevel: Number(member.level) || 1,
+        modifier: stats.modifier,
+        saveDc: stats.saveDc,
+        attackBonus: stats.attackBonus,
+    })])[0] ?? null;
+}
+
+/**
  * Lo que alguien sabe usar: sus conjuros de 5e (si los hace) y sus habilidades de siempre.
  * A quien lanza con espacios no le salen además los del grimorio de la capa ligera: los
  * mismos conjuros, contados dos veces.
@@ -1394,9 +1417,10 @@ export function expireTimedConditions() {
  * @param {any} member Quien la usa.
  * @param {any} ability
  * @param {any} target El enemigo o el companero, o null para uno mismo.
+ * @param {number} [slotLevel] J19.3: el espacio elegido, si es mayor que el del conjuro.
  * @returns {string}
  */
-export function useAbility(member, ability, target) {
+export function useAbility(member, ability, target, slotLevel = 0) {
     const turnState = getCurrentTurnState();
     if (!combatEncounter.active || !turnState) {
         toastr.warning('No hay un turno de jugador activo.');
@@ -1406,6 +1430,8 @@ export function useAbility(member, ability, target) {
     // aunque el botón lo haya buscado en el catálogo de serie.
     // Y un id que el grimorio también tiene (Curar heridas) es el suyo de 5e, no el de círculos.
     if (castsLikeFifth(member)) ability = knownAbilitiesOf(member).find(a => a.id === ability.id) ?? ability;
+    // J19.3: con el espacio que se eligió en la barra, el conjuro sube de nivel.
+    if (slotLevel > 0 && castsLikeFifth(member)) ability = spellAbilityAt(member, ability.id, slotLevel) ?? ability;
     // J12.7: en una pelea sin muertes, la magia que hiere no vale.
     if (brawlRefused(ability)) return '';
 

@@ -36,7 +36,8 @@ const RANK_LABELS = Object.fromEntries(RANKS.map(rank => [rank.id, rank.label]))
  * @param {any[]} [input.storage] Idea 124: lo que hay en el almacén.
  * @param {Array<{memberId: string, memberName: string, itemId: string, name: string}>} [input.carried] Lo que se puede dejar.
  * @param {boolean} [input.rooms] J3.1: si se está en la sala del gremio, con sus partes (el cofre,
- *   el patio, los edificios…). En el tablón de otro pueblo no están: sin la barra de accesos.
+ *   el patio, los edificios…). En el tablón de otro pueblo no están: sin la barra de accesos
+ *   y sin «La casa».
  * @returns {Promise<{accepted?: string, built?: string, benched?: string, called?: string, stored?: string, retrieved?: string, room?: string}|null>}
  */
 export async function openGuildPanel({
@@ -143,41 +144,45 @@ export async function openGuildPanel({
     root.append(list);
 
     // ---- Lo que hay levantado --------------------------------------------
-    root.append($('<div class="gd-title"></div>').text('La casa'));
-    root.append($('<div class="gd-hint"></div>').text(
-        'Cada edificio abarata algo que pagas todas las semanas, o trae más trabajo. '
-        + 'Sale del mismo oro que la cena.',
-    ));
+    // Tanda 12: la casa (dormitorios, cocina, forja…) es del gremio. En el tablón de Barovia o
+    // de Krezk no se enseña: allí no hay nada tuyo que levantar.
+    if (inHall) {
+        root.append($('<div class="gd-title"></div>').text('La casa'));
+        root.append($('<div class="gd-hint"></div>').text(
+            'Cada edificio abarata algo que pagas todas las semanas, o trae más trabajo. '
+            + 'Sale del mismo oro que la cena.',
+        ));
 
-    const houses = $('<div class="gd-buildings"></div>');
-    for (const [key, building] of Object.entries(BUILDINGS)) {
-        const level = Number(guild.buildings?.[key]) || 0;
-        const next = upgradeCost(guild, key);
+        const houses = $('<div class="gd-buildings"></div>');
+        for (const [key, building] of Object.entries(BUILDINGS)) {
+            const level = Number(guild.buildings?.[key]) || 0;
+            const next = upgradeCost(guild, key);
 
-        const card = $('<div class="gd-building"></div>');
-        card.append($('<div class="gd-building-name"></div>')
-            .text(level > 0 ? `${building.label} ${level}` : building.label));
-        card.append($('<div class="gd-building-what"></div>').text(building.describe));
+            const card = $('<div class="gd-building"></div>');
+            card.append($('<div class="gd-building-name"></div>')
+                .text(level > 0 ? `${building.label} ${level}` : building.label));
+            card.append($('<div class="gd-building-what"></div>').text(building.describe));
 
-        const button = $('<button class="menu_button gd-build" type="button"></button>');
-        if (next.maxed) {
-            button.text('Al máximo').prop('disabled', true);
-        } else {
-            button.text(`Subir · ${next.cost}`);
-            // No se esconde lo que no puedes pagar: saber cuánto falta es media decisión.
-            button.prop('disabled', purse < next.cost);
-            button.attr('title', purse < next.cost
-                ? `Te faltan ${next.cost - purse} de oro`
-                : building.describe);
-            button.on('click', () => {
-                built = key;
-                popup.completeAffirmative();
-            });
+            const button = $('<button class="menu_button gd-build" type="button"></button>');
+            if (next.maxed) {
+                button.text('Al máximo').prop('disabled', true);
+            } else {
+                button.text(`Subir · ${next.cost}`);
+                // No se esconde lo que no puedes pagar: saber cuánto falta es media decisión.
+                button.prop('disabled', purse < next.cost);
+                button.attr('title', purse < next.cost
+                    ? `Te faltan ${next.cost - purse} de oro`
+                    : building.describe);
+                button.on('click', () => {
+                    built = key;
+                    popup.completeAffirmative();
+                });
+            }
+            card.append(button);
+            houses.append(card);
         }
-        card.append(button);
-        houses.append(card);
+        root.append(houses);
     }
-    root.append(houses);
 
     // ---- Quién está --------------------------------------------------------
     root.append($('<div class="gd-title"></div>').text('La compañía'));

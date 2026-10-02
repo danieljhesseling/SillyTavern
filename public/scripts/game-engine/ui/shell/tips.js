@@ -20,7 +20,7 @@ export const TIPS = {
     dialogue: 'Escribe lo que hace tu personaje, o usa las fichas de abajo. Arriba, el diario (D) y «¿Qué hago?» (H).',
     exploration: 'Aquí están los servicios del sitio y el mapa: pulsa un sitio para viajar. Cada viaje cuesta días y comida.',
     // J2.2: al empezar la primera pelea, no al abrir el tablero (sin pelea, el tablero solo se mira).
-    combat: 'Empieza la pelea: cada uno actúa en su turno. La línea de arriba dice a por quién va cada enemigo. «Maniobras»: esquivar, empujar, agarrar…',
+    combat: 'Empieza la pelea: cada uno en su turno. Abajo, tu barra: lo que te queda (Acción, Adicional, Reacción, pies) y «Atacar», «Magia», «Acciones» y «Adicional».',
     travel: 'El ritmo decide: rápido llega antes pero sin dormir; con cuidado se esquivan contratiempos.',
     prisoners: 'Un prisionero se puede interrogar (da un rumor), entregar donde hay autoridad o soltar.',
     // H1 de wiki/LO_QUE_FALTA.md: lo nuevo, un sistema cada vez, cuando aparece por primera vez.

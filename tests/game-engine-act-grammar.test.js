@@ -92,7 +92,7 @@ describe('J10.7: las plantillas de los actos', () => {
     });
 
     test('solo usa huecos que la gramática sabe rellenar, y nunca «localidad»', () => {
-        const known = new Set(['inicio', 'testigo', 'villano', 'guarida', 'refugio', 'pista1', 'pista2', 'pista3',
+        const known = new Set(['inicio', 'testigo', 'cautivo', 'villano', 'guarida', 'refugio', 'pista1', 'pista2', 'pista3',
             'contactoA', 'contactoB', 'sitioA', 'sitioB', 'bandoA', 'bandoB', 'mundo']);
         const all = JSON.stringify(data.rows);
         const holes = [...all.matchAll(/\{([a-zA-Z0-9]+)\}/g)].map(m => m[1]);
@@ -342,5 +342,105 @@ describe('J10.7: el tablón', () => {
         expect(cards[1].generated).toBe(true);
         expect(cards[1].traits.join(' ')).toMatch(/historia la escribe el juego/);
         expect(cards[0].generated).toBe(false);
+    });
+});
+
+describe('D-J54: las escenas de los actos las dice la gente', () => {
+    const data = read('../public/compendio/actos.json');
+    const rowsOf = (/** @type {string} */ kind) => data.rows.filter((/** @type {any} */ r) => r.kind === kind);
+    /** El narrador, si habla, en una línea corta: el sitio, cuando no hay nadie que hable. */
+    const SHORT = 100;
+
+    test('en las plantillas, cada línea la dice alguien; el narrador, solo una línea corta en la guarida', () => {
+        for (const trama of rowsOf('trama')) {
+            for (const part of ['gancho', 'pistas']) {
+                expect(trama[part].beats.filter((/** @type {any} */ b) => !b.who)).toEqual([]);
+            }
+            for (const part of ['guarida', 'golpe']) {
+                const narrator = trama[part].beats.filter((/** @type {any} */ b) => !b.who);
+                expect(narrator.length).toBeLessThanOrEqual(1);
+                for (const line of narrator) expect(line.text.length).toBeLessThan(SHORT);
+            }
+            // «Habla con quien lo vio» no tiene escena: lo que decía ya lo dice en el gancho.
+            expect(trama.testigo.scene).toBeUndefined();
+            expect(trama.gancho.beats[0].text).toMatch(/^Soy \{testigo\}\./);
+        }
+        // Una persona tiene a los suyos en la guarida, y son ellos quienes hablan.
+        for (const trama of rowsOf('trama').filter((/** @type {any} */ r) => r.villano === 'persona')) {
+            const speakers = ['guarida', 'golpe'].flatMap(part => trama[part].beats.map((/** @type {any} */ b) => b.who).filter(Boolean));
+            expect(speakers.length).toBeGreaterThan(0);
+            for (const who of speakers) expect(trama.secuaces).toContain(who);
+        }
+        for (const giro of rowsOf('giro')) {
+            const beats = giro.encrucijada.beats;
+            expect(beats.every((/** @type {any} */ b) => b.who === '{cautivo}')).toBe(true);
+            expect(beats[0].text).toMatch(/^Me llamo \{cautivo\}\./);
+            for (const option of beats[beats.length - 1].options) expect(option.reply.who).toBe('{cautivo}');
+            expect(giro.bando_a.scene).toBeUndefined();
+            expect(giro.bando_b.scene).toBeUndefined();
+            expect(giro.bando_a.beats.every((/** @type {any} */ b) => b.who === '{contactoA}')).toBe(true);
+            expect(giro.bando_b.beats.every((/** @type {any} */ b) => b.who === '{contactoB}')).toBe(true);
+        }
+        for (const row of rowsOf('desenlace')) {
+            expect(row.beats.every((/** @type {any} */ b) => b.who === (row.lado === 'a' ? '{contactoA}' : '{contactoB}'))).toBe(true);
+        }
+        for (const row of rowsOf('final').filter((/** @type {any} */ r) => r.lado === 'tarde')) {
+            expect(row.beats.every((/** @type {any} */ b) => b.who === '{testigo}')).toBe(true);
+        }
+        // El villano que asoma: una persona lo dice entre comillas; una bestia no habla.
+        for (const row of rowsOf('asoma')) {
+            expect(row.text.startsWith('«')).toBe(row.villano === 'persona');
+        }
+    });
+
+    /** Los paquetes de los tres mundos del tablón y de diez semillas más. */
+    const packs = () => [
+        ...SEED_WORLDS.map((/** @type {any} */ row) => seedCampaignPack({ row, compendium: compendium() }).pack),
+        ...Array.from({ length: 10 }, (_, i) => seedCampaignPack({ row: { ...COSTA, seed: `dj54-${i}` }, compendium: compendium() }).pack),
+    ];
+
+    test('en cada campaña hecha, quien habla es alguien del paquete (sale con su nombre), y el narrador casi no habla', () => {
+        for (const pack of packs()) {
+            const people = new Set([...pack.npcs, ...(pack.bestiary ?? [])].map((/** @type {any} */ p) => p.name));
+            const beats = pack.plot.milestones.flatMap((/** @type {any} */ m) => (m.beats ?? []).map((/** @type {any} */ b) => ({ ...b, milestone: m.id })));
+            const told = beats.filter((/** @type {any} */ b) => !b.who);
+            // Una línea corta como mucho por escena, y dos en toda la campaña.
+            expect(told.length).toBeLessThanOrEqual(2);
+            expect(new Set(told.map((/** @type {any} */ b) => b.milestone)).size).toBe(told.length);
+            // Con los nombres ya puestos («El Bosque Quemado», «la Cosa del Pozo»), algo más larga.
+            for (const line of told) expect(line.text.length).toBeLessThan(SHORT + 20);
+            for (const beat of beats.filter((/** @type {any} */ b) => b.who)) expect(people.has(beat.who)).toBe(true);
+            expect(beats.length).toBeGreaterThanOrEqual(15);
+            // D-J39: si hablara aquí con quien hay que hablar, la escena cumpliría el hito al abrirse.
+            const talks = pack.plot.milestones.filter((/** @type {any} */ m) => m.asks.kind === 'talk');
+            expect(talks.length).toBe(3);
+            for (const talk of talks) expect([talk.beats ?? [], talk.scene]).toEqual([[], '']);
+        }
+    });
+
+    test('quien estaba en la guarida cuenta lo que se encuentra, y cada contacto abre el acto 3 de su bando', () => {
+        const pack = seedCampaignPack({ row: COSTA, compendium: compendium() }).pack;
+        const plot = /** @type {any} */ (readPlot(pack.plot));
+        const m = (/** @type {string} */ id) => plot.milestones.find((/** @type {any} */ x) => x.id === id);
+        const lair = m(ACT_IDS.lair).asks.place;
+        const cross = m(ACT_IDS.crossroads).beats;
+        const captive = pack.npcs.find((/** @type {any} */ n) => n.name === cross[0].who);
+        expect(captive.where).toBe(lair);
+        expect(captive.trade).not.toBe('');
+        // J13.7: se presenta al empezar a hablar, y desde ahí se sabe su nombre.
+        expect(cross[0].presenta).toBe(true);
+        expect(cross[0].text).toMatch(new RegExp(`^Me llamo ${captive.name}\\.`));
+        for (const [climax, side] of [[ACT_IDS.climaxA, ACT_IDS.sideA], [ACT_IDS.climaxB, ACT_IDS.sideB]]) {
+            const contact = m(side).asks;
+            const beats = m(climax).beats;
+            expect(beats.length).toBeGreaterThanOrEqual(2);
+            expect(beats.every((/** @type {any} */ b) => b.who === contact.npc)).toBe(true);
+            expect(beats[0].presenta).toBe(true);
+            expect(m(climax).backdrop).toBe(contact.place);
+            // Lo que dice termina diciendo adónde ir: el refugio.
+            expect(beats[beats.length - 1].text).toContain(m(climax).asks.options[0].place);
+        }
+        // El villano que asoma: la Dama Gris es una persona, y lo dice ella.
+        for (const appears of plot.villain.appears) expect(appears.scene.startsWith('«')).toBe(true);
     });
 });

@@ -627,7 +627,7 @@ try {
     await page.waitForSelector('.hb-root [data-campaign="strahd"]', { timeout: 15000 }).catch(() => {});
     const strahd = await page.evaluate(() => (document.querySelector('.hb-root [data-campaign="strahd"]')?.textContent || '').replace(/\s+/g, ' '));
     check('J4.6: con el grupo a nivel 8, la tarjeta de Strahd dice su nivel y que los enemigos aprietan más',
-        /Nivel recomendado: 1 a 6/.test(strahd) && /nivel 8, más de lo que pide: los enemigos aprietan más/.test(strahd), strahd.slice(0, 300));
+        /Nivel recomendado: 1 a 7/.test(strahd) && /nivel 8, más de lo que pide: los enemigos aprietan más/.test(strahd), strahd.slice(0, 300));
     check('J3.6: con las mulas del establo, Strahd queda más cerca: menos de nueve días de camino',
         /A (siete|seis|ocho) días de camino/.test(strahd) && !/nueve días/.test(strahd), strahd.slice(0, 300));
     await shot('tablon');

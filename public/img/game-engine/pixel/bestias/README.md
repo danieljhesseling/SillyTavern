@@ -145,6 +145,10 @@ El juego los pone de jefe en el tablero del final (`pack-fill.js`) y, si hablan 
 - `el-hombre-de-los-numeros.png` — El Hombre de los Números: un hombre pálido de túnica negra con un ábaco y dos arcos de luz azul alrededor (sin cifras dibujadas).
 - `la-tejedora.png` — La Tejedora: una hechicera pálida de túnica negra con hilos de luz verde colgando de los dedos.
 
+## Invocaciones
+
+- `familiar.png` — un búho pequeño de plumas gris oscuro y ojos azul pálido: el familiar de Encontrar familiar (J19.5), que no es un bicho del bestiario. Antes salía con «???».
+
 ## El enemigo sin dibujo
 
 - `enemigo-sin-dibujo.png` — una sombra encapuchada de capa raída, ojos ámbar y garras, entre humo negro. La lleva en el tablero un enemigo que no tiene dibujo propio ni arquetipo (el jefe que trae una campaña tuya o de tu Gem), en vez de la calavera (`enemyArt` en `pixel-art.js`).

@@ -143,8 +143,9 @@ export function safeRect(viewW, viewH, insets = {}) {
     const top = Math.max(0, num(insets.top));
     const right = Math.max(left, w - Math.max(0, num(insets.right)));
     const bottom = Math.max(top, h - Math.max(0, num(insets.bottom)));
-    // Si el HUD se come casi todo (un teléfono muy estrecho), se mira la vista entera.
-    if (right - left < w * 0.35 || bottom - top < h * 0.35) return { left: 0, top: 0, right: w, bottom: h };
+    // Si el HUD se come casi todo (más de tres cuartos), se mira la vista entera. En el teléfono de
+    // pie, el HUD de arriba y la fila de la cámara dejan algo más de un tercio, y eso sí se mira.
+    if (right - left < w * 0.25 || bottom - top < h * 0.25) return { left: 0, top: 0, right: w, bottom: h };
     return { left, top, right, bottom };
 }
 
@@ -162,6 +163,31 @@ export function centerPoint(view, point, rect) {
     const cx = (num(rect?.left) + num(rect?.right)) / 2;
     const cy = (num(rect?.top) + num(rect?.bottom)) / 2;
     return { scale, offsetX: cx - num(point?.x) * scale, offsetY: cy - num(point?.y) * scale };
+}
+
+/**
+ * Como `centerPoint`, pero en el eje en que el tablero entero cabe en `rect` se centra el tablero,
+ * no el punto: se ve todo igual (el punto también) y no se queda pegado a un lado con vacío al
+ * otro (el muelle en 1920 × 1080 quedaba arriba, con 440 px negros debajo). En el eje en que no
+ * cabe, el punto va al centro.
+ *
+ * @param {CameraView} view
+ * @param {{x: number, y: number}} point
+ * @param {ScreenRect} rect
+ * @param {{width: number, height: number}} board Lo que mide el tablero sin acercar.
+ * @returns {CameraView}
+ */
+export function centerPointFit(view, point, rect, board) {
+    const scale = num(view?.scale, 1);
+    const axis = (/** @type {number} */ at, /** @type {number} */ size, /** @type {number} */ start, /** @type {number} */ end) => {
+        const drawn = Math.max(0, size * scale);
+        return drawn <= end - start ? start + (end - start - drawn) / 2 : (start + end) / 2 - at * scale;
+    };
+    return {
+        scale,
+        offsetX: axis(num(point?.x), num(board?.width), num(rect?.left), num(rect?.right)),
+        offsetY: axis(num(point?.y), num(board?.height), num(rect?.top), num(rect?.bottom)),
+    };
 }
 
 /**

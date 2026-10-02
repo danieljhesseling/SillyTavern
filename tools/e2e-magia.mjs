@@ -6,8 +6,8 @@
  *   crear una maga → su ficha (la magia, los dibujos de habilidades y objetos, el equipo con
  *   nombres y huecos en castellano, una herida con su icono) → el grimorio (sus conjuros con
  *   su dibujo) → «Elegir mis conjuros de inicio» → «Preparar conjuros» → la pelea del muelle:
- *   lanzar un conjuro de nivel 1 desde la tarjeta del enemigo, que gasta un espacio → un bastón
- *   que pide sintonía: «Sintonizar» en la ficha, y ya sale en las maniobras → subir de nivel:
+ *   lanzar un conjuro de nivel 1 desde «Magia» en la barra de acciones, que gasta un espacio →
+ *   un bastón que pide sintonía: «Sintonizar» en la ficha, y ya sale en «Magia» → subir de nivel:
  *   el icono de la clase y los conjuros nuevos con su dibujo → J19.10, la magia fuera de
  *   combate: desde la ficha, Identificar y Detectar magia como rituales; en la posada, pasar el
  *   rato hasta la noche, y la fila ofrece «Magia: Luz»; la Luz se enciende y examinar suma +2
@@ -25,6 +25,7 @@ import { createRequire } from 'node:module';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { entrarEnLaPelea } from './e2e-entrar-pelea.mjs';
 
 const ROOT = new URL('..', import.meta.url).pathname.replace(/^[/]([A-Za-z]:)/, '$1');
 const argAfter = (/** @type {string} */ flag) => (process.argv.includes(flag) ? process.argv[process.argv.indexOf(flag) + 1] : '');
@@ -191,7 +192,8 @@ try {
     const picked = await pickHeroCard(page, 'class', 'Mago');
     await page.locator('.hc-root .hc-enter').click();
     const inHub = await until(async () => (await hero())?.name === 'Lía', 60000);
-    await until(async () => (await chips()).some(c => /^Iniciar combate \(Ratero del muelle\)/.test(c)), 20000);
+    // Tanda 10: ya no hay ficha de «Iniciar combate» (la pelea empieza sola en el tablero).
+    await until(async () => (await chips()).length > 0, 20000);
     await page.waitForTimeout(1000);
     const told = await page.evaluate(() => /** @type {string[]} */ (/** @type {any} */ (window).__toasts).filter(t => /^Lo que sabes hacer/.test(t)));
     let lia = await hero();
@@ -323,7 +325,8 @@ try {
 
     // 6. La pelea del muelle: un conjuro de nivel 1 desde la tarjeta del enemigo.
     await dropToasts();
-    await clickChip(/^Iniciar combate \(Ratero/);
+    // Tanda 10: la pelea empieza sola (decidir, colocarse, «Empezar»), como quien juega.
+    await entrarEnLaPelea(page);
     await until(async () => page.evaluate(() => Boolean(window.SillyTavern.getContext().chatMetadata?.combatEncounter?.active)), 15000);
     await clearDice();
     const myTurn = await until(async () => {
@@ -342,20 +345,27 @@ try {
             e.maxHp = 60;
         }
     });
-    await page.locator('.wm-token-enemy').filter({ visible: true }).first().click({ timeout: 10000 });
-    await page.waitForSelector('.tc-card', { timeout: 8000 });
-    const targetButtons = await page.evaluate(() => [...document.querySelectorAll('.tc-card .tc-btn')].map(b => `${(b.textContent || '').trim()}${/** @type {HTMLButtonElement} */ (b).disabled ? ' (no)' : ''}`));
+    // Tanda 10: los conjuros se lanzan desde «Magia», en la barra de acciones de abajo.
+    await page.locator('#game-shell .gs-vtt-bar .gs-btn[data-menu="magia"]').click({ timeout: 10000 });
+    await page.waitForSelector('#game-shell .gs-grimoire[data-menu="magia"]', { timeout: 8000 });
+    const targetButtons = await page.evaluate(() => [...document.querySelectorAll('#game-shell .gs-grimoire .gs-card')]
+        .map(b => `${(b.querySelector('.gs-card-name-text')?.textContent || '').trim()}${/** @type {HTMLButtonElement} */ (b).disabled ? ' (no)' : ''}`));
     const levelOne = await page.evaluate(async () => {
         const { partyMembers } = await import('/scripts/party/state.js');
         const magic = await import('/scripts/party/magic.js');
         return magic.knownAbilitiesOf(partyMembers[0]).filter(a => a.target === 'enemy' && a.spellLevel === 1).map(a => a.name);
     });
     const spellName = levelOne.find(name => targetButtons.some(b => b === name)) ?? '';
-    check('en la tarjeta del enemigo salen sus conjuros de ataque, listos para lanzar', myTurn && Boolean(spellName), JSON.stringify({ myTurn, targetButtons, levelOne }));
+    check('en «Magia» salen sus conjuros de ataque, listos para lanzar', myTurn && Boolean(spellName), JSON.stringify({ myTurn, targetButtons, levelOne }));
     if (shot('5-tarjeta')) await page.screenshot({ path: shot('5-tarjeta') });
     const slotsBefore = JSON.stringify((await hero())?.slotsUsed ?? {});
-    if (spellName) await page.locator('.tc-card .tc-btn', { hasText: spellName }).first().click();
-    else await page.locator('.tc-card .tc-btn', { hasText: 'Cerrar' }).first().click().catch(() => {});
+    if (spellName) {
+        // Su tarjeta, y luego a quién.
+        await page.locator('#game-shell .gs-grimoire .gs-card', { has: page.locator('.gs-card-name-text', { hasText: spellName }) }).first().click();
+        await page.locator('#game-shell .gs-grimoire .gs-card-target:not([disabled])').first().click({ timeout: 5000 });
+    } else {
+        await page.keyboard.press('Escape');
+    }
     await page.waitForTimeout(1200);
     await clearDice();
     lia = await hero();
@@ -381,10 +391,18 @@ try {
         return false;
     }, 10000);
     await dropToasts();
-    await carryOn('combat');
-    await page.locator('#game-shell .gs-scene-map .wm-leave-loc-btn').first().click({ timeout: 5000 })
-        .catch(() => page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/leave')));
-    await page.waitForTimeout(600);
+    // D-J45: recién ganada la pelea, «Continuar» ya sale del tablero al pueblo; si se queda en el
+    // tablero, su botón lleva al pueblo.
+    await until(async () => {
+        if (['combat', 'exploration'].includes(await sceneNow())) return true;
+        await page.evaluate(() => /** @type {HTMLElement|null} */ (document.querySelector('#game-shell .gs-vn-box .gs-chip-continue'))?.click());
+        return false;
+    }, 10000);
+    if (await sceneNow() === 'combat') {
+        await page.locator('#game-shell .gs-scene-map .wm-leave-loc-btn').first().click({ timeout: 5000 })
+            .catch(() => page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/leave')));
+        await page.waitForTimeout(600);
+    }
     await carryOn('exploration');
     const inTown = await until(() => page.evaluate(() => document.querySelectorAll('#game-shell .gs-town-place').length > 0), 10000);
 
@@ -432,7 +450,7 @@ try {
         const { magicItemsOf } = await import('/scripts/game-engine/rules/magic-items.js');
         return magicItemsOf(partyMembers[0]).map((/** @type {any} */ m) => `${m.name}:${m.left}`);
     });
-    check('y ya se puede usar en combate, con sus cargas (en «Maniobras»)', works.some(w => /^Bastón de las llamas:5$/.test(w)), JSON.stringify(works));
+    check('y ya se puede usar en combate, con sus cargas (en «Magia», con los objetos)', works.some(w => /^Bastón de las llamas:5$/.test(w)), JSON.stringify(works));
     await closeTopPopup();
 
     // 8. Subir de nivel: la tarjeta con el icono de la clase y los conjuros nuevos.

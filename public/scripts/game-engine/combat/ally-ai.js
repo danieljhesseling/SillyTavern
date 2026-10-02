@@ -278,3 +278,105 @@ export function planAllyTurn({ actor, leader = null, enemies, allies = [], stanc
         rationale: 'Se queda a tu lado, esperando.',
     };
 }
+
+// ---------------------------------------------------------------- tanda 12: las reglas de 2024
+
+/** Por debajo de esto, un compañero con poción se la bebe (acción adicional). */
+export const POTION_HP_FRACTION = 0.35;
+
+/**
+ * @typedef {Object} Ally2024
+ * @property {'give-potion'|'shove'|'hide'|'help'} kind
+ * @property {string} [targetId] El enemigo (empujar, ayudar) o el compañero (la poción).
+ * @property {'chasm'|'hazard'} [why]
+ * @property {string} reason
+ */
+
+/**
+ * Tanda 12: la poción de un compañero que va solo. Malherido y con una encima, se la bebe
+ * antes de decidir nada: es la acción adicional, y después hace su turno igual.
+ *
+ * @param {{hp: number, maxHp: number, potions: number, hasBonus?: boolean}} actor
+ * @returns {boolean}
+ */
+export function allyDrinks(actor) {
+    if (!(Number(actor?.potions) > 0) || actor?.hasBonus === false) return false;
+    const hp = Number(actor.hp) || 0;
+    return hp > 0 && hp / Math.max(1, Number(actor.maxHp) || 1) < POTION_HP_FRACTION;
+}
+
+/**
+ * Tanda 12: lo que un compañero que va solo hace **en vez de su golpe**, ya movido, si le sale
+ * mejor (`null` si pega como siempre):
+ *
+ * 1. **Darle una poción** al de los suyos que está en el suelo a su lado (Utilizar).
+ * 2. **Empujar** al enemigo que tiene al borde del vacío (cae) o de algo que quema.
+ * 3. **Ayudar**: si no pega (un familiar) o pega mucho menos que otro de los suyos que también
+ *    tiene a ese enemigo al lado, le abre la guardia.
+ * 4. **Ocultarse**: quien se queda atrás y no llega a nadie, si hay dónde.
+ *
+ * @param {Object} input
+ * @param {{id: string, x: number, y: number, reachFeet?: number, avgDamage?: number, potions?: number, attacks?: boolean, stance?: string, shoveDC?: number}} input.actor
+ * @param {{action: string, targetId: string|null}} input.plan Lo que iba a hacer (`planAllyTurn`).
+ * @param {Array<{id: string, x: number, y: number, hp: number, maxHp?: number, saveMod?: number, avgDamage?: number}>} input.enemies
+ * @param {Array<{id: string, x: number, y: number, hp: number, dead?: boolean, avgDamage?: number, reachFeet?: number}>} [input.allies]
+ * @param {{isFree: (x: number, y: number) => boolean, isChasm?: (x: number, y: number) => boolean, isHazard?: (x: number, y: number) => boolean}} [input.ground]
+ * @param {{canHide?: boolean, dim?: boolean}} [input.sight]
+ * @returns {Ally2024|null}
+ */
+export function planAlly2024({ actor, plan, enemies, allies = [], ground, sight = {} }) {
+    const here = { x: actor.x, y: actor.y };
+    const living = (enemies || []).filter(e => e && (Number(e.hp) || 0) > 0);
+    const near = (/** @type {{x: number, y: number}} */ c) => feet(here.x, here.y, c.x, c.y) <= 5;
+
+    // 1. Quien está en el suelo a su lado, y él con una poción: eso antes que nada.
+    if ((Number(actor.potions) || 0) > 0) {
+        const down = (allies || []).find(a => a && !a.dead && (Number(a.hp) || 0) <= 0 && a.id !== actor.id && near(a));
+        if (down) return { kind: 'give-potion', targetId: down.id, reason: 'Ve a uno de los suyos en el suelo: le da una poción.' };
+    }
+
+    // 2. Empujar al vacío o a lo que quema al enemigo que está al borde.
+    if (ground && actor.attacks !== false && Number(actor.shoveDC) > 0) {
+        const edge = living.filter(near).map(e => {
+            const dx = Math.sign(e.x - here.x);
+            const dy = Math.sign(e.y - here.y);
+            const next = { x: e.x + dx, y: e.y + dy };
+            const why = ground.isChasm?.(next.x, next.y) ? 'chasm'
+                : ground.isFree(next.x, next.y) && ground.isHazard?.(next.x, next.y) ? 'hazard' : '';
+            const odds = Math.max(0.05, Math.min(0.95, (Number(actor.shoveDC) - (Number(e.saveMod) || 0) - 1) / 20));
+            return { enemy: e, why, odds };
+        })
+            // Al vacío, con que haya una posibilidad entre cuatro; a lo que quema, si no lo tumba
+            // antes a golpes.
+            .filter(o => (o.why === 'chasm' && o.odds >= 0.25)
+                || (o.why === 'hazard' && o.odds >= 0.4 && (Number(o.enemy.hp) || 0) > (Number(actor.avgDamage) || 0)))
+            .sort((a, b) => (a.why === 'chasm' ? 0 : 1) - (b.why === 'chasm' ? 0 : 1) || b.odds - a.odds)[0];
+        if (edge) {
+            return {
+                kind: 'shove', targetId: edge.enemy.id, why: /** @type {'chasm'|'hazard'} */ (edge.why),
+                reason: edge.why === 'chasm' ? 'Lo tiene al borde del vacío: le empuja.' : 'Le empuja contra lo que quema.',
+            };
+        }
+    }
+
+    // 3. Ayudar a quien pega más: un familiar siempre; los demás, si el otro pega el triple (la
+    // ventaja le sube un cuarto lo que acierta: con menos, rinde más su propio golpe).
+    const mine = actor.attacks === false ? 0 : (Number(actor.avgDamage) || 0);
+    const assist = living.filter(near).flatMap(e => (allies || [])
+        .filter(a => a && !a.dead && (Number(a.hp) || 0) > 0 && a.id !== actor.id
+            && feet(a.x, a.y, e.x, e.y) <= Math.max(5, Number(a.reachFeet) || 5)
+            && (Number(a.avgDamage) || 0) >= Math.max(1, 3 * mine))
+        .map(a => ({ enemy: e, friend: a })))
+        .sort((a, b) => (Number(b.friend.avgDamage) || 0) - (Number(a.friend.avgDamage) || 0) || String(a.enemy.id).localeCompare(String(b.enemy.id)))[0];
+    if (assist) {
+        return { kind: 'help', targetId: assist.enemy.id, reason: 'Le abre la guardia a quien pega más fuerte.' };
+    }
+
+    // 4. Ocultarse: atrás, sin nadie a tiro, y con algo que le tape o poca luz.
+    const ranged = (Number(actor.reachFeet) || 5) > 10;
+    if (plan?.action !== 'attack' && actor.attacks !== false && (ranged || actor.stance === 'atras')
+        && (sight.canHide || sight.dim) && living.length > 0 && !living.some(near)) {
+        return { kind: 'hide', reason: sight.dim ? 'No llega a nadie: se pierde en la penumbra.' : 'No llega a nadie: se esconde detrás de algo.' };
+    }
+    return null;
+}

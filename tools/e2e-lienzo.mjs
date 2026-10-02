@@ -132,7 +132,8 @@ async function intoFight(viewport, touch, hero) {
     };
     const tap = (/** @type {any} */ locator) => (touch ? locator.tap({ timeout: 8000 }) : locator.click({ timeout: 8000 }));
     // La máquina puede ir cargada (varias vueltas a la vez): la primera carga, sin prisa.
-    await page.goto(`${BASE}/`, { waitUntil: 'domcontentloaded', timeout: 240000 });
+    // El teléfono entra como la app de la pantalla de inicio (`?juego`, J20.7).
+    await page.goto(`${BASE}/${touch ? '?juego' : ''}`, { waitUntil: 'domcontentloaded', timeout: 240000 });
     const firstRun = page.locator('text=Welcome to SillyTavern!');
     if (await firstRun.waitFor({ state: 'visible', timeout: 20000 }).then(() => true).catch(() => false)) {
         await tap(page.locator('.popup-button-ok'));
@@ -141,6 +142,10 @@ async function intoFight(viewport, touch, hero) {
     const offline = page.locator('#game-shell .gs-menu-btn').filter({ hasText: 'Jugar sin conexión' });
     await until(async () => await offline.count() === 1, 30000);
     await tap(offline);
+    // El mismo servidor guarda a la heroína de la primera vuelta: «¿Quién entra?» pregunta antes
+    // si viene una veterana (idea 179). Aquí se hace una nueva: «Uno nuevo».
+    await page.waitForSelector('.hc-root, dialog[open] .vt-card.vt-new', { timeout: 120000 });
+    if (await page.locator('dialog[open] .vt-card.vt-new').count() > 0) await tap(page.locator('dialog[open] .vt-card.vt-new').first());
     await page.waitForSelector('.hc-root', { timeout: 120000 });
     await page.fill('.hc-root .hc-name', hero);
     await pickHeroCard(page, 'race', 'Humano', touch);
@@ -187,7 +192,8 @@ function helpers(page, until) {
     const camera = () => page.evaluate(() => {
         const content = document.querySelector('#game-shell .gs-scene-map .wm-content');
         const t = content instanceof HTMLElement ? content.style.transform : '';
-        const m = /translate\(([-\d.e]+)px,\s*([-\d.e]+)px\)\s*scale\(([\d.e]+)\)/.exec(t);
+        // El navegador lo escribe a su manera: `scale(1.5)` sale como `scale(1.5, 1.5)`.
+        const m = /translate\(([-\d.e]+)px(?:,\s*([-\d.e]+)px)?\)\s*scale\(([\d.e]+)(?:,\s*[\d.e]+)?\)/.exec(t);
         return {
             x: m ? Number(m[1]) : NaN, y: m ? Number(m[2]) : NaN, scale: m ? Number(m[3]) : NaN,
             zoom: (document.querySelector('#game-shell .vtt-minimap-zoom')?.textContent || '').trim(),
@@ -197,17 +203,45 @@ function helpers(page, until) {
     const tokenAt = (/** @type {number|string} */ id) => page.evaluate((tokenId) => {
         const token = document.querySelector(`#game-shell .gs-scene-map .wm-token[data-token-id="${tokenId}"]`)?.getBoundingClientRect();
         const view = document.querySelector('#game-shell .gs-scene-map .wm-container')?.getBoundingClientRect();
+        const board = document.querySelector('#game-shell .gs-scene-map .wm-content')?.getBoundingClientRect();
         if (!token || !view) return null;
-        return { x: token.left + token.width / 2, y: token.top + token.height / 2, view: { left: view.left, top: view.top, right: view.right, bottom: view.bottom } };
+        return {
+            x: token.left + token.width / 2, y: token.top + token.height / 2, view: { left: view.left, top: view.top, right: view.right, bottom: view.bottom },
+            board: board ? { left: board.left, top: board.top, right: board.right, bottom: board.bottom } : null,
+        };
     }, id);
-    /** El centro de lo que se mira: la vista sin la columna de la derecha (si va por la derecha). */
+    /**
+     * El centro de lo que se mira: la vista sin la columna de la derecha (si va por la derecha) ni
+     * la barra de acciones de abajo (si flota encima del tablero), como la cuenta el juego.
+     */
     const lookCenter = () => page.evaluate(() => {
         const view = document.querySelector('#game-shell .gs-scene-map .wm-container')?.getBoundingClientRect();
         const column = document.querySelector('#game-shell .vtt-top-right')?.getBoundingClientRect();
+        const bar = document.querySelector('#game-shell .gs-actions')?.getBoundingClientRect();
         if (!view) return null;
         const right = column && column.width > 0 && column.left > view.left + view.width / 2 && column.height > view.height * 0.3 ? column.left - 8 : view.right;
-        return { x: (view.left + right) / 2, y: (view.top + view.bottom) / 2 };
+        const bottom = bar && bar.width > 0 && bar.height > 0 && bar.top < view.bottom && bar.bottom > view.top + view.height / 2 ? bar.top - 8 : view.bottom;
+        return { x: (view.left + right) / 2, y: (view.top + bottom) / 2, left: view.left, top: view.top, right, bottom };
     });
+    /**
+     * Si «centrar» ha dejado a alguien en el centro de lo que se mira: a menos de 30 px, o, en el eje
+     * en que el tablero entero cabe en lo que se mira, con el tablero centrado (se le ve igual, y
+     * un tablero pequeño no se queda pegado a un lado).
+     *
+     * @param {any} at Lo que da `tokenAt`.
+     * @param {any} look Lo que da `lookCenter`.
+     */
+    const centred = (at, look) => {
+        if (!at || !look) return false;
+        const b = at.board;
+        const axis = (/** @type {'x'|'y'} */ k) => {
+            if (Math.abs(at[k] - look[k]) < 30) return true;
+            if (!b) return false;
+            const [lo, hi] = k === 'x' ? ['left', 'right'] : ['top', 'bottom'];
+            return b[lo] >= look[lo] - 2 && b[hi] <= look[hi] + 2 && Math.abs((b[lo] + b[hi]) / 2 - look[k]) < 4;
+        };
+        return axis('x') && axis('y');
+    };
     const hero = () => page.evaluate(async () => {
         const m = (await import('/scripts/party.js')).getPartyMembersSnapshot()[0];
         return { id: Number(m?.id), x: Number(m?.mapPosition?.gridX) || 0, y: Number(m?.mapPosition?.gridY) || 0 };
@@ -233,7 +267,7 @@ function helpers(page, until) {
             stageBox: box ? [Math.round(box.left), Math.round(box.top), Math.round(box.width), Math.round(box.height)] : null,
         };
     });
-    return { fighting, clearDice, dropToasts, startFight, myTurn, camera, tokenAt, lookCenter, hero, enemyToken, scrollbars };
+    return { fighting, clearDice, dropToasts, startFight, myTurn, camera, tokenAt, lookCenter, centred, hero, enemyToken, scrollbars };
 }
 
 try {
@@ -296,7 +330,7 @@ try {
     const foeAt = await h.tokenAt(foeId);
     const look = await h.lookCenter();
     check('pulsar la fila del ratero en la iniciativa lleva la cámara hasta él',
-        Boolean(foeAt && look && Math.abs(foeAt.x - look.x) < 30 && Math.abs(foeAt.y - look.y) < 30), JSON.stringify({ foeAt, look }));
+        h.centred(foeAt, look), JSON.stringify({ foeAt, look }));
 
     // Espacio: a quien tiene el turno.
     const me = await h.hero();
@@ -306,7 +340,7 @@ try {
     await page.waitForTimeout(500);
     const meAt = await h.tokenAt(me.id);
     const look2 = await h.lookCenter();
-    check('Espacio centra la cámara en quien tiene el turno', Boolean(meAt && look2 && Math.abs(meAt.x - look2.x) < 30 && Math.abs(meAt.y - look2.y) < 30), JSON.stringify({ meAt, look2 }));
+    check('Espacio centra la cámara en quien tiene el turno', h.centred(meAt, look2), JSON.stringify({ meAt, look2 }));
 
     // La rueda acerca hacia el cursor: el punto bajo el ratón no se mueve.
     const view = await page.evaluate(() => document.querySelector('#game-shell .gs-scene-map .wm-container')?.getBoundingClientRect().toJSON());
@@ -345,7 +379,7 @@ try {
     const meAt2 = await h.tokenAt(me.id);
     const look3 = await h.lookCenter();
     check('los botones de la cámara acercan, alejan y centran en quien tiene el turno',
-        c1.scale > c0.scale && c2.scale < c1.scale && Boolean(meAt2 && look3 && Math.abs(meAt2.x - look3.x) < 30 && Math.abs(meAt2.y - look3.y) < 30), JSON.stringify({ c0, c1, c2, meAt2, look3 }));
+        c1.scale > c0.scale && c2.scale < c1.scale && h.centred(meAt2, look3), JSON.stringify({ c0, c1, c2, meAt2, look3 }));
 
     // Pasar el ratón por tu ficha: el alcance en azul, sin pulsar.
     await page.mouse.move(5, view.top + 5);
@@ -414,7 +448,10 @@ try {
     }
     check('pulsar una isla del HUD (el minimapa) no cuenta como pulsar la casilla de debajo', ghost.hit === 'isla' && !ghost.moved, JSON.stringify(ghost));
 
-    // El minimapa: el recuadro de la vista, y pulsarlo lleva la cámara.
+    // El minimapa: el recuadro de la vista, y pulsarlo lleva la cámara. Antes se acerca: alejada del
+    // todo, la vista es más grande que el tablero y el recuadro ocupa el minimapa entero.
+    for (let i = 0; i < 4; i++) await page.locator('#game-shell .vtt-cam-btn[data-cam="in"]').click();
+    await page.waitForTimeout(400);
     const mm = await page.evaluate(() => {
         const box = document.querySelector('#game-shell .vtt-minimap-box')?.getBoundingClientRect();
         const frame = document.querySelector('#game-shell .vtt-minimap-view')?.getBoundingClientRect();
@@ -453,7 +490,7 @@ try {
     const look4 = await h.lookCenter();
     check('con el ratero fuera de la vista, sale en el borde con su nombre y sus pies; pulsarlo lleva la cámara a él',
         edge.some(e => /^Ratero del muelle · \d+ pies$/.test(e.text) && Number(e.id) === foeId)
-        && Boolean(foeBack && look4 && Math.abs(foeBack.x - look4.x) < 30 && Math.abs(foeBack.y - look4.y) < 30), JSON.stringify({ edge, foeBack, look4 }));
+        && h.centred(foeBack, look4), JSON.stringify({ edge, foeBack, look4 }));
 
     // El resumen del combate: con lo que ha pasado, y se pliega.
     const sumOpen = await page.evaluate(() => ({
@@ -495,6 +532,7 @@ try {
     await page.setViewportSize({ width: 1920, height: 1080 });
     await page.waitForTimeout(900);
     await page.locator('#game-shell .vtt-cam-btn[data-cam="center"]').click().catch(() => {});
+    for (let i = 0; i < 3; i++) await page.locator('#game-shell .vtt-cam-btn[data-cam="in"]').click().catch(() => {});
     await page.waitForTimeout(500);
     const big = await h.scrollbars();
     if (SHOT) await page.screenshot({ path: SHOT.replace(/\.png$/i, '') + '-1920.png' });
@@ -512,10 +550,19 @@ try {
         await h.clearDice();
     }
     await h.dropToasts();
-    // El panel de victoria, si sale, se cierra.
-    await page.evaluate(() => document.querySelectorAll('.gs-victory, .wm-victory').forEach(v => /** @type {HTMLElement} */ (v).click()));
-    const onBoard = await desk.until(() => page.evaluate(() => Boolean(window.SillyTavern.getContext().chatMetadata?.currentBoard)
-        && document.querySelector('#game-shell')?.getAttribute('data-scene') === 'combat'), 8000);
+    // La tarjeta de la victoria se cierra pulsándola; la historia sigue en la novela, «Continuar»
+    // lleva al pueblo (D-J45), y desde él se entra otra vez en el tablero del muelle, ya sin pelea.
+    await page.evaluate(() => document.querySelectorAll('.vs-card, .gs-victory, .wm-victory').forEach(v => /** @type {HTMLElement} */ (v).click()));
+    const onBoard = await desk.until(async () => {
+        const scene = await page.evaluate(() => {
+            const now = document.querySelector('#game-shell')?.getAttribute('data-scene') || '';
+            if (now === 'dialogue') /** @type {HTMLElement|null} */ (document.querySelector('#game-shell .gs-vn-box .gs-chip-continue'))?.click();
+            if (now === 'exploration') /** @type {HTMLElement|null} */ (document.querySelector('#game-shell .gs-board'))?.click();
+            return now;
+        });
+        return scene === 'combat' && await page.evaluate(() => Boolean(window.SillyTavern.getContext().chatMetadata?.currentBoard));
+    }, 20000);
+    await page.waitForTimeout(800);
     const calm = await page.evaluate(() => ({
         fighting: Boolean(window.SillyTavern.getContext().chatMetadata?.combatEncounter?.active),
         hud: Boolean(document.querySelector('#game-shell .vtt-hud')),
@@ -528,7 +575,7 @@ try {
     const calmBars = await h.scrollbars();
     if (SHOT) await page.screenshot({ path: SHOT.replace(/\.png$/i, '') + '-explorar.png' });
     check('fuera de combate, el mismo tablero a toda la pantalla, con su cámara y su minimapa, sin iniciativa, resumen ni marcadores',
-        !calm.fighting && (!onBoard || (calm.hud && !calm.init && !calm.summary && calm.edges === 0 && calm.minimap && calmBars.fills && !calmBars.stage)),
+        !calm.fighting && onBoard && calm.hud && !calm.init && !calm.summary && calm.edges === 0 && calm.minimap && calmBars.fills && !calmBars.stage && !calmBars.page,
         JSON.stringify({ onBoard, calm, calmBars }));
     check('sin errores en la página (ratón)', desk.problems.length === 0, desk.problems.slice(0, 6).join('\n        '));
     await desk.context.close();
@@ -538,6 +585,10 @@ try {
     const p = phone.page;
     const ph = helpers(p, phone.until);
     check('en el teléfono, la pelea del muelle empieza', await ph.startFight());
+    // Con `?juego` en la dirección, las pestañas de los fondos cargaban la página entera dentro de
+    // una (`<base href="/">`): dos filas del tablero, y el juego dibujaba en la escondida.
+    const boardRows = await p.evaluate(() => document.querySelectorAll('[id="world_location_maps_row"]').length);
+    check('en la app del teléfono (?juego), la página no se repite: una sola fila del tablero', boardRows === 1, String(boardRows));
     await ph.clearDice();
     const phoneTurn = await ph.myTurn();
     await ph.dropToasts();

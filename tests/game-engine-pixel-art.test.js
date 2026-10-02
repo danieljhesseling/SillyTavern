@@ -430,7 +430,112 @@ describe('las casillas del tablero', () => {
         expect(firstArt('tile', { id: hazardTile({ kind: 'trampa' }) }, manifest)).toBe(url('tablero/trampa.png'));
         expect(firstArt('tile', { id: hazardTile({ kind: 'fuego' }) }, manifest)).toBe(url('tablero/fuego.png'));
     });
+
+    // Tanda 12: el arte del tablero.
+    test('el muelle es de tablas y la playa de arena; lo que está fuera ya no sale de mazmorra', () => {
+        expect(boardBiome({ name: 'El muelle de Puerto Alba', type: 'city' })).toBe('muelle');
+        expect(boardBiome({ name: 'La playa de la cala', type: 'wilderness' })).toBe('playa');
+        expect(boardBiome({ name: 'Las salinas', type: 'outpost' })).toBe('playa');
+        expect(boardBiome({ name: 'El asalto de las empalizadas', type: 'outpost' })).toBe('exterior');
+        expect(boardBiome({ name: 'El islote de la torre', type: 'ruins' })).toBe('exterior');
+        expect(boardBiome({ name: 'Viñedo de la Bodega', type: 'outpost' })).toBe('exterior');
+        expect(boardBiome({ name: 'Puertas de Krezk', type: 'village' })).toBe('exterior');
+        expect(boardBiome({ name: 'La choza de Baba Lysaga', type: 'ruins' })).toBe('pantano');
+        expect(boardBiome({ name: 'El taller del ataudero', type: 'city' })).toBe('madera');
+        // Lo de antes sigue igual: la bodega es piedra; el camino de la bodega, fuera.
+        expect(boardBiome({ name: 'La bodega del gremio', type: 'city' })).toBe('mazmorra');
+        expect(boardBiome({ name: 'El camino de la bodega', type: 'outpost' })).toBe('exterior');
+        expect(boardBiome({ biome: 'muelle', name: 'Sala' })).toBe('muelle');
+    });
+
+    test('el agua honda tiene su dibujo, y sin él, el de la poco honda', () => {
+        expect(terrainTile({ type: 'deep_water' })).toBe('agua-honda');
+        expect(terrainTile({ type: 'water' })).toBe('agua');
+        const both = readManifest({ files: ['tablero/agua.png', 'tablero/agua-honda.png'] });
+        expect(firstArt('tile', { id: 'agua-honda' }, both)).toBe(url('tablero/agua-honda.png'));
+        const shallowOnly = readManifest({ files: ['tablero/agua.png'] });
+        expect(firstArt('tile', { id: 'agua-honda' }, shallowOnly)).toBe(url('tablero/agua.png'));
+    });
+
+    test('el terreno difícil y las coberturas cambian con el bioma, y sin su dibujo vuelven al de siempre', () => {
+        // En la mazmorra (y sin decir bioma), el de siempre: escombros, la caja, la columna.
+        expect(terrainTile({ type: 'difficult' })).toBe('dificil');
+        expect(terrainTile({ type: 'difficult' }, { biome: 'mazmorra' })).toBe('dificil');
+        expect(terrainTile({ type: 'difficult' }, { biome: 'exterior' })).toBe('dificil-exterior');
+        expect(terrainTile({ type: 'cover_half' }, { biome: 'nieve' })).toBe('cobertura-media-nieve');
+        expect(terrainTile({ type: 'cover_three_quarters' }, { biome: 'cueva' })).toBe('cobertura-tres-cuartos-cueva');
+        // Un bioma que no existe no inventa archivos; los muros y las puertas no cambian así.
+        expect(terrainTile({ type: 'difficult' }, { biome: 'lava' })).toBe('dificil');
+        expect(terrainTile({ type: 'door' }, { biome: 'exterior' })).toBe('puerta-cerrada');
+        expect(terrainTile({ type: 'barrel' }, { biome: 'exterior' })).toBe('barril');
+
+        const tiles = readManifest({ files: ['tablero/dificil.png', 'tablero/dificil-exterior.png', 'tablero/barro.png',
+            'tablero/cobertura-media.png', 'tablero/cobertura-media-exterior.png'] });
+        expect(firstArt('tile', { id: 'dificil-exterior' }, tiles)).toBe(url('tablero/dificil-exterior.png'));
+        // La nieve sin su montón dibujado: los escombros de siempre.
+        expect(firstArt('tile', { id: 'dificil-nieve' }, tiles)).toBe(url('tablero/dificil.png'));
+        // El pantano: barro; la playa: lo del exterior.
+        expect(firstArt('tile', { id: 'dificil-pantano' }, tiles)).toBe(url('tablero/barro.png'));
+        expect(firstArt('tile', { id: 'dificil-playa' }, tiles)).toBe(url('tablero/dificil-exterior.png'));
+        expect(firstArt('tile', { id: 'cobertura-media-playa' }, tiles)).toBe(url('tablero/cobertura-media-exterior.png'));
+        expect(firstArt('tile', { id: 'cobertura-media-calle' }, tiles)).toBe(url('tablero/cobertura-media.png'));
+    });
+
+    test('cada bioma tiene su suelo y su muro dibujados, y los dibujos nuevos del tablero existen', () => {
+        const manifest = readManifest(JSON.parse(readFileSync(join(PIXEL_DIR, 'manifest.json'), 'utf8')));
+        for (const biome of ['mazmorra', 'madera', 'exterior', 'cueva', 'calle', 'nieve', 'pantano', 'cripta', 'muelle', 'playa']) {
+            expect(boardBiome({ biome })).toBe(biome);
+            expect(firstArt('tile', { id: `suelo-${biome}` }, manifest)).toBe(url(`tablero/suelo-${biome}.png`));
+            expect(firstArt('tile', { id: `muro-${biome}` }, manifest)).toBe(url(`tablero/muro-${biome}.png`));
+        }
+        for (const [cell, biome, file] of /** @type {Array<[any, string, string]>} */ ([
+            [{ type: 'deep_water' }, 'muelle', 'agua-honda'],
+            [{ type: 'difficult' }, 'exterior', 'dificil-exterior'],
+            [{ type: 'cover_half' }, 'exterior', 'cobertura-media-exterior'],
+            [{ type: 'cover_three_quarters' }, 'exterior', 'cobertura-tres-cuartos-exterior'],
+            [{ type: 'difficult' }, 'nieve', 'dificil-nieve'],
+            [{ type: 'cover_half' }, 'nieve', 'cobertura-media-nieve'],
+            [{ type: 'cover_three_quarters' }, 'nieve', 'cobertura-tres-cuartos-nieve'],
+            [{ type: 'cover_three_quarters' }, 'cueva', 'cobertura-tres-cuartos-cueva'],
+            [{ type: 'cover_half' }, 'cripta', 'cobertura-media-cripta'],
+            [{ type: 'cover_half' }, 'playa', 'cobertura-media-exterior'],
+            [{ type: 'difficult' }, 'pantano', 'barro'],
+        ])) {
+            expect(firstArt('tile', { id: terrainTile(cell, { biome }) }, manifest)).toBe(url(`tablero/${file}.png`));
+        }
+        // Lo que pone el CSS (los marcos de las fichas y las casillas de salida) también está.
+        for (const file of ['marco-aliado', 'marco-enemigo', 'marco-jefe', 'marco-invocacion', 'marco-gente', 'casilla-salida']) {
+            expect(manifest.files.has(`tablero/${file}.png`)).toBe(true);
+        }
+    });
+
+    test('el familiar (una invocación que no es del bestiario) tiene su dibujo, no «???»', () => {
+        const manifest = readManifest(JSON.parse(readFileSync(join(PIXEL_DIR, 'manifest.json'), 'utf8')));
+        expect(firstArt('creature', { name: 'Familiar', archetype: '' }, manifest)).toBe(url('bestias/familiar.png'));
+    });
+
+    test('ningún enemigo de los tableros de las tres campañas se queda sin dibujo', () => {
+        const manifest = readManifest(JSON.parse(readFileSync(join(PIXEL_DIR, 'manifest.json'), 'utf8')));
+        const enemies = boardEnemies();
+        expect(enemies.length).toBeGreaterThan(30);
+        const undrawn = enemies
+            .map(({ pack, board, enemy }) => ({ board, name: enemy.name, art: enemyArt({ name: enemy.name, archetype: String(enemy.archetype || ''), pack }, manifest) }))
+            .filter(found => !found.art || found.art.includes('enemigo-sin-dibujo'));
+        expect(undrawn).toEqual([]);
+    });
 });
+
+/**
+ * Los enemigos de los tableros de las tres campañas, con su paquete y su tablero.
+ *
+ * @returns {Array<{pack: string, board: string, enemy: any}>}
+ */
+function boardEnemies() {
+    return ['gremio', '1387', 'strahd'].flatMap(pack => {
+        const data = JSON.parse(readFileSync(fileURLToPath(new URL(`../public/mundos/${pack}.pack.json`, import.meta.url)), 'utf8'));
+        return (data.boards || []).flatMap((/** @type {any} */ board) => (board.enemies || []).map((/** @type {any} */ enemy) => ({ pack, board: String(board.name), enemy })));
+    });
+}
 
 describe('de qué paquete es un mundo', () => {
     test('una campaña del tablón lo dice; el gremio es el gremio; lo demás, ninguno', () => {

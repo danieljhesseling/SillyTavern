@@ -212,3 +212,28 @@ export function enemySpellAbilities({ enemy, block, catalogue, concentrating = f
     }
     return out;
 }
+
+/**
+ * Tanda 12 (J19.3 para los enemigos): uno de sus conjuros de nivel, lanzado con un espacio
+ * mayor. Lo mismo que da `enemySpellAbilities`, con más dados, dardos u objetivos.
+ *
+ * @param {Object} input
+ * @param {any} input.enemy
+ * @param {CasterBlock} input.block
+ * @param {any[]} input.catalogue
+ * @param {string} input.spellId
+ * @param {number} input.slotLevel
+ * @returns {any|null} La habilidad, o `null` si no lo tiene preparado o no es de nivel.
+ */
+export function enemySpellAt({ enemy, block, catalogue, spellId, slotLevel }) {
+    const spells = (Array.isArray(catalogue) ? catalogue : []).map(normalizeSpell);
+    if (!block.spells.includes(spellId)) return null;
+    const spell = findSpell(spells, spellId);
+    if (!spell || spell.level < 1) return null;
+    const modifier = block.attackBonus - (2 + Math.floor((block.casterLevel - 1) / 4));
+    const stats = { casterLevel: block.casterLevel, modifier, saveDc: block.saveDc, attackBonus: block.attackBonus };
+    const left = enemySlotsLeft(enemy, block);
+    const uses = Object.entries(left).filter(([level]) => Number(level) >= spell.level).reduce((sum, [, n]) => sum + n, 0);
+    const slot = Math.max(spell.level, Math.floor(Number(slotLevel) || 0));
+    return { ...spellToAbility(spell, { ...stats, slotLevel: slot }), resource: 'long_rest', usesPerRest: uses, slotLevel: slot };
+}

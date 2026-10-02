@@ -78,6 +78,9 @@ describe('la barra', () => {
     test('lo gastado sale gastado; sin magia, «Magia» apagada; no siendo tu turno, todo apagado salvo Abandonar', () => {
         const spent = buildBar(snapshot({ ready: { action: false, bonus: true, reaction: false } }));
         expect(spent.pills.map(p => p.ready)).toEqual([false, true, false]);
+        // Sin la acción, Atacar se apaga diciendo por qué; lo demás sigue (hay conjuros de adicional).
+        expect(spent.buttons.filter(b => !b.enabled).map(b => b.id)).toEqual(['atacar']);
+        expect(spent.buttons.find(b => b.id === 'atacar')?.title).toBe('Ya has gastado la acción de este turno');
         const noMagic = buildBar(snapshot({ abilities: [], magicItems: [] }));
         expect(noMagic.buttons.find(b => b.id === 'magia')?.enabled).toBe(false);
         const light = buildBar(snapshot({ abilities: [], magicItems: [], magicCount: 3 }));
@@ -174,6 +177,40 @@ describe('Magia', () => {
         expect(bolt.next?.items.map(i => i.pick)).toEqual(['ability:fire-bolt:e1', 'ability:fire-bolt:e2']);
         expect(damageWord('cold')).toBe('frío');
         expect(damageWord('cortante')).toBe('cortante');
+    });
+
+    test('J19.3: con espacios de más nivel, la tarjeta deja elegir con cuál, y sus números son los de ese nivel', () => {
+        const missile = {
+            id: 'magic-missile', name: 'Proyectil mágico', desc: 'Dardos que no fallan.', cost: 'action', target: 'enemy', rangeFeet: 120,
+            spellLevel: 1, slotLevel: 1, damage: '3 × 1d4+1', damageType: 'force', healing: '', enabled: true, reason: '',
+            targets: [{ ...rat, enabled: true, reason: '' }],
+            upcasts: [
+                { level: 1, left: 2, damage: '3 × 1d4+1', healing: '', targets: 1 },
+                { level: 2, left: 1, damage: '4 × 1d4+1', healing: '', targets: 1 },
+                { level: 3, left: 0, damage: '5 × 1d4+1', healing: '', targets: 1 },
+            ],
+        };
+        const s = snapshot({ abilities: [missile] });
+        const low = items(buildMagicMenu(s))[0];
+        expect(low.levels?.options.map(o => [o.label, o.active])).toEqual([['Nivel 1', true], ['Nivel 2', false]]);
+        expect(low.levels?.options[1].title).toBe('Con un espacio de nivel 2 · 4 × 1d4+1 fuerza · quedan 1');
+        expect(low.badges?.map(b => b.text)).toEqual(['3 × 1d4+1 fuerza', '120 pies', 'Espacio de nivel 1']);
+        expect(low.next?.items.map(i => i.pick)).toEqual(['ability:magic-missile:e1']);
+
+        const high = items(buildMagicMenu(s, 'todos', { 'magic-missile': 2 }))[0];
+        expect(high.levels?.options.map(o => o.active)).toEqual([false, true]);
+        expect(high.badges?.map(b => b.text)).toEqual(['4 × 1d4+1 fuerza', '120 pies', 'Espacio de nivel 2']);
+        expect(high.next?.items.map(i => i.pick)).toEqual(['cast:2:magic-missile:e1']);
+
+        // Un nivel sin espacios que quedan no se elige: vuelve al más bajo.
+        expect(items(buildMagicMenu(s, 'todos', { 'magic-missile': 3 }))[0].next?.items[0].pick).toBe('ability:magic-missile:e1');
+        // Con un solo espacio posible, no hay qué elegir; y sin turno, tampoco.
+        const one = snapshot({ abilities: [{ ...missile, upcasts: [missile.upcasts[0]] }] });
+        expect(items(buildMagicMenu(one))[0].levels).toBeUndefined();
+        expect(items(buildMagicMenu(snapshot({ abilities: [missile], ready: { action: false, bonus: true, reaction: true } })))[0].levels).toBeUndefined();
+        // Sobre ti mismo, sin objetivo: «cast:nivel:id».
+        const shield = { ...missile, id: 'false-life', name: 'Vida falsa', target: 'self', damage: '', healing: '', targets: [] };
+        expect(items(buildMagicMenu(snapshot({ abilities: [shield] }), 'todos', { 'false-life': 2 }))[0].pick).toBe('cast:2:false-life');
     });
 });
 

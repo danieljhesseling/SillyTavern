@@ -640,10 +640,26 @@ try {
         walk.lit > 0 && /Te quedan \d+ pies/.test(walk.hud) && /\d+ pies( · [^·]+)* · toca otra vez para ir/.test(walk.cost) && walk.stayed && walk.moved, JSON.stringify(walk));
     // Lo que el ratón enseña al pasar por encima, a toques: tocar una casilla dice qué hay en ella.
     await noToasts();
+    // Tanda 10: el tablero va a toda la pantalla con el HUD encima (la iniciativa arriba): se toca
+    // un punto del dibujo que se vea, sin isla del HUD, ficha ni casilla encendida encima.
     const emptyCell = await page.evaluate(() => {
-        const layer = document.querySelector('#game-shell .gs-scene-map .wm-container');
-        const r = layer?.getBoundingClientRect();
-        return r ? { x: r.left + r.width * 0.5, y: r.top + r.height * 0.15 } : null;
+        const content = document.querySelector('#game-shell .gs-scene-map .wm-content');
+        const view = document.querySelector('#game-shell .gs-scene-map .wm-container')?.getBoundingClientRect();
+        const r = content?.getBoundingClientRect();
+        if (!content || !r || !view) return null;
+        const left = Math.max(r.left, view.left);
+        const right = Math.min(r.right, view.right);
+        const top = Math.max(r.top, view.top);
+        const bottom = Math.min(r.bottom, view.bottom);
+        for (let fy = 0.1; fy < 1; fy += 0.1) {
+            for (let fx = 0.1; fx < 1; fx += 0.1) {
+                const x = left + (right - left) * fx;
+                const y = top + (bottom - top) * fy;
+                const hit = document.elementFromPoint(x, y);
+                if (hit && content.contains(hit) && !hit.closest('.wm-token, .wm-highlight-clickable')) return { x, y };
+            }
+        }
+        return null;
     });
     let told = '';
     if (emptyCell) {
@@ -745,9 +761,14 @@ try {
         const entry = enc?.active ? enc.turnOrder?.[enc.currentTurnIndex] : null;
         return { mine: Boolean(entry && !entry.isEnemy), key: `${enc?.round ?? 0}:${enc?.currentTurnIndex ?? 0}` };
     });
-    const acted = async () => {
-        turnFrom = Date.now();
-        turnKey = (await heroTurn()).key;
+    /**
+     * @param {string} [before] El turno de antes de tocar: el de los enemigos se juega entero
+     *   dentro del toque, y al leerlo después ya sería el siguiente tuyo.
+     * @param {number} [at] Cuándo se tocó, para contar también lo que tarda el toque.
+     */
+    const acted = async (before, at) => {
+        turnFrom = at ?? Date.now();
+        turnKey = before ?? (await heroTurn()).key;
     };
     const fight = { attacks: 0, turns: 0, sheet: false };
     const fightEnd = Date.now() + 150000 * Math.min(CPU_SLOWDOWN, 2);
@@ -764,9 +785,12 @@ try {
         // J20.6: el primer turno se pasa sin atacar, para tener al menos una vuelta que medir: la
         // bodega es corta, y si el primer golpe la gana no quedaba ninguna.
         if (fight.turns === 0 && !turnFrom && await endTurn.count() > 0 && await endTurn.isEnabled().catch(() => false)) {
+            const tappedAt = Date.now();
             if (await endTurn.tap({ timeout: 4000 }).then(() => true).catch(() => false)) {
+                // Idea 153: con alguien a tiro, «Fin de turno» pregunta antes; se acaba igual.
+                await page.locator('.popup-button-ok:visible').first().tap({ timeout: 2500 }).catch(() => {});
                 fight.turns++;
-                await acted();
+                await acted(now.key, tappedAt);
             }
             await page.waitForTimeout(900);
             continue;
@@ -802,9 +826,10 @@ try {
             continue;
         }
         if (await endTurn.count() > 0 && await endTurn.isEnabled().catch(() => false)) {
+            const tappedAt = Date.now();
             if (await endTurn.tap({ timeout: 4000 }).then(() => true).catch(() => false)) {
                 fight.turns++;
-                await acted();
+                await acted(now.key, tappedAt);
             }
             await page.waitForTimeout(900);
             continue;
@@ -883,8 +908,17 @@ try {
 
     // 8. J18.8: sin pestañas. «Continuar» lleva al tablero (seguís en el muelle), con lo que se
     // puede hacer al pie; su botón lleva al pueblo: los sitios, los tableros y viajar, en una columna.
-    const toBoard = await carryOn('combat');
-    check('«Continuar», tocado, lleva al tablero del muelle (J18.8)', toBoard === 'combat', toBoard);
+    // D-J45: recién ganada la pelea, «Continuar» sale del tablero al pueblo; desde él, la tarjeta del
+    // muelle lleva otra vez al tablero (J18.8), a toques.
+    const afterFight = await carryOn('exploration');
+    let toBoard = afterFight;
+    if (toBoard !== 'combat') {
+        await page.locator('#game-shell .gs-board').filter({ visible: true }).first().tap({ timeout: 5000 }).catch(() => {});
+        await until(async () => await sceneNow() === 'combat', 8000);
+        toBoard = await sceneNow();
+    }
+    check('«Continuar», tocado, sale de la novela (al pueblo, D-J45), y desde él se vuelve al tablero del muelle (J18.8)',
+        afterFight !== 'dialogue' && toBoard === 'combat', `${afterFight} → ${toBoard}`);
     await look('tablero');
     // J20.2: sin pelea también se anda a toques (con el dedo no se arrastra): tocar tu ficha la
     // elige y enciende hasta dónde anda de una vez; una casilla encendida, dos toques, y va.

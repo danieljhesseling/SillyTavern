@@ -52,8 +52,13 @@
 .gs-root .gs-adopted .wm-location-shell:has(.wm-vtt) {
     height: 100%;
     min-height: 0;
-    margin: 0;
+    /* La fila lleva `marginTop10` (con !important) del panel de la derecha: aquí empujaba el
+       tablero 10 px hacia abajo y el escenario se podía desplazar. */
+    margin: 0 !important;
     padding: 0;
+    border: none;
+    border-radius: 0;
+    background: transparent;
 }
 
 .gs-root .gs-adopted .wm-location-content.wm-vtt {
@@ -661,13 +666,37 @@
     outline: none;
 }
 
+/* El nombre lleva los puntos suspensivos si no cabe; los pies («· 20 pies») no encogen nunca. */
 .vtt-edge-text {
+    display: flex;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.vtt-edge-name {
+    min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 
+.vtt-edge-feet {
+    flex: none;
+    white-space: pre;
+}
+
 .vtt-edge-arrow {
     font-size: 0.8rem;
+}
+
+/* ---- Lo que cuesta la ruta: encima de las fichas (8) y de la niebla (9), para que se lea entero ---- */
+.wm-path-cost-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 10;
+    pointer-events: none;
 }
 
 /* ---- El alcance al pasar el ratón por tu ficha: una zona azul ---- */
@@ -699,6 +728,18 @@
 .vtt-reach-cell[data-edge*="n"][data-edge*="e"] { border-top-right-radius: 8px; }
 .vtt-reach-cell[data-edge*="s"][data-edge*="w"] { border-bottom-left-radius: 8px; }
 .vtt-reach-cell[data-edge*="s"][data-edge*="e"] { border-bottom-right-radius: 8px; }
+
+/* La pista del cursor del teclado (teclado.css): en la mesa virtual, la de abajo va por encima de
+   la barra de acciones, que flota sobre el tablero. Con el dedo no hay teclado: no sale. */
+.gs-root .wm-vtt .gs-board-hint:not(.gs-board-hint-top) {
+    bottom: 112px;
+}
+
+@media (hover: none) and (pointer: coarse) {
+    .gs-root .wm-vtt .gs-board-hint {
+        display: none;
+    }
+}
 
 /* ---- De acompañante (la novela, con el tablero a un lado): solo el tablero ---- */
 .gs-root[data-scene="dialogue"] .wm-vtt .vtt-hud {
@@ -832,6 +873,48 @@
         max-height: 90px;
     }
 
+    /* Plegado, en una sola línea: lo último que ha pasado y el botón de desplegar. */
+    .vtt-summary.collapsed {
+        display: flex;
+        flex-direction: row-reverse;
+        align-items: center;
+        gap: 6px;
+        padding: 3px 4px 3px 10px;
+    }
+
+    .vtt-summary.collapsed .vtt-summary-head {
+        margin: 0;
+        padding: 0;
+        border: none;
+        flex: 0 0 auto;
+    }
+
+    .vtt-summary.collapsed .vtt-summary-title,
+    .vtt-summary.collapsed .cl-round-badge {
+        display: none !important;
+    }
+
+    .vtt-summary.collapsed .vtt-summary-last {
+        flex: 1 1 auto;
+        min-width: 0;
+        margin: 0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    /* Volver y el sitio, en una fila. En combate, «Volver» está apagado (hay que acabar antes):
+       en el teléfono no se gasta una fila en él. */
+    .vtt-top-left {
+        flex-direction: row;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+
+    .gs-root[data-scene="combat"] .vtt-tools:not(:has(button:not(:disabled))) {
+        display: none;
+    }
+
     .vtt-hud .wm-location-header-desc,
     .vtt-hud .wm-cell-info:empty {
         display: none;
@@ -842,19 +925,37 @@
         padding: 4px 8px;
     }
 
+    /* La cámara, en una fila de botones de dedo (44 px, J20.3), al lado del minimapa. */
     .vtt-camera {
-        display: grid;
-        grid-template-columns: repeat(2, 34px);
+        display: flex;
+        flex-direction: row;
         gap: 4px;
     }
 
     .vtt-cam-btn {
-        width: 34px;
-        height: 34px;
+        width: 44px;
+        height: 44px;
     }
 
+    /* El minimapa, sin su rótulo: el acercamiento va en una esquina, encima del dibujo. */
     .vtt-minimap {
+        position: relative;
         width: 128px;
+    }
+
+    .vtt-minimap-title {
+        display: none;
+    }
+
+    .vtt-minimap-head {
+        position: absolute;
+        top: 0;
+        right: 0;
+        z-index: 1;
+        padding: 1px 6px;
+        border: none;
+        border-radius: 0 0 0 6px;
+        background: rgba(0, 0, 0, 0.65);
     }
 
     .vtt-minimap-box {
@@ -910,6 +1011,36 @@
     .vtt-hud .wm-tactical-hud {
         font-size: 0.72rem;
         padding: 3px 8px;
+    }
+
+    /* En combate, con tan poco alto, el tablero manda: el sitio ya lo dice la cabecera, lo que le
+       queda a cada uno lo dice la barra, y la ronda, la cabecera también. */
+    .vtt-hud:has(.vtt-init) .wm-location-header,
+    .vtt-hud:has(.vtt-init) .wm-tactical-hud,
+    .vtt-init .wm-init-head {
+        display: none;
+    }
+}
+
+/* De pie, en combate: arriba se apilaban la iniciativa, el resumen, el sitio y la nota de la
+   ficha, y al tablero le quedaban 256 px de 844. El sitio no se repite (se entra en la pelea desde
+   él), la cabecera de la iniciativa tampoco (la ronda va en la cabecera, el turno en la barra y en
+   la fila de caras), y la nota, más pequeña y en dos líneas como mucho. */
+@media (max-width: 600px) {
+    .vtt-hud:has(.vtt-init) .wm-location-header,
+    .vtt-init .wm-init-head {
+        display: none;
+    }
+
+    .vtt-hud:has(.vtt-init) .wm-tactical-hud {
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+        line-clamp: 2;
+        overflow: hidden;
+        padding: 3px 8px;
+        font-size: 0.74rem;
+        line-height: 1.3;
     }
 }
 
@@ -1195,7 +1326,8 @@
     margin: 0 0 10px;
     padding: 12px;
     overflow: hidden;
-    background: rgba(20, 17, 14, 0.97);
+    /* Opaco: lo de detrás (el resumen, el mapa) no se tiene que leer a través de las tarjetas. */
+    background: #14110e;
     border: 1px solid rgba(214, 180, 106, 0.4);
     border-radius: 12px;
     box-shadow: 0 12px 35px rgba(0, 0, 0, 0.85);
@@ -1554,6 +1686,48 @@
 .gs-grimoire .gs-card-more {
     color: #b8b0a2;
     font-size: 0.75rem;
+}
+
+/* J19.3: con qué espacio lanzar un conjuro, pegado debajo de su tarjeta. */
+.gs-grimoire .gs-card-levels {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+    margin: -4px 0 2px 46px;
+    padding: 4px 8px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-top: 0;
+    border-radius: 0 0 6px 6px;
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.gs-grimoire .gs-card-levels-word {
+    color: #d6cfc2;
+    font-size: 0.7rem;
+}
+
+.gs-grimoire .gs-level-pill {
+    margin: 0;
+    padding: 2px 8px;
+    border: 1px solid rgba(168, 85, 247, 0.4);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    color: #e7e0d4;
+    font-size: 0.7rem;
+    cursor: pointer;
+}
+
+.gs-grimoire .gs-level-pill.active,
+.gs-grimoire .gs-level-pill:hover {
+    border-color: #c4a1f5;
+    background: rgba(168, 85, 247, 0.22);
+    color: #f1e4ff;
+}
+
+.gs-grimoire .gs-level-pill:focus-visible {
+    outline: 2px solid var(--vtt-gold, #e2c27a);
+    outline-offset: 1px;
 }
 
 /* ---- El teléfono: la barra, de lado a lado al pie; el menú, una hoja que sube ----
@@ -2035,3 +2209,136 @@
 }
 
 /* ============================ fin de 3. ENTRAR EN LA PELEA Y MOVERSE ============================ */
+
+/* ================================================================================
+   4. REVISIÓN: CONTRASTE Y ESPACIOS
+   Lo que encuentra tools/e2e-vtt-criterios.mjs al medir el HUD con los colores calculados
+   (WCAG AA: 4,5:1 el texto normal, 3:1 el grande). Solo color y espacio; nada de comportamiento.
+   ================================================================================ */
+
+/* El resumen del combate: la tirada desglosada («1d20+0 12 vs 16») iba con opacidad (0,5–0,8)
+   y se quedaba en 2,4:1 sobre el fondo de la isla. Con su color propio, apagado pero legible. */
+.vtt-summary .cl-formula,
+.vtt-summary .cl-dc {
+    opacity: 1;
+    color: #b9ae9a;
+}
+
+.vtt-summary .cl-dice {
+    opacity: 1;
+    color: #c9bda6;
+}
+
+/* Las filas de un fallo y las del sistema iban al 60 % y al 55 %: con la tirada dentro, 3,3:1.
+   Al 80 % se siguen viendo más apagadas que las otras y se leen (5,9:1 lo más flojo). */
+.vtt-summary .cl-miss,
+.vtt-summary .cl-system {
+    opacity: 0.8;
+}
+
+/* Los marcadores de borde: con 240 px (170 en el teléfono) «Ratero del muelle · 20 pies» salía
+   «Ratero del muelle · 20…», sin los pies. Más ancho, sin pasar de la pantalla (markerBox lo
+   mete dentro con su ancho de verdad). */
+.vtt-edge {
+    max-width: min(340px, calc(100vw - 24px));
+}
+
+@media (max-width: 600px), (orientation: landscape) and (max-height: 500px) and (max-width: 1000px) {
+    .vtt-edge {
+        max-width: min(300px, calc(100vw - 24px));
+    }
+}
+
+/* ============================ fin de 4. REVISIÓN ============================ */
+
+/* ================================================================================
+   5. EL ARTE DEL TABLERO (tanda 12)
+   Las casillas en pixel las elige `ui/pixel-art.js` (`terrainTile`, `artFor('tile')`); aquí solo
+   va lo que se pinta con CSS: el agua honda con su dibujo, los marcos de las fichas y el anillo
+   de las casillas de salida. Los dibujos, en public/img/game-engine/pixel/tablero/.
+   ================================================================================ */
+
+/* El agua honda trae su dibujo (`agua-honda.png`, más oscura y azul): sin el oscurecido de la
+   sección 3, que era para cuando se pintaba con el de la poco honda. La clase sale sin el guion
+   bajo (`classSafe` del tablero lo quita), así que van las dos. Sin dibujo, el color de la 3. */
+.wm-terrain-deep_water.wm-terrain-tiled[style*="agua-honda"],
+.wm-terrain-deepwater.wm-terrain-tiled[style*="agua-honda"] {
+    filter: none;
+    box-shadow: none;
+}
+
+.wm-terrain-deepwater:not(.wm-terrain-tiled) {
+    background: repeating-linear-gradient(0deg,
+        rgba(18, 58, 125, 0.78) 0px, rgba(18, 58, 125, 0.78) 3px,
+        rgba(18, 58, 125, 0.56) 3px, rgba(18, 58, 125, 0.56) 6px);
+    border: 1px solid rgba(30, 80, 160, 0.7);
+}
+
+/* Los marcos de las fichas en la mesa virtual: un aro de metal en pixel alrededor de la cara
+   (dorado, los tuyos; rojo, los enemigos; rojo y oro con seis remaches, un jefe; violeta, una
+   invocación; gris, alguien que no pelea). La cara mide 32 px y el aro 5 más por cada lado: va
+   de fondo, debajo de la imagen, y el redondeo recorta la cara en círculo. */
+.vtt-board .wm-token {
+    --vtt-ring: url('../img/game-engine/pixel/tablero/marco-aliado.png');
+}
+
+.vtt-board .wm-token-enemy {
+    --vtt-ring: url('../img/game-engine/pixel/tablero/marco-enemigo.png');
+}
+
+.vtt-board .wm-token-enemy.wm-token-boss {
+    --vtt-ring: url('../img/game-engine/pixel/tablero/marco-jefe.png');
+}
+
+.vtt-board .wm-token-summon {
+    --vtt-ring: url('../img/game-engine/pixel/tablero/marco-invocacion.png');
+}
+
+.vtt-board .wm-token-npc {
+    --vtt-ring: url('../img/game-engine/pixel/tablero/marco-gente.png');
+}
+
+.vtt-board img.wm-token-avatar {
+    box-sizing: content-box;
+    width: 32px;
+    height: 32px;
+    padding: 5px;
+    border: none;
+    border-radius: 50%;
+    background: var(--vtt-ring) center / 100% 100% no-repeat, #0a0e14;
+}
+
+.vtt-board img.wm-token-avatar.wm-token-creature {
+    background: var(--vtt-ring) center / 100% 100% no-repeat, radial-gradient(circle, #2a1414 0%, #0a0e14 62%);
+}
+
+.vtt-board img.wm-token-avatar.pixel-art {
+    image-rendering: pixelated;
+}
+
+/* Un enemigo que todavía no pelea: el aro, con una raya a trazos por fuera y sin resplandor. */
+.vtt-board .wm-token-enemy.wm-token-idle img.wm-token-avatar {
+    outline: 2px dashed rgba(252, 165, 165, 0.75);
+    outline-offset: 1px;
+    box-shadow: none;
+}
+
+/* Daltonismo (idea 172): el rojo del enemigo y el oro de los tuyos se pueden confundir; el
+   enemigo lleva además la raya a trazos naranja. */
+body.game-colorblind .vtt-board .wm-token-enemy img.wm-token-avatar {
+    outline: 2px dashed #e08a1e;
+    outline-offset: 1px;
+}
+
+/* Las casillas de salida (colocar al grupo): un círculo de runas azules en el suelo, hueco por
+   dentro para que la ficha que ya está se vea. Encima, el tinte azul de la sección 3. */
+.wm-highlight-place {
+    background: url('../img/game-engine/pixel/tablero/casilla-salida.png') center / 100% 100% no-repeat, rgba(59, 130, 246, 0.14);
+    image-rendering: pixelated;
+}
+
+.wm-highlight-place:hover {
+    background: url('../img/game-engine/pixel/tablero/casilla-salida.png') center / 100% 100% no-repeat, rgba(59, 130, 246, 0.34);
+}
+
+/* ============================ fin de 5. EL ARTE DEL TABLERO ============================ */

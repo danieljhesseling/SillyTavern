@@ -399,6 +399,9 @@ try {
     await page.locator('.hc-root .hc-enter').tap();
     await until(async () => Boolean((await state()).hero), 60000);
     await until(() => chatHas(/Baja a la bodega/), 20000);
+    // Tanda 10: en el tablero del muelle no sale «Saltar la prueba»; primero se sale de él.
+    await until(async () => (await chips()).some(c => /^(Saltar la prueba|Salir del tablero)$/.test(c)), 15000);
+    if ((await chips()).includes('Salir del tablero')) await tapChip(/^Salir del tablero$/);
     await until(async () => (await chips()).some(c => /^Saltar la prueba$/.test(c)), 15000);
     await tapChip(/^Saltar la prueba$/);
     await page.waitForSelector('.popup:has-text("¿Saltar la prueba?")', { timeout: 10000 }).catch(() => {});

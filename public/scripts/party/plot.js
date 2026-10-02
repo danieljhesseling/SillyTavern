@@ -599,7 +599,10 @@ function sceneIsStale(entry) {
     // (la primera de la campaña corta de tu Gem, J5.3, se perdía).
     if (String(entry?.milestone?.asks?.kind ?? '') === 'none') return false;
     const id = String(entry?.milestone?.id ?? '');
-    return Boolean(id) && readPlotState(chat_metadata?.[PLOT_STATE_KEY]).done.includes(id);
+    // J10.7: y lo cerrado tampoco: es el camino que no se ha tomado (elegir el bando A en la
+    // encrucijada cierra el B, y su escena de «buen trabajo» no sale).
+    const now = readPlotState(chat_metadata?.[PLOT_STATE_KEY]);
+    return Boolean(id) && (now.done.includes(id) || now.closed.includes(id));
 }
 
 /**

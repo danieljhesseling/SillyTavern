@@ -6,10 +6,10 @@
 /* global globalThis */
 import { describe, test, expect, beforeAll, afterAll } from '@jest/globals';
 import {
-    BASE_CELL_PX, ZOOM_MAX, ZOOM_MIN, cellCenter, centerPoint, clampPan, clampScale, fitBoard, followDecision, isPointShown,
+    BASE_CELL_PX, ZOOM_MAX, ZOOM_MIN, cellCenter, centerPoint, centerPointFit, clampPan, clampScale, fitBoard, followDecision, isPointShown,
     safeRect, toBoard, toScreen, visibleArea, wheelScale, zoomAt, zoomLabel, zoomLimits, zoomOf,
 } from '../public/scripts/game-engine/ui/combat-vtt/camera.js';
-import { edgeText, markerBox, placeEdgeMarkers } from '../public/scripts/game-engine/ui/combat-vtt/edge-markers.js';
+import { dodgeIslands, edgeParts, edgeText, markerBox, placeEdgeMarkers, renderEdgeMarkers } from '../public/scripts/game-engine/ui/combat-vtt/edge-markers.js';
 import { minimapCells, minimapLayout, minimapToBoard, viewOnMinimap } from '../public/scripts/game-engine/ui/combat-vtt/minimap.js';
 import { buildInitiative, initialOf, turnLine } from '../public/scripts/game-engine/ui/combat-vtt/initiative.js';
 import { SUMMARY_FOLD_KEY, buildSummary, startsFolded } from '../public/scripts/game-engine/ui/combat-vtt/summary.js';
@@ -208,6 +208,8 @@ describe('la cámara: de 0,45× a 2,2×, contado en casillas', () => {
     test('lo que se mira es la vista menos el HUD; si el HUD se lo come casi todo, la vista entera', () => {
         expect(safeRect(1280, 600, { right: 330, bottom: 0 })).toEqual({ left: 0, top: 0, right: 950, bottom: 600 });
         expect(safeRect(390, 600, { right: 330 })).toEqual({ left: 0, top: 0, right: 390, bottom: 600 });
+        // El teléfono de pie: el HUD arriba y la fila de la cámara abajo dejan un tercio, que se mira.
+        expect(safeRect(390, 607, { top: 310, bottom: 90 })).toEqual({ left: 0, top: 310, right: 390, bottom: 517 });
     });
 
     test('centrar pone el punto en el centro de lo que se mira', () => {
@@ -215,6 +217,20 @@ describe('la cámara: de 0,45× a 2,2×, contado en casillas', () => {
         const view = centerPoint({ scale: 2, offsetX: 0, offsetY: 0 }, { x: 100, y: 50 }, rect);
         expect(toScreen(view, { x: 100, y: 50 })).toEqual({ x: 475, y: 300 });
         expect(cellCenter({ x: 2, y: 1 }, 44, 44)).toEqual({ x: 110, y: 66 });
+    });
+
+    test('un tablero que cabe entero se queda centrado al centrar en alguien; si no cabe, la ficha va al centro', () => {
+        // El muelle (10 × 8 casillas de 44) a 1,8× en 1920 × 1080, sin la columna de la derecha.
+        const rect = { left: 0, top: 0, right: 1600, bottom: 900 };
+        const board = { width: 440, height: 352 };
+        const tessa = cellCenter({ x: 4, y: 7 }, 44, 44);
+        const view = centerPointFit({ scale: 1.8, offsetX: 0, offsetY: 0 }, tessa, rect, board);
+        expect(view.offsetX).toBeCloseTo((1600 - 440 * 1.8) / 2);
+        expect(view.offsetY).toBeCloseTo((900 - 352 * 1.8) / 2);
+        // De cerca no cabe a lo alto: a lo ancho sigue centrado el tablero, a lo alto la ficha.
+        const close = centerPointFit({ scale: 3, offsetX: 0, offsetY: 0 }, tessa, rect, board);
+        expect(close.offsetX).toBeCloseTo((1600 - 440 * 3) / 2);
+        expect(toScreen(close, tessa).y).toBeCloseTo(450);
     });
 
     test('lo que se ve del tablero, y si un punto se ve con holgura', () => {
@@ -314,6 +330,41 @@ describe('los marcadores de borde', () => {
         expect(markerBox(marker, 160, 30)).toEqual({ x: 820, y: 285 });
         const corner = { ...marker, side: /** @type {const} */ ('top'), left: 990, top: 20 };
         expect(markerBox(corner, 160, 30, rect)).toEqual({ x: 1000 - 160 - 4, y: 20 });
+    });
+
+    test('no se pone encima de una isla del HUD: se corre a lo largo de su borde, al lado libre más cercano', () => {
+        // El teléfono tumbado: los botones de la cámara abajo a la izquierda.
+        const camera = { left: 6, top: 300, right: 200, bottom: 344 };
+        expect(dodgeIslands({ x: 22, y: 302 }, 170, 30, 'left', [camera], rect)).toEqual({ x: 22, y: 300 - 30 - 4 });
+        expect(dodgeIslands({ x: 22, y: 320 }, 170, 30, 'left', [camera], rect)).toEqual({ x: 22, y: 344 + 4 });
+        // En el borde de abajo, hacia un lado.
+        const bar = { left: 300, top: 520, right: 700, bottom: 600 };
+        expect(dodgeIslands({ x: 420, y: 540 }, 160, 30, 'bottom', [bar], rect)).toEqual({ x: 300 - 160 - 4, y: 540 });
+        // Sin islas debajo, no se mueve.
+        expect(dodgeIslands({ x: 420, y: 40 }, 160, 30, 'top', [bar, camera], rect)).toEqual({ x: 420, y: 40 });
+    });
+
+    test('si no hay sitio libre, se queda donde estaba', () => {
+        const wall = { left: 0, top: 0, right: 1000, bottom: 600 };
+        expect(dodgeIslands({ x: 22, y: 310 }, 170, 30, 'left', [wall], rect)).toEqual({ x: 22, y: 310 });
+    });
+
+    test('los pies van en su propio trozo, que no encoge: solo el nombre lleva los puntos suspensivos', () => {
+        expect(edgeParts('Guardia de Montesclaros 3', 30)).toEqual({ name: 'Guardia de Montesclaros 3', feet: ' · 30 pies' });
+        expect(edgeParts('Lobo')).toEqual({ name: 'Lobo', feet: '' });
+        const layer = /** @type {any} */ (new FakeNode('div'));
+        const markers = placeEdgeMarkers({ targets: [{ id: -3, name: 'Guardia de Montesclaros 3', x: 1600, y: 300, feet: 30 }], rect });
+        expect(markers[0].feetText).toBe(' · 30 pies');
+        renderEdgeMarkers(layer, markers, () => {});
+        const button = layer.querySelector('.vtt-edge');
+        expect(button.querySelector('.vtt-edge-name').textContent).toBe('Guardia de Montesclaros 3');
+        expect(button.querySelector('.vtt-edge-feet').textContent).toBe(' · 30 pies');
+        // Lo que se lee entero sigue siendo «nombre · pies».
+        expect(button.textContent).toBe('Guardia de Montesclaros 3 · 30 pies');
+        // Al cambiar la distancia se reutiliza el mismo botón.
+        renderEdgeMarkers(layer, placeEdgeMarkers({ targets: [{ id: -3, name: 'Guardia de Montesclaros 3', x: 1600, y: 300, feet: 45 }], rect }), () => {});
+        expect(layer.querySelectorAll('.vtt-edge')).toHaveLength(1);
+        expect(button.querySelector('.vtt-edge-feet').textContent).toBe(' · 45 pies');
     });
 });
 

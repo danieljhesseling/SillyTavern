@@ -55,7 +55,8 @@ import {
     heightFor, partyCell, partyFlanks, saveCombatState, speedOf, enemyTokenId,
 } from './combat-state.js';
 import {
-    abilityOf, applyTimedCondition, carriedNames, classRowOf, getAbilityCatalogue, knownAbilitiesOf, useAbility, useMagicItem,
+    abilityOf, applyTimedCondition, carriedNames, castsLikeFifth, classRowOf, getAbilityCatalogue, knownAbilitiesOf, spellAbilityAt,
+    useAbility, useMagicItem,
 } from './magic.js';
 import {
     attackEnemyById, hideCheck, performManeuver, pushEnemyAway, throwItem, throwScenery, attackLine,
@@ -252,6 +253,45 @@ function swapVerdict(member) {
 }
 
 /**
+ * El daño de un conjuro, con sus rayos si va en varios (Proyectil mágico: «3 × 1d4+1»).
+ *
+ * @param {any} ability
+ * @returns {string}
+ */
+function damageWithRays(ability) {
+    const damage = String(ability?.damage || '');
+    const rays = Number(ability?.rays) || 0;
+    return damage && rays > 1 ? `${rays} × ${damage}` : damage;
+}
+
+/**
+ * J19.3: los espacios con que alguien puede lanzar ahora un conjuro con nivel (el suyo y los
+ * mayores que le quedan), con lo que hace con cada uno. Los de pacto son todos del mismo nivel:
+ * no hay qué elegir.
+ *
+ * @param {any} member
+ * @param {any} ability
+ * @returns {import('../game-engine/ui/combat-vtt/action-menus.js').Upcast[]}
+ */
+function upcastsOf(member, ability) {
+    if (!(Number(ability?.spellLevel) > 0) || !castsLikeFifth(member)) return [];
+    const classRow = classRowOf(member);
+    if (!casterOf(classRow)) return [];
+    const left = slotsLeft(member, classRow);
+    if (left.pactLevel > 0) return [];
+    /** @type {import('../game-engine/ui/combat-vtt/action-menus.js').Upcast[]} */
+    const out = [];
+    for (let level = Number(ability.spellLevel); level <= 9; level++) {
+        const count = Number(left.slots[level]) || 0;
+        if (count <= 0) continue;
+        const at = spellAbilityAt(member, String(ability.id), level);
+        if (!at) continue;
+        out.push({ level, left: count, damage: damageWithRays(at), healing: String(at.healing || ''), targets: Number(/** @type {any} */ (at).targets) || 1 });
+    }
+    return out;
+}
+
+/**
  * Los conjuros y técnicas de alguien, juzgados contra cada posible objetivo.
  *
  * @param {any} member
@@ -290,12 +330,13 @@ function abilityViews(member) {
                 rangeFeet: Number(ability.rangeFeet) || 0,
                 spellLevel,
                 slotLevel: Number(ability.slotLevel) || 0,
-                damage: String(ability.damage || ''),
+                damage: damageWithRays(ability),
                 damageType: String(ability.damageType || ''),
                 healing: String(ability.healing || ''),
                 concentration: Boolean(ability.concentration),
                 area: pies(describeArea(ability.area)),
                 uses: spellLevel === null && Number.isFinite(left) ? `Quedan ${left}` : '',
+                upcasts: upcastsOf(member, ability),
                 enabled: verdict.ok,
                 reason: pies(verdict.reason),
                 targets: ability.target === 'enemy' ? enemies.map(e => judge(e, true))
@@ -443,7 +484,7 @@ export function buildCombatBarSnapshot({ full = true } = {}) {
  * Lo que pide `game-shell.js` para dibujar la barra nueva: la barra, y los menús bajo demanda
  * (de la misma foto: lo que se ve en la barra y en el menú no puede discrepar).
  *
- * @returns {{bar: import('../game-engine/ui/combat-vtt/action-menus.js').BarView, menu: (id: string, filter?: string) => import('../game-engine/ui/combat-vtt/action-menus.js').MenuView|null}}
+ * @returns {{bar: import('../game-engine/ui/combat-vtt/action-menus.js').BarView, menu: (id: string, filter?: string, slots?: Record<string, number>) => import('../game-engine/ui/combat-vtt/action-menus.js').MenuView|null}}
  */
 export function buildCombatBarView() {
     const light = buildCombatBarSnapshot({ full: false });
@@ -451,14 +492,14 @@ export function buildCombatBarView() {
     let whole = null;
     return {
         bar: buildBar(light),
-        menu: (id, filter = 'todos') => {
+        menu: (id, filter = 'todos', slots = {}) => {
             if (!light.isPlayerTurn) return null;
             whole ??= buildCombatBarSnapshot();
             const snapshot = whole;
             if (id === 'atacar') return buildAttackMenu(snapshot);
-            if (id === 'magia') return buildMagicMenu(snapshot, filter);
+            if (id === 'magia') return buildMagicMenu(snapshot, filter, slots);
             if (id === 'acciones') return buildActionsMenu(snapshot, ACTIONS_2024, { hideDc: HIDE_DC, studyDc: studyDC });
-            if (id === 'adicional') return buildBonusMenu(snapshot);
+            if (id === 'adicional') return buildBonusMenu(snapshot, slots);
             return null;
         },
     };
@@ -910,9 +951,10 @@ export function setProne(down) {
  *
  * @param {string} abilityId
  * @param {string} targetId
+ * @param {number} [slotLevel] J19.3: el espacio elegido, si es mayor que el más bajo que queda.
  * @returns {string}
  */
-function castFromBar(abilityId, targetId) {
+function castFromBar(abilityId, targetId, slotLevel = 0) {
     const member = actingMember();
     if (!member) return '';
     const ability = abilityOf(member, abilityId);
@@ -928,7 +970,7 @@ function castFromBar(abilityId, targetId) {
         toastr.warning('Hace falta elegir a quién.');
         return '';
     }
-    return useAbility(member, ability, target);
+    return useAbility(member, ability, target, slotLevel);
 }
 
 /**
@@ -938,7 +980,7 @@ function castFromBar(abilityId, targetId) {
  * @returns {{keepOpen: string}} El menú que sigue abierto después (al cambiar de arma, Atacar), o vacío.
  */
 export function runCombatBarPick(pick) {
-    const [kind, a = '', b = ''] = String(pick ?? '').split(':');
+    const [kind, a = '', b = '', c = ''] = String(pick ?? '').split(':');
     switch (kind) {
         case 'attack': attackEnemyById(a); break;
         case 'swapattack':
@@ -953,6 +995,8 @@ export function runCombatBarPick(pick) {
             unarmedStrike(/** @type {'golpe'|'agarrar'|'apartar'|'tirar'} */ (a), b);
             break;
         case 'ability': castFromBar(a, b); break;
+        // J19.3: «cast:nivel:conjuro:objetivo», con un espacio mayor.
+        case 'cast': castFromBar(b, c, Number(a) || 0); break;
         case 'maneuver': {
             // Lo mismo que la barra vieja: pergaminos y varitas, lo que hay a mano, aceite y red.
             // Su id lleva dos partes («leer:p3», «lanzar:aceite»); detrás, a quién.

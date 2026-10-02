@@ -23,6 +23,7 @@ Hay dos clases de casilla:
 | `chasm` | `v` | `abismo.png` | llena |
 | `stairs` | `>` | `escalera.png` | encima |
 | `water` | `w` | `agua.png` | llena |
+| `deep_water` | `W` | `agua-honda.png` (sin ella, `agua.png`) | llena |
 | `ice` | `i` | `hielo.png` | llena |
 | `brush` | `b` | `maleza.png` | llena |
 | `barrel` | `T` | `barril.png` | encima |
@@ -46,6 +47,21 @@ El tablero elige un bioma y usa su pareja de suelo y muro:
 - `nieve`: nieve pisada gris azulada (el valle en invierno de 1387); muro de rocas con nieve encima.
 - `pantano`: barro verde oliva oscuro con matas de musgo (Barovia); muro de árboles muertos retorcidos.
 - `cripta`: losas oscuras agrietadas (el castillo de Ravenloft); muro de osario, calaveras entre piedras.
+- `muelle`: tablas grises de embarcadero; muro de sillares del puerto con musgo y algas (tanda 12: «El muelle de Puerto Alba» salía de hierba).
+- `playa`: arena mojada gris tostada; muro de rocas negras del mar con percebes y algas (la cala, las salinas).
+
+### Casillas por bioma (tanda 12)
+
+El terreno difícil y las coberturas cambian fuera de la mazmorra: `<casilla>-<bioma>.png`. Si el del bioma no está, se usa el que hace sus veces y, al final, el de siempre (`terrainTile` y `artFor('tile')` en `pixel-art.js`):
+
+| Bioma | `dificil-…` | `cobertura-media-…` | `cobertura-tres-cuartos-…` |
+|---|---|---|---|
+| `exterior` | raíces y ramas caídas | una peña con musgo | un roble |
+| `nieve` | un montón de nieve con hielo roto | una peña con nieve encima | un pino nevado |
+| `cueva` | (escombros) | (la caja) | una estalagmita morada |
+| `cripta` | (escombros) | un sarcófago de piedra | (la columna) |
+| `playa` | las raíces del exterior | la peña del exterior | el roble del exterior |
+| `pantano` | `barro.png` | la peña del exterior | el roble del exterior |
 
 ## Archivos
 
@@ -87,6 +103,24 @@ El tablero elige un bioma y usa su pareja de suelo y muro:
 - `cobertura-tres-cuartos.png` — una columna de piedra alta y gruesa.
 - `trampa.png` — un cepo de hierro abierto, visto desde arriba (encima): va dentro del recuadro de una trampa ya descubierta (`hazardTile` en `pixel-art.js`).
 - `fuego.png` — un charco de aceite ardiendo con su llama (encima): el fuego que arde en el tablero. Se le quitó a mano un rizo de humo que parecía un «?».
+
+### Tanda 12: el arte del tablero
+
+- `agua-honda.png` — agua honda azul marino, con ondas pequeñas (llena): el mar del muelle, un río profundo. Se distingue de un vistazo del agua poco honda (`agua.png`, verde azulada).
+- `suelo-muelle.png` — tablas de embarcadero grises y viejas, en vertical, con juntas oscuras.
+- `muro-muelle.png` — sillares grises del muelle con musgo y algas en las juntas.
+- `suelo-playa.png` — arena mojada gris tostada, con chinas y trocitos de concha.
+- `muro-playa.png` — rocas negras del mar, muy juntas, con percebes y algas.
+- `dificil-exterior.png` — un montón de raíces y ramas caídas con su sombra (encima). Se le cambió a mano el disco de arena de debajo por una sombra.
+- `cobertura-media-exterior.png` — una peña gris con musgo (encima).
+- `cobertura-tres-cuartos-exterior.png` — un roble pequeño (encima).
+- `dificil-nieve.png` — un montón de nieve con trozos de hielo roto (encima).
+- `cobertura-media-nieve.png` — una peña gris con nieve encima (encima).
+- `cobertura-tres-cuartos-nieve.png` — un pino cargado de nieve (encima).
+- `cobertura-tres-cuartos-cueva.png` — una estalagmita de roca morada (encima).
+- `cobertura-media-cripta.png` — un sarcófago de piedra oscura con ribetes dorados (encima). Se le borró a mano una inscripción que parecía letras.
+- `casilla-salida.png` — un círculo de runas azules, hueco por dentro (encima): las casillas donde se coloca al grupo antes de la pelea. Dibujado a mano, píxel a píxel.
+- `marco-aliado.png`, `marco-enemigo.png`, `marco-jefe.png`, `marco-invocacion.png`, `marco-gente.png` — los aros de metal de las fichas en la mesa virtual (42×42, para una cara de 32): dorado, rojo, rojo con oro y seis remaches, violeta y gris. Dibujados a mano, píxel a píxel; los pone `combat-vtt.css` (sección 4).
 
 ## Costuras
 

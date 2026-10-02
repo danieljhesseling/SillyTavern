@@ -1,7 +1,7 @@
 {
   "version": 1,
   "domain": "actos",
-  "about": "Las historias en tres actos que el juego escribe para una campaña sin hilo (J10.7 de ROADMAP_SIN_CONEXION): un mundo hecho con la semilla, o una campaña de tu Gem que solo trae sitios y gente. Lo lee campaign/act-grammar.js. Nueve clases de fila (KIND). TRAMA: el problema de la campaña, de principio a fin del acto 2: el gancho (GANCHO, una escena en BEATS; quien lo vio se presenta en ella: «Soy {testigo}.»), quién lo vio (TESTIGO), las tres pistas que buscar (PISTAS, cada COSA con su VERBO, su tirada SKILL y lo que se encuentra FOUND; con dos basta), la guarida (GUARIDA) y la pelea en ella (GOLPE, con el nombre de su tablero en BOARD y quien espera en él en SECUACES, con nombres del bestiario; sin nadie, salen los bichos del sitio). VILLANO es persona o bestia, y VILLANOS, sus nombres posibles; GUARIDAS y REFUGIOS, los sitios escondidos donde se juega el acto 2 y el acto 3, con su tipo. TAGS: los géneros para los que sale más (terror, epica, isekai, historico...). GIRO: lo que se descubre (VILLANO: para qué villano vale, persona o bestia) tras la pelea de la guarida y la decisión que abre (ENCRUCIJADA, con OPCIONES a y b), y lo que pide cada bando (BANDO_A, BANDO_B). DESENLACE: la escena del acto 3 según el bando (LADO a o b). FINAL: cómo acaba según el bando, o si se llega tarde (LADO tarde), con EPILOGOS y lo que el gremio recordará (LEGADO: TONO luz, gris o sombra, TITULO y SALUDO). PRESAGIO: una frase del principio que se cumple con un hito (HITO: pistas, golpe o encrucijada). CAPITULO: el nombre y el resumen de cada acto (ACTO 1, 2 o 3). ASOMA: el villano se deja ver al empezar el acto 2 o el 3 (ACTO). RUMOR: lo que se oye en el pueblo, con si es verdad (TRUTH: si, no o medias). OFICIO: los oficios de la gente que el juego pone (PAPEL: testigo, contacto-a, contacto-b, posada, tienda, herreria, templo), cada uno con su forma de hombre y de mujer (FORMAS), y lo que quiere, sabe y cómo habla (QUIERE, SABE, VOZ). Los huecos van entre llaves: {inicio} (donde empieza), {testigo}, {villano}, {guarida}, {refugio}, {pista1}, {pista2}, {pista3}, {contactoA}, {contactoB}, {sitioA}, {sitioB}, {bandoA}, {bandoB} (la facción de cada contacto, o su nombre si el mundo no tiene facciones) y {mundo}. Lo que concuerda con tu héroe va entre llaves con las dos formas, separadas por una barra: {listo|lista}.",
+  "about": "Las historias en tres actos que el juego escribe para una campaña sin hilo (J10.7 de ROADMAP_SIN_CONEXION): un mundo hecho con la semilla, o una campaña de tu Gem que solo trae sitios y gente. Lo lee campaign/act-grammar.js. Nueve clases de fila (KIND). TRAMA: el problema de la campaña, de principio a fin del acto 2: el gancho (GANCHO, una escena en BEATS; quien lo vio se presenta en ella: «Soy {testigo}.»), quién lo vio (TESTIGO: sin escena, porque lo que dice al abrirse lo dice ya en el gancho), las tres pistas que buscar (PISTAS, cada COSA con su VERBO, su tirada SKILL y lo que se encuentra FOUND; con dos basta), la guarida (GUARIDA, lo que se oye al llegar, en BEATS) y la pelea en ella (GOLPE, lo que dicen los de dentro al verte en BEATS y lo que dice el tablero en SCENE, con el nombre de su tablero en BOARD y quien espera en él en SECUACES, con nombres del bestiario; sin nadie, salen los bichos del sitio). VILLANO es persona o bestia, y VILLANOS, sus nombres posibles; GUARIDAS y REFUGIOS, los sitios escondidos donde se juega el acto 2 y el acto 3, con su tipo. TAGS: los géneros para los que sale más (terror, epica, isekai, historico...). GIRO: lo que se descubre (VILLANO: para qué villano vale, persona o bestia) tras la pelea de la guarida y la decisión que abre (ENCRUCIJADA, con OPCIONES a y b), y lo que pide cada bando (BANDO_A, BANDO_B; lo que dice su contacto, en BEATS, sale al empezar el acto 3). Lo que se encuentra en la guarida lo cuenta {cautivo}, alguien a quien tenían allí o que se escondía. DESENLACE: la escena del acto 3 según el bando (LADO a o b), en BEATS: la dice el contacto de ese bando. FINAL: cómo acaba según el bando, o si se llega tarde (LADO tarde, con lo que dice {testigo} en BEATS), con EPILOGOS y lo que el gremio recordará (LEGADO: TONO luz, gris o sombra, TITULO y SALUDO). PRESAGIO: una frase del principio que se cumple con un hito (HITO: pistas, golpe o encrucijada). CAPITULO: el nombre y el resumen de cada acto (ACTO 1, 2 o 3). ASOMA: el villano se deja ver al empezar el acto 2 o el 3 (ACTO): una persona lo dice entre comillas; una bestia, el narrador en una línea (VILLANO: persona o bestia). RUMOR: lo que se oye en el pueblo, con si es verdad (TRUTH: si, no o medias). OFICIO: los oficios de la gente que el juego pone (PAPEL: testigo, contacto-a, contacto-b, cautivo, posada, tienda, herreria, templo), cada uno con su forma de hombre y de mujer (FORMAS), y lo que quiere, sabe y cómo habla (QUIERE, SABE, VOZ). D-J54: las escenas las dice la gente (WHO); el narrador, solo una línea corta del sitio cuando no hay nadie que hable. Los huecos van entre llaves: {inicio} (donde empieza), {testigo}, {cautivo}, {villano}, {guarida}, {refugio}, {pista1}, {pista2}, {pista3}, {contactoA}, {contactoB}, {sitioA}, {sitioB}, {bandoA}, {bandoB} (la facción de cada contacto, o su nombre si el mundo no tiene facciones) y {mundo}. Lo que concuerda con tu héroe va entre llaves con las dos formas, separadas por una barra: {listo|lista}.",
   "rows": [
     {
       "id": "trama-desaparecidos",
@@ -49,22 +49,25 @@
         "title": "Gente que falta en {inicio}",
         "beats": [
           {
-            "text": "En {inicio} falta gente. Primero fue un pastor; después, dos críos que salieron a por agua. Nadie los ha vuelto a ver."
+            "who": "{testigo}",
+            "mood": "triste",
+            "text": "Soy {testigo}. En {inicio} falta gente: primero fue un pastor y después dos críos que salieron a por agua. Nadie los ha vuelto a ver."
           },
           {
             "who": "{testigo}",
             "mood": "triste",
-            "text": "Soy {testigo}. Anoche vi una luz por el camino. Iba despacio, como quien busca algo. O a alguien."
+            "text": "Anoche vi una luz por el camino. Iba despacio, como quien busca algo. O a alguien."
           },
           {
-            "text": "Las puertas se cierran antes de que anochezca. La gente te mira como se mira a quien puede hacer algo."
+            "who": "{testigo}",
+            "mood": "neutral",
+            "text": "Aquí no puedo contarte más, hay demasiada gente mirando. Búscame luego, lejos de las ventanas."
           }
         ]
       },
       "testigo": {
         "title": "Lo que vio {testigo}",
-        "hint": "Habla con {testigo} en {inicio}: vio la luz de cerca.",
-        "scene": "{testigo} no quiere hablar delante de todos. Te espera en {inicio}, lejos de las ventanas."
+        "hint": "Habla con {testigo} en {inicio}: vio la luz de cerca."
       },
       "pistas": {
         "title": "El rastro de los que faltan",
@@ -81,7 +84,9 @@
             "text": "Yo no me atrevo a ir. Tú sí, se te ve en la cara."
           },
           {
-            "text": "Tendrás que verlo con tus propios ojos: examina lo que haya en esos sitios."
+            "who": "{testigo}",
+            "mood": "neutral",
+            "text": "Mira bien lo que haya en esos sitios. Con dos cosas que encuentres sabrás adónde se los llevan."
           }
         ],
         "cosas": [
@@ -108,13 +113,39 @@
       "guarida": {
         "title": "La luz de {guarida}",
         "hint": "Ve a {guarida}.",
-        "scene": "Las pistas llevan a {guarida}. Desde lejos se ve el resplandor de un farol que nadie debería encender."
+        "beats": [
+          {
+            "text": "Desde lejos se ve el resplandor de un farol en {guarida}."
+          },
+          {
+            "who": "Cultista",
+            "mood": "neutral",
+            "text": "¿Has oído eso? Hay alguien en el camino."
+          },
+          {
+            "who": "Arquero",
+            "mood": "neutral",
+            "text": "Será el viento. {villano} dijo que esta noche no vendría nadie."
+          }
+        ]
       },
       "golpe": {
         "title": "Los que guardan {guarida}",
         "hint": "Entra en {guarida} y vence a quienes esperan dentro.",
         "scene": "Dentro hay jaulas vacías y gente armada que no esperaba visita. {villano} no está: ha dejado a los suyos para que nadie le siga.",
-        "board": "Las jaulas"
+        "board": "Las jaulas",
+        "beats": [
+          {
+            "who": "Cultista",
+            "mood": "enfadado",
+            "text": "¡Intrusos! ¡Que nadie se acerque a las jaulas!"
+          },
+          {
+            "who": "Arquero",
+            "mood": "enfadado",
+            "text": "{villano} no está, y no vas a salir de aquí para ir a buscarle."
+          }
+        ]
       },
       "secuaces": [
         "Cultista",
@@ -168,22 +199,25 @@
         "title": "El robo de {inicio}",
         "beats": [
           {
-            "text": "Esta mañana {inicio} se ha despertado sin su reliquia: la caja de plata donde se guardaba el sello del pueblo. Sin el sello, nadie paga ni cobra nada."
+            "who": "{testigo}",
+            "mood": "enfadado",
+            "text": "Soy {testigo}. Esta mañana nos hemos despertado sin el sello del pueblo: alguien se ha llevado la caja de plata donde lo guardábamos. Sin el sello, nadie paga ni cobra nada."
           },
           {
             "who": "{testigo}",
             "mood": "enfadado",
-            "text": "Soy {testigo}. ¡La cerradura estaba bien! Quien entró tenía llave, o sabía muy bien lo que hacía."
+            "text": "¡Y la cerradura estaba bien! Quien entró tenía llave, o sabía muy bien lo que hacía."
           },
           {
-            "text": "Alguien grita que hay que colgar al primer forastero que pase. Y {el forastero|la forastera} de hoy eres tú."
+            "who": "{testigo}",
+            "mood": "neutral",
+            "text": "Ten cuidado: hay quien quiere colgar al primer forastero que pase, y {el forastero|la forastera} de hoy eres tú. Búscame luego, cuando no nos vea nadie."
           }
         ]
       },
       "testigo": {
         "title": "Lo que sabe {testigo}",
-        "hint": "Habla con {testigo} en {inicio}: vio quién rondaba la caja.",
-        "scene": "{testigo} te hace una seña desde la puerta. Sabe más de lo que ha gritado."
+        "hint": "Habla con {testigo} en {inicio}: vio quién rondaba la caja."
       },
       "pistas": {
         "title": "El rastro de la reliquia",
@@ -200,7 +234,9 @@
             "text": "Tráenos el sello y nadie volverá a hablar de colgar a nadie."
           },
           {
-            "text": "Te toca seguir el rastro: examina lo que haya en esos sitios."
+            "who": "{testigo}",
+            "mood": "neutral",
+            "text": "Mira bien lo que haya en esos sitios. Con dos cosas que encuentres darás con los ladrones."
           }
         ],
         "cosas": [
@@ -227,13 +263,39 @@
       "guarida": {
         "title": "Los ladrones de {guarida}",
         "hint": "Ve a {guarida}.",
-        "scene": "El rastro acaba en {guarida}. Hay humo y voces: los ladrones no se han molestado en esconderse."
+        "beats": [
+          {
+            "text": "Sale humo de {guarida}, y se oyen voces."
+          },
+          {
+            "who": "Bandido",
+            "mood": "alegre",
+            "text": "¡Otra ronda! Con lo que vale esa plata, este invierno no pasamos frío."
+          },
+          {
+            "who": "Arquero",
+            "mood": "neutral",
+            "text": "Baja la voz. {villano} quiere que nadie sepa que estamos aquí."
+          }
+        ]
       },
       "golpe": {
         "title": "Recuperar lo robado",
         "hint": "Entra en {guarida} y vence a los ladrones.",
         "scene": "Los ladrones se reparten el botín. La caja está abierta y vacía: {villano} se ha llevado el sello y ha dejado aquí a los suyos.",
-        "board": "El reparto del botín"
+        "board": "El reparto del botín",
+        "beats": [
+          {
+            "who": "Bandido",
+            "mood": "enfadado",
+            "text": "¡Nos han encontrado! ¡A las armas!"
+          },
+          {
+            "who": "Arquero",
+            "mood": "enfadado",
+            "text": "La caja está vacía: {villano} se ha llevado el sello. Y tú no vas a salir de aquí para contarlo."
+          }
+        ]
       },
       "secuaces": [
         "Bandido",
@@ -287,22 +349,25 @@
         "title": "Algo baja a {inicio} de noche",
         "beats": [
           {
-            "text": "Al amanecer, en {inicio} cuentan las ovejas y faltan cinco. Lo que queda de ellas está en el camino, y no lo ha hecho un lobo corriente."
+            "who": "{testigo}",
+            "mood": "triste",
+            "text": "Soy {testigo}. Esta mañana hemos contado las ovejas y faltan cinco. Lo que queda de ellas está en el camino, y eso no lo ha hecho un lobo corriente."
           },
           {
             "who": "{testigo}",
             "mood": "triste",
-            "text": "Soy {testigo}. Lo oí respirar detrás del corral. Era más grande que una vaca. Y no tenía prisa."
+            "text": "Lo oí respirar detrás del corral. Era más grande que una vaca. Y no tenía prisa."
           },
           {
-            "text": "Esta noche nadie dormirá tranquilo. Y la próxima vez puede que no se conforme con ovejas."
+            "who": "{testigo}",
+            "mood": "neutral",
+            "text": "La próxima vez puede que no se conforme con ovejas. Búscame luego y te cuento lo que sé: aquí la gente ya está bastante asustada."
           }
         ]
       },
       "testigo": {
         "title": "Lo que oyó {testigo}",
-        "hint": "Habla con {testigo} en {inicio}: lo tuvo a dos pasos.",
-        "scene": "{testigo} no ha pegado ojo. Si quieres saber qué baja de noche, es con quien hay que hablar."
+        "hint": "Habla con {testigo} en {inicio}: lo tuvo a dos pasos."
       },
       "pistas": {
         "title": "Seguir a la bestia",
@@ -319,7 +384,9 @@
             "text": "Si vas, ve de día. Y no vayas {solo|sola}."
           },
           {
-            "text": "Su rastro está ahí fuera: examina lo que haya en esos sitios."
+            "who": "{testigo}",
+            "mood": "neutral",
+            "text": "Mira bien lo que haya en esos sitios. Con dos cosas que encuentres sabrás dónde duerme."
           }
         ],
         "cosas": [
@@ -346,13 +413,22 @@
       "guarida": {
         "title": "El cubil de {guarida}",
         "hint": "Ve a {guarida}.",
-        "scene": "El rastro acaba en {guarida}. El aire huele a carne vieja, y hay huesos por todas partes."
+        "beats": [
+          {
+            "text": "A la entrada de {guarida} hay huesos por todas partes. Huele a carne vieja."
+          }
+        ]
       },
       "golpe": {
         "title": "Las crías de la bestia",
         "hint": "Entra en {guarida} y vence a lo que vive allí.",
         "scene": "En {guarida} no está {villano}, sino lo que se alimenta de sus sobras. Y no les gusta que entres en su casa.",
-        "board": "El fondo del cubil"
+        "board": "El fondo del cubil",
+        "beats": [
+          {
+            "text": "Al fondo de {guarida} gruñe lo que come de las sobras de {villano}."
+          }
+        ]
       },
       "secuaces": []
     },
@@ -402,22 +478,25 @@
         "title": "Los enfermos de {inicio}",
         "beats": [
           {
-            "text": "En {inicio} enferma la gente a puñados: fiebre, manchas negras en las uñas y una sed que no se quita. Hay tres muertos y la cosa no para."
+            "who": "{testigo}",
+            "mood": "triste",
+            "text": "Soy {testigo}. En {inicio} enferma la gente a puñados: fiebre, uñas negras y una sed que no se quita. Ya van tres muertos."
           },
           {
             "who": "{testigo}",
             "mood": "enfadado",
-            "text": "Soy {testigo}. No es una peste. Mi perro bebió del pozo y cayó antes que nadie. Alguien le ha echado algo al agua."
+            "text": "No es una peste. Mi perro bebió del pozo y cayó antes que nadie. Alguien le ha echado algo al agua."
           },
           {
-            "text": "Ya nadie bebe del pozo. Pero el agua del río tampoco sabe como antes."
+            "who": "{testigo}",
+            "mood": "neutral",
+            "text": "Ya nadie bebe del pozo, pero el agua del río tampoco sabe como antes. Búscame luego: aquí no me fío de nadie."
           }
         ]
       },
       "testigo": {
         "title": "Lo que sospecha {testigo}",
-        "hint": "Habla con {testigo} en {inicio}: sabe por qué no es una peste.",
-        "scene": "{testigo} hierve el agua tres veces antes de beberla, y no se fía de nadie. De ti, quizá un poco."
+        "hint": "Habla con {testigo} en {inicio}: sabe por qué no es una peste."
       },
       "pistas": {
         "title": "De dónde sale el veneno",
@@ -434,7 +513,9 @@
             "text": "Si encuentras quién es, no bebas nada que te ofrezca."
           },
           {
-            "text": "Te toca buscar el origen: examina lo que haya en esos sitios."
+            "who": "{testigo}",
+            "mood": "neutral",
+            "text": "Mira bien lo que haya en esos sitios. Con dos cosas que encuentres sabrás de dónde sale el veneno."
           }
         ],
         "cosas": [
@@ -461,13 +542,39 @@
       "guarida": {
         "title": "El taller de {guarida}",
         "hint": "Ve a {guarida}.",
-        "scene": "Las pistas llevan a {guarida}. Huele a hierba hervida y a algo podrido debajo."
+        "beats": [
+          {
+            "text": "En {guarida} huele a hierba hervida y a algo podrido."
+          },
+          {
+            "who": "Cultista",
+            "mood": "neutral",
+            "text": "Remueve más deprisa. {villano} quiere tres sacos más antes del alba."
+          },
+          {
+            "who": "Bandido",
+            "mood": "triste",
+            "text": "Con este trapo en la cara no se puede respirar. Esto va a acabar con nosotros también."
+          }
+        ]
       },
       "golpe": {
         "title": "Los que llenan los sacos",
         "hint": "Entra en {guarida} y vence a quien prepara el veneno.",
         "scene": "Hay calderos, sacos de hojas y gente que trabaja con trapos en la cara. {villano} se ha ido antes de que llegaras, pero ha dejado a los suyos.",
-        "board": "Los calderos"
+        "board": "Los calderos",
+        "beats": [
+          {
+            "who": "Cultista",
+            "mood": "enfadado",
+            "text": "¡Alguien ha entrado! ¡Tirad los calderos!"
+          },
+          {
+            "who": "Bandido",
+            "mood": "enfadado",
+            "text": "{villano} se fue antes de que llegaras. A nosotros nos dejó aquí para que nadie le siga."
+          }
+        ]
       },
       "secuaces": [
         "Cultista",
@@ -520,22 +627,25 @@
         "title": "El muerto de {inicio}",
         "beats": [
           {
-            "text": "Han encontrado al alcalde de {inicio} en su cama, con un cuchillo clavado y la puerta cerrada por dentro. Tenía muchos enemigos y ningún amigo."
+            "who": "{testigo}",
+            "mood": "triste",
+            "text": "Soy {testigo}. Yo le llevaba la cena al alcalde de {inicio}. Lo encontré en su cama, con un cuchillo clavado y la puerta cerrada por dentro."
+          },
+          {
+            "who": "{testigo}",
+            "mood": "neutral",
+            "text": "La ventana estaba abierta, y él nunca la abría: le tenía miedo al frío."
           },
           {
             "who": "{testigo}",
             "mood": "triste",
-            "text": "Soy {testigo}. Yo le llevaba la cena. La ventana estaba abierta, y él nunca la abría: le tenía miedo al frío."
-          },
-          {
-            "text": "Cada uno culpa a quien más odia. Si nadie averigua la verdad, mañana habrá más muertos."
+            "text": "Cada uno culpa a quien más odia, y si nadie averigua la verdad, habrá más muertos. Aquí no puedo hablar: búscame luego."
           }
         ]
       },
       "testigo": {
         "title": "Lo que vio {testigo}",
-        "hint": "Habla con {testigo} en {inicio}: fue quien encontró el cuerpo.",
-        "scene": "{testigo} tiene las manos temblando. Encontró el cuerpo, y nadie le ha preguntado nada todavía."
+        "hint": "Habla con {testigo} en {inicio}: fue quien encontró el cuerpo."
       },
       "pistas": {
         "title": "Quién mató al alcalde",
@@ -552,7 +662,9 @@
             "text": "Ten cuidado con a quién preguntas. Quien lo hizo sigue cerca."
           },
           {
-            "text": "Te toca reunir las pruebas: examina lo que haya en esos sitios."
+            "who": "{testigo}",
+            "mood": "neutral",
+            "text": "Mira bien lo que haya en esos sitios. Con dos pruebas sabrás dónde se esconde quien lo hizo."
           }
         ],
         "cosas": [
@@ -579,13 +691,39 @@
       "guarida": {
         "title": "Los asesinos de {guarida}",
         "hint": "Ve a {guarida}.",
-        "scene": "Las pruebas llevan a {guarida}. Desde fuera parece vacía, pero hay luz detrás de los postigos."
+        "beats": [
+          {
+            "text": "Hay luz detrás de los postigos de {guarida}."
+          },
+          {
+            "who": "Bandido",
+            "mood": "neutral",
+            "text": "El de arriba ha pagado bien. Esta noche toca otro."
+          },
+          {
+            "who": "Arquero",
+            "mood": "neutral",
+            "text": "Calla. {villano} dijo que nada de nombres."
+          }
+        ]
       },
       "golpe": {
         "title": "Los cuchillos de {guarida}",
         "hint": "Entra en {guarida} y vence a los asesinos.",
         "scene": "Dentro hay gente que cobra por matar, y esta noche alguien les ha pagado por ti. {villano} no está: solo ha dejado sus órdenes.",
-        "board": "Los cuartos de atrás"
+        "board": "Los cuartos de atrás",
+        "beats": [
+          {
+            "who": "Bandido",
+            "mood": "enfadado",
+            "text": "¡Ahí está quien va haciendo preguntas! Por ti también nos han pagado."
+          },
+          {
+            "who": "Arquero",
+            "mood": "enfadado",
+            "text": "{villano} no está: solo nos ha dejado sus órdenes. Y tú estás en ellas."
+          }
+        ]
       },
       "secuaces": [
         "Bandido",
@@ -638,22 +776,25 @@
         "title": "Los huéspedes de {inicio}",
         "beats": [
           {
-            "text": "En {inicio} desaparecen los huéspedes, los que llegaron de otro mundo con números flotando sobre la cabeza. Tres en un mes. Sus camas siguen hechas."
+            "who": "{testigo}",
+            "mood": "triste",
+            "text": "Soy {testigo}. En {inicio} desaparecen los huéspedes, los que llegaron de otro mundo con números sobre la cabeza. Tres en un mes, y sus camas siguen hechas."
           },
           {
             "who": "{testigo}",
             "mood": "triste",
-            "text": "Soy {testigo}. La última dejó una nota: «Alguien quiere mi barra». No sé qué quería decir, pero tenía miedo."
+            "text": "La última dejó una nota: «Alguien quiere mi barra». No sé qué quería decir, pero tenía miedo."
           },
           {
-            "text": "Si es verdad que alguien los colecciona, tú también tienes números. Puede que estés en la lista."
+            "who": "{testigo}",
+            "mood": "neutral",
+            "text": "Tú también tienes números. Puede que estés en la lista. Búscame luego y te enseño la nota."
           }
         ]
       },
       "testigo": {
         "title": "La nota de {testigo}",
-        "hint": "Habla con {testigo} en {inicio}: guarda la nota de la última que desapareció.",
-        "scene": "{testigo} guarda la nota en el bolsillo y no se la enseña a nadie. A ti, quizá sí."
+        "hint": "Habla con {testigo} en {inicio}: guarda la nota de la última que desapareció."
       },
       "pistas": {
         "title": "Quién se lleva a los huéspedes",
@@ -670,7 +811,9 @@
             "text": "Si tus números bajan de golpe, sal corriendo. Eso decía ella."
           },
           {
-            "text": "Te toca seguir el rastro: examina lo que haya en esos sitios."
+            "who": "{testigo}",
+            "mood": "neutral",
+            "text": "Mira bien lo que haya en esos sitios. Con dos cosas que encuentres sabrás adónde se los llevan."
           }
         ],
         "cosas": [
@@ -697,13 +840,34 @@
       "guarida": {
         "title": "Los registros de {guarida}",
         "hint": "Ve a {guarida}.",
-        "scene": "Las pistas llevan a {guarida}. Por las ventanas se ve una luz azul que no viene de ningún fuego."
+        "beats": [
+          {
+            "text": "Por las ventanas de {guarida} sale una luz azul que no viene de ningún fuego."
+          },
+          {
+            "who": "Aprendiz de mago",
+            "mood": "neutral",
+            "text": "Otra etiqueta: «Huésped número cuatro». {villano} quiere los frascos en orden."
+          }
+        ]
       },
       "golpe": {
         "title": "Los guardianes de {guarida}",
         "hint": "Entra en {guarida} y vence a sus guardianes.",
         "scene": "Hay estanterías llenas de frascos con luces dentro, y guardianes que no parpadean. {villano} se ha ido con lo más valioso.",
-        "board": "Los estantes de luz"
+        "board": "Los estantes de luz",
+        "beats": [
+          {
+            "who": "Aprendiz de mago",
+            "mood": "enfadado",
+            "text": "¡No toques los frascos! ¡Golems, a la puerta!"
+          },
+          {
+            "who": "Aprendiz de mago",
+            "mood": "neutral",
+            "text": "{villano} se ha llevado lo mejor de la colección. Y tú vas a ser la pieza siguiente."
+          }
+        ]
       },
       "secuaces": [
         "Golem de barro",
@@ -719,33 +883,45 @@
         "title": "Lo que había en {guarida}",
         "beats": [
           {
-            "text": "Entre lo que dejaron los de {villano} hay un cofre pequeño. Dentro, cartas y una bolsa de monedas."
+            "who": "{cautivo}",
+            "mood": "triste",
+            "text": "Me llamo {cautivo}. Llevo días aquí, con una cadena en el tobillo. Gracias por sacarme."
           },
           {
-            "text": "Las cartas no dejan dudas: alguien de {bandoB} pagaba a {villano}. Y {contactoB} lo sabe."
+            "who": "{cautivo}",
+            "mood": "neutral",
+            "text": "Los de {villano} guardaban un cofre con cartas y una bolsa de monedas. Las he leído: alguien de {bandoB} le pagaba. Y {contactoB} lo sabe."
           },
           {
-            "text": "Ahora sabes demasiado. Con estas cartas puedes ir a {contactoA}, en {sitioA}, que quiere a {villano} colgado. O puedes ir a {contactoB}, en {sitioB}, que pagará bien para que esto no salga a la luz.",
+            "who": "{cautivo}",
+            "mood": "neutral",
+            "text": "Con esas cartas puedes ir a {contactoA}, en {sitioA}, que quiere ver a {villano} en la horca. O a {contactoB}, en {sitioB}, que pagará bien para que no salgan a la luz.",
             "options": [
               {
                 "id": "a",
                 "text": "Llevar las cartas a {contactoA}.",
                 "reply": {
-                  "text": "Guardas las cartas. {contactoA} sabrá qué hacer con ellas."
+                  "who": "{cautivo}",
+                  "mood": "alegre",
+                  "text": "Bien hecho. {contactoA} sabrá qué hacer con ellas."
                 }
               },
               {
                 "id": "b",
                 "text": "Ir a ver qué ofrece {contactoB}.",
                 "reply": {
-                  "text": "Guardas las cartas. Primero vas a ver cuánto valen."
+                  "who": "{cautivo}",
+                  "mood": "triste",
+                  "text": "Tú sabrás. Yo solo quiero volver a casa."
                 }
               },
               {
                 "id": "pensar",
                 "text": "Guardarlas y pensarlo con calma.",
                 "reply": {
-                  "text": "Las cartas pesan poco, pero no te las quitas de la cabeza."
+                  "who": "{cautivo}",
+                  "mood": "neutral",
+                  "text": "Piénsalo, pero no tardes: {villano} no se va a quedar quieto."
                 }
               }
             ]
@@ -755,12 +931,24 @@
       "bando_a": {
         "title": "Las cartas, para {bandoA}",
         "hint": "Habla con {contactoA} en {sitioA} y dale las cartas: así se irá a por {villano}.",
-        "scene": "{contactoA} lee las cartas dos veces. «Con esto, nadie podrá proteger a {villano}. Te diré dónde se esconde.»"
+        "beats": [
+          {
+            "who": "{contactoA}",
+            "mood": "enfadado",
+            "text": "Las he leído dos veces. Con esto, nadie podrá proteger a {villano}."
+          }
+        ]
       },
       "bando_b": {
         "title": "El precio de las cartas",
         "hint": "Habla con {contactoB} en {sitioB}: paga bien por las cartas y por tu silencio.",
-        "scene": "{contactoB} pone una bolsa en la mesa sin contarla. «{villano} ya no nos sirve. Acaba con él, quema las cartas y aquí no ha pasado nada.»"
+        "beats": [
+          {
+            "who": "{contactoB}",
+            "mood": "alegre",
+            "text": "Toma, no hace falta contarlo. {villano} ya no nos sirve: acaba con esto, quema las cartas y aquí no ha pasado nada."
+          }
+        ]
       },
       "villano": "persona"
     },
@@ -773,33 +961,45 @@
         "title": "El sello de {guarida}",
         "beats": [
           {
-            "text": "En lo más hondo de {guarida} hay una capa doblada con cuidado. Lleva bordado el sello de {bandoB}."
+            "who": "{cautivo}",
+            "mood": "triste",
+            "text": "Me llamo {cautivo}. Me trajeron aquí a la fuerza, y he visto más de lo que querían."
           },
           {
-            "text": "{villano} no actúa sin ayuda: alguien de {bandoB} le esconde, le da de comer y mira hacia otro lado. Por eso nadie lo ha parado antes."
+            "who": "{cautivo}",
+            "mood": "neutral",
+            "text": "Mira esa capa: lleva bordado el sello de {bandoB}. {villano} no actúa sin ayuda: le esconden, le dan de comer y miran hacia otro lado. Por eso nadie le ha parado antes."
           },
           {
+            "who": "{cautivo}",
+            "mood": "neutral",
             "text": "{contactoA}, en {sitioA}, daría lo que fuera por saber esto. {contactoB}, en {sitioB}, daría todavía más para que no lo supiera nadie.",
             "options": [
               {
                 "id": "a",
                 "text": "Contárselo a {contactoA}.",
                 "reply": {
-                  "text": "Te guardas la capa. {contactoA} tiene que verla."
+                  "who": "{cautivo}",
+                  "mood": "alegre",
+                  "text": "Llévale la capa. Tiene que verla con sus propios ojos."
                 }
               },
               {
                 "id": "b",
                 "text": "Ir a hablar con {contactoB} primero.",
                 "reply": {
-                  "text": "Te guardas la capa. Si hay quien protege a {villano}, también habrá quien pague por callar."
+                  "who": "{cautivo}",
+                  "mood": "triste",
+                  "text": "Si hay quien protege a {villano}, también habrá quien pague por callar. Ten cuidado."
                 }
               },
               {
                 "id": "pensar",
                 "text": "Guardar la capa y decidir más tarde.",
                 "reply": {
-                  "text": "Te la guardas. La decisión puede esperar un poco, pero no mucho."
+                  "who": "{cautivo}",
+                  "mood": "neutral",
+                  "text": "Puede esperar un poco, pero no mucho."
                 }
               }
             ]
@@ -809,12 +1009,24 @@
       "bando_a": {
         "title": "Lo que tiene que saber {contactoA}",
         "hint": "Habla con {contactoA} en {sitioA} y enséñale la capa: os ayudarán a acabar con {villano}.",
-        "scene": "{contactoA} reconoce el sello al momento. «Lo sospechaba. Ahora tengo con qué probarlo. Ve a por {villano}: los míos te cubrirán.»"
+        "beats": [
+          {
+            "who": "{contactoA}",
+            "mood": "enfadado",
+            "text": "Conozco ese sello. Lo sospechaba, y ahora tengo con qué probarlo. Ve a por {villano}: los míos te cubrirán."
+          }
+        ]
       },
       "bando_b": {
         "title": "El silencio de {bandoB}",
         "hint": "Habla con {contactoB} en {sitioB}: te pagará por acabar con {villano} sin que se sepa quién le protegía.",
-        "scene": "{contactoB} cierra la puerta antes de hablar. «Ese sello no debería estar ahí. Haz que {villano} desaparezca y olvida lo que has visto. Te irá bien.»"
+        "beats": [
+          {
+            "who": "{contactoB}",
+            "mood": "neutral",
+            "text": "Cierra la puerta. Ese sello no debería estar ahí. Haz que {villano} desaparezca y olvida lo que has visto. Te irá bien."
+          }
+        ]
       },
       "villano": "persona"
     },
@@ -827,33 +1039,50 @@
         "title": "El tesoro de {villano}",
         "beats": [
           {
-            "text": "Bajo una losa suelta de {guarida} hay un mapa y una lista de nombres. Algunos son de gente importante."
+            "who": "{cautivo}",
+            "mood": "triste",
+            "text": "Me llamo {cautivo}. Llevo días aquí, con las manos atadas. Gracias por sacarme."
           },
           {
-            "text": "La lista vale más que todo el oro de {inicio}. En manos de {bandoB}, sirve para tener a esa gente en un puño; en manos de {bandoA}, para juzgarla."
+            "who": "{cautivo}",
+            "mood": "neutral",
+            "text": "Bajo esa losa suelta guardaban un mapa y una lista de nombres. Algunos son de gente importante."
           },
           {
+            "who": "{cautivo}",
+            "mood": "neutral",
+            "text": "Esa lista vale más que todo el oro de {inicio}. En manos de {bandoB}, sirve para tener a esa gente en un puño; en manos de {bandoA}, para juzgarla."
+          },
+          {
+            "who": "{cautivo}",
+            "mood": "neutral",
             "text": "Puedes llevársela a {contactoA}, en {sitioA}, o vendérsela a {contactoB}, en {sitioB}. El mapa marca dónde se esconde {villano}: los dos te ayudarán a llegar.",
             "options": [
               {
                 "id": "a",
                 "text": "La lista es para {contactoA}.",
                 "reply": {
-                  "text": "Doblas la lista y la guardas bien. {contactoA} la usará como se debe."
+                  "who": "{cautivo}",
+                  "mood": "alegre",
+                  "text": "{contactoA} la usará como se debe."
                 }
               },
               {
                 "id": "b",
                 "text": "A ver cuánto paga {contactoB}.",
                 "reply": {
-                  "text": "Doblas la lista. Hay cosas que valen más vendidas que contadas."
+                  "who": "{cautivo}",
+                  "mood": "triste",
+                  "text": "Hay cosas que valen más vendidas que contadas, ¿verdad?"
                 }
               },
               {
                 "id": "pensar",
                 "text": "Guardarla y pensarlo.",
                 "reply": {
-                  "text": "La guardas. Pesa más de lo que parece."
+                  "who": "{cautivo}",
+                  "mood": "neutral",
+                  "text": "Guárdala bien. Pesa más de lo que parece."
                 }
               }
             ]
@@ -863,12 +1092,24 @@
       "bando_a": {
         "title": "La lista, para {bandoA}",
         "hint": "Habla con {contactoA} en {sitioA} y dale la lista: te dirá cómo llegar hasta {villano}.",
-        "scene": "{contactoA} recorre los nombres con el dedo y aprieta los dientes. «Esto acaba hoy. Ve a por {villano}; del resto me encargo yo.»"
+        "beats": [
+          {
+            "who": "{contactoA}",
+            "mood": "enfadado",
+            "text": "Conozco algunos de estos nombres. Esto acaba hoy: ve a por {villano}, que del resto me encargo yo."
+          }
+        ]
       },
       "bando_b": {
         "title": "La lista, vendida",
         "hint": "Habla con {contactoB} en {sitioB}: paga la lista en oro y te pide que acabes con {villano}.",
-        "scene": "{contactoB} sonríe al ver la lista. «Buen trabajo. Ahora termina lo que empezaste: {villano} sabe demasiado para seguir vivo.»"
+        "beats": [
+          {
+            "who": "{contactoB}",
+            "mood": "alegre",
+            "text": "Buen trabajo. Ahora termina lo que empezaste: {villano} sabe demasiado y no puede quedar con vida."
+          }
+        ]
       },
       "villano": "persona"
     },
@@ -881,33 +1122,50 @@
         "title": "Un nombre conocido",
         "beats": [
           {
-            "text": "En {guarida} hay una lista de pagos. Uno de los nombres te suena: alguien de {inicio} avisaba a {villano} de quién salía de noche."
+            "who": "{cautivo}",
+            "mood": "triste",
+            "text": "Me llamo {cautivo}. Me cogieron en el camino y me trajeron aquí. Oí todo lo que decían."
           },
           {
-            "text": "Los pagos salen de {bandoB}. Usaban a {villano} para asustar a la gente y quedarse con lo que dejaban."
+            "who": "{cautivo}",
+            "mood": "enfadado",
+            "text": "Tienen una lista de pagos. Alguien de {inicio} avisaba a {villano} de quién salía de noche."
           },
           {
+            "who": "{cautivo}",
+            "mood": "neutral",
+            "text": "Y los pagos salen de {bandoB}: usaban a {villano} para asustar a la gente y quedarse con lo que dejaban."
+          },
+          {
+            "who": "{cautivo}",
+            "mood": "neutral",
             "text": "Si se lo cuentas a {contactoA}, en {sitioA}, habrá juicio y alguien de {inicio} acabará en la horca. Si vas a {contactoB}, en {sitioB}, todo se arreglará en silencio.",
             "options": [
               {
                 "id": "a",
                 "text": "Que haya juicio: ir a {contactoA}.",
                 "reply": {
-                  "text": "Guardas la lista. Lo que se ha hecho, que se pague."
+                  "who": "{cautivo}",
+                  "mood": "enfadado",
+                  "text": "Lo que se ha hecho, que se pague."
                 }
               },
               {
                 "id": "b",
                 "text": "Mejor en silencio: ir a {contactoB}.",
                 "reply": {
-                  "text": "Guardas la lista. A veces la verdad hace más daño que el silencio."
+                  "who": "{cautivo}",
+                  "mood": "triste",
+                  "text": "A veces la verdad hace más daño que el silencio. Puede que tengas razón."
                 }
               },
               {
                 "id": "pensar",
                 "text": "Pensarlo antes.",
                 "reply": {
-                  "text": "Guardas la lista. Ya decidirás."
+                  "who": "{cautivo}",
+                  "mood": "neutral",
+                  "text": "Piénsalo. Pero esa lista no puede esperar mucho."
                 }
               }
             ]
@@ -917,12 +1175,24 @@
       "bando_a": {
         "title": "Un juicio en {sitioA}",
         "hint": "Habla con {contactoA} en {sitioA} y enséñale la lista: después, a por {villano}.",
-        "scene": "{contactoA} escucha sin interrumpirte. «Habrá juicio para todos. Pero primero, {villano}. Sé dónde ir a buscarle.»"
+        "beats": [
+          {
+            "who": "{contactoA}",
+            "mood": "neutral",
+            "text": "Habrá juicio para todos. Pero primero, {villano}."
+          }
+        ]
       },
       "bando_b": {
         "title": "Un arreglo con {bandoB}",
         "hint": "Habla con {contactoB} en {sitioB}: te paga por acabar con {villano} y quemar la lista.",
-        "scene": "{contactoB} no se sorprende. «Nadie tiene por qué saberlo. Acaba con {villano}, quema esa lista y no volverás a pasar hambre.»"
+        "beats": [
+          {
+            "who": "{contactoB}",
+            "mood": "neutral",
+            "text": "Nadie tiene por qué saberlo. Acaba con {villano}, quema esa lista y no volverás a pasar hambre."
+          }
+        ]
       },
       "villano": "persona"
     },
@@ -936,33 +1206,50 @@
         "title": "El cebo de {guarida}",
         "beats": [
           {
-            "text": "En {guarida} hay algo que no cuadra: restos de reses degolladas con cuchillo, y sacos de sal vacíos. A {villano} alguien le da de comer."
+            "who": "{cautivo}",
+            "mood": "triste",
+            "text": "Me llamo {cautivo}. Me escondí al fondo de {guarida} cuando apareció la bestia, y no me atrevía a salir."
           },
           {
+            "who": "{cautivo}",
+            "mood": "neutral",
+            "text": "Mira esto: reses degolladas con cuchillo y sacos de sal vacíos. A {villano} alguien le da de comer."
+          },
+          {
+            "who": "{cautivo}",
+            "mood": "enfadado",
             "text": "Los sacos llevan la marca de {bandoB}. Ceban a {villano} cerca de {inicio} para que la gente se asuste y deje sus tierras."
           },
           {
+            "who": "{cautivo}",
+            "mood": "neutral",
             "text": "{contactoA}, en {sitioA}, querrá saberlo para pararles los pies. {contactoB}, en {sitioB}, pagará para que no lo sepa nadie.",
             "options": [
               {
                 "id": "a",
                 "text": "Contárselo a {contactoA}.",
                 "reply": {
-                  "text": "Te guardas un saco con la marca. {contactoA} tiene que verlo."
+                  "who": "{cautivo}",
+                  "mood": "alegre",
+                  "text": "Llévate un saco con la marca. {contactoA} tiene que verlo."
                 }
               },
               {
                 "id": "b",
                 "text": "Ir a ver qué ofrece {contactoB}.",
                 "reply": {
-                  "text": "Te guardas un saco con la marca. A ver cuánto vale."
+                  "who": "{cautivo}",
+                  "mood": "triste",
+                  "text": "Llévate un saco, entonces. A ver cuánto vale."
                 }
               },
               {
                 "id": "pensar",
                 "text": "Guardar el saco y pensarlo.",
                 "reply": {
-                  "text": "Te lo guardas. Ya decidirás a quién se lo enseñas."
+                  "who": "{cautivo}",
+                  "mood": "neutral",
+                  "text": "Guárdalo. Ya decidirás a quién se lo enseñas."
                 }
               }
             ]
@@ -972,12 +1259,24 @@
       "bando_a": {
         "title": "La marca, para {bandoA}",
         "hint": "Habla con {contactoA} en {sitioA} y enséñale el saco: te ayudarán a acabar con {villano}.",
-        "scene": "{contactoA} reconoce la marca y se le endurece la cara. «Así que eran ellos. Acaba con {villano}; de los demás me encargo yo.»"
+        "beats": [
+          {
+            "who": "{contactoA}",
+            "mood": "enfadado",
+            "text": "Así que eran ellos. Acaba con {villano}; de los demás me encargo yo."
+          }
+        ]
       },
       "bando_b": {
         "title": "El precio de la marca",
         "hint": "Habla con {contactoB} en {sitioB}: te paga por acabar con {villano} y olvidar el saco.",
-        "scene": "{contactoB} empuja una bolsa hacia ti. «La cosa se nos ha ido de las manos. Mata a {villano}, quema ese saco y no se hable más.»"
+        "beats": [
+          {
+            "who": "{contactoB}",
+            "mood": "triste",
+            "text": "La cosa se nos ha ido de las manos. Mata a {villano}, quema ese saco y no se hable más."
+          }
+        ]
       }
     },
     {
@@ -990,33 +1289,50 @@
         "title": "Las cadenas de {guarida}",
         "beats": [
           {
-            "text": "En {guarida} hay cadenas rotas, gruesas como un brazo, y un collar de hierro partido en dos. {villano} no nació aquí: alguien lo trajo."
+            "who": "{cautivo}",
+            "mood": "triste",
+            "text": "Me llamo {cautivo}. Llevo dos días escondiéndome al fondo de {guarida}. Gracias por venir."
           },
           {
-            "text": "El hierro lleva el sello de {bandoB}. Lo querían para sus peleas, o para algo peor, y se les escapó."
+            "who": "{cautivo}",
+            "mood": "neutral",
+            "text": "Mira esas cadenas rotas, gruesas como un brazo, y ese collar de hierro partido en dos. {villano} no nació aquí: alguien trajo a esa bestia desde lejos."
           },
           {
+            "who": "{cautivo}",
+            "mood": "enfadado",
+            "text": "El hierro lleva el sello de {bandoB}. La querían para sus peleas, o para algo peor, y se les escapó."
+          },
+          {
+            "who": "{cautivo}",
+            "mood": "neutral",
             "text": "Si se lo cuentas a {contactoA}, en {sitioA}, habrá que pedir cuentas a {bandoB}. Si vas a {contactoB}, en {sitioB}, te pagarán para que esto quede entre vosotros.",
             "options": [
               {
                 "id": "a",
                 "text": "Ir a {contactoA} con el collar.",
                 "reply": {
-                  "text": "Te llevas el collar. Pesa lo suyo, pero vale la pena."
+                  "who": "{cautivo}",
+                  "mood": "alegre",
+                  "text": "Llévate el collar. Pesa lo suyo, pero vale la pena."
                 }
               },
               {
                 "id": "b",
                 "text": "Ir a {contactoB} a negociar.",
                 "reply": {
-                  "text": "Te llevas el collar. A veces un secreto se vende mejor que se cuenta."
+                  "who": "{cautivo}",
+                  "mood": "triste",
+                  "text": "A veces un secreto se vende mejor que se cuenta. Tú verás."
                 }
               },
               {
                 "id": "pensar",
                 "text": "Llevarte el collar y pensarlo.",
                 "reply": {
-                  "text": "Te lo llevas. La decisión puede esperar un poco."
+                  "who": "{cautivo}",
+                  "mood": "neutral",
+                  "text": "La decisión puede esperar un poco."
                 }
               }
             ]
@@ -1026,12 +1342,24 @@
       "bando_a": {
         "title": "El collar, para {bandoA}",
         "hint": "Habla con {contactoA} en {sitioA} y enséñale el collar: después, a por {villano}.",
-        "scene": "{contactoA} pasa los dedos por el sello. «Lo pagarán. Pero primero hay que acabar con {villano}, antes de que mate a alguien más.»"
+        "beats": [
+          {
+            "who": "{contactoA}",
+            "mood": "enfadado",
+            "text": "Lo pagarán. Pero primero hay que acabar con {villano}, antes de que mate a alguien más."
+          }
+        ]
       },
       "bando_b": {
         "title": "El collar, vendido",
         "hint": "Habla con {contactoB} en {sitioB}: te paga por acabar con {villano} y devolver el collar.",
-        "scene": "{contactoB} cuenta las monedas despacio. «Devuélveme el collar y acaba con {villano}. Nadie tiene que saber de dónde salió.»"
+        "beats": [
+          {
+            "who": "{contactoB}",
+            "mood": "neutral",
+            "text": "Devuélveme el collar y acaba con {villano}. Nadie tiene que saber de dónde salió."
+          }
+        ]
       }
     },
     {
@@ -1042,7 +1370,13 @@
       "weight": 10,
       "title": "{villano}, en {refugio}",
       "hint": "Ve a {refugio} y acaba con {villano}. La gente de {contactoA} vigila los caminos.",
-      "scene": "{contactoA} cumple su palabra: su gente vigila los caminos. A {villano} solo le queda un sitio donde esconderse: {refugio}."
+      "beats": [
+        {
+          "who": "{contactoA}",
+          "mood": "neutral",
+          "text": "Mi gente vigila los caminos. A {villano} solo le queda un sitio donde esconderse: {refugio}."
+        }
+      ]
     },
     {
       "id": "desenlace-a-2",
@@ -1052,7 +1386,13 @@
       "weight": 10,
       "title": "La caza de {villano}",
       "hint": "Ve a {refugio}: allí espera {villano}, y no tiene adónde huir.",
-      "scene": "Con lo que sabe {contactoA}, la red se cierra. {villano} ha huido a {refugio}, y esta vez no hay nadie que le esconda."
+      "beats": [
+        {
+          "who": "{contactoA}",
+          "mood": "enfadado",
+          "text": "Con lo que me has traído, la red se cierra. {villano} ha huido a {refugio}, y esta vez nadie le esconderá."
+        }
+      ]
     },
     {
       "id": "desenlace-b-1",
@@ -1062,7 +1402,13 @@
       "weight": 10,
       "title": "El encargo de {contactoB}",
       "hint": "Ve a {refugio} y acaba con {villano}, como pide {contactoB}.",
-      "scene": "{contactoB} te ha dicho dónde pasará la noche {villano}: en {refugio}. Lo que pase allí no lo sabrá nadie."
+      "beats": [
+        {
+          "who": "{contactoB}",
+          "mood": "neutral",
+          "text": "Esta noche {villano} duerme en {refugio}. Lo que pase allí no lo sabrá nadie."
+        }
+      ]
     },
     {
       "id": "desenlace-b-2",
@@ -1072,7 +1418,13 @@
       "weight": 10,
       "title": "Sin testigos, en {refugio}",
       "hint": "Ve a {refugio}: {villano} te espera allí, y {contactoB} quiere que no salga.",
-      "scene": "El oro ya está en tu bolsa. Solo falta lo que has prometido: {villano}, en {refugio}, sin testigos."
+      "beats": [
+        {
+          "who": "{contactoB}",
+          "mood": "alegre",
+          "text": "Aquí tienes tu oro. Solo falta lo que me has prometido: {villano}, en {refugio}, sin testigos."
+        }
+      ]
     },
     {
       "id": "final-a-1",
@@ -1109,7 +1461,7 @@
       "lado": "a",
       "weight": 10,
       "title": "Las cuentas claras",
-      "scene": "Con {villano} vencido y las pruebas en manos de {contactoA}, los que miraban hacia otro lado tienen que dar la cara. En {inicio} vuelven a abrir las puertas al caer la noche.",
+      "scene": "{villano} ya no es una amenaza. Con las pruebas en manos de {contactoA}, los que miraban hacia otro lado tienen que dar la cara. En {inicio} vuelven a abrir las puertas al caer la noche.",
       "epilogos": [
         {
           "who": "{bandoA}",
@@ -1208,7 +1560,19 @@
         "tono": "sombra",
         "titulo": "quienes llegaron tarde a {inicio}",
         "saludo": "De {inicio} llegan malas noticias. Ya sabéis por qué."
-      }
+      },
+      "beats": [
+        {
+          "who": "{testigo}",
+          "mood": "triste",
+          "text": "Llegas tarde. Mientras buscabas, nadie paró los planes de {bandoB}, y {villano} se ha esfumado con lo suyo."
+        },
+        {
+          "who": "{testigo}",
+          "mood": "triste",
+          "text": "En {inicio} cerramos las puertas al caer la noche, y ya no esperamos que venga nadie a ayudar."
+        }
+      ]
     },
     {
       "id": "final-tarde-2",
@@ -1232,7 +1596,19 @@
         "tono": "sombra",
         "titulo": "quienes llegaron tarde a {inicio}",
         "saludo": "En {inicio} no os esperan con los brazos abiertos."
-      }
+      },
+      "beats": [
+        {
+          "who": "{testigo}",
+          "mood": "triste",
+          "text": "Ya es tarde: nadie paró a tiempo los planes de {bandoB}. De {villano} solo quedan rumores."
+        },
+        {
+          "who": "{testigo}",
+          "mood": "neutral",
+          "text": "Aquí aprenderemos a vivir con miedo. Es lo que mejor sabemos hacer."
+        }
+      ]
     },
     {
       "id": "presagio-pistas-1",
@@ -1342,7 +1718,8 @@
       "kind": "asoma",
       "acto": 2,
       "weight": 10,
-      "text": "Al salir de {guarida}, ves a alguien en lo alto de una loma, quieto, mirándote. Cuando vuelves a mirar, ya no está. Es {villano}, y ahora sabe tu cara."
+      "text": "«Te he visto salir de {guarida}. Ahora ya sé cómo es tu cara.»",
+      "villano": "persona"
     },
     {
       "id": "asoma-2-marca",
@@ -1350,7 +1727,8 @@
       "kind": "asoma",
       "acto": 2,
       "weight": 10,
-      "text": "Esta mañana hay una marca en tu puerta, hecha con barro y con prisa. Es la señal de {villano}: sabe que le buscas."
+      "text": "«¿Has visto la marca en tu puerta? Es mía. Sé que me buscas.»",
+      "villano": "persona"
     },
     {
       "id": "asoma-3-aviso",
@@ -1358,7 +1736,8 @@
       "kind": "asoma",
       "acto": 3,
       "weight": 10,
-      "text": "Un crío te trae un trapo atado con un cordel. Dentro hay un mechón de pelo y tres palabras: «Vete de aquí». Lo manda {villano}."
+      "text": "«Vete de aquí. Es el único aviso que te voy a dar.»",
+      "villano": "persona"
     },
     {
       "id": "asoma-3-sombra",
@@ -1366,7 +1745,26 @@
       "kind": "asoma",
       "acto": 3,
       "weight": 10,
-      "text": "De camino, algo te sigue entre los árboles, sin acercarse. Cuando te paras, se para. {villano} te espera en {refugio}, y quiere que lo sepas."
+      "text": "«Te espero en {refugio}. Ven, si te atreves.»",
+      "villano": "persona"
+    },
+    {
+      "id": "asoma-2-aullido",
+      "name": "Se la oye de noche",
+      "kind": "asoma",
+      "acto": 2,
+      "villano": "bestia",
+      "weight": 10,
+      "text": "Esta noche se oye a {villano} cerca de {inicio}. Sabe que habéis entrado en su cubil."
+    },
+    {
+      "id": "asoma-3-huellas",
+      "name": "Huellas frescas",
+      "kind": "asoma",
+      "acto": 3,
+      "villano": "bestia",
+      "weight": 10,
+      "text": "En el camino hay huellas frescas de {villano}, y van hacia {refugio}."
     },
     {
       "id": "rumor-forastero",
@@ -1491,6 +1889,34 @@
       "quiere": "Que no se hagan preguntas. Paga bien a quien no las hace.",
       "sabe": "Cuánto vale cada secreto de la comarca.",
       "voz": "Suave y amable. Nunca dice que no a la primera."
+    },
+    {
+      "id": "oficio-cautivo",
+      "name": "Oficios de quien estaba en la guarida",
+      "kind": "oficio",
+      "papel": "cautivo",
+      "weight": 10,
+      "formas": [
+        [
+          "Arriero",
+          "Arriera"
+        ],
+        [
+          "Cazador",
+          "Cazadora"
+        ],
+        [
+          "Buhonero",
+          "Buhonera"
+        ],
+        [
+          "Carbonero",
+          "Carbonera"
+        ]
+      ],
+      "quiere": "Volver a casa y no pensar más en {guarida}.",
+      "sabe": "Lo que vio y oyó en {guarida} mientras estuvo allí.",
+      "voz": "Ronca, de no hablar en días. Da las gracias demasiadas veces."
     },
     {
       "id": "oficio-posada",

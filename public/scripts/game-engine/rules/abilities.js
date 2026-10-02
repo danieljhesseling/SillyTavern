@@ -266,7 +266,7 @@ export function canUseAbility({
     }
 
     if (ability.target !== 'self' && distanceFeet > ability.rangeFeet) {
-        return { ok: false, reason: `Fuera de alcance: ${distanceFeet} ft de ${ability.rangeFeet} ft.` };
+        return { ok: false, reason: `Fuera de alcance: ${distanceFeet} pies de ${ability.rangeFeet} pies.` };
     }
 
     return { ok: true, reason: '' };
@@ -420,7 +420,7 @@ export function describeAbility(ability) {
     else if (ability.resource === 'at_will') parts.push('a voluntad');
     else parts.push(`${ability.usesPerRest}x por descanso ${ability.resource === 'short_rest' ? 'corto' : 'largo'}`);
 
-    parts.push(ability.target === 'self' && ability.area?.shape !== 'radius' ? 'sobre ti' : ability.target === 'self' ? 'a tu alrededor' : `${ability.rangeFeet} ft`);
+    parts.push(ability.target === 'self' && ability.area?.shape !== 'radius' ? 'sobre ti' : ability.target === 'self' ? 'a tu alrededor' : `${ability.rangeFeet} pies`);
     // R3: el área y el elemento, que es lo que decide dónde colocarse.
     const area = describeArea(ability.area);
     if (area) parts.push(area);

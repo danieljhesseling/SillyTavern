@@ -87,7 +87,7 @@ import { dismissGuests } from './contracts.js';
 import {
     actsOnItsOwn, getAliveEnemies, getAttackableEnemiesForMember, getCurrentTurnEntry, getEnemyByInstanceId,
     getLivingPartyMembers, getPartyMemberByTurnEntry, getRemainingMovementFeet, partyCell, resetCombatTurnState,
-    saveCombatState, speedOf,
+    saveCombatState,
 } from './combat-state.js';
 import {
     turnStartMagic, turnEndMagic, roundMagic, endOfFightMagic, livingSummons, canChooseControl, controlOf, setControl,
@@ -95,6 +95,7 @@ import {
 } from './spell-turn.js';
 import { showCombatDiceRoll } from './combat-log.js';
 import { resolveEnemyAttackOn, resolveEnemyTurnAction } from './enemy-turn.js';
+import { allyBeforeTurn2024, allyInstead2024, allyAfterAttack2024 } from './ally-turn-2024.js';
 import {
     handlePlayerCombatMove, performManeuver, handlePlayerCombatAttack, endPlayerCombatTurn,
 } from './player-actions.js';
@@ -823,6 +824,9 @@ export function resolveAllyTurnAction(entry) {
     const leader = yours && String(yours.id) !== String(member.id) && (Number(yours.hp) || 0) > 0
         ? cellOf(yours) : null;
 
+    // Tanda 12: malherido y con una poción, se la bebe antes de decidir (acción adicional).
+    allyBeforeTurn2024(member);
+
     const plan = planAllyTurn({
         actor: {
             id: String(member.id),
@@ -830,8 +834,9 @@ export function resolveAllyTurnAction(entry) {
             ...cellOf(member),
             currentHp: Number(member.hp) || 0,
             maxHp: Number(member.maxHp) || 1,
-            // J19: con lo que le han echado encima (Acelerado, Ralentizado…).
-            speedFeet: speedOf(member),
+            // J19: con lo que le han echado encima (Acelerado, Ralentizado…). Tanda 12: lo que le
+            // queda, que levantarse del suelo ya le ha costado la mitad; con todo, el paso no le llegaba.
+            speedFeet: getRemainingMovementFeet(member),
             // Su arma de verdad: un arquero que se queda atras tiene que poder disparar.
             attackRangeFeet: getAttackRangeFeet(member),
         },
@@ -871,10 +876,16 @@ export function resolveAllyTurnAction(entry) {
 
     if (plan.action === 'dodge') performManeuver('esquivar');
 
+    // Tanda 12: lo de 2024 que le sale mejor que el golpe (dar una poción, empujar al vacío,
+    // ayudar, ocultarse), con las funciones de la barra (`ally-turn-2024.js`).
+    if (allyInstead2024(member, plan)) return lines.join('\n');
+
     // Lo que no pega (un familiar), no pega: se queda al lado de quien lo llamó.
     if (plan.action === 'attack' && plan.targetId != null && !(member.summon && member.attacks === false)) {
         const target = living.find((/** @type {any} */ e) => String(e.instanceId) === String(plan.targetId));
         if (target) handlePlayerCombatAttack(String(target.name));
+        // Tanda 12: con un arma ligera en cada mano, también la otra.
+        if (target) allyAfterAttack2024(member, target);
     }
 
     return lines.join('\n');
@@ -1122,7 +1133,7 @@ function levelPlacements(placements, level, templates) {
         postCombatNarration(`⚖️ [COMBAT] ${note}`);
         toastr.info(note, 'El nivel de la campaña', { timeOut: 9000 });
     }
-    // J12.6: y por cuántos sois: el tablero está escrito para tres. Lo de más o de menos se
+    // J12.6: y por cuántos sois: el tablero está escrito para cuatro, como en D&D (D-J56). Lo de más o de menos se
     // dice una vez, con lo que queda al final (`adjustmentNotes`).
     const sized = adjustForSize({
         placements: result.placements, partySize: level.size, partyLevel: level.level, bestiary: templates,
