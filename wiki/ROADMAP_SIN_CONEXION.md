@@ -44,68 +44,45 @@ author: DanielJHesseling / Claude Opus 5.5
 ## 📍 Cómo va (2026-10-02)
 
 **Avance, sobre 148 filas activas** (sin lo aparcado ni las decisiones; J10.7 queda aparcada por D-J55):
-- **90 % jugable** (133 filas).
-- **95 % construido** (140 filas).
+- **91 % jugable** (135 filas).
+- **96 % construido** (142 filas).
 
-Todo lo contado está en commits (el último, 4f973fa88).
+Todo lo contado está en commits (el último, 62b4e7ec4).
 
 | Hito | Jugable | Construido |
 | :--- | :---: | :---: |
 | M1 · Entrar y crear el personaje | 96 % | 100 % |
 | M2 · El gremio y la primera campaña | 100 % | 100 % |
 | M3 · El pueblo y su gente | 100 % | 100 % |
-| M4 · Strahd con mapas y magia | 96 % | 100 % |
+| M4 · Strahd con mapas y magia | 100 % | 100 % |
 | M5 · Una campaña bien contada | 90 % | 100 % |
 | M6 · Los compañeros a fondo | 80 % | 100 % |
 | M7 · En el móvil | 78 % | 100 % |
 
-**Lo último que ha entrado (commit 4f973fa88, 2026-10-02):**
-- **La partida es el gremio (J4.2):** un mismo gremio en todas las campañas.
-- **Trabajos y ratos libres (J14.11).**
-- **Las campañas del Gem** (J5.2, J5.3, J5.5, J5.6, J12.5).
-- **Solo sabes el nombre de quien se ha presentado (J13.7):** el narrador va sin placa y el oficio sale con su género.
-- **Textos y reacciones más humanos (J13.8).**
-- **Contenido:**
-  - salidas habladas en el gremio, 1387 y Strahd;
-  - cosas que mirar en Puerto Alba y en el gremio;
-  - trampas en las mazmorras.
-- **El calabozo (D-J47)**, con su escena en conversación (D-J54); «Continuar» vuelve al sitio si el tablero está vacío.
-- **La pelea empieza sola (J12.16):** primero la decisión, luego colocar a los tuyos y después la iniciativa.
-- **Moverse bien (J12.17):**
-  - el mar no se cruza;
-  - caminos rectos;
-  - diagonales 5/10/5, con el interruptor `DIAGONAL_RULE` en `board/pathfinding.js`.
-- **«Saltar la prueba»** ya no sale en el tablero del muelle: se salta saliendo del tablero a Puerto Alba.
+**Lo último que ha entrado (commit 62b4e7ec4, 2026-10-02):**
+- **La barra de acciones de D&D 2024 (J12.15):**
+  - Acción, Adicional y Reacción a la vista, y «Cuerpo a tierra»;
+  - menús en tarjetas: maestrías de armas, el golpe sin armas, agarrar y empujar con su CD, cambiar de arma, las acciones de 2024 y la poción como acción adicional;
+  - lanzar a más nivel (J19.3): en la tarjeta del conjuro eliges el nivel del espacio que gastas.
+- **El arte del tablero:** agua honda y somera, el muelle, la playa, muros, puertas, fuego, trampas, marcos de ficha, casillas de salida y los enemigos que salían con calavera.
+- **Strahd se juega de punta a punta sin conexión (M4).**
 
-**En marcha ahora (2026-10-02):**
-- **El tablero nuevo, en modo cerrar:**
-  - el lienzo y la cámara (J12.14), que ya está activo en el juego a medias: urge acabarlo;
-  - la barra de acciones de 2024 (J12.15), con lanzar a más nivel (J19.3) si el motor lo permite.
-  - Mientras tanto, la prueba del móvil falla por un mapa duplicado; lo arregla el lienzo.
-  - Tres agentes más en el tablero (lo pediste: «dale caña al tablero»):
-    - los enemigos y los compañeros que lleva el juego usan las acciones de 2024: agarrar, empujar, esquivar, ocultarse, maestrías y lanzar a más nivel;
-    - un revisor que comprueba cada criterio de tu encargo a tres tamaños;
-    - el arte del tablero: agua honda y somera, el muelle, muros, puertas, trampas y los enemigos sin dibujo.
-- **Strahd de punta a punta (M4):** 27 de 33 pasos.
-- **Historias en tres actos (J10.7):** se termina y se guarda para el modo mundo semiabierto (D-J55).
-
-**Cómo se quedó (2026-10-02, 11:55, al acabarse el límite de uso).** Todo el código nuevo está en el árbol, sin commit (el último commit de código es 4f973fa88). Cada frente apunta su avance en su `progreso.md`, en su carpeta de trabajo. Al volver se retoman estos cinco y luego se guarda todo en un commit.
-- **Terminados, por guardar:**
-  - la barra de acciones de 2024, con lanzar a más nivel (J12.15, J19.3);
-  - el arte del tablero (faltan puentes y acantilados);
-  - Strahd de punta a punta.
-- **Trabajando al cortarse:**
-  - **La IA con las reglas de 2024** (3 de 7 pasos). Arreglaba primero un error que dejó a medias en `party/enemy-turn.js` («ai2024 is not defined»): los enemigos se paraban en la pelea del muelle. **Hasta que se cierre, el combate puede quedarse colgado.**
-  - **El lienzo (J12.14)**, con los fallos del revisor:
-    - la distancia en el aviso del borde;
-    - poco tablero con el móvil de pie;
-    - el precio del camino bajo las fichas;
-    - un tablero pequeño pegado arriba;
-    - la cabecera con el móvil tumbado.
-  - **El revisor de los criterios del tablero:** 126 bien y 5 mal en su última vuelta; la lista está en `vtt-criterios.md`.
-  - **D-J56:** grupo de referencia de 4 y la cripta de Strahd para nivel 6-7, comprobado con la simulación.
-  - **Historias en tres actos (J10.7):** solo le faltan sus pruebas; se guarda para el modo mundo semiabierto.
-- **Lo que se paró a las 11:38:** una interrupción a mitad de turno cortó también a los agentes de fondo. Se relanzaron a las 11:45.
+**En marcha ahora (2026-10-02, tarde): cinco agentes, en modo cerrar.**
+- **El lienzo y la cámara (J12.14)**, con los fallos que apuntó el revisor:
+  - la distancia en el aviso del borde;
+  - más tablero con el móvil de pie;
+  - el precio del camino por encima de las fichas;
+  - los tableros pequeños centrados;
+  - la cabecera con el móvil tumbado.
+- **La IA con las reglas de 2024:** enemigos y compañeros agarran, empujan, esquivan, se ocultan y usan las maestrías. Ya está arreglado el turno enemigo que se quedaba parado; faltan las simulaciones.
+- **D-J56:**
+  - el grupo de referencia de 4;
+  - la cripta de Strahd para nivel 6-7: el renombre por terminar Strahd pasa de 6 a 7;
+  - comprobarlo con la simulación;
+  - quitar «La casa» del tablón de Barovia;
+  - lo que se puede mirar en la sala del gremio, también en la fila de abajo.
+- **El revisor de los criterios del tablero.**
+- **Historias en tres actos (J10.7):** sus últimas pruebas, y se guarda para el modo mundo semiabierto.
 
 **En pausa, con su avance guardado en su `progreso.md`**, para retomarlos en grupos pequeños:
 La prioridad es que el prólogo, el gremio, 1387 y Strahd se jueguen enteros y bien (D-J55):
@@ -118,7 +95,6 @@ La prioridad es que el prólogo, el gremio, 1387 y Strahd se jueguen enteros y b
 5. **El arte que falta** en las dos campañas.
 6. **Más adelante:**
    - el móvil ligero y su guía (J20.6, J20.8), que esperan al tablero nuevo;
-   - lanzar a más nivel (J19.3), si la barra nueva no lo trae;
    - el APK.
 
 **Para el modo mundo semiabierto, más adelante (D-J55):** [[ROADMAP_AUTOMATIZAR]] reúne lo que el juego podría hacer solo, sin IA:
