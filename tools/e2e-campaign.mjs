@@ -152,7 +152,7 @@ let browser = null;
 function startServer() {
     // Assigned before the promise: if start-up times out, the finally block still has
     // something to kill. Not doing this left a server holding the port and the pipe.
-    server = spawn(process.execPath, ['server.js', '--port', String(PORT), '--dataRoot', dataRoot], {
+    server = spawn(process.execPath, ['server.js', '--browserLaunchEnabled', 'false', '--port', String(PORT), '--dataRoot', dataRoot], {
         cwd: ROOT,
         stdio: ['ignore', 'pipe', 'pipe'],
     });
