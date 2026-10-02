@@ -133,7 +133,13 @@ Todo lo contado está en commits (el último, a9c72fe9f).
    - el informe de densidad en verde y su vuelta con el bot.
 
    El arte se prepara, pero **no se genera sin créditos de PixelLab**: todo queda en `wiki/PIXELLAB_PENDIENTE.md` (retratos con sus tres caras, fondos, enemigos, objetos e iconos, con su descripción y la carpeta de destino). Cuando haya créditos, avisas en el chat y se generan de una vez. Hoy quedan 116 generaciones de la suscripción, por debajo del margen de 120, y se recargan el 2026-10-04.
-2. **Un roadmap para que el juego sea más entretenido.** Saldrá de jugarlo y de tus pruebas (J16.5): qué aburre, qué confunde, qué engancha.
+2. **Que el juego entretenga más: [[ROADMAP_ENTRETENIDO]]**, ya escrito con las ideas del 2026-10-02:
+   - otras victorias además de «matar a todos», empujar donde duele, superficies que reaccionan y puzles;
+   - la luz y el riesgo de acampar en la mazmorra;
+   - combos del grupo, compañeros con roce y un gremio que da ventajas;
+   - el viaje con decisiones y menos clics aburridos.
+
+   El orden final lo deciden tus partidas (J16.5). Algunas ideas, como otras victorias y empujar donde duele, se meten ya al escribir las tres campañas.
 3. **La ampliación definitiva de Strahd:**
    - el Castillo Ravenloft con todas sus salas, hechas con mapas en imagen;
    - el Templo de Ámbar, el paso de Tsolenka y la Casa de la Muerte;
