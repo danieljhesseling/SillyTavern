@@ -82,6 +82,10 @@ Todo lo contado está en commits (el último, 4f973fa88).
   - el lienzo y la cámara (J12.14), que ya está activo en el juego a medias: urge acabarlo;
   - la barra de acciones de 2024 (J12.15), con lanzar a más nivel (J19.3) si el motor lo permite.
   - Mientras tanto, la prueba del móvil falla por un mapa duplicado; lo arregla el lienzo.
+  - Tres agentes más en el tablero (lo pediste: «dale caña al tablero»):
+    - los enemigos y los compañeros que lleva el juego usan las acciones de 2024: agarrar, empujar, esquivar, ocultarse, maestrías y lanzar a más nivel;
+    - un revisor que comprueba cada criterio de tu encargo a tres tamaños;
+    - el arte del tablero: agua honda y somera, el muelle, muros, puertas, trampas y los enemigos sin dibujo.
 - **Strahd de punta a punta (M4):** 27 de 33 pasos.
 - **Historias en tres actos (J10.7):** se termina y se guarda para el modo mundo semiabierto (D-J55).
 
