@@ -123,13 +123,20 @@ Todo lo contado está en commits (el último, a9c72fe9f).
 | Los sitios donde 1387 se calla o se atasca (38 apuntados por el bot) | 1387 de punta a punta |
 
 **Después de este roadmap, en este orden** (lo dijiste el 2026-10-02):
-1. **Un roadmap para que el juego sea más entretenido.** Saldrá de jugarlo y de tus pruebas (J16.5): qué aburre, qué confunde, qué engancha.
-2. **La ampliación definitiva de Strahd:**
+1. **Escribir bien las tres campañas experimentales**, con la calidad de 1387 y Strahd: *El mundo tras la pantalla* (isekai), *Las tierras del ocaso* (fantasía épica) y *La costa que no duerme* (terror). Cada una tendrá:
+   - su hilo con escenas en conversación (D-J60) y su gente con voz y aspecto;
+   - diálogos, salidas habladas y cosas que mirar;
+   - encargos, compañeros con misión y romance, finales con epílogos y tableros;
+   - el informe de densidad en verde y su vuelta con el bot.
+
+   El arte se prepara, pero **no se genera sin créditos de PixelLab**: todo queda en `wiki/PIXELLAB_PENDIENTE.md` (retratos con sus tres caras, fondos, enemigos, objetos e iconos, con su descripción y la carpeta de destino). Cuando haya créditos, avisas en el chat y se generan de una vez. Hoy quedan 116 generaciones de la suscripción, por debajo del margen de 120, y se recargan el 2026-10-04.
+2. **Un roadmap para que el juego sea más entretenido.** Saldrá de jugarlo y de tus pruebas (J16.5): qué aburre, qué confunde, qué engancha.
+3. **La ampliación definitiva de Strahd:**
    - el Castillo Ravenloft con todas sus salas, hechas con mapas en imagen;
    - el Templo de Ámbar, el paso de Tsolenka y la Casa de la Muerte;
-   - la lectura de las cartas de Tarokka, que cambia en cada partida dónde están los objetos y quién es tu aliado;
+   - la lectura de las cartas de Tarokka;
    - más encuentros y misiones.
-3. **El modo mundo semiabierto.**
+4. **El modo mundo semiabierto.**
 
 **Para el modo mundo semiabierto, más adelante (D-J55):** [[ROADMAP_AUTOMATIZAR]] reúne lo que el juego podría hacer solo, sin IA:
 - la gente habla sola con conversaciones de novela visual;
