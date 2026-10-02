@@ -48,6 +48,7 @@ import {
 } from '../game-engine/rules/weapon-mastery.js';
 import { saveLine } from '../game-engine/rules/unarmed.js';
 import { crawlCost } from '../game-engine/rules/actions-2024.js';
+import { conditionSaid } from '../game-engine/rules/abilities.js';
 import { combatEncounter, currentBoardName, currentLocationName, partyMembers, usedReactions } from './state.js';
 import { applyTimedCondition } from './magic.js';
 import {
@@ -98,7 +99,7 @@ function shovedInto(enemy, cell) {
             if (enemy.currentHp === 0) lines.push(`☠️ ${enemy.name} no se levanta.`);
         } else if (hazard.effect === 'condition' && hazard.condition) {
             applyTimedCondition(enemy, String(enemy.instanceId), hazard.condition, 2);
-            lines.push(`🪤 ${hazard.name}: ${enemy.name} queda ${String(hazard.condition).toLowerCase()}.`);
+            lines.push(`🪤 ${hazard.name}: ${enemy.name} queda ${conditionSaid(hazard.condition, enemy)}.`);
         } else {
             lines.push(`🪤 ${describeHazard(hazard)}.`);
         }

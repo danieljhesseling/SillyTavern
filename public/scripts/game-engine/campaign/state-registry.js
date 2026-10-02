@@ -81,6 +81,7 @@ export const STATE_KEYS = [
     { key: 'mapNotes', kind: 'juego', owner: 'party.js', what: 'Tus notas en el mapa' },
     { key: 'prisoners', kind: 'juego', owner: 'party.js', what: 'Los prisioneros' },
     { key: 'boardsWon', kind: 'juego', owner: 'party.js', what: 'Los tableros cuya pelea escrita ya se ganó: sus enemigos no vuelven' },
+    { key: 'objectiveLeft', kind: 'juego', owner: 'party.js', what: 'La misión de un tablero que quedó a medias al acabar su pelea: se cumple andando (tanda 16)' },
     { key: 'graves', kind: 'juego', owner: 'party.js', what: 'Las tumbas de los caídos' },
     { key: 'relicsGiven', kind: 'juego', owner: 'party.js', what: 'Las reliquias ya entregadas' },
     // --- El dinero y el gremio

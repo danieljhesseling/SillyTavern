@@ -8,13 +8,17 @@
  * flecha, qué hace Intro en una casilla y lo que se dice de ella.
  *
  * Lo que toca la página (el foco que vuelve, Tab en círculo, Esc) lo prueba
- * `tools/e2e-teclado.mjs`, jugando de la portada a una pelea con el teclado solo.
+ * `tools/e2e-teclado.mjs`, jugando de la portada a una pelea con el teclado solo. Aquí, con una
+ * página de mentira, solo a dónde va el foco cuando se pierde o vuelve (`rescueFocus`, `returnFocus`).
  */
 
-import { describe, test, expect } from '@jest/globals';
+/* global globalThis */
+
+import { describe, test, expect, afterAll } from '@jest/globals';
 import { readFileSync } from 'node:fs';
 import {
-    ARROW_KEYS, ICON_NAMES, blend, contrastRatio, focusKeyFrom, iconButtonLabel, parseColor, pickNeighbour,
+    ARROW_KEYS, ICON_NAMES, PRIMARY_TARGETS, blend, contrastRatio, focusKeyFrom, iconButtonLabel, parseColor, pickNeighbour,
+    rescueFocus, returnFocus,
 } from '../public/scripts/game-engine/ui/keyboard-nav.js';
 import {
     BOARD_HINT, BOARD_KEYS, cellAction, cursorLine, nextToken, stepCell, tokenAt, tokenLine,
@@ -213,5 +217,99 @@ describe('la hoja del teclado', () => {
     test('el foco del teclado se ve, solo con el juego abierto y no con el ratón', () => {
         expect(css).toMatch(/body\.game-shell-on [^{]*:focus-visible\s*\{[^}]*outline: 3px solid/);
         expect(css).toContain('.gs-board-cursor');
+    });
+});
+
+/**
+ * Una página de mentira, lo justo para `returnFocus` y `rescueFocus`: cada botón dice a qué
+ * selectores (escritos tal cual) responde, y la página devuelve los que respondan.
+ */
+function fakePage() {
+    class FakeElement {
+        /** @param {string} name @param {string[]} selectors */
+        constructor(name, selectors) {
+            this.name = name;
+            this.selectors = new Set(selectors);
+            this.isConnected = true;
+            this.tabIndex = 0;
+            this.ownerDocument = doc;
+            this.dataset = {};
+        }
+        matches(/** @type {string} */ selector) { return this.selectors.has(selector); }
+        closest() { return null; }
+        getBoundingClientRect() { return { width: 40, height: 20 }; }
+        focus() { doc.activeElement = this; }
+        scrollIntoView() {}
+    }
+    const body = { name: 'body' };
+    /** @type {any} */
+    const doc = {
+        body,
+        documentElement: { name: 'html' },
+        activeElement: body,
+        /** @type {FakeElement[]} */
+        all: [],
+        querySelectorAll(/** @type {string} */ selector) { return this.all.filter((/** @type {FakeElement} */ node) => node.isConnected && node.selectors.has(selector)); },
+        querySelector(/** @type {string} */ selector) { return this.querySelectorAll(selector)[0] ?? null; },
+    };
+    const add = (/** @type {string} */ name, /** @type {string[]} */ selectors) => {
+        const node = new FakeElement(name, selectors);
+        doc.all.push(node);
+        return node;
+    };
+    globalThis.HTMLElement = /** @type {any} */ (FakeElement);
+    globalThis.getComputedStyle = /** @type {any} */ (() => ({ visibility: 'visible', display: 'block' }));
+    return { doc, add };
+}
+
+describe('el foco que vuelve (con una página de mentira)', () => {
+    const BOARD = '.gs-root[data-scene="combat"] .gs-scene-map .wm-container.gs-board-keys';
+    const saved = { element: globalThis.HTMLElement, style: globalThis.getComputedStyle };
+    afterAll(() => {
+        globalThis.HTMLElement = saved.element;
+        globalThis.getComputedStyle = saved.style;
+    });
+
+    test('al cerrarse los dados, el foco vuelve a lo que los abrió', () => {
+        const { doc, add } = fakePage();
+        const attack = add('Atacar', ['.gs-root .gs-actions .gs-btn-attack', '.gs-root button']);
+        add('tablero', [BOARD]);
+        returnFocus(/** @type {any} */ (attack), doc);
+        expect(doc.activeElement.name).toBe('Atacar');
+    });
+
+    test('pero no a «Fin de turno»: ese turno ya pasó, y el foco va al tablero', () => {
+        const { doc, add } = fakePage();
+        const end = add('Fin de turno', ['.gs-btn-end', '.gs-root .gs-actions button', '.gs-root button']);
+        add('tablero', [BOARD]);
+        returnFocus(/** @type {any} */ (end), doc);
+        expect(doc.activeElement.name).toBe('tablero');
+    });
+
+    test('si el foco ya está en algo, no se le quita', () => {
+        const { doc, add } = fakePage();
+        const end = add('Fin de turno', ['.gs-btn-end']);
+        const other = add('Grupo', ['.gs-root button']);
+        doc.activeElement = other;
+        returnFocus(/** @type {any} */ (end), doc);
+        expect(doc.activeElement.name).toBe('Grupo');
+    });
+
+    test('colocando al grupo antes de la pelea, lo principal es «Empezar» (antes que el tablero o «Continuar»)', () => {
+        const { doc, add } = fakePage();
+        add('Continuar', ['.gs-root .gs-vn-box .gs-chip-continue', '.gs-root button']);
+        add('tablero', [BOARD]);
+        add('Empezar', ['.cv-place .cv-place-start']);
+        expect(rescueFocus(doc)).toBe(true);
+        expect(doc.activeElement.name).toBe('Empezar');
+        expect(PRIMARY_TARGETS.indexOf('.cv-place .cv-place-start')).toBeLessThan(PRIMARY_TARGETS.indexOf(BOARD));
+    });
+
+    test('sin colocar, tras una escena del hilo: «Continuar»', () => {
+        const { doc, add } = fakePage();
+        add('Diario', ['.gs-root button']);
+        add('Continuar', ['.gs-root .gs-vn-box .gs-chip-continue', '.gs-root button']);
+        rescueFocus(doc);
+        expect(doc.activeElement.name).toBe('Continuar');
     });
 });

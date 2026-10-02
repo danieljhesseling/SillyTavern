@@ -1268,7 +1268,7 @@ export function renderLocationView(target, options) {
             const boards = tile(bridge.layers[bridge.layers.length - 1]);
             if (!boards || !inWindow(area, bridge.x, bridge.y)) continue;
             const layers = [...bridge.layers.slice(0, -1).map(id => tile(id)).filter(Boolean), boards];
-            plain += `<div class="wm-terrain-cell wm-terrain-bridge wm-terrain-tiled" style="`
+            plain += '<div class="wm-terrain-cell wm-terrain-bridge wm-terrain-tiled" style="'
                 + `${boxStyle(bridge.x * cellW, bridge.y * cellH, cellW, cellH)};background-image:${layers.map(url => `url('${cssUrl(url)}')`).join(',')}"></div>`;
         }
         // Debajo de lo demás (puertas, trampas, zonas), como cuando se ponían una a una.
@@ -1330,10 +1330,12 @@ export function renderLocationView(target, options) {
                 // El lado alto lleva la luz: se ve hacia dónde se cae.
                 const highFirst = edge.drop > 0;
                 // Tanda 12: en un tablero sin imagen, la cara de roca en la casilla de abajo
-                // (`cliffFace`); sin su dibujo, o sobre un mapa dibujado, la raya de siempre.
+                // (`cliffFace`); sin su dibujo, o sobre un mapa dibujado, la raya de siempre. Si
+                // abajo hay un muro, la roca no se pinta encima: también la raya.
                 const high = highFirst ? `${edge.x},${edge.y}` : right ? `${edge.x + 1},${edge.y}` : `${edge.x},${edge.y + 1}`;
                 const face = cliffFace(edge);
-                const rock = onBridge.has(high) ? '' : tile(face.id);
+                const below = terrain.cells[`${Math.floor(face.x)},${Math.floor(face.y)}`]?.type;
+                const rock = onBridge.has(high) || below === 'wall' ? '' : tile(face.id);
                 const box = rock
                     ? boxStyle(face.x * cellW, face.y * cellH, face.width * cellW, face.height * cellH)
                     : right

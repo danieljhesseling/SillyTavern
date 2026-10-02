@@ -127,6 +127,18 @@ describe('voiceNote: who says each note (D-J54)', () => {
         const watched = say('🏕️ [CAMPAMENTO] Lobo famélico se acerca de noche, pero Gerd lo ve venir (15 contra 12): se va sin nada.', camp);
         expect(watched.text).toMatch(/un lobo famélico/);
         expect(watched.text).not.toMatch(/Gerd|\(/);
+        // A tu héroe se le habla de tú, y sin pronombres que no concuerden («una araña… lo espantó»).
+        const yours = say('🏕️ [CAMPAMENTO] Araña del faro se acerca de noche, pero Irene lo ve venir (15 contra 12): se va sin nada. Irene y Gerd hablan hasta tarde junto al fuego.',
+            { ...camp, hero: { name: 'Irene', gender: 'f' } });
+        expect(yours.text).toMatch(/una araña del faro/);
+        expect(yours.text).not.toMatch(/Irene|\blo (?:espant|vi)/);
+        // Quien entra sin que nadie le vea: dos frases con un paréntesis en medio, dichas enteras.
+        const robbed = say('🏕️ [CAMPAMENTO] Araña del faro entra en el campamento de noche: Irene no lo ve venir (9 contra 12). Se lleva 17 de oro. No sale nada que echar al fuego: se cena frío, y poco.',
+            { ...camp, hero: { name: 'Irene', gender: 'f' } });
+        expect(robbed.before).toBeUndefined();
+        expect(robbed.text).toMatch(/una araña del faro/);
+        expect(robbed.text).toMatch(/17 monedas/);
+        expect(robbed.text).not.toMatch(/\(|contra/);
         // Lo que no sabe decir va antes, como aviso.
         const mixed = say('🏕️ [CAMPAMENTO] La noche pasa sin sobresaltos. Algo raro pasa en el bosque.', camp);
         expect(mixed.before).toBe('Algo raro pasa en el bosque.');

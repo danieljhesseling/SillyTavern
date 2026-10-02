@@ -43,8 +43,8 @@
     border-color: rgba(224, 122, 143, 0.35);
 }
 
+/* Lo último lo dice quien está contigo (D-J54): recto, como todo lo que dice la gente. */
 .qd-root.qd-fade .qd-line.qd-then {
-    font-style: italic;
     color: #d9c9c0;
 }
 

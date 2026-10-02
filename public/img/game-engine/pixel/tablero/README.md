@@ -32,6 +32,14 @@ Hay dos clases de casilla:
 | `exit` | `x` | `salida.png` | encima |
 | `lever` | `P` | `palanca.png` | encima |
 | `barricade` | `=` | `barricada.png` | encima |
+| puente (suelo que cruza agua, abismo o un barranco) | `.` | `puente-ns.png` o `puente-eo.png`, y `puente-baranda-*.png` en los bordes | llena + encima |
+| acantilado de las cotas (`elevation`, J12.10) | — | `acantilado-<hacia dónde cae>.png`, en la casilla de abajo | encima |
+
+### Puentes y acantilados (tanda 12)
+
+El motor no tiene un tipo «puente»: un puente es **suelo** (`.`) que cruza agua (`w`, `W`), un abismo (`v`) o un barranco de las cotas (10 pies o más por debajo), de 1 a 3 casillas de ancho, y que llega a tierra por las dos puntas. Se anda como el suelo. `bridgeTiles` en `pixel-art.js` los encuentra y el tablero los pinta por capas: la baranda del lado que da al hueco, encima, y las tablas debajo. Un embarcadero que acaba en el agua o una isla no son puentes. Sobre un mapa dibujado no se pinta nada: el puente ya está en el dibujo.
+
+Un acantilado es el borde entre dos casillas con 10 pies o más de diferencia de cota (`cliffEdges` en `board/heights.js`). Su cara de roca va en la casilla de abajo, pegada al borde, un tercio de casilla de grueso (`cliffFace`). El nombre dice hacia dónde se cae: `acantilado-sur` es lo alto al norte y la caída hacia el sur. En el borde de un puente alto, y sobre un mapa dibujado, se queda la raya de antes.
 
 Las puertas se dibujan de frente, con su marco, para que se lean de un vistazo dentro de una fila de muro.
 
@@ -120,7 +128,13 @@ El terreno difícil y las coberturas cambian fuera de la mazmorra: `<casilla>-<b
 - `cobertura-tres-cuartos-cueva.png` — una estalagmita de roca morada (encima).
 - `cobertura-media-cripta.png` — un sarcófago de piedra oscura con ribetes dorados (encima). Se le borró a mano una inscripción que parecía letras.
 - `casilla-salida.png` — un círculo de runas azules, hueco por dentro (encima): las casillas donde se coloca al grupo antes de la pelea. Dibujado a mano, píxel a píxel.
-- `marco-aliado.png`, `marco-enemigo.png`, `marco-jefe.png`, `marco-invocacion.png`, `marco-gente.png` — los aros de metal de las fichas en la mesa virtual (42×42, para una cara de 32): dorado, rojo, rojo con oro y seis remaches, violeta y gris. Dibujados a mano, píxel a píxel; los pone `combat-vtt.css` (sección 4).
+- `marco-aliado.png`, `marco-enemigo.png`, `marco-jefe.png`, `marco-invocacion.png`, `marco-gente.png` — los aros de metal de las fichas en la mesa virtual (42×42, para una cara de 32): dorado, rojo, rojo con oro y seis remaches, violeta y gris. Dibujados a mano, píxel a píxel; los pone `combat-vtt.css` (sección 5).
+- `puente-ns.png` — tablas de madera cálida atravesadas, con rendijas oscuras (llena): el piso de un puente que se cruza de norte a sur. Son las tablas de `suelo-muelle.png`, giradas y pasadas a madera marrón.
+- `puente-eo.png` — las mismas tablas, giradas: un puente que se cruza de este a oeste.
+- `puente-baranda-oeste.png`, `puente-baranda-este.png` — la baranda de un puente de norte a sur (encima): la viga del borde, una cuerda retorcida y dos postes por casilla, con su sombra sobre las tablas. Dibujadas a mano, píxel a píxel.
+- `puente-baranda-norte.png`, `puente-baranda-sur.png` — la misma baranda, girada, para un puente de este a oeste.
+- `acantilado-sur.png` — la cara de un acantilado (48×16, encima): el borde de arriba con luz, roca marrón grisácea que se oscurece hacia abajo, una línea oscura al pie y la sombra en el suelo. La roca es de PixelLab (pixflux, una generación); el borde y la sombra, a mano.
+- `acantilado-norte.png`, `acantilado-este.png`, `acantilado-oeste.png` — la misma cara, volteada o girada (las dos de lado son de 16×48), con el borde de luz siempre hacia lo alto.
 
 ## Costuras
 

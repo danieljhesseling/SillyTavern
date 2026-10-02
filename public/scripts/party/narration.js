@@ -313,6 +313,18 @@ function tagOf(note) {
 }
 
 /**
+ * D-J54: lo de una nota que no le toca decir a quien habla, antes, como aviso corto: contado
+ * (`noteProse`), sin nombrar a quien no se conoce, y sin entrar dos veces en el Diario.
+ *
+ * @param {string} note La nota entera, por su etiqueta.
+ * @param {string} before
+ */
+function postBefore(note, before) {
+    const said = `${tagOf(note)}${before}`;
+    pushSystemNote(said, { display_text: shownText(sayGendered(noteProse(said, { key: String(chat.length) })), { mask: true }), told: '' });
+}
+
+/**
  * D-J54: una nota del motor dicha por alguien que está allí, o que no sale en la caja. Sigue siendo
  * un mensaje de sistema (no llega al modelo); el que habla le pone su nombre y su cara, y la caja
  * lo pinta con su placa y su retrato (`extra.voiced`). La nota contada se guarda para el Diario.
@@ -327,7 +339,7 @@ function postVoiced(note, told, voice) {
         return;
     }
     // Lo de la nota que no le toca decir a quien habla, antes, como aviso (sin entrar dos veces en el Diario).
-    if (voice.before) pushSystemNote(`${tagOf(note)}${voice.before}`, { display_text: `${tagOf(note)}${sayGendered(voice.before)}`, told: '' });
+    if (voice.before) postBefore(note, voice.before);
     const who = String(voice.who || '');
     const said = sayGendered(voice.text);
     hearLine({ who, text: said });
@@ -690,9 +702,12 @@ export function tellMoment(moment, facts) {
     // D-J54: sin modelo, al llegar el narrador dice solo que se llega. Cómo es el sitio ya está en
     // pantalla, quién anda por allí sale en sus fichas, y lo que conviene saber lo dice uno de los
     // tuyos justo después (`pendingHook`, en `postForModel`).
+    // Y por el camino, solo el camino: lo que pasó cada día sale en sus avisos («Día 1: Un mojón caído»).
     const arriving = moment === 'llegada' && narratorMode() === 'motor';
-    const said = arriving ? { ...facts, descripcion: '', gente: '', gente_n: 0, gancho: '' } : facts;
-    const told = narrateMoment({ rows, moment, facts: { estacion: currentSeason(), solo, ...said, generos: whoPlays(facts) }, random, recent: chat_metadata?.[NARRATOR_RECENT_KEY] });
+    const walking = moment === 'viaje' && narratorMode() === 'motor';
+    const skipped = arriving ? ['llegada-descripcion', 'llegada-gente', 'llegada-gancho'] : walking ? ['viaje-sucesos'] : [];
+    const usable = skipped.length > 0 ? rows.filter((/** @type {any} */ row) => !skipped.includes(String(row?.kind))) : rows;
+    const told = narrateMoment({ rows: usable, moment, facts: { estacion: currentSeason(), solo, ...facts, generos: whoPlays(facts) }, random, recent: chat_metadata?.[NARRATOR_RECENT_KEY] });
     if (chat_metadata && told.used.length > 0) chat_metadata[NARRATOR_RECENT_KEY] = rememberUsed(chat_metadata[NARRATOR_RECENT_KEY], told.used);
     if (arriving) pendingHook = String(facts?.gancho ?? '').trim() && told.text ? { hook: String(facts.gancho), arrival: told.text } : null;
     return told.text;
@@ -807,7 +822,7 @@ export async function postForModel(text, options = {}) {
     // curaros); o no sale en la caja, si es lo mismo otra vez. El modelo sigue leyendo la nota.
     const voice = !speaker && narratorMode() === 'motor' ? voiceOf(seen, told) : null;
     if (voice?.mode === 'line') {
-        if (voice.before) pushSystemNote(`${tagOf(seen)}${voice.before}`, { display_text: `${tagOf(seen)}${sayGendered(voice.before)}`, told: '' });
+        if (voice.before) postBefore(seen, voice.before);
         const who = String(voice.who || '');
         const line = sayGendered(voice.text);
         const member = partyMembers.find(m => String(m?.name) === who);

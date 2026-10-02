@@ -126,3 +126,62 @@ describe('who is asleep behind the door', () => {
         expect(awakePlacements(null, placements)).toHaveLength(3);
     });
 });
+
+// Tanda 16: la tienda de mando de 1387 dibuja sus dos puertas abiertas («o»), y la Capitana
+// Keller y su escolta dormían al otro lado sin que nadie las viera: una puerta abierta no se
+// puede abrir (pulsarla la cierra), así que nunca despertaban.
+describe('an open door hides nothing', () => {
+    const tent = [
+        '#################',
+        '#C..c.......c..C#',
+        '#...............#',
+        '#...c..C.C..c...#',
+        '#...............#',
+        '##o###########o##',
+        '#.~...........~.#',
+        '#.~~.........~~.#',
+        '#...............#',
+        '#################',
+    ];
+    const start = [{ x: 7, y: 8 }, { x: 8, y: 8 }, { x: 9, y: 8 }];
+    const keller = [{ name: 'Capitana Keller', x: 8, y: 2 }, { name: 'Rompehielos de Keller', x: 4, y: 4 }, { name: 'Rompehielos de Keller', x: 12, y: 4 }];
+
+    test('both sides of an open door are one room, seen from the start, and Keller is awake', async () => {
+        const { awakePlacements } = await import('../public/scripts/game-engine/campaign/campaign-map.js');
+        const found = rooms(tent, { revealFrom: start });
+        expect(found).toHaveLength(1);
+        expect(found[0].revealed).toBe(true);
+        // Las puertas siguen siendo puertas de la sala, y su casilla no es suelo de ella.
+        expect(found[0].doors.sort()).toEqual(['14,5', '2,5']);
+        expect(found[0].cells).not.toContain('2,5');
+        expect(awakePlacements(found, keller)).toHaveLength(3);
+    });
+
+    test('the same map with its doors closed still keeps Keller asleep until a door opens', async () => {
+        const { awakePlacements } = await import('../public/scripts/game-engine/campaign/campaign-map.js');
+        const shut = tent.map(row => row.replace(/o/g, 'D'));
+        const found = rooms(shut, { revealFrom: start });
+        expect(found).toHaveLength(2);
+        expect(awakePlacements(found, keller)).toHaveLength(0);
+    });
+
+    test('a board saved before this is put right: a room behind an open door of a revealed one is revealed, in chain', async () => {
+        const { revealThroughOpenDoors } = await import('../public/scripts/game-engine/campaign/campaign-map.js');
+        // Tres salas en fila: A | o | B | o | C, y una D tras una puerta cerrada.
+        const map = ['#############', '#..o..o..D..#', '#############'];
+        const terrain = terrainFromAsciiMap(map);
+        const saved = [
+            { id: 'room_1', name: 'A', cells: ['1,1', '2,1'], doors: ['3,1'], revealed: true },
+            { id: 'room_2', name: 'B', cells: ['4,1', '5,1'], doors: ['3,1', '6,1'], revealed: false },
+            { id: 'room_3', name: 'C', cells: ['7,1', '8,1'], doors: ['6,1', '9,1'], revealed: false },
+            { id: 'room_4', name: 'D', cells: ['10,1', '11,1'], doors: ['9,1'], revealed: false },
+        ];
+        const fixed = revealThroughOpenDoors(saved, terrain);
+        expect(fixed.map((/** @type {any} */ r) => r.revealed)).toEqual([true, true, true, false]);
+        // Lo que guardaba (el nombre de la sala) se queda.
+        expect(fixed[1].name).toBe('B');
+        // Sin nada que cambiar, devuelve las mismas salas (no se guarda otra vez).
+        expect(revealThroughOpenDoors(fixed, terrain)).toBe(fixed);
+        expect(revealThroughOpenDoors(null, terrain)).toBeNull();
+    });
+});

@@ -110,6 +110,8 @@
  * @property {{ok: boolean, reason: string}} swap
  * @property {TargetView[]} enemies Todos los que siguen en pie, con su distancia.
  * @property {TargetView[]} adjacentAllies Los tuyos pegados a ti (para darles una poción).
+ * @property {TargetView[]} [dying] Tanda 16: los tuyos que están en el suelo tirando salvaciones,
+ *   con su distancia (para Estabilizar: solo a quien está pegado).
  * @property {{damage: number, dc: number, freeHand: {ok: boolean, reason: string}, targets: TargetView[]}} unarmed
  * @property {AbilityView[]} abilities Conjuros y técnicas.
  * @property {Array<{level: number, left: number, max: number}>} slots
@@ -694,6 +696,24 @@ export function buildActionsMenu(s, words, numbers) {
         ...card('ayudar'), pick: undefined, enabled: !helpWhy, reason: helpWhy,
         next: { title: 'Ayudar: ¿a quién distraes?', items: (help?.targets || []).map(t => targetItem(byId.get(t.id) ?? { id: t.id, name: t.name, distanceFeet: 5 }, 'act:ayudar')) },
     });
+
+    // Tanda 16: Estabilizar a uno de los tuyos que ha caído (2024: Ayudar a quien está a 0 PG,
+    // Medicina contra 10). Solo sale si hay alguien en el suelo; se hace pegado a él.
+    const fallen = s.dying || [];
+    if (fallen.length > 0) {
+        const near = fallen.filter(t => (Number(t.distanceFeet) || 0) <= 5);
+        const steadyWhy = blocked || (near.length === 0 ? `Tienes que estar pegado a ${fallen.length === 1 ? fallen[0].name : 'quien ha caído'}.` : '');
+        items.push({
+            ...card('estabilizar', { tags: [{ text: 'CD 10 · Medicina', kind: 'dc' }] }), pick: undefined, enabled: !steadyWhy, reason: steadyWhy,
+            next: {
+                title: 'Estabilizar: ¿a quién?',
+                items: fallen.map(t => ({
+                    ...targetItem({ ...t, note: 'en el suelo', enabled: (Number(t.distanceFeet) || 0) <= 5, reason: (Number(t.distanceFeet) || 0) <= 5 ? '' : 'No está pegado a ti.' }, 'act:estabilizar'),
+                    icon: 'fa-kit-medical',
+                })),
+            },
+        });
+    }
 
     const hideWhy = blocked || (s.hide.ok ? '' : s.hide.reason);
     items.push(card('ocultarse', { tags: [{ text: `CD ${numbers.hideDc} · Sigilo`, kind: 'dc' }], badges: [{ text: 'Invisible', kind: 'cost' }, { text: 'Acción', kind: 'cost' }], enabled: !hideWhy, reason: hideWhy }));

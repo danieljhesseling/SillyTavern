@@ -132,6 +132,8 @@ export function observe(page) {
             })),
             boards: [...document.querySelectorAll('#game-shell .gs-board')].filter(seen).map(b => said(b.querySelector('.gs-board-name'))),
             bar: [...document.querySelectorAll('#game-shell .gs-actions .gs-btn')].filter(seen).map(b => ({ text: said(b), off: Boolean(/** @type {HTMLButtonElement} */ (b).disabled) })),
+            // De quién dice la barra que es el turno («Tu turno: Tessa», «Turno de…»).
+            turnLabel: said(document.querySelector('#game-shell .gs-turn-label')).slice(0, 80),
             // El combate nuevo (wiki/maquetas/ENCARGO_COMBATE_VTT.md) empieza solo al entrar en el
             // tablero: primero se colocan los tuyos y luego se confirma. El botón que lo confirma, si
             // se ve (fuera de las ventanas); se busca por lo que dice, que es lo que lee quien juega.
@@ -236,7 +238,7 @@ export function createBot(page, { fast = true, log = console.log, prefer = [] } 
      * Lo que se ve mal sin ser un silencio ni un atasco: una etiqueta del motor en lo que se lee
      * («[HILO] …»), una ventana encima de otra a medias, la escena de un hito ya cumplido.
      *
-     * @type {Array<{kind: 'crudo'|'encima'|'tarde'|'descanso'|'portada'|'anda'|'cierre', n: number, where: string, text: string}>}
+     * @type {Array<{kind: 'crudo'|'encima'|'tarde'|'descanso'|'portada'|'anda'|'cierre'|'turno', n: number, where: string, text: string}>}
      */
     const oddities = [];
     const oddSeen = new Set();
@@ -275,6 +277,13 @@ export function createBot(page, { fast = true, log = console.log, prefer = [] } 
      * el aviso que se vea) y se acaba el turno, en vez de pulsarla sin fin.
      */
     let lastWalk = { turn: '', from: '' };
+    /** Cuántas veces ha salido cada ventana con botones propios (por su título): para no repetir la misma salida. */
+    /** @type {Map<string, number>} */
+    const popupTries = new Map();
+    /** Los turnos («tablero|quién») en los que ya se apuntó que no había «Fin de turno». */
+    const turnSeen = new Set();
+    /** La barra de combate, dicha: cada botón, y si está apagado. */
+    const barSaid = (/** @type {any} */ seen) => (seen.bar ?? []).map((/** @type {any} */ b) => `${b.text}${b.off ? ' (apagado)' : ''}`).join(' | ') || 'ninguna';
     /**
      * Las peleas («tablero|ronda») sin enemigos en pie: desde cuándo se espera a que se cierren, o
      * -1 si ya se midió.
@@ -526,7 +535,13 @@ export function createBot(page, { fast = true, log = console.log, prefer = [] } 
         const custom = top.locator('.popup-button-custom:visible');
         if (await custom.count() > 0) {
             markDecision();
-            return act(v, `«${(await custom.first().textContent() || '').trim().slice(0, 40)}» en «${layer.title || layer.text.slice(0, 40)}»`, () => press(custom), { module: 'popup' });
+            // La misma ventana otra vez (una puerta cerrada tras fallar «Con maña»): quien juega prueba
+            // la otra salida, no la misma tirada sin fin.
+            const key = layer.title || layer.text.slice(0, 60);
+            const tries = popupTries.get(key) ?? 0;
+            popupTries.set(key, tries + 1);
+            const pick = custom.nth(tries % await custom.count());
+            return act(v, `«${(await pick.textContent() || '').trim().slice(0, 40)}» en «${key.slice(0, 40)}»`, () => press(pick), { module: 'popup' });
         }
         const any = top.locator('.popup-button-cancel:visible, .popup-button-close:visible, button:visible');
         if (await any.count() > 0) return act(v, `cerrar «${layer.title || layer.text.slice(0, 40)}»`, () => press(any.last()), { module: 'popup' });
@@ -575,7 +590,11 @@ export function createBot(page, { fast = true, log = console.log, prefer = [] } 
             if (quick && unseen.length > 0) party.refreshBoardView?.();
             return { unseen: unseen.length, live: live.length };
         }, fast).catch(() => ({ unseen: 0, live: 0 }));
-        if (fresh.unseen > 0 && fresh.unseen === fresh.live) counts.fights++;
+        if (fresh.unseen > 0 && fresh.unseen === fresh.live) {
+            // Una pelea nueva: lo que no respondió en la anterior no cuenta para el gancho.
+            counts.fights++;
+            fightFails = 0;
+        }
         // Recién puestos al lado, la barra aún no los tiene a su alcance: se mira otra vez (si no,
         // el primer turno se iba en «Fin de turno»).
         if (fast && fresh.unseen > 0) {
@@ -587,7 +606,8 @@ export function createBot(page, { fast = true, log = console.log, prefer = [] } 
         // Se mide cuánto tarda (si salen dados o una ventana, se atienden y se sigue esperando);
         // si pasan 20 s y sigue abierta, se apunta y se sigue como siempre.
         const closeKey = `${v.board}|${v.fight.round}`;
-        if (v.fight.foes.length === 0 && closing.get(closeKey) !== -1) {
+        const killAll = !goal || /^eliminate/.test(String(goal.type));
+        if (killAll && v.fight.foes.length === 0 && closing.get(closeKey) !== -1) {
             if (!closing.has(closeKey)) closing.set(closeKey, Date.now());
             const t0 = Number(closing.get(closeKey));
             let now = v;
@@ -602,7 +622,7 @@ export function createBot(page, { fast = true, log = console.log, prefer = [] } 
             if (now.fight || ms > 3000) {
                 const text = !now.fight
                     ? `sin enemigos en pie, la pelea tarda ${(ms / 1000).toFixed(1)} s en cerrarse (sin barra ni «Fin de turno» mientras tanto)`
-                    : `sin enemigos en pie, la pelea sigue abierta a los 20 s, en el turno de ${now.fight.who} (barra: ${now.bar.map((/** @type {any} */ b) => b.text).join(' | ') || 'ninguna'})`;
+                    : `sin enemigos en pie, la pelea sigue abierta a los 20 s, en el turno de ${now.fight.who} (barra: ${barSaid(now)})`;
                 oddities.push({ kind: 'cierre', n: steps.length, where: where(v), text });
                 log(`RARO  cierre #${steps.length} ${text} (${where(v)})`);
             }
@@ -631,6 +651,12 @@ export function createBot(page, { fast = true, log = console.log, prefer = [] } 
         // Lo que se pulsó en la barra y no hizo nada (no se pudo pulsar, o fue un silencio) cuenta
         // para pasar al gancho.
         const tally = (/** @type {boolean} */ did) => { fightFails = did && !steps[steps.length - 1]?.silent ? 0 : fightFails + 1; };
+        // La barra se repinta a menudo (cada tirada, cada aviso): un botón puede no estar justo en el
+        // momento de mirar. Se le da un momento antes de darlo por ausente.
+        const settle = async (/** @type {any} */ locator) => {
+            if (await locator.count() === 0) await locator.first().waitFor({ state: 'visible', timeout: 700 }).catch(() => {});
+            return locator;
+        };
         const attack = page.locator('#game-shell .gs-actions .gs-btn-attack:not([disabled])');
         // Una acción por turno: tras atacar, la barra tarda en apagar «Atacar», y pulsarlo otra vez
         // no abre nada. Se ataca una vez por turno y luego se anda o se acaba el turno.
@@ -649,7 +675,7 @@ export function createBot(page, { fast = true, log = console.log, prefer = [] } 
                 await press(attack);
                 await page.waitForTimeout(200);
             }
-            tally(await act(v, `atacar (${v.fight.who})`, () => press(targets), { module: 'combat' }));
+            tally(await act(v, `atacar (${v.fight.who})`, async () => press(await settle(targets)), { module: 'combat' }));
             // Sin nadie a su alcance, el menú se queda abierto: se cierra para andar.
             await press(page.locator('#game-shell .gs-targets-close:visible'), 500);
             return;
@@ -702,6 +728,12 @@ export function createBot(page, { fast = true, log = console.log, prefer = [] } 
         }
         // «Fin de turno», en la barra de siempre o en la nueva (que va fuera de `.gs-actions`).
         const end = page.locator('#game-shell .gs-actions .gs-btn:not([disabled]):visible, #game-shell button:not([disabled]):visible').filter({ hasText: /Fin de turno/ });
+        if (await (await settle(end)).count() === 0 && !turnSeen.has(`${v.board}|${v.fight.who}`)) {
+            turnSeen.add(`${v.board}|${v.fight.who}`);
+            const text = `es el turno de ${v.fight.who} (ronda ${v.fight.round}, ${v.fight.foes.length} enemigos en pie) y no hay «Fin de turno» que pulsar: la barra dice «${v.turnLabel || '—'}» (${barSaid(v)})`;
+            oddities.push({ kind: 'turno', n: steps.length, where: where(v), text });
+            log(`RARO  turno #${steps.length} ${text} (${where(v)})`);
+        }
         tally(await act(v, `fin de turno (${v.fight.who})`, async () => {
             const ok = await press(end);
             // Fin de turno con acción sin gastar pregunta antes.

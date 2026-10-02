@@ -67,7 +67,9 @@ import { boxExamples } from '../game-engine/campaign/read-box.js';
 import { readReasons } from '../game-engine/rules/companions.js';
 import { planSpawnCells } from '../game-engine/combat/spawn.js';
 import { enemiesInRoom, awakePlacements } from '../game-engine/campaign/campaign-map.js';
-import { buildBoardState, judgeScenario, hasScenario, leftToDo } from '../game-engine/combat/scenario-board.js';
+import { buildBoardState, judgeScenario, hasScenario, leftToDo, objectivesLeftWalking, walkingObjectiveStatus } from '../game-engine/combat/scenario-board.js';
+import { needsStabilizing, bestTender, tendFallen, stableSaves } from '../game-engine/rules/stabilize.js';
+import { skillModifier } from '../game-engine/rules/checks.js';
 import { recordBondEvent, getBondProgress } from '../game-engine/campaign/bonds.js';
 import { buildEpiloguePrompt } from '../game-engine/ui/combat-log.js';
 import { getActiveRuleset } from '../game-engine/rules/ruleset.js';
@@ -75,6 +77,7 @@ import { knownAbilities } from '../game-engine/rules/abilities.js';
 import { isDying, rollDeathSave, clearDeathSaves } from '../game-engine/rules/death-saves.js';
 import {
     GRAVES_KEY, LEVEL_SAID_KEY, MODE_HISTORY_KEY, NEMESES_KEY, PLOT_STATE_KEY, PRISONERS_KEY, SAFETY_KEY, SAFETY_ON_KEY, TAKEN_KEY,
+    OBJECTIVE_LEFT_KEY,
 } from './keys.js';
 import {
     combatEncounter, currentBoardName, currentLocationName, partyMembers, setCombatBoardSelection,
@@ -95,7 +98,7 @@ import {
 } from './spell-turn.js';
 import { showCombatDiceRoll } from './combat-log.js';
 import { resolveEnemyAttackOn, resolveEnemyTurnAction } from './enemy-turn.js';
-import { allyBeforeTurn2024, allyInstead2024, allyAfterAttack2024 } from './ally-turn-2024.js';
+import { allyBeforeTurn2024, allyInstead2024, allyAfterAttack2024, allyRescue2024 } from './ally-turn-2024.js';
 import {
     handlePlayerCombatMove, performManeuver, handlePlayerCombatAttack, endPlayerCombatTurn,
 } from './player-actions.js';
@@ -826,6 +829,8 @@ export function resolveAllyTurnAction(entry) {
 
     // Tanda 12: malherido y con una poción, se la bebe antes de decidir (acción adicional).
     allyBeforeTurn2024(member);
+    // Tanda 16: si uno de los suyos se desangra y es bastante seguro, va a su lado y le atiende.
+    if (allyRescue2024(member)) return '';
 
     const plan = planAllyTurn({
         actor: {
@@ -1466,6 +1471,117 @@ export function judgeCurrentScenario() {
 }
 
 /**
+ * Tanda 16: en la pelea de ahora, lo que falta de la misión del tablero si ya solo se puede
+ * hacer andando (sin nadie en pie y sin refuerzos por llegar): sus ids. Vacío si no.
+ *
+ * @returns {string[]}
+ */
+function objectiveLeftNow() {
+    if (!combatEncounter.active) return [];
+    const location = getCurrentWorldLocationMaps().find(l => l.name === currentLocationName);
+    const board = getLocationBoards(location).find((/** @type {any} */ b) => b.name === currentBoardName);
+    if (!board || !hasScenario(board)) return [];
+    const live = getActiveBoardContext().board;
+    const wavesLeft = (Array.isArray(live?.waves) ? live.waves : []).some((/** @type {any} */ w) => w && !w.done && !w.help);
+    return objectivesLeftWalking(board.objectives, buildBoardState({
+        round: combatEncounter.round, enemies: combatEncounter.enemies, party: partyMembers, collectedTreasures: collectedHere(board),
+    }), { wavesLeft });
+}
+
+/**
+ * Tanda 16: fuera de combate, si se ha cumplido lo que quedó de la misión del tablero al acabar
+ * su pelea (alguien ha llegado a la ventana, se ha sacado el tesoro): entonces se gana el tablero
+ * como si se hubiera hecho peleando (la localización superada, el hilo sigue y «Continuar» lleva
+ * a lo siguiente). Lo llaman el tablero al andar y el cofre al abrirse.
+ *
+ * @returns {boolean} Si se ha cumplido ahora.
+ */
+export function checkObjectiveLeft() {
+    const left = chat_metadata?.[OBJECTIVE_LEFT_KEY];
+    if (!left || combatEncounter.active || left.place !== currentLocationName || left.board !== currentBoardName) return false;
+    const location = getCurrentWorldLocationMaps().find(l => l.name === currentLocationName);
+    const board = getLocationBoards(location).find((/** @type {any} */ b) => b.name === currentBoardName);
+    if (!board) return false;
+    const here = partyMembers.filter(m => !m.dead && (!m.mapPosition?.locationName || m.mapPosition.locationName === currentLocationName));
+    const now = walkingObjectiveStatus(board.objectives, left.left, buildBoardState({
+        round: Number(left.round) || 1, enemies: [], party: here, collectedTreasures: collectedHere(board),
+    }));
+    if (now.status === 'pending') return false;
+    delete chat_metadata[OBJECTIVE_LEFT_KEY];
+    saveMetadata();
+    if (now.status === 'failed') {
+        postCombatNarration(`🏁 [TABLERO] ❌ ${now.labels.join(' · ')}: la misión ha fracasado.`);
+        return true;
+    }
+    postCombatNarration(`🎯 [TABLERO] ✅ ${now.labels.join(' · ')}.\n🏁 [TABLERO] Objetivos cumplidos.`);
+    toastr.success(now.labels.join(' · '), 'Objetivo cumplido');
+    markLocationComplete(currentLocationName);
+    notePlot({ kind: 'win', place: currentLocationName, board: currentBoardName });
+    // D-J45: ahora sí, «Continuar» sigue el hilo desde aquí.
+    lastWin = { owner: chat_metadata, place: currentLocationName, board: currentBoardName };
+    if (isShellOpen()) refreshGameShell();
+    return true;
+}
+
+/**
+ * Tanda 16: fuera de la pelea (acabada, o tras una trampa), quien está en el suelo desangrándose
+ * no se queda ahí: quien mejor sabe de Medicina de los que siguen en pie le atiende, sin prisa,
+ * hasta que deja de desangrarse (`tendFallen`). Quien cae solo, sin nadie que le atienda, tira
+ * sus salvaciones de muerte hasta que se decide (como en la pelea: estable, en pie con un 20, o
+ * lo que digan las reglas de la campaña con el tercer fallo); estable y solo, al rato vuelve en
+ * sí con 1 PG (en D&D, de una a cuatro horas después).
+ */
+function tendTheFallen() {
+    const fallen = partyMembers.filter(m => needsStabilizing(m)
+        && (!m.mapPosition?.locationName || m.mapPosition.locationName === currentLocationName));
+    for (const target of fallen) {
+        const helper = bestTender(partyMembers.filter(m => m !== target && !m.summon), m => skillModifier(m, 'medicine').modifier);
+        if (helper) {
+            const tended = tendFallen({
+                helper: String(helper.name), target: String(target.name),
+                modifier: skillModifier(helper, 'medicine').modifier,
+                rollD20: () => rollDiceDetailed('1d20', 20).total,
+            });
+            target.deathSaves = stableSaves();
+            postCombatNarration(`[COMBAT] ${tended.line}`);
+            continue;
+        }
+        // Solo: sus salvaciones, hasta que se decide (como mucho, cinco tiradas: tres de un lado).
+        for (let i = 0; i < 6 && needsStabilizing(target); i++) {
+            const result = rollDeathSave({ member: target, roll: () => rollDiceDetailed('1d20', 20) });
+            target.deathSaves = result.saves;
+            if (result.hp != null) target.hp = result.hp;
+            postCombatNarration(`[COMBAT] ${result.line}`);
+            if (result.outcome === 'up') {
+                target.activeConditions = (Array.isArray(target.activeConditions) ? target.activeConditions : [])
+                    .filter((/** @type {string} */ c) => c !== 'Unconscious');
+            }
+            if (result.outcome === 'dead') applyFall(target);
+        }
+    }
+    // Estable y sin nadie más en pie: al rato vuelve en sí, con 1 PG.
+    if (!partyMembers.some(m => !m.dead && !m.summon && (Number(m.hp) || 0) > 0)) {
+        for (const member of partyMembers.filter(m => !m.dead && !m.summon && (Number(m.hp) || 0) <= 0 && m.deathSaves?.stable)) {
+            member.hp = 1;
+            member.deathSaves = clearDeathSaves();
+            member.activeConditions = (Array.isArray(member.activeConditions) ? member.activeConditions : [])
+                .filter((/** @type {string} */ c) => c !== 'Unconscious');
+            postCombatNarration(`🩹 [COMBAT] Pasa un rato. ${member.name} vuelve en sí con 1 PG.`);
+        }
+    }
+}
+
+/**
+ * Tanda 16: atender a los caídos fuera de combate (lo llama la trampa que deja a alguien a 0 PG
+ * fuera de una pelea; en una pelea, quien cae tira sus salvaciones en su turno).
+ */
+export function tendFallenOutOfFight() {
+    if (combatEncounter.active) return;
+    tendTheFallen();
+    savePartyState();
+}
+
+/**
  * M4: sin nadie en pie y la misión del tablero sin cumplir, decir qué falta (un cofre, una
  * casilla, aguantar unas rondas), una vez por pelea. Antes la pelea seguía sin decir por qué.
  */
@@ -1494,6 +1610,15 @@ function sayWhatIsLeft() {
 export function checkScenarioOutcome() {
     const verdict = judgeCurrentScenario();
     if (verdict && !verdict.outcome) sayWhatIsLeft();
+    // Tanda 16: sin nadie en pie y con lo que falta para hacerse andando (la ventana de la posada
+    // de 1387), la pelea se acaba aquí: lo que falta se hace fuera de combate, sin turnos ni
+    // salvaciones de muerte, y el grupo puede atender a quien ha caído.
+    if (verdict && !verdict.outcome && objectiveLeftNow().length > 0) {
+        postCombatNarration('🏆 [COMBAT] Todos los enemigos han sido derrotados.');
+        endCombat('victory');
+        renderLocationMapsPreview();
+        return true;
+    }
     if (!verdict || !verdict.outcome) return false;
 
     postCombatNarration(`🎯 [COMBAT] ${verdict.summary}`);
@@ -1522,6 +1647,9 @@ export function checkScenarioOutcome() {
 export function endCombat(reason = 'ended', { said = '', told = '' } = {}) {
     // J12.7: una pelea sin muertes acaba a su manera: sin botín, sin muertos y de vuelta al pueblo.
     if (endBrawl(reason)) return;
+    // Tanda 16: ganada sin haber cumplido lo que falta de la misión (que se hace andando): la pelea
+    // se acaba, pero el tablero no se da por ganado para el hilo hasta que se cumpla.
+    const objectiveLeft = reason === 'victory' ? objectiveLeftNow() : [];
     postCombatNarration('🏁 [COMBAT] El combate termina.');
     // J19: lo que dura un minuto no pasa a la escena siguiente: las invocaciones se van, las
     // zonas se deshacen y las concentraciones de la pelea se acaban.
@@ -1568,6 +1696,8 @@ export function endCombat(reason = 'ended', { said = '', told = '' } = {}) {
                 .filter((/** @type {string} */ c) => c !== 'Unconscious');
             postCombatNarration(`🩹 [COMBAT] ${medic?.who} venda a ${fallenMember.name}: se levanta con ${fallenMember.hp} PG.`);
         }
+        // Tanda 16: y a quien sigue desangrándose, quien mejor sabe le estabiliza (Medicina contra 10).
+        tendTheFallen();
         loot = awardEncounterLoot(combatEncounter.enemies.filter(e => (e.currentHp || 0) <= 0 && !(/** @type {any} */ (e).fled)));
         // R7: una némesis que cae, se acaba.
         for (const fallen of combatEncounter.enemies.filter(e => /** @type {any} */ (e).nemesis && (e.currentHp || 0) <= 0 && !(/** @type {any} */ (e).fled))) {
@@ -1588,7 +1718,14 @@ export function endCombat(reason = 'ended', { said = '', told = '' } = {}) {
         for (const fallen of combatEncounter.enemies.filter(e => (e.currentHp || 0) <= 0)) {
             notePlot({ kind: 'defeat', enemy: String(fallen.name) });
         }
-        notePlot({ kind: 'win', place: currentLocationName, board: currentBoardName });
+        // Tanda 16: con la misión a medias (falta salir por la ventana), el hilo espera a que se cumpla.
+        if (objectiveLeft.length === 0) notePlot({ kind: 'win', place: currentLocationName, board: currentBoardName });
+        else if (chat_metadata) {
+            chat_metadata[OBJECTIVE_LEFT_KEY] = {
+                place: currentLocationName, board: currentBoardName, left: objectiveLeft, round: Number(combatEncounter.round) || 1,
+            };
+            saveMetadata();
+        }
         // La pelea escrita del tablero, ganada: sus enemigos no vuelven a dibujarse. Cuenta si
         // en esta pelea estaba alguno de los que el tablero trae (el botón, una sala que se
         // abre o `/fight` con su nombre); una pelea suelta no se los lleva.
@@ -1686,7 +1823,8 @@ export function endCombat(reason = 'ended', { said = '', told = '' } = {}) {
     saveCombatState();
     restoreChatPlaceholder();
     // D-J45: ganada en un tablero, «Continuar» sigue el hilo desde aquí (`afterFightNow`).
-    lastWin = reason === 'victory' && currentBoardName
+    // Tanda 16: con la misión a medias, todavía no: lo pone `checkObjectiveLeft` al cumplirla.
+    lastWin = reason === 'victory' && currentBoardName && objectiveLeft.length === 0
         ? { owner: chat_metadata, place: currentLocationName, board: currentBoardName }
         : null;
     // J14.1 y J14.2: la pelea de tablero se lleva su parte del día, y tras ganarla, a veces

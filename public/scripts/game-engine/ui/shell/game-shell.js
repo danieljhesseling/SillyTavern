@@ -1316,20 +1316,29 @@ function renderNovel(scene, view, place = '') {
     text.textContent = '';
     const keyOf = (/** @type {Element} */ node) => `${node.getAttribute('mesid')}:${(node.querySelector('.mes_text')?.textContent || '').trim().slice(0, 60)}`;
     let fresh = 0;
-    const people = lines.filter(m => !systemLine(m));
-    const last = people[people.length - 1] ?? null;
-    const speakerName = (last?.getAttribute('ch_name') || '').trim();
     // «La figura del narrador sobra» (Daniel, 2026-10-01): lo que cuenta quien narra sale sin
     // placa y sin su nombre delante; solo el texto.
     const narratorNow = String(options?.narratorName?.() || '').trim();
     // «Narrador» a secas es el nombre de relleno de lo que cuenta el motor sin ficha delante.
     const isNarrator = (/** @type {string} */ name) => Boolean(name && (name === narratorNow || name === 'Narrador'));
+    // D-J54: la placa y el retrato son de la última persona que habla, aunque detrás venga una
+    // línea corta del narrador («Llegáis a la cala…»): el narrador no tapa a quien habla.
+    const people = lines.filter(m => !systemLine(m) && !isNarrator((m.getAttribute('ch_name') || '').trim()));
+    const last = people[people.length - 1] ?? null;
+    const speakerName = (last?.getAttribute('ch_name') || '').trim();
+    // D-J54: las voces de la caja (el narrador cuenta como una): si hay más de una, cada frase de
+    // una persona dice de quién es, también la de la placa; si no, una línea corta del narrador
+    // detrás de alguien se leería como suya.
+    const voices = new Set(lines.filter(l => !systemLine(l)).map(l => {
+        const name = (l.getAttribute('ch_name') || '').trim();
+        return isNarrator(name) ? '' : name;
+    }));
     for (const line of lines) {
         const system = systemLine(line);
         const who = (line.getAttribute('ch_name') || '').trim();
         const block = el('div', `gs-vn-line${system ? ' gs-vn-note' : ''}`);
         // Cuando en la caja habla más de uno, cada frase dice de quién es (menos el narrador).
-        if (!system && who && who !== speakerName && !isNarrator(who)) block.appendChild(el('span', 'gs-vn-who', shownName(who)));
+        if (!system && who && (who !== speakerName || voices.size > 1) && !isNarrator(who)) block.appendChild(el('span', 'gs-vn-who', shownName(who)));
         const body = copies.get(line);
         if (body) block.appendChild(body);
         // Lo nuevo aparece con la velocidad de las opciones (J0.4), una frase tras otra.

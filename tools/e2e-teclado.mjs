@@ -9,21 +9,23 @@
  *   título (el foco se ve; flechas por el menú) → Opciones («Animaciones»: el foco sigue en la
  *   fila; «reducir movimiento» del aparato se respeta) → Jugar sin conexión → crear personaje
  *   (las ventanas para elegir abren con el foco en una opción; flechas; Esc cierra solo el
- *   selector; la fila de la cara no pierde el foco) → la escena del hilo con Intro → la pausa
- *   (Esc, Tab en círculo, Esc y el foco vuelve) → «Saltar la prueba» (la ventana de sí o no, con
- *   el foco dentro) → el pueblo (flechas) → la Casa del Gremio (flechas; Esc, la pausa) → el
- *   tablón de campañas (una ventana: el foco dentro, Esc la cierra y el foco vuelve).
+ *   selector; la fila de la cara no pierde el foco) → el prólogo: la escena del hilo con Intro, y
+ *   de vuelta en el muelle el foco en «Continuar» → la pausa (Esc, Tab en círculo, Esc y el foco
+ *   vuelve) → la pelea del muelle (la decisión con el foco en «Pelear»; al colocar, el foco en
+ *   «Empezar»; los dados con Intro; el cursor del tablero con las flechas, Av Pág e Inicio; atacar
+ *   desde el tablero y la tarjeta del enemigo; 1 abre «Atacar» y Esc lo cierra; «Fin de turno»
+ *   con Tab) → lo que cuenta el hilo después (el posadero, Brunilda) → «Saltar la prueba» de la
+ *   bodega (la ventana de sí o no, con el foco dentro) → el pueblo (flechas) → la Casa del Gremio
+ *   (flechas; Esc, la pausa) → el tablón de campañas (una ventana: el foco dentro, Esc la cierra y
+ *   el foco vuelve) → una quedada con Gerd (la novela con el foco dentro; 1 elige, Intro sigue; al
+ *   acabar, el foco en el pueblo) → las ventanas de la cabecera.
  *   En cada pantalla: el contraste del texto y que todo botón tenga nombre.
- *
- *   El tablero de combate se rehace aparte (ENCARGO_COMBATE_VTT) y trae sus propias teclas: la
- *   pelea del muelle con el teclado solo va con `--pelea` (los dados, el cursor del tablero, la
- *   tarjeta del enemigo).
  *
  * Uso:
  *   node tools/e2e-teclado.mjs                       # sin ventana, puerto 8428
  *   node tools/e2e-teclado.mjs --headed
  *   node tools/e2e-teclado.mjs --port 8428 --captura t.png   # t.png.titulo.png, t.png.crear.png…
- *   node tools/e2e-teclado.mjs --pelea               # y la pelea del muelle, en vez de saltarla
+ *   node tools/e2e-teclado.mjs --sin-pelea           # sale del tablero del muelle sin pelear (más corta)
  */
 
 /* global window, document, getComputedStyle, innerHeight, NodeFilter, HTMLElement */
@@ -39,7 +41,7 @@ const argAfter = (/** @type {string} */ flag) => (process.argv.includes(flag) ? 
 const PORT = Number(argAfter('--port')) || 8428;
 const BASE = `http://127.0.0.1:${PORT}`;
 const HEADED = process.argv.includes('--headed');
-const FIGHT = process.argv.includes('--pelea');
+const FIGHT = !process.argv.includes('--sin-pelea');
 const SHOT = argAfter('--captura');
 
 const require = createRequire(join(ROOT, 'tests/package.json'));
@@ -122,6 +124,45 @@ function gameNow() {
         places: [...document.querySelectorAll('#game-shell .gs-town-place')].filter(n => n.getClientRects().length > 0).length,
         hint: document.querySelector('.gs-board-hint')?.textContent || '',
         motion: document.documentElement.getAttribute('data-gs-motion') || '',
+    };
+}
+
+/** La pelea: de quién es el turno, qué hay encima, dónde está el foco y lo que el tablero enciende. */
+function fightNow() {
+    const bar = document.querySelector('#game-shell .gs-vtt-bar');
+    const card = document.querySelector('.tc-overlay');
+    const a = document.activeElement;
+    const cs = a && a !== document.body ? getComputedStyle(a) : null;
+    return {
+        active: Boolean(/** @type {any} */ (window).SillyTavern.getContext().chatMetadata?.combatEncounter?.active),
+        dice: Boolean(document.querySelector('.wm-dice-overlay.active')),
+        dialog: (document.querySelector('dialog[open]:not([closing])')?.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 80),
+        card: Boolean(card),
+        cardFocus: Boolean(card && a && card.contains(a)),
+        mine: Boolean(bar && !bar.classList.contains('gs-vtt-waiting')),
+        actionReady: Boolean(document.querySelector('#game-shell .gs-vtt-bar .gs-btn-attack:not([disabled])')),
+        menu: Boolean(document.querySelector('#game-shell .gs-targets')),
+        menuFocus: Boolean(a?.closest('#game-shell .gs-targets')),
+        hint: document.querySelector('.gs-board-hint')?.textContent || '',
+        onBoard: Boolean(a?.classList.contains('gs-board-keys')),
+        text: (a?.getAttribute('aria-label') || a?.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 40),
+        cls: String(a?.className || ''),
+        lost: !a || a === document.body,
+        ring: Boolean(cs && cs.outlineStyle !== 'none' && parseFloat(cs.outlineWidth) >= 2),
+        lit: [...document.querySelectorAll('.wm-highlight-clickable:not(.wm-highlight-attack)[data-x][data-y]')].map(n => ({ x: Number(n.getAttribute('data-x')), y: Number(n.getAttribute('data-y')) })),
+    };
+}
+
+/** La quedada abierta (`ui/meetup-scene.js`): si está, si el foco está dentro y qué se lee. */
+function meetupNow() {
+    const dialog = document.querySelector('.qd-dialog[open]');
+    const a = document.activeElement;
+    return {
+        open: Boolean(dialog),
+        inside: Boolean(dialog && a && dialog.contains(a)),
+        name: dialog?.querySelector('.qd-nameplate')?.textContent ?? '',
+        replies: dialog?.querySelectorAll('.qd-chip-reply').length ?? 0,
+        line: (dialog?.querySelector('.qd-line:last-child, .qd-text')?.textContent ?? '').replace(/\s+/g, ' ').trim().slice(0, 60),
     };
 }
 
@@ -436,157 +477,228 @@ try {
     check('Esc cierra la pausa y el foco vuelve a donde estaba', (await game()).paused === 0 && f.text === beforePause.text, JSON.stringify({ before: beforePause.text, now: f.text }));
 
     if (FIGHT) {
-        // 6. La pelea del muelle, con el teclado.
-        check('«Iniciar combate» se alcanza con Tab', await keyTo(x => /Iniciar combate/.test(x.text), 40));
-        await key('Enter', 600);
-        await until(async () => (await game()).scene === 'combat', 15000);
-        let lostInFight = 0;
-        let stuckDice = 0;
+        // 6. La pelea del muelle, con el teclado. «Continuar» lleva al tablero, y la pelea se abre
+        // sola: primero la decisión (pelear u otra salida), luego colocar al grupo.
+        await key('Enter', 1500);
+        await until(async () => (await page.evaluate(fightNow)).dialog !== '', 15000);
+        f = await focus();
+        const decision = (await page.evaluate(fightNow)).dialog;
+        check('la pelea: la decisión se abre como ventana con el foco en «Pelear»', f.inDialog && /Pelear/.test(f.text) && f.ring, JSON.stringify({ decision, f }));
+        await screenChecks('la decisión antes de pelear');
+        await shot('decision');
+        await key('Enter', 1500);
+        await until(async () => (await page.locator('.cv-place').count()) > 0, 10000);
+        await wait(600);
+        f = await focus();
+        check('colocar al grupo: el foco en «Empezar» (Intro empieza)', /cv-place-start/.test(f.cls) && f.ring, JSON.stringify(f));
+        await screenChecks('colocar al grupo');
+        await shot('colocar');
+        await key('Enter', 1500);
+
+        /** La casilla que dice la línea del tablero («Casilla (6, 3) · …»), desde 0. */
+        const cellOf = (/** @type {string} */ hint) => {
+            const m = /Casilla \((\d+), (\d+)\)/.exec(hint);
+            return m ? { x: Number(m[1]) - 1, y: Number(m[2]) - 1 } : null;
+        };
+        const fight = () => page.evaluate(fightNow);
+        /** Tab hasta algo de la pelea; dice si llegó. */
+        const tabToFight = async (/** @type {(s: any) => boolean} */ test) => {
+            for (let t = 0; t < 45; t++) {
+                if (test(await fight())) return true;
+                await key('Tab', 60);
+            }
+            return test(await fight());
+        };
+        const stats = { lost: 0, noRing: 0, dice: 0, stuckDice: 0, board: false, boardAttack: false, card: 0, ended: 0, checked: false };
         let lastDice = '';
-        let boardUsed = false;
-        let boardAttack = false;
-        let cardUsed = false;
-        let diceSeen = 0;
-        let ringMissing = 0;
+        /** @type {any} */
+        let menuKeys = null;
         /** Lo que pasa en la pelea, para el informe. */
         const steps = [];
-        for (let i = 0; i < 160; i++) {
-            g = await game();
-            if (g.scene !== 'combat' && !g.dice) break;
-            f = await focus();
-            steps.push(`${f.cls.split(' ').slice(0, 2).join('.')}「${f.text.slice(0, 24)}」`);
-            if (f.lost) {
-                lostInFight++;
+        for (let i = 0; i < 260; i++) {
+            const s = await fight();
+            if (!s.active && !s.dice && !s.dialog) break;
+            steps.push(`${s.cls.split(' ').slice(-1)[0]}「${s.text.slice(0, 18)}」`);
+            if (s.lost) {
+                stats.lost++;
                 await key('Enter', 400);
                 continue;
             }
-            if (!f.ring && !/wm-dice-card/.test(f.cls)) ringMissing++;
-            if (g.dice) {
-                diceSeen++;
-                const sig = `${f.cls}|${f.text}|${await page.evaluate(() => document.querySelector('.wm-dice-overlay.active .wm-dice-title')?.textContent || '')}`;
-                stuckDice = g.diceReady && sig === lastDice ? stuckDice + 1 : 0;
+            if (!s.ring && !/wm-dice-card/.test(s.cls)) stats.noRing++;
+            if (s.dice) {
+                stats.dice++;
+                const sig = `${s.cls}|${s.text}|${await page.evaluate(() => document.querySelector('.wm-dice-overlay.active .wm-dice-title')?.textContent || '')}`;
+                stats.stuckDice = sig === lastDice ? stats.stuckDice + 1 : 0;
                 lastDice = sig;
-                if (stuckDice > 4) break;
-                await key('Enter', 450);
+                if (stats.stuckDice > 6) break;
+                await key('Enter', 500);
                 continue;
             }
-            if (/gs-board-keys/.test(f.cls)) {
-                boardUsed = true;
-                const hint = g.hint;
-                if (/Intro: atacar/.test(hint)) {
-                    boardAttack = true;
-                    await key('Enter', 900);
-                    continue;
-                }
-                const lit = await page.evaluate(() => ({
-                    attack: document.querySelectorAll('.wm-highlight-attack').length,
-                    move: document.querySelectorAll('.wm-highlight-clickable:not(.wm-highlight-attack)').length,
-                }));
-                if (lit.attack > 0) {
-                    // Av Pág: a la ficha siguiente (el enemigo).
-                    await key('PageDown', 300);
-                    continue;
-                }
-                if (lit.move === 0) {
-                    // Tu ficha, elegida: se encienden las casillas.
+            // Una ventana (¿acabar el turno?): el foco está en ella; Intro dice que sí.
+            if (s.dialog) {
+                await key('Enter', 800);
+                continue;
+            }
+            // La tarjeta del enemigo: con la acción libre, el foco en «Atacar» e Intro; si no, Esc.
+            if (s.card) {
+                stats.card++;
+                if (s.cardFocus && /^Atacar/.test(s.text) && s.actionReady) await key('Enter', 900);
+                else await key('Escape', 600);
+                continue;
+            }
+            if (!s.mine) {
+                await wait(400);
+                continue;
+            }
+            if (!stats.checked) {
+                stats.checked = true;
+                await screenChecks('la pelea, en tu turno');
+                await shot('pelea');
+            }
+            // Las teclas de la barra, una vez: 1 abre «Atacar» con el foco dentro; Esc lo cierra y
+            // el foco vuelve a donde estaba.
+            if (!menuKeys && s.actionReady) {
+                const before = s.text;
+                await key('1', 700);
+                const open = await fight();
+                await key('Escape', 600);
+                const closed = await fight();
+                menuKeys = { open: open.menu, inside: open.menuFocus, closed: !closed.menu, before, back: closed.text };
+                continue;
+            }
+            // La acción gastada: «Fin de turno», con Tab.
+            if (!s.actionReady) {
+                await tabToFight(x => /gs-btn-end/.test(x.cls));
+                stats.ended++;
+                await key('Enter', 1200);
+                continue;
+            }
+            // Al tablero (Tab), y con su cursor: Av Pág hasta el enemigo.
+            if (!s.onBoard && !(await tabToFight(x => x.onBoard))) break;
+            stats.board = true;
+            let foeHint = '';
+            for (let t = 0; t < 6 && !foeHint; t++) {
+                await key('PageDown', 150);
+                const h = (await fight()).hint;
+                if (/enemigo/.test(h)) foeHint = h;
+            }
+            if (/Intro: atacar/.test(foeHint)) {
+                // Al lado: Intro en su casilla abre su tarjeta, con el foco en «Atacar».
+                stats.boardAttack = true;
+                await key('Enter', 900);
+                continue;
+            }
+            // Inicio (tu ficha). Si no está elegida (nada encendido), Intro la elige: se encienden
+            // las casillas a las que llega, y la del enemigo si está al lado.
+            await key('Home', 200);
+            let here = await fight();
+            if (here.lit.length === 0 && /Intro: elegir/.test(here.hint)) {
+                await key('Enter', 700);
+                here = await fight();
+                if (here.onBoard) {
+                    let again = '';
+                    for (let t = 0; t < 6 && !again; t++) {
+                        await key('PageDown', 150);
+                        const h = (await fight()).hint;
+                        if (/enemigo/.test(h)) again = h;
+                    }
+                    if (/Intro: atacar/.test(again)) {
+                        stats.boardAttack = true;
+                        await key('Enter', 900);
+                        continue;
+                    }
                     await key('Home', 200);
-                    await key('Enter', 700);
-                    continue;
+                    here = await fight();
                 }
-                // Andar: a la casilla encendida más cerca del enemigo, con las flechas.
-                const plan = await page.evaluate(() => {
-                    const cells = [...document.querySelectorAll('.wm-highlight-clickable:not(.wm-highlight-attack)[data-x][data-y]')].map(n => ({ x: Number(n.getAttribute('data-x')), y: Number(n.getAttribute('data-y')) }));
-                    const enemy = document.querySelector('.wm-token.wm-token-enemy');
-                    const ex = Number(enemy?.getAttribute('data-x') ?? enemy?.getAttribute('data-grid-x') ?? NaN);
-                    const ey = Number(enemy?.getAttribute('data-y') ?? enemy?.getAttribute('data-grid-y') ?? NaN);
-                    const said = /Casilla \((\d+), (\d+)\)/.exec(document.querySelector('.gs-board-hint')?.textContent || '');
-                    const at = said ? { x: Number(said[1]) - 1, y: Number(said[2]) - 1 } : null;
-                    if (!at || cells.length === 0) return null;
-                    const target = Number.isFinite(ex) && Number.isFinite(ey)
-                        ? cells.sort((a, b) => (Math.abs(a.x - ex) + Math.abs(a.y - ey)) - (Math.abs(b.x - ex) + Math.abs(b.y - ey)))[0]
-                        : cells[0];
-                    return { at, target };
-                });
-                if (!plan) {
-                    await key('Tab', 200);
-                    continue;
-                }
-                const dx = plan.target.x - plan.at.x;
-                const dy = plan.target.y - plan.at.y;
-                for (let s = 0; s < Math.abs(dx); s++) await key(dx > 0 ? 'ArrowRight' : 'ArrowLeft', 60);
-                for (let s = 0; s < Math.abs(dy); s++) await key(dy > 0 ? 'ArrowDown' : 'ArrowUp', 60);
-                await key('Enter', 900);
+            }
+            // Andar: las flechas hasta la casilla encendida más cerca de él.
+            const foe = cellOf(foeHint);
+            const at = cellOf(here.hint);
+            if (!foe || !at || here.lit.length === 0) {
+                await tabToFight(x => /gs-btn-end/.test(x.cls));
+                stats.ended++;
+                await key('Enter', 1200);
                 continue;
             }
-            if (g.card > 0) {
-                cardUsed = true;
-                await key('Enter', 900);
-                continue;
-            }
-            if (/gs-btn-end/.test(f.cls)) {
-                // Con el ataque gastado, pasar el turno; si no, al tablero.
-                const canAttack = await page.evaluate(() => !(/** @type {HTMLButtonElement|null} */ (document.querySelector('#game-shell .gs-btn-attack')))?.disabled);
-                if (canAttack) {
-                    await key('Shift+Tab', 200);
-                    continue;
-                }
-            }
-            await key('Enter', 800);
+            const far = (/** @type {{x: number, y: number}} */ c) => Math.max(Math.abs(c.x - foe.x), Math.abs(c.y - foe.y));
+            const goal = here.lit.sort((a, b) => far(a) - far(b))[0];
+            const dx = goal.x - at.x;
+            const dy = goal.y - at.y;
+            for (let k = 0; k < Math.abs(dx); k++) await key(dx > 0 ? 'ArrowRight' : 'ArrowLeft', 60);
+            for (let k = 0; k < Math.abs(dy); k++) await key(dy > 0 ? 'ArrowDown' : 'ArrowUp', 60);
+            await key('Enter', 1200);
         }
         await wait(1500);
-        g = await game();
-        const won = await page.evaluate(() => /victoria|termina/i.test(document.querySelector('#game-shell .gs-vn-text, #game-shell .gs-vn-box')?.textContent || ''));
-        check('la pelea del muelle se gana con el teclado solo', g.scene !== 'combat' && won, JSON.stringify({ g, won, last: steps.slice(-6) }));
-        check('en la pelea, el foco no se pierde en la página (como mucho una vez, y una tecla lo trae)', lostInFight <= 1, `${lostInFight} veces · ${steps.join(' → ').slice(0, 600)}`);
-        check('los dados se pasan con Intro (ninguna tirada se queda atascada)', diceSeen > 0 && stuckDice <= 4, JSON.stringify({ diceSeen, stuckDice }));
-        check('el tablero se usa con el teclado: su cursor, y atacar desde él (Intro en la casilla del enemigo)', boardUsed && boardAttack, JSON.stringify({ boardUsed, boardAttack, cardUsed }));
-        check('en la pelea, lo que tiene el foco siempre se ve', ringMissing === 0, `${ringMissing} sin anillo`);
-        await shot('pelea');
+        const after = await fight();
+        check('la pelea del muelle se gana con el teclado solo', !after.active, JSON.stringify({ after: { active: after.active, text: after.text }, last: steps.slice(-6) }));
+        check('en la pelea, el foco no se pierde en la página (como mucho una vez, y una tecla lo trae)', stats.lost <= 1, `${stats.lost} veces · ${steps.join(' → ').slice(0, 600)}`);
+        check('los dados se pasan con Intro (ninguna tirada se queda atascada)', stats.dice > 0 && stats.stuckDice <= 6, JSON.stringify({ dice: stats.dice, stuck: stats.stuckDice }));
+        check('el tablero se usa con el teclado: su cursor (flechas, Av Pág, Inicio) y atacar desde él, con la tarjeta del enemigo', stats.board && stats.boardAttack && stats.card > 0, JSON.stringify(stats));
+        check('la barra: 1 abre «Atacar» con el foco dentro, y Esc lo cierra con el foco donde estaba', Boolean(menuKeys?.open && menuKeys.inside && menuKeys.closed && menuKeys.back === menuKeys.before), JSON.stringify(menuKeys));
+        check('«Fin de turno» se alcanza con Tab y pasa el turno', stats.ended > 0, JSON.stringify({ ended: stats.ended }));
+        check('en la pelea, lo que tiene el foco siempre se ve', stats.noRing === 0, `${stats.noRing} sin anillo`);
+        f = await focus();
+        check('tras la pelea, el foco en lo principal («Continuar»)', /gs-chip-continue/.test(f.cls) && f.ring, JSON.stringify(f));
+        await shot('tras-pelea');
 
-        // 7. Tras la pelea: lo que quede (dados, la escena del hilo) con Intro; luego al pueblo.
-        for (let i = 0; i < 30; i++) {
+        // 7. Lo que cuenta el hilo después (el posadero, Brunilda en la Casa del Gremio): con
+        // «Continuar» e Intro, el foco siempre en la escena; hasta que se ofrece saltar la prueba.
+        let lostAfterFight = 0;
+        let sceneSteps = 0;
+        for (let i = 0; i < 40; i++) {
             g = await game();
-            if (!g.dice && g.dialogs === 0) break;
-            await key('Enter', 600);
+            f = await focus();
+            if (g.dialogs > 0) {
+                if (!f.inDialog) lostAfterFight++;
+                sceneSteps++;
+                await key('Enter', 700);
+                continue;
+            }
+            const skip = await page.evaluate(() => [...document.querySelectorAll('#game-shell button')].some(b => /Saltar la prueba/.test(b.textContent || '') && b.getClientRects().length > 0));
+            if (skip) break;
+            if (!/gs-chip-continue/.test(f.cls)) break;
+            await key('Enter', 1500);
         }
-        await wait(1000);
-        check('«Salir del tablero» se alcanza con Tab', await keyTo(x => /Salir del tablero|Volver a Puerto Alba/.test(x.text), 50));
-        await key('Enter', 1800);
+        await wait(800);
+        f = await focus();
+        check('lo que cuenta el hilo tras la pelea se pasa con Intro, con el foco en la escena; al acabar, el foco no se pierde', sceneSteps > 0 && lostAfterFight === 0 && !f.lost, JSON.stringify({ sceneSteps, lostAfterFight, f }));
     } else {
         // 6. Sin pelear: fuera del tablero del muelle (con el ratero esperando, la fila solo deja
-        // salir) y «Saltar la prueba» con el teclado. Su ventana de sí o no abre con el foco dentro,
-        // Intro dice que sí, y al cerrarse el foco no se queda en la página.
+        // salir).
         check('«Salir del tablero» se alcanza con Tab', await keyTo(x => /Salir del tablero/.test(x.text), 30));
         await key('Enter', 2000);
         f = await focus();
         check('fuera del tablero, el foco sigue en la fila (no en la página)', !f.lost && /gs-chip/.test(f.cls), JSON.stringify(f));
-        check('«Saltar la prueba» se alcanza con Tab', await keyTo(x => /Saltar la prueba/.test(x.text), 40));
-        await key('Enter', 1200);
-        await until(async () => (await page.locator('dialog[open]').count()) > 0, 8000);
-        f = await focus();
-        const askText = await page.evaluate(() => (document.querySelector('dialog[open]')?.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 80));
-        check('saltar la prueba: la ventana de sí o no abre con el foco dentro, en «Saltarla»', f.inDialog && /Saltarla/.test(f.text) && f.ring, JSON.stringify({ askText, f }));
-        await screenChecks('la ventana de saltar la prueba');
-        await shot('saltar');
-        await key('Enter', 2500);
-        g = await game();
-        f = await focus();
-        const sure = await page.evaluate(() => /Saltar la prueba\?/.test(document.querySelector('dialog[open]')?.textContent || ''));
-        check('Intro dice que sí: la ventana se cierra y el foco no se pierde en la página (sigue el hilo)', !sure && !f.lost, JSON.stringify({ g, f }));
-        // Lo que cuenta el hilo después (Brunilda y el tablón), con Intro.
-        let lostAfter = 0;
-        let afterSteps = 0;
-        for (let i = 0; i < 30; i++) {
-            g = await game();
-            if (g.dialogs === 0) break;
-            f = await focus();
-            if (!f.inDialog) lostAfter++;
-            afterSteps++;
-            await key('Enter', 700);
-        }
-        await wait(1200);
-        check('lo que cuenta el hilo tras saltar la prueba se pasa con Intro, con el foco en ello', (await game()).dialogs === 0 && lostAfter === 0, JSON.stringify({ afterSteps, lostAfter }));
     }
+
+    // «Saltar la prueba» de la bodega con el teclado. Su ventana de sí o no abre con el foco
+    // dentro, Intro dice que sí, y al cerrarse el foco no se queda en la página.
+    check('«Saltar la prueba» se alcanza con Tab', await keyTo(x => /Saltar la prueba/.test(x.text), 40));
+    await key('Enter', 1200);
+    await until(async () => (await page.locator('dialog[open]').count()) > 0, 8000);
+    f = await focus();
+    const askText = await page.evaluate(() => (document.querySelector('dialog[open]')?.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 80));
+    check('saltar la prueba: la ventana de sí o no abre con el foco dentro, en «Saltarla»', f.inDialog && /Saltarla/.test(f.text) && f.ring, JSON.stringify({ askText, f }));
+    await screenChecks('la ventana de saltar la prueba');
+    await shot('saltar');
+    await key('Enter', 2500);
+    g = await game();
+    f = await focus();
+    const sure = await page.evaluate(() => /Saltar la prueba\?/.test(document.querySelector('dialog[open]')?.textContent || ''));
+    check('Intro dice que sí: la ventana se cierra y el foco no se pierde en la página (sigue el hilo)', !sure && !f.lost, JSON.stringify({ g, f }));
+    // Lo que cuenta el hilo después (Brunilda y el tablón), con Intro.
+    let lostAfter = 0;
+    let afterSteps = 0;
+    for (let i = 0; i < 30; i++) {
+        g = await game();
+        if (g.dialogs === 0) break;
+        f = await focus();
+        if (!f.inDialog) lostAfter++;
+        afterSteps++;
+        await key('Enter', 700);
+    }
+    await wait(1200);
+    check('lo que cuenta el hilo tras saltar la prueba se pasa con Intro, con el foco en ello', (await game()).dialogs === 0 && lostAfter === 0, JSON.stringify({ afterSteps, lostAfter }));
     // «Continuar» (lo principal de la fila) lleva al pueblo: sus localizaciones, en tarjetas.
     if ((await game()).places === 0) {
         check('«Continuar» se alcanza con Tab', await keyTo(x => /gs-chip-continue/.test(x.cls), 40));
@@ -641,6 +753,46 @@ try {
     await key('Escape', 900);
     f = await focus();
     check('Esc cierra el tablón y el foco vuelve a lo que lo abrió', (await game()).dialogs === 0 && f.text === opener, JSON.stringify({ opener, now: f.text }));
+
+    // 8b. Una quedada: de vuelta a los sitios del pueblo («Volver a…», con Tab), «Quedar con…» (la
+    // gente que anda por el pueblo) y su novela con el teclado: el foco dentro, 1 elige la primera
+    // respuesta, Intro sigue; al acabar, el foco en el pueblo.
+    check('«Volver a» los sitios del pueblo se alcanza con Tab', await keyTo(x => /gs-town-back/.test(x.cls), 40));
+    await key('Enter', 1200);
+    await until(async () => (await game()).places > 0, 8000);
+    const reachedMeet = await keyTo(x => /^quedar:/.test(x.data?.chip || ''), 60);
+    const meetLabel = (await focus()).text;
+    check('«Quedar con…» se alcanza con Tab', reachedMeet, meetLabel);
+    if (reachedMeet) {
+        await key('Enter', 1500);
+        await until(async () => (await page.evaluate(meetupNow)).open, 10000);
+        await wait(500);
+        let m = await page.evaluate(meetupNow);
+        f = await focus();
+        check('la quedada se abre como ventana con el foco dentro', m.open && m.inside && f.ring, JSON.stringify({ m, f }));
+        await screenChecks('la quedada');
+        await shot('quedada');
+        let outside = 0;
+        let replied = 0;
+        let meetSteps = 0;
+        for (let i = 0; i < 30; i++) {
+            m = await page.evaluate(meetupNow);
+            if (!m.open) break;
+            if (!m.inside) outside++;
+            meetSteps++;
+            if (m.replies > 0) {
+                replied++;
+                await key('1', 700);
+            } else {
+                await key('Enter', 700);
+            }
+        }
+        await wait(1200);
+        m = await page.evaluate(meetupNow);
+        f = await focus();
+        check('la quedada se juega con el teclado (1 responde, Intro sigue), con el foco siempre en ella', !m.open && meetSteps > 1 && replied > 0 && outside === 0, JSON.stringify({ meetSteps, replied, outside }));
+        check('al acabar la quedada, el foco no se pierde: vuelve al juego, y se ve', !f.lost && !f.inDialog && f.ring, JSON.stringify(f));
+    }
 
     // 9. Las ventanas de la cabecera: cada una abre con el foco dentro, Tab no sale de ella, se
     // lee y tiene nombres, y Esc la cierra con el foco de vuelta en su botón.

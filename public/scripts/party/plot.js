@@ -578,8 +578,10 @@ async function sceneStage(owner) {
         if (card && !currentBoardName) card.remove();
         // Un suceso abierto (`.su-root`, en su propia ventana) también: la escena salía encima y
         // tapaba su «Seguir» (H2).
+        // V5 de las vueltas: y mientras el grupo se coloca para una pelea (`.cv-place`, la barra
+        // de colocarse): la escena esperaba a la pelea, pero colocarse no contaba, y salía encima.
         const busy = combatEncounter.active || (card && currentBoardName) || document.querySelector('dialog.qd-dialog[open]')
-            || document.querySelector('.su-root');
+            || document.querySelector('.su-root') || document.querySelector('.cv-place');
         if (!busy) return true;
         await new Promise(resolve => setTimeout(resolve, 300));
     }

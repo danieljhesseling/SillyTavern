@@ -380,3 +380,88 @@ export function planAlly2024({ actor, plan, enemies, allies = [], ground, sight 
     }
     return null;
 }
+
+// ---------------------------------------------------------------- tanda 16: ir a por quien cae
+
+/** Con tantos fallos, el siguiente le mata: se arriesga a tener a alguien pegado para llegar. */
+export const URGENT_FAILURES = 2;
+
+/**
+ * @typedef {Object} RescuePlan
+ * @property {'give-potion'|'stabilize'} kind Con una poción encima, se la da; si no, le estabiliza.
+ * @property {string} targetId El caído.
+ * @property {{x: number, y: number}} destination A su lado.
+ * @property {Array<{x: number, y: number}>} path
+ * @property {string} reason
+ */
+
+/**
+ * Tanda 16: un compañero que va solo, si uno de los suyos está en el suelo desangrándose y es
+ * bastante seguro, va a su lado y le da una poción o, sin poción, le estabiliza (Medicina
+ * contra 10, la acción de Ayudar de 2024). Antes solo se la daba si ya estaba pegado a él.
+ *
+ * «Bastante seguro»: llegar no le cuesta ningún golpe al irse de nadie, y donde se pone no tiene
+ * a ningún enemigo pegado. Si al caído le quedan ya dos fallos (el siguiente le mata), se
+ * arriesga a tener a alguien al lado, pero sigue sin pagar golpes por el camino. Primero el más
+ * apurado; a igualdad, el más cercano.
+ *
+ * @param {Object} input
+ * @param {{id: string, gridX: number, gridY: number, speedFeet?: number, potions?: number}} input.actor
+ * @param {Array<{id: string, gridX: number, gridY: number, failures?: number}>} input.dying Los suyos que se desangran.
+ * @param {Array<{id: string, gridX: number, gridY: number, currentHp?: number, reachFeet?: number}>} input.enemies
+ * @param {Array<{id: string, gridX: number, gridY: number}>} [input.allies] Los demás que ocupan casilla.
+ * @param {any} input.terrain
+ * @param {number} input.gridWidth
+ * @param {number} input.gridHeight
+ * @returns {RescuePlan|null}
+ */
+export function planRescue({ actor, dying, enemies, allies = [], terrain, gridWidth, gridHeight }) {
+    const fallen = (dying || []).filter(d => d && String(d.id) !== String(actor.id));
+    if (fallen.length === 0) return null;
+    const here = { x: actor.gridX, y: actor.gridY };
+    const living = (enemies || []).filter(e => e && (Number(e.currentHp) || 0) > 0);
+    const speed = Number.isFinite(Number(actor.speedFeet)) ? Number(actor.speedFeet) : 30;
+    const occupied = buildOccupiedSet([...living, ...(allies || []), ...fallen], actor.id);
+    const cells = getReachableCells(terrain, here.x, here.y, speed, gridWidth, gridHeight, { occupied })
+        .map(c => ({ x: c.gridX, y: c.gridY, cost: c.cost }));
+    if (!cells.some(c => c.x === here.x && c.y === here.y)) cells.push({ ...here, cost: 0 });
+
+    /** @param {{x: number, y: number}} to */
+    const provokes = (to) => findOpportunityAttacks({
+        mover: actor,
+        from: here,
+        to,
+        threats: living,
+        reachOf: (threat) => Number(threat.reachFeet) || 5,
+    }).length;
+    /** @param {{x: number, y: number}} cell */
+    const enemyBeside = (cell) => living.some(e => feet(cell.x, cell.y, e.gridX, e.gridY) <= 5);
+
+    const order = [...fallen].sort((a, b) => (Number(b.failures) || 0) - (Number(a.failures) || 0)
+        || feet(here.x, here.y, a.gridX, a.gridY) - feet(here.x, here.y, b.gridX, b.gridY)
+        || String(a.id).localeCompare(String(b.id)));
+    for (const down of order) {
+        const urgent = (Number(down.failures) || 0) >= URGENT_FAILURES;
+        const spot = cells
+            .filter(c => feet(c.x, c.y, down.gridX, down.gridY) <= 5 && !(c.x === down.gridX && c.y === down.gridY))
+            .filter(c => (c.x === here.x && c.y === here.y) || provokes(c) === 0)
+            .filter(c => urgent || !enemyBeside(c))
+            .sort((a, b) => a.cost - b.cost || a.y - b.y || a.x - b.x)[0];
+        if (!spot) continue;
+        const path = spot.x === here.x && spot.y === here.y
+            ? [here]
+            : (findPath(terrain, here.x, here.y, spot.x, spot.y, gridWidth, gridHeight, { occupied }) || null);
+        if (!path) continue;
+        const potion = (Number(actor.potions) || 0) > 0;
+        return {
+            kind: potion ? 'give-potion' : 'stabilize',
+            targetId: String(down.id),
+            destination: { x: spot.x, y: spot.y },
+            path,
+            reason: potion
+                ? 'Uno de los suyos se desangra: va a su lado y le da una poción.'
+                : 'Uno de los suyos se desangra: va a su lado a cortarle la sangre.',
+        };
+    }
+    return null;
+}

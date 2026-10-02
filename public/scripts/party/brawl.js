@@ -64,6 +64,9 @@ const text = (value) => String(value ?? '').trim();
 /** @param {any} value @returns {string} */
 const fold = (value) => text(value).toLocaleLowerCase('es').normalize('NFD').replace(/[̀-ͯ]/g, '');
 
+/** Un número con su signo, como se escribe: «+2», «−1» (con el menos de verdad). */
+const signed = (/** @type {number} */ n) => (n > 0 ? `+${n}` : n < 0 ? `−${Math.abs(n)}` : '0');
+
 /** Un d20 con el azar de la partida (la semilla, si la hay). */
 const rollD20 = () => rollDiceDetailed('1d20', 20).total;
 
@@ -363,9 +366,9 @@ export async function honorChallengeAfterThreat(npc, closeTalk = null) {
         choices: [
             {
                 id: 'aceptar', label: 'Aceptar el duelo', icon: 'fa-hand-fist', text: 'Te quitas el arma del cinto y la dejas en el suelo.',
-                win: `Si ganas, +${HONOR_FAME.gana} de fama en ${currentLocationName}; si pierdes, ${HONOR_FAME.pierde}`,
+                win: `Si ganas, ${signed(HONOR_FAME.gana)} de fama en ${currentLocationName}; si pierdes, ${signed(HONOR_FAME.pierde)}`,
             },
-            { id: 'rechazar', label: 'No aceptar', icon: 'fa-person-walking-arrow-right', text: 'No vas a pelear por esto.', win: `${HONOR_FAME.rechaza} de fama en ${currentLocationName}` },
+            { id: 'rechazar', label: 'No aceptar', icon: 'fa-person-walking-arrow-right', text: 'No vas a pelear por esto.', win: `${signed(HONOR_FAME.rechaza)} de fama en ${currentLocationName}` },
         ],
         pack: lastPack,
         town: currentLocationName,
@@ -612,7 +615,7 @@ export async function brawlTalk() {
     const purse = partyPurse();
     const losing = brawl.kind === 'taberna'
         ? (brawl.started === 'tu' ? 'Pagas una ronda y lo roto, y en el pueblo se ríen un poco' : 'Pagas una ronda y la mitad de lo roto')
-        : brawl.way === 'apuesta' ? `Pierdes los ${brawl.stake} de oro de la mesa` : `${HONOR_FAME.rinde} de fama en ${brawl.town}`;
+        : brawl.way === 'apuesta' ? `Pierdes los ${brawl.stake} de oro de la mesa` : `${signed(HONOR_FAME.rinde)} de fama en ${brawl.town}`;
     let end = '';
     await openExitScene({
         title: brawl.kind === 'taberna' ? `Pelea en ${brawl.tavern}` : `Duelo con ${brawl.rival}`,
@@ -630,6 +633,8 @@ export async function brawlTalk() {
         town: brawl.town,
         night: storyNight(),
         kind: 'brawl',
+        // «Seguir peleando» ya es no hacer nada: sin «Todavía no».
+        closable: false,
         onPick: async (id) => {
             end = id;
             return null;
@@ -741,6 +746,8 @@ async function showBrawlResult(brawl, result, verdict) {
         town: brawl.town,
         night: storyNight(),
         kind: 'brawl',
+        // Lo que ha pasado ya ha pasado: sin «Todavía no».
+        closable: false,
         onPick: async () => null,
     });
     if (isShellOpen()) {

@@ -104,3 +104,14 @@ body.game-shell-on .gs-tray-count:not(:empty) {
     color: #fff;
     font-weight: 700;
 }
+
+/* Quien ha caído (0 de vida, tirando salvaciones): la ficha entera medio transparente dejaba su
+   nombre, su vida y la cuenta de salvaciones sin leerse (2 a 1). Se apaga la cara, no el texto. */
+body.game-shell-on .gs-chip.fallen {
+    opacity: 1;
+}
+
+body.game-shell-on .gs-chip.fallen .gs-chip-avatar {
+    opacity: 0.45;
+    filter: grayscale(0.7);
+}

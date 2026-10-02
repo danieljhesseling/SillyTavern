@@ -390,6 +390,43 @@ describe('los marcadores de borde', () => {
         }
     });
 
+    test('tanda 16: no tapa el nombre de una ficha junto al borde; si no hay sitio libre de nombres, mandan las islas', () => {
+        Object.defineProperty(FakeNode.prototype, 'offsetWidth', { configurable: true, get: () => 190 });
+        Object.defineProperty(FakeNode.prototype, 'offsetHeight', { configurable: true, get: () => 30 });
+        try {
+            const phone = { left: 0, top: 0, right: 390, bottom: 600 };
+            const markers = placeEdgeMarkers({ targets: [{ id: -1, name: 'Tirador furtivo', x: 1000, y: 300, feet: 90 }], rect: phone });
+            const at = (/** @type {any} */ layer) => {
+                const b = layer.querySelector('.vtt-edge');
+                return { x: parseFloat(b.style.left), y: parseFloat(b.style.top) };
+            };
+            // Lo que se pisan, en píxeles cuadrados.
+            const meets = (/** @type {{x: number, y: number}} */ p, /** @type {any} */ r) => Math.max(0, Math.min(p.x + 190, r.right) - Math.max(p.x, r.left))
+                * Math.max(0, Math.min(p.y + 30, r.bottom) - Math.max(p.y, r.top)) > 0;
+            // Sin nombres, el marcador va a su altura en el borde derecho, encima del nombre de Gerd.
+            const gerd = { left: 300, top: 290, right: 360, bottom: 302 };
+            const plain = /** @type {any} */ (new FakeNode('div'));
+            renderEdgeMarkers(plain, markers, () => {}, phone, [], []);
+            expect(meets(at(plain), gerd)).toBe(true);
+            // Con el nombre: se corre a lo largo del borde, al lado libre más cercano, sin taparlo.
+            const named = /** @type {any} */ (new FakeNode('div'));
+            renderEdgeMarkers(named, markers, () => {}, phone, [], [gerd]);
+            expect(meets(at(named), gerd)).toBe(false);
+            expect(at(named).x).toBe(at(plain).x);
+            // Nombres por todas partes y una isla en su sitio: se aparta de la isla, como sin nombres.
+            const island = { left: 150, top: 270, right: 390, bottom: 330 };
+            const crowded = /** @type {any} */ (new FakeNode('div'));
+            renderEdgeMarkers(crowded, markers, () => {}, phone, [island], [{ left: 0, top: 0, right: 390, bottom: 600 }]);
+            const alone = /** @type {any} */ (new FakeNode('div'));
+            renderEdgeMarkers(alone, markers, () => {}, phone, [island], []);
+            expect(meets(at(crowded), island)).toBe(false);
+            expect(at(crowded)).toEqual(at(alone));
+        } finally {
+            delete (/** @type {any} */ (FakeNode.prototype)).offsetWidth;
+            delete (/** @type {any} */ (FakeNode.prototype)).offsetHeight;
+        }
+    });
+
     test('los pies van en su propio trozo, que no encoge: solo el nombre lleva los puntos suspensivos', () => {
         expect(edgeParts('Guardia de Montesclaros 3', 30)).toEqual({ name: 'Guardia de Montesclaros 3', feet: ' · 30 pies' });
         expect(edgeParts('Lobo')).toEqual({ name: 'Lobo', feet: '' });

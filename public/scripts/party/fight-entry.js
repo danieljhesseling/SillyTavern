@@ -36,6 +36,7 @@ import { openAvoidChoice, foesOf } from './avoid.js';
 import { controlOf } from './spell-turn.js';
 import { savePartyState } from './roster.js';
 import { postCombatNarration } from './narration.js';
+import { scenesPending } from './plot.js';
 
 /**
  * @typedef {Object} PendingFight La pelea que está a punto de empezar: el grupo se coloca.
@@ -82,12 +83,14 @@ function boardInSight() {
 
 /**
  * Si algo de delante tapa el tablero un momento (una ventana, la pausa): se mira otra vez luego.
+ * V5 de las vueltas: también una escena del hilo que espera su turno (la que abre 1387, «El
+ * cáliz ensangrentado», salía encima de colocarse). Primero la historia, luego la pelea.
  *
  * @returns {boolean}
  */
 function somethingInFront() {
     return Boolean(document.querySelector('dialog[open]')) || document.body.classList.contains('game-shell-paused')
-        || Boolean(document.querySelector('.popup:not([closing])[open]'));
+        || Boolean(document.querySelector('.popup:not([closing])[open]')) || scenesPending > 0;
 }
 
 /**

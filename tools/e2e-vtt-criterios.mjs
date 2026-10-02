@@ -917,6 +917,14 @@ async function checkEdge(g, size, heroId) {
     const edges = await edgeBoxes(g);
     await noteOverlaps(g, size, edges, 'tras sacar al enemigo');
     const file = await shot(g, size, 'borde');
+    // Tanda 16 (revisor): un marcador no tapa el nombre de una ficha que está junto al borde.
+    const names = await g.page.evaluate(() => [...document.querySelectorAll('#game-shell .wm-token-name')].map(n => {
+        const r = n.getBoundingClientRect();
+        return { text: (n.textContent || '').trim(), box: [r.left, r.top, r.right, r.bottom] };
+    }).filter(n => n.box[2] > n.box[0] && n.box[3] > n.box[1]));
+    const covered = edges.flatMap(e => names.filter(n => Math.min(e.box[2], n.box[2]) - Math.max(e.box[0], n.box[0]) > 2
+        && Math.min(e.box[3], n.box[3]) - Math.max(e.box[1], n.box[1]) > 2).map(n => `«${e.text}» tapa «${n.text}»`));
+    if (edges.length > 0) note('C3', g.scene, `${size} nombres`, covered.length === 0, { marcadores: edges.map(e => e.text), nombres: names.length, tapados: covered }, file);
     const mine = edges.find(e => e.id === foe.id) ?? edges.find(e => e.text.startsWith(foe.name.replace(/ \d+$/, '')));
     const textOk = Boolean(mine && /· \d+ pies$/.test(mine.text) && !/\bft\b/.test(mine.text) && !mine.cut);
     if (!foeOut || foeOut.inLook) {

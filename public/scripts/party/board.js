@@ -44,6 +44,7 @@ import { hasAction, useAction } from '../game-engine/combat/turn-machine.js';
 import { holdDuringCombat } from '../game-engine/combat/combat-hold.js';
 import { rollCheck, skillModifier } from '../game-engine/rules/checks.js';
 import { readCases } from '../game-engine/campaign/cases.js';
+import { conditionSaid } from '../game-engine/rules/abilities.js';
 import { readPlotState } from '../game-engine/campaign/plot.js';
 import { roleOf } from '../game-engine/combat/crits.js';
 import { deriveRooms, openDoor, normalizeRooms } from '../game-engine/campaign/campaign-map.js';
@@ -55,7 +56,7 @@ import {
 import { revealClue } from './cases.js';
 import { getAliveEnemies, getCurrentTurnEntry, getPartyMemberByTurnEntry, saveCombatState } from './combat-state.js';
 import { damagePartyMember } from './enemy-turn.js';
-import { applyFall, wakeRoomEnemies } from './combat-flow.js';
+import { wakeRoomEnemies, checkObjectiveLeft, tendFallenOutOfFight } from './combat-flow.js';
 import { applyTimedCondition, fieldLightOn } from './magic.js';
 import { openChest } from './loot.js';
 import { partyTabSetter } from './main.js';
@@ -851,6 +852,8 @@ export function handleTokenMove(tokenId, gridX, gridY, locationName) {
     savePartyState();
     // J12.11: si ha entrado en una sala con nombre, lo que se ve en ella.
     if (currentBoardName) noteZoneEntry(member, from, { x: gridX, y: gridY });
+    // Tanda 16: lo que quedó de la misión al acabar la pelea (salir por la ventana), andando.
+    if (currentBoardName && !combatEncounter.active) checkObjectiveLeft();
 }
 
 /**
@@ -963,6 +966,8 @@ export function groupMoveTo(gridX, gridY) {
     savePartyState();
     const desc = describeGroupMove(plan);
     if (desc) toastr.info(desc, 'Marcha del grupo');
+    // Tanda 16: lo que quedó de la misión al acabar la pelea (salir por la ventana), andando.
+    checkObjectiveLeft();
     renderLocationMapsPreview();
     return plan;
 }
@@ -1109,24 +1114,27 @@ function applyHazardHit(member, hazard) {
     }
     if (hazard.effect === 'damage' && hazard.damageDice) {
         const roll = rollWith(hazard.damageDice, nextRandom);
-        member.hp = Math.max(0, (Number(member.hp) || 0) - roll.total);
+        // Tanda 16: el daño de una trampa es daño como cualquier otro (`damagePartyMember`): a cero,
+        // al suelo y a tirar salvaciones de muerte, no muerto de golpe. Antes mandaba directo a la
+        // puerta de las caídas (`applyFall`), que podía matar sin tirar nada, y luego el registro
+        // le enseñaba tirando salvaciones.
+        const lines = damagePartyMember(member, roll.total, false);
         postCombatNarration(
-            `[TABLERO] ${hazard.name} salta bajo ${member.name}: ${roll.total} de daño.`,
+            [`[TABLERO] ${hazard.name} salta bajo ${member.name}: ${roll.total} de daño.`, ...lines].join('\n'),
         );
         toastr.error(`${member.name} pisa ${String(hazard.name).toLowerCase()}: ${roll.total} de daño.`, '¡Una trampa!', { timeOut: 9000 });
-        // A cero manda la misma puerta de siempre: una sola forma de caer.
-        // Lo que salta en el tablero dice de que es: fuego es fuego.
-        if (member.hp === 0) applyFall(member, String(hazard.cause || ''));
+        // Fuera de una pelea no hay turnos: los suyos le atienden ya (o, solo, tira hasta que se decide).
+        if ((Number(member.hp) || 0) <= 0 && !combatEncounter.active) tendFallenOutOfFight();
     } else if (hazard.effect === 'condition' && hazard.condition) {
         member.activeConditions = Array.isArray(member.activeConditions)
             ? member.activeConditions : [];
         if (!member.activeConditions.includes(hazard.condition)) {
             member.activeConditions.push(hazard.condition);
         }
-        postCombatNarration(
-            `[TABLERO] ${hazard.name} deja a ${member.name}: ${hazard.condition}.`,
-        );
-        toastr.error(`${hazard.name} deja a ${member.name}: ${hazard.condition}.`, '¡Una trampa!', { timeOut: 9000 });
+        // Tanda 16: el estado en castellano («queda derribada»), no el de las reglas («Prone»).
+        const said = `${hazard.name}: ${member.name} queda ${conditionSaid(hazard.condition, member)}.`;
+        postCombatNarration(`[TABLERO] ${said}`);
+        toastr.error(said, '¡Una trampa!', { timeOut: 9000 });
     } else {
         postCombatNarration(`[TABLERO] ${describeHazard(hazard)}.`);
     }

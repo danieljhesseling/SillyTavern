@@ -304,7 +304,10 @@ function rollLineProse(line, before) {
             : /rotundo/i.test(roll.verdict) ? ' Sale todo al revés.'
                 : /medias/i.test(roll.verdict) ? ' Sale a medias.'
                     : roll.success === true ? ' Sale bien.' : roll.success === false ? ' No sale.' : '';
-        said = `${tried}: saca un ${roll.total}${need}.${verdict}`;
+        // Tanda 16: lo que suma o resta algo de fuera se sigue leyendo («+2 por la Luz», D-J51); el
+        // desglose del dado («d20 12 +2»), no.
+        const extras = text(found[6]).replace(/^\(|\)$/gu, '').split(/\s*·\s*/u).filter(part => part && !/^d20\b/u.test(part));
+        said = `${tried}: saca un ${roll.total}${extras.length > 0 ? ` (${extras.join('; ')})` : ''}${need}.${verdict}`;
     }
     return rest ? `${said} ${upperFirst(rest.replace(/^[.,;:]\s*/, ''))}` : said;
 }

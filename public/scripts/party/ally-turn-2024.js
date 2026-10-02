@@ -6,7 +6,8 @@
  * tienes en la barra, para que no se quede en «acercarse y pegar»:
  *
  * - **Antes de decidir**: si está en el suelo, se levanta (la mitad de lo que anda); malherido y
- *   con una poción, se la bebe (acción adicional).
+ *   con una poción, se la bebe (acción adicional). Tanda 16: si uno de los suyos se desangra y
+ *   es bastante seguro, va a su lado y le da una poción o le estabiliza (`allyRescue2024`).
  * - **En vez de su golpe**: darle una poción a quien cae a su lado, empujar al vacío (o a lo que
  *   quema) al enemigo que está al borde, abrirle la guardia a quien pega más (un familiar
  *   siempre), u ocultarse si se queda atrás sin nadie a tiro.
@@ -18,7 +19,9 @@
  * es lo que hace él, con las mismas tiradas.
  */
 
-import { planAlly2024, allyDrinks, stanceOf } from '../game-engine/combat/ally-ai.js';
+import { planAlly2024, allyDrinks, stanceOf, planRescue } from '../game-engine/combat/ally-ai.js';
+import { needsStabilizing } from '../game-engine/rules/stabilize.js';
+import { readDeathSaves } from '../game-engine/rules/death-saves.js';
 import { potionsOf, canStand } from '../game-engine/rules/actions-2024.js';
 import { unarmedDC, escapeSave } from '../game-engine/rules/unarmed.js';
 import { getCoverBonus } from '../game-engine/board/terrain.js';
@@ -30,9 +33,9 @@ import { hasAction } from '../game-engine/combat/turn-machine.js';
 import { combatEncounter, partyMembers } from './state.js';
 import { getAliveEnemies, getRemainingMovementFeet, partyCell, speedOf } from './combat-state.js';
 import { getAttackRangeFeet, getPlayerDamageFormula, getPlayerAttackModifier, getEnemyDamageFormula } from './combat-rules.js';
-import { shoveGround, performManeuver } from './player-actions.js';
+import { shoveGround, performManeuver, handlePlayerCombatMove } from './player-actions.js';
 import { getActiveBoardContext, boardVisibility } from './board.js';
-import { drinkPotion, givePotion, unarmedStrike, hide2024, offHandAttack, buildCombatBarSnapshot, setProne } from './combat-bar.js';
+import { drinkPotion, givePotion, unarmedStrike, hide2024, offHandAttack, buildCombatBarSnapshot, setProne, stabilizeAlly } from './combat-bar.js';
 import { ai2024 } from './enemy-turn.js';
 import { livingSummons } from './spell-turn.js';
 import { postCombatNarration } from './narration.js';
@@ -74,6 +77,52 @@ export function allyBeforeTurn2024(member) {
     });
     if (!ready || !potions[0]) return false;
     return Boolean(drinkPotion(potions[0].itemId));
+}
+
+/**
+ * Tanda 16: antes de decidir su turno, si uno de los suyos está en el suelo desangrándose y es
+ * bastante seguro (`planRescue`), va a su lado y le da una poción o le estabiliza (Medicina
+ * contra 10), con las mismas funciones que la barra. Vacío si no.
+ *
+ * @param {any} member
+ * @returns {string} Por qué, ya contado.
+ */
+export function allyRescue2024(member) {
+    if (!ai2024() || !member || member.summon || !combatEncounter.active || !hasAction(combatEncounter, 'action')) return '';
+    const here = partyCell(member);
+    const dying = partyMembers.filter(m => String(m.id) !== String(member.id) && needsStabilizing(m)
+        && (!m.mapPosition?.locationName || !member.mapPosition?.locationName || m.mapPosition.locationName === member.mapPosition.locationName));
+    if (dying.length === 0) return '';
+    const { terrain, gridWidth, gridHeight } = getActiveBoardContext();
+    const potions = potionsOf(member);
+    const plan = planRescue({
+        actor: {
+            id: String(member.id), gridX: here.x, gridY: here.y,
+            speedFeet: getRemainingMovementFeet(member),
+            potions: potions.reduce((sum, p) => sum + p.count, 0),
+        },
+        dying: dying.map(m => ({ id: String(m.id), gridX: partyCell(m).x, gridY: partyCell(m).y, failures: readDeathSaves(m).failures })),
+        enemies: getAliveEnemies().map(e => ({
+            id: String(e.instanceId), gridX: Number(e.gridX) || 0, gridY: Number(e.gridY) || 0,
+            currentHp: Number(e.currentHp) || 0, reachFeet: Number(e.attackRangeFeet) || 5,
+        })),
+        allies: [...partyMembers, ...livingSummons()]
+            .filter(m => String(m.id) !== String(member.id) && (Number(m.hp) || 0) > 0)
+            .map(m => ({ id: String(m.id), gridX: partyCell(m).x, gridY: partyCell(m).y })),
+        terrain, gridWidth, gridHeight,
+    });
+    if (!plan) return '';
+    // Primero por qué (se lee antes que la tirada); luego anda por la puerta de siempre y atiende.
+    postCombatNarration(`[COMBAT] ${member.name}: ${plan.reason}`);
+    if (plan.destination.x !== here.x || plan.destination.y !== here.y) {
+        handlePlayerCombatMove(`${plan.destination.x + 1},${plan.destination.y + 1}`);
+    }
+    const now = partyCell(member);
+    const target = partyMembers.find(m => String(m.id) === plan.targetId);
+    // Si algo le ha parado por el camino (una trampa, un golpe), sigue su turno como siempre.
+    if (!combatEncounter.active || !target || Math.max(Math.abs(now.x - partyCell(target).x), Math.abs(now.y - partyCell(target).y)) > 1) return '';
+    const done = plan.kind === 'give-potion' ? givePotion(String(potions[0]?.itemId ?? ''), plan.targetId) : stabilizeAlly(plan.targetId);
+    return done ? plan.reason : '';
 }
 
 /**

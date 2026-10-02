@@ -653,13 +653,26 @@ try {
     check('D-J45: tras ganar, si la victoria abre una escena, «Continuar» lleva a ella: la del Asedio en la Mansión',
         (storyFirst.already || (storyFirst.after === 'story' && storyFirst.victory)) && sceneShown && /asedio/i.test(sceneId),
         JSON.stringify({ storyFirst, sceneShown, sceneId }));
-    // La escena, jugada entera: la primera opción que se pueda y seguir.
-    for (let i = 0; i < 40 && await sceneOpen(); i++) {
-        const option = page.locator('dialog.ps-dialog[open] .dw-option:not(.dw-locked)').first();
-        if (await option.count() > 0) await option.click({ timeout: 3000 }).catch(() => {});
-        else await page.locator('dialog.ps-dialog[open] .ps-next, dialog.ps-dialog[open] .ps-finish').first().click({ timeout: 3000 }).catch(() => {});
+    // La escena, jugada entera: la primera opción que se pueda y seguir. Tanda 16: y las que
+    // esperan detrás. Ganar la Taberna abre dos hitos con escena (el Asedio y «El grito en el
+    // sótano»): la segunda sale en cuanto se cierra la primera, y mientras espera «Continuar»
+    // dice «Sigue la historia» (D-J45: lo que espera de la historia va primero). La prueba
+    // salía del bucle en el hueco entre las dos y se quedaba esperando con la segunda abierta.
+    const queued = () => page.evaluate(async () => (await import('/scripts/party/plot.js')).scenesPending);
+    const played = [];
+    for (let i = 0; i < 160; i++) {
+        if (await sceneOpen()) {
+            const id = await page.evaluate(() => document.querySelector('dialog.ps-dialog[open] .ps-root')?.getAttribute('data-scene') || '');
+            if (id && !played.includes(id)) played.push(id);
+            const option = page.locator('dialog.ps-dialog[open] .dw-option:not(.dw-locked)').first();
+            if (await option.count() > 0) await option.click({ timeout: 3000 }).catch(() => {});
+            else await page.locator('dialog.ps-dialog[open] .ps-next, dialog.ps-dialog[open] .ps-finish').first().click({ timeout: 3000 }).catch(() => {});
+        } else if (await queued() === 0) {
+            break;
+        }
         await page.waitForTimeout(250);
     }
+    console.log(`      escenas jugadas tras ganar: ${played.join(', ') || '(ninguna)'}`);
     await clearDice();
     await dropToasts();
     await until(async () => (await continueChip()).after === 'next', 8000);

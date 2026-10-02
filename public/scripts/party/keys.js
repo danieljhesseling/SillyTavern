@@ -148,6 +148,12 @@ export const PRISONERS_KEY = 'prisoners';
  */
 export const BOARDS_WON_KEY = 'boardsWon';
 
+/**
+ * Tanda 16: la misión de un tablero que quedó a medias al acabar su pelea (sin nadie en pie, pero
+ * sin haber llegado a la ventana): `{place, board, left, round}`. Se cumple andando, fuera de combate.
+ */
+export const OBJECTIVE_LEFT_KEY = 'objectiveLeft';
+
 /** Los d20 que ha tirado el motor (idea 168). */
 export const DICE_LOG_KEY = 'diceLog';
 /** El regateo de hoy (idea 126): donde, que dia y si salio. */

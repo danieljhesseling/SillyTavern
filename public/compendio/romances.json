@@ -31,7 +31,7 @@
       "where": "plaza",
       "beats": [
         {
-          "note": "Una diana nueva en el poste de la plaza. Nella te espera sentada en la fuente.",
+          "note": "Nella ha clavado una diana nueva en un poste y te espera con el arco en las rodillas.",
           "say": "Te propongo una apuesta. Tiras una flecha. Si das en el centro, te digo una cosa que no le he dicho a nadie. Si fallas, me invitas a cenar.",
           "mood": "alegre",
           "replies": [

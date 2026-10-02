@@ -508,7 +508,10 @@ try {
     }
     if (process.env.DU_STOP === 'duelo') throw new Error('parado tras el duelo (DU_STOP)');
     await until(async () => !(await state()).fighting, 10000);
-    await until(async () => (await exitWindow())?.kind === 'brawl', 8000);
+    await until(async () => {
+        await clearDice();
+        return (await exitWindow())?.kind === 'brawl';
+    }, 40000);
     const duelEnd = await exitWindow();
     const afterDuel = await state();
     await shoot('duelo-ganado');
@@ -572,14 +575,20 @@ try {
         }
     }
     await until(async () => !(await state()).fighting, 15000);
-    await until(async () => (await exitWindow())?.kind === 'brawl', 8000);
+    // La escena del final espera a que se cierren los dados del último golpe: se cierran.
+    await until(async () => {
+        await clearDice();
+        return (await exitWindow())?.kind === 'brawl';
+    }, 40000);
     const brawlEnd = await exitWindow();
     const brawlLog = await chatSince(brawlFrom);
     const afterBrawl = await state();
     await shoot('pelea-perdida');
+    // La narración quita el emoji del principio de la línea (J13.8): se busca la frase.
     check('J12.7: quien cae queda fuera de combate («cae redondo… aquí nadie muere»), sin tirar salvaciones de muerte',
-        /💫 Tessa cae redondo/.test(brawlLog) && !/salvaci[oó]n(es)? de muerte/i.test(brawlLog) && !/ha muerto|muere\b(?!.*nadie)/.test(brawlLog.replace(/Aquí nadie muere\./g, '')),
-        (brawlLog.match(/.{0,40}(💫|muert|salvaci).{0,80}/g) ?? []).join(' | ').slice(0, 600));
+        /Tessa cae redondo/.test(brawlLog) && /Aquí nadie muere/.test(brawlLog) && !/salvaci[oó]n(es)? de muerte/i.test(brawlLog)
+        && !/ha muerto|muere\b(?!.*nadie)/.test(brawlLog.replace(/Aquí nadie muere\./g, '')),
+        (brawlLog.match(/.{0,40}(cae redondo|muert|salvaci).{0,80}/g) ?? []).join(' | ').slice(0, 600));
     check('J12.7: se pierde y nadie muere: todos de pie con 1 PG, vivos',
         afterBrawl.party.every(p => !p.dead && p.hp === 1), JSON.stringify(afterBrawl.party));
     check('J12.7: el final: «Pierdes la pelea», la bolsa más ligera, y lo dice Tomás o el camorrista',
@@ -631,6 +640,14 @@ try {
     }
 
     // === 6. El reto por honor: amenazas a Ramiro, y te reta =============================================
+    // De noche la herrería está cerrada (Ramiro, en la posada): se pasa el rato hasta que abra.
+    for (let i = 0; i < 3 && /Noche/.test((await state()).clock); i++) {
+        await enterPlace('posada');
+        await clickAct('clock:slot').catch(() => {});
+        await page.waitForTimeout(900);
+        await carryOn('exploration');
+        await dropToasts();
+    }
     await enterPlace('herreria');
     const forge = await placeScene();
     // J13.7: hasta que se presenta, «Hablar con el herrero».

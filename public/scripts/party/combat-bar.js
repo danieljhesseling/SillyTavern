@@ -46,6 +46,8 @@ import { rollLine } from '../game-engine/rules/roll-line.js';
 import { traitBonus } from '../game-engine/campaign/feats.js';
 import { perkBonus } from '../game-engine/rules/level-perks.js';
 import { clearDeathSaves } from '../game-engine/rules/death-saves.js';
+import { needsStabilizing, stabilizeCheck, stableSaves, STABILIZE_DC } from '../game-engine/rules/stabilize.js';
+import { gendered } from '../game-engine/campaign/grammar.js';
 import {
     buildBar, buildAttackMenu, buildMagicMenu, buildActionsMenu, buildBonusMenu,
 } from '../game-engine/ui/combat-vtt/action-menus.js';
@@ -385,7 +387,7 @@ export function buildCombatBarSnapshot({ full = true } = {}) {
         active: Boolean(combatEncounter.active), isPlayerTurn: false, turnLabel: entry ? `Turno de ${entry.name}` : 'Combate en curso', actorName: String(entry?.name ?? ''),
         ready: { action: false, bonus: false, reaction: false }, move: { left: 0, speed: 0 },
         posture: { prone: false, standCost: 0, canStand: false, standWhy: '' }, canAuto: false, canParley: false, hasMastery: false,
-        weapon: null, spareWeapons: [], swap: { ok: false, reason: 'No es tu turno.' }, enemies: [], adjacentAllies: [],
+        weapon: null, spareWeapons: [], swap: { ok: false, reason: 'No es tu turno.' }, enemies: [], adjacentAllies: [], dying: [],
         unarmed: { damage: 1, dc: 10, freeHand: { ok: false, reason: '' }, targets: [] }, abilities: [], slots: [], magicItems: [], potions: [],
         offHand: { weapon: null, ok: false, reason: 'No es tu turno.', free: false }, throws: [], maneuvers: [], hide: { ok: false, reason: '' }, studied: {},
     };
@@ -424,6 +426,11 @@ export function buildCombatBarSnapshot({ full = true } = {}) {
         .filter(m => String(m.id) !== String(member.id) && !m.dead)
         .map(m => ({ id: String(m.id), name: String(m.name), art: memberFace(m), hp: Number(m.hp) || 0, maxHp: Number(m.maxHp) || 0, distanceFeet: feetBetween(member, m) }))
         .filter(m => m.distanceFeet <= 5);
+    // Tanda 16: los tuyos que están en el suelo tirando salvaciones (para Estabilizar).
+    const dying = partyMembers
+        .filter(m => String(m.id) !== String(member.id) && needsStabilizing(m))
+        .map(m => ({ id: String(m.id), name: String(m.name), art: memberFace(m), hp: 0, maxHp: Number(m.maxHp) || 0, distanceFeet: feetBetween(member, m) }))
+        .sort((a, b) => a.distanceFeet - b.distanceFeet);
 
     // La otra mano: otra ligera, tras atacar con la primera.
     const offItem = brawl ? null : offHandWeaponOf({ items: member.items, main, shield: equippedIn(member, 'shield') });
@@ -453,6 +460,7 @@ export function buildCombatBarSnapshot({ full = true } = {}) {
         swap: swapVerdict(member),
         enemies,
         adjacentAllies,
+        dying,
         unarmed: {
             damage: unarmedDamage(member).damage,
             dc: unarmedDC(member),
@@ -866,6 +874,47 @@ export function givePotion(itemId, allyId) {
 }
 
 /**
+ * Tanda 16: Estabilizar a uno de los tuyos que está en el suelo, pegado a ti (2024: Ayudar a
+ * quien está a 0 PG, Sabiduría (Medicina) contra 10). Gasta la acción. Si sale, deja de
+ * desangrarse: sigue a 0 PG, pero ya no tira salvaciones de muerte.
+ *
+ * @param {string} allyId
+ * @returns {string}
+ */
+export function stabilizeAlly(allyId) {
+    const member = actingMember();
+    if (!member) return '';
+    if (!hasAction(combatEncounter, 'action')) {
+        toastr.warning('Tu accion de este turno ya fue usada.');
+        return '';
+    }
+    const ally = partyMembers.find(m => String(m.id) === String(allyId));
+    if (!ally || !needsStabilizing(ally)) {
+        toastr.info(ally ? `${ally.name} no se está desangrando.` : 'No hay nadie en el suelo.', 'Estabilizar');
+        return '';
+    }
+    if (feetBetween(member, ally) > 5) {
+        toastr.warning(`Para atender a ${ally.name} tienes que estar pegado a ${gendered(ally, 'él', 'ella')}.`, 'Estabilizar');
+        return '';
+    }
+    Object.assign(combatEncounter, useAction(combatEncounter, 'action'));
+    const { modifier } = skillModifier(member, 'medicine');
+    const natural = rollDiceDetailed('1d20', 20).total;
+    const check = stabilizeCheck({ helper: String(member.name), target: String(ally.name), natural, modifier });
+    showCombatDiceRoll({
+        title: `${member.name} atiende a ${ally.name}`, subtitle: `Medicina contra ${STABILIZE_DC}`, formula: `1d20${modifier >= 0 ? '+' : ''}${modifier}`,
+        detail: `d20(${natural}) ${modifier >= 0 ? '+' : ''}${modifier} = ${check.total} contra ${STABILIZE_DC}`, total: check.total, dc: STABILIZE_DC, natural, glyph: 'd20',
+    });
+    if (check.success) ally.deathSaves = stableSaves();
+    soundCue(check.success ? 'heal' : 'miss');
+    postCombatNarration(`[COMBAT] ${check.lines.join('\n')}`);
+    saveCombatState();
+    savePartyState();
+    renderLocationMapsPreview();
+    return `${member.name}: estabilizar a ${ally.name}`;
+}
+
+/**
  * El golpe con la otra mano: tras atacar con un arma ligera, otro con la ligera de la otra mano,
  * sin sumar el modificador al daño. Gasta la adicional, salvo con Mellar (una vez por turno).
  *
@@ -1015,6 +1064,7 @@ export function runCombatBarPick(pick) {
             if (a === 'correr') dashAction();
             else if (a === 'ocultarse') hide2024();
             else if (a === 'estudiar') studyEnemy(b);
+            else if (a === 'estabilizar') stabilizeAlly(b);
             else performManeuver(a, b);
             break;
         case 'give': givePotion(a, b); break;

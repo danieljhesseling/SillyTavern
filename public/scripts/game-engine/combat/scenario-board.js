@@ -134,3 +134,51 @@ export function leftToDo(objectives, board) {
         });
     return parts.length > 0 ? `Ya no queda nadie en pie, pero aún falta: ${parts.join(' ')}` : '';
 }
+
+/** Tanda 16: lo que se puede cumplir sin pelea: llegar a una casilla, llevar a alguien, sacar un tesoro. */
+const DONE_WALKING = new Set(['reach_cell', 'escort', 'loot']);
+
+/**
+ * Tanda 16: si la pelea se acaba aunque quede algo de la misión. Sin nadie en pie, sin refuerzos
+ * por llegar y con todo lo que falta hecho para cumplirse andando (salir por la ventana de la
+ * posada de 1387, llevar a alguien, abrir un cofre), la pelea se acaba: lo que falta se hace
+ * fuera de combate. Antes la pelea seguía sin enemigos, y quien había caído seguía tirando
+ * salvaciones de muerte mientras el héroe andaba hasta la ventana.
+ *
+ * Devuelve las ids de lo que falta, o vacío si la pelea no se acaba por esto (queda alguien en
+ * pie, vienen refuerzos, ya está ganada o perdida, o lo que falta es aguantar rondas).
+ *
+ * @param {Array<any>} objectives
+ * @param {import('../campaign/scenarios.js').BoardState} board
+ * @param {{wavesLeft?: boolean}} [options] Si aún tienen que llegar refuerzos al tablero.
+ * @returns {string[]}
+ */
+export function objectivesLeftWalking(objectives, board, { wavesLeft = false } = {}) {
+    const list = normalizeObjectives(objectives);
+    if (list.length === 0 || wavesLeft || (board?.enemies ?? []).some(e => (Number(e?.currentHp) || 0) > 0)) return [];
+    const { status, results } = evaluateScenario(list, board);
+    if (status !== 'active') return [];
+    const pending = results.filter(r => !r.optional && r.status === 'pending' && r.type !== 'protect');
+    if (pending.length === 0 || !pending.every(r => DONE_WALKING.has(r.type))) return [];
+    return pending.map(r => r.id);
+}
+
+/**
+ * Tanda 16: cómo va lo que quedó por hacer tras la pelea, fuera de combate: `done` si ya está
+ * todo (alguien ha llegado a la casilla, se ha sacado el tesoro), `failed` si se ha perdido (quien
+ * se escoltaba ha caído), o `pending`.
+ *
+ * @param {Array<any>} objectives Los del tablero.
+ * @param {string[]} left Las ids de lo que quedó (`objectivesLeftWalking`).
+ * @param {import('../campaign/scenarios.js').BoardState} board
+ * @returns {{status: 'done'|'failed'|'pending', labels: string[]}}
+ */
+export function walkingObjectiveStatus(objectives, left, board) {
+    const ids = new Set((Array.isArray(left) ? left : []).map(String));
+    const list = normalizeObjectives(objectives).filter(o => ids.has(o.id));
+    if (list.length === 0) return { status: 'done', labels: [] };
+    const results = evaluateScenario(list, { ...board, enemies: [] }).results;
+    const labels = list.map(o => String(o.label || OBJECTIVE_TYPES[o.type]?.label || o.id));
+    if (results.some(r => r.status === 'failed')) return { status: 'failed', labels };
+    return { status: results.every(r => r.status === 'complete') ? 'done' : 'pending', labels };
+}

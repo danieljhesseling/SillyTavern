@@ -25,7 +25,7 @@ import { chestItemsAt } from '../game-engine/campaign/chests.js';
 import { RELICS_GIVEN_KEY } from './keys.js';
 import { combatEncounter, currentBoardName, currentLocationName, partyMembers, worldItemCatalogue } from './state.js';
 import { deliverTakenContract } from './contracts.js';
-import { checkScenarioOutcome } from './combat-flow.js';
+import { checkScenarioOutcome, checkObjectiveLeft } from './combat-flow.js';
 import { persistBoardTerrain, getActiveBoardContext } from './board.js';
 import { renderLocationMapsPreview } from './board-view.js';
 import { lastCompendium } from './world.js';
@@ -77,6 +77,8 @@ export function openChest(board, gx, gy) {
     if (wanted) {
         toastr.success(`${opener.name} encuentra ${wanted}.`, 'Lo que buscabais');
         if (combatEncounter.active) checkScenarioOutcome();
+        // Tanda 16: o, acabada la pelea con la misión a medias, el tesoro que faltaba.
+        else checkObjectiveLeft();
     }
 }
 

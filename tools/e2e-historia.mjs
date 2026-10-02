@@ -274,7 +274,10 @@ try {
 
     // --- Ganar en el cuarto de la posada: la escena siguiente espera al panel de victoria ----
     await dropToasts();
-    // Tanda 10: ya no hay «Iniciar combate»: la pelea se abre sola (la decisión, «Pelear» y «Empezar»).
+    // Tanda 10: ya no hay «Iniciar combate»: la pelea se abre sola al ver el tablero (la decisión,
+    // «Pelear» y «Empezar»). Esta partida no es «Jugar sin conexión» y tiene pestañas: al tablero
+    // se va con la suya, como quien juega así (sin conexión lo lleva «Continuar»).
+    await page.locator('#game-shell .gs-scene-btn[data-scene="combat"]:not([disabled])').first().click({ timeout: 3000 }).catch(() => {});
     const canFight = await entrarEnLaPelea(page, { ms: 25000 });
     await until(() => page.evaluate(async () => Boolean((await import('/scripts/party.js')).getCombatEncounter()?.active)), 10000);
     await clearDice();
@@ -609,6 +612,11 @@ try {
         brunildaScene && gremioFrames.some(f => f.plate === 'Brunilda') && !now.done.includes('el-gremio') && now.open.includes('el-gremio'),
         JSON.stringify({ done: now.done, open: now.open }));
     await dropToasts();
+    // Tras la pelea se sigue en el tablero del muelle: «Continuar» lleva al pueblo, como quien juega.
+    for (let i = 0; i < 4 && !(await chips()).some(c => /^Hablar con Brunilda/.test(c)); i++) {
+        await page.locator('#game-shell .gs-chip-continue:visible').first().click({ timeout: 2000 }).catch(() => {});
+        await page.waitForTimeout(1200);
+    }
     const talkChip = await until(async () => (await chips()).some(c => /^Hablar con Brunilda/.test(c)), 10000);
     await clickChip(/^Hablar con Brunilda/);
     const brunildaTalk = await until(async () => (await story())?.id === 'brunilda-la-casa', 10000);

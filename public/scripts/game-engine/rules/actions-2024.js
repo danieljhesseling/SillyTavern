@@ -24,6 +24,8 @@ export const ACTIONS_2024 = {
     ocultarse: { label: 'Ocultarse', short: 'Sigilo contra 15, tras algo que te tape o en la penumbra. Si sale, nadie te ve hasta que ataques.', icon: 'fa-eye-slash', cost: 'action' },
     estudiar: { label: 'Estudiar', short: 'Una tirada de Inteligencia para saber de qué pie cojea un enemigo.', icon: 'fa-book-open-reader', cost: 'action' },
     utilizar: { label: 'Utilizar', short: 'Usar un objeto: darle una poción a quien tienes al lado, lanzar aceite o una red.', icon: 'fa-gear', cost: 'action' },
+    // Tanda 16: estabilizar a quien ha caído (2024: Ayudar a quien está a 0 PG, Medicina CD 10).
+    estabilizar: { label: 'Estabilizar', short: 'A uno de los tuyos que está en el suelo, a tu lado: Medicina contra 10. Si sale, deja de desangrarse.', icon: 'fa-kit-medical', cost: 'action' },
     preparar: { label: 'Preparar golpe', short: 'Hasta tu próximo turno, el primero que se te acerque se lleva un golpe antes de nada.', icon: 'fa-hourglass-half', cost: 'action' },
 };
 

@@ -23,7 +23,46 @@
 import { readArea, describeArea } from './area.js';
 import { describeElement } from './tags.js';
 import { chargesLeft, canCast, CIRCLE_LABELS } from './grimoire.js';
-import { statusMarkers } from '../combat/initiative-tracker.js';
+import { statusMarkers, STATUS_ICONS } from '../combat/initiative-tracker.js';
+import { gendered } from '../campaign/grammar.js';
+
+/**
+ * Tanda 16: los tipos de daño de 5e en castellano, en una palabra («contundente», «fuego»), como
+ * los dicen las etiquetas de los menús. Una palabra, para que la novela los siga leyendo
+ * («Daño fuego: …» → «Le hace 7 de daño de fuego», `narration-prose.js`).
+ */
+const DAMAGE_TYPE_WORDS = {
+    acid: 'ácido', bludgeoning: 'contundente', cold: 'frío', fire: 'fuego', force: 'fuerza', lightning: 'rayo',
+    necrotic: 'necrótico', piercing: 'perforante', poison: 'veneno', psychic: 'psíquico', radiant: 'radiante',
+    slashing: 'cortante', thunder: 'trueno',
+};
+
+/**
+ * Un tipo de daño, en castellano (el que ya lo está, igual).
+ *
+ * @param {any} type
+ * @returns {string}
+ */
+export function damageTypeWord(type) {
+    const key = String(type ?? '').trim().toLowerCase();
+    return /** @type {Record<string, string>} */ (DAMAGE_TYPE_WORDS)[key] ?? key;
+}
+
+/**
+ * Tanda 16: un estado como se dice detrás de «queda»: «Prone» → «derribado», o «derribada» si
+ * quien lo sufre es mujer. Los que no están en la tabla, como vienen.
+ *
+ * @param {any} condition
+ * @param {any} [who] Quien lo sufre (su ficha), para el género.
+ * @returns {string}
+ */
+export function conditionSaid(condition, who = null) {
+    const raw = String(condition ?? '').trim();
+    const label = /** @type {Record<string, {label: string}>} */ (STATUS_ICONS)[raw.toLowerCase()]?.label ?? raw;
+    const word = label.toLowerCase();
+    // Solo los participios cambian («derribado/derribada»); «invisible» o «corriendo», no.
+    return /(ado|ido)$/.test(word) ? gendered(who, word, word.replace(/o$/, 'a')) : word;
+}
 
 /** Qué parte del turno gasta. */
 export const ABILITY_COSTS = ['action', 'bonus', 'free'];
@@ -334,7 +373,10 @@ export function planAbilityUse({
         const dodged = saved && ability.onSave === 'none';
         if (saved) damage = dodged ? 0 : Math.floor(damage / 2);
         if (damage > 0) {
-            lines.push(`💥 Daño${ability.damageType ? ` ${ability.damageType.toLowerCase()}` : ''}: `
+            // Tanda 16: el tipo en castellano («Daño contundente», no «Daño bludgeoning»): el
+            // resumen del combate lo enseña tal cual.
+            const kind = damageTypeWord(ability.damageType);
+            lines.push(`💥 Daño${kind ? ` ${kind}` : ''}: `
                 + `${ability.damage}${crit ? ' x2 (crítico)' : ''}${saved ? ' a la mitad (salva)' : ''} = ${damage}`);
         } else if (dodged) {
             lines.push(`🛡️ ${targetName} se libra del todo.`);
@@ -349,9 +391,12 @@ export function planAbilityUse({
 
     const applies = ability.condition && !saved;
     if (ability.condition) {
+        // Tanda 16: el estado en castellano y con el género de quien lo sufre («Mara queda
+        // derribada», no «queda Prone»). La ficha sigue guardando el de las reglas (`condition`).
+        const said = conditionSaid(ability.condition, ability.target === 'self' ? actor : target);
         lines.push(applies
-            ? `🌀 ${targetName} queda ${ability.condition} (${ability.conditionRounds} ronda(s)).`
-            : `🌀 ${targetName} aguanta y no queda ${ability.condition}.`);
+            ? `🌀 ${targetName} queda ${said} (${ability.conditionRounds} ronda(s)).`
+            : `🌀 ${targetName} aguanta y no queda ${said}.`);
     }
 
     return {

@@ -95,6 +95,9 @@ export const PRIMARY_TARGETS = [
     '.wm-dice-overlay.active .wm-dice-next',
     '.tc-overlay .tc-card button',
     '.gs-root .gs-pause-card button',
+    // Antes de la pelea, colocando al grupo: «Empezar». Con Mayús+Tab se vuelve a las caras y al
+    // tablero, para mover a alguien.
+    '.cv-place .cv-place-start',
     '.gs-root .gs-vn-box .gs-chip-continue',
     '.gs-root[data-scene="dialogue"] .gs-vn-box .gs-chip-action',
     // Quien juega en el tablero con el teclado (y salió de él solo para la tarjeta de un enemigo
@@ -667,6 +670,12 @@ export function focusList(list) {
 export function returnFocus(from, doc = document, key = '') {
     // Si el foco ya está en algo (quien juega pulsó otra cosa), no se le quita.
     if (!focusLost(doc)) return;
+    // «Fin de turno» ya hizo lo suyo (los dados que salen después son del turno de otro): el foco no
+    // vuelve ahí, que un Intro de más pasaría el turno siguiente sin hacer nada. Va a lo principal.
+    if (from?.matches?.('.gs-btn-end')) {
+        rescueFocus(doc);
+        return;
+    }
     if (from && from.isConnected && focusOn(from)) return;
     if (key) {
         const same = focusablesIn(doc).find(node => focusKeyOf(node) === key) ?? null;
@@ -874,7 +883,13 @@ function keepFocusThrough(node, doc) {
             if (waits.length > 1) attempt(waits.slice(1));
             return;
         }
-        if (box && (!box.isConnected || (box.tagName === 'DIALOG' && !box.hasAttribute('open')))) return;
+        if (box && (!box.isConnected || (box.tagName === 'DIALOG' && !box.hasAttribute('open')))) {
+            // Quien la cierra tiene un rato para devolver el foco; si al final nadie lo hizo (una
+            // ventana quitada sin avisar), a lo principal de la escena.
+            if (waits.length > 1) attempt(waits.slice(1));
+            else rescueFocus(doc);
+            return;
+        }
         const home = around.find(up => up.isConnected);
         if (!home) return;
         const same = focusablesIn(home).find(other => focusKeyOf(other) === key) ?? null;
@@ -1045,6 +1060,10 @@ export function installKeyboard(doc = document) {
         })
         : null;
     if (doc.body) watcher?.observe(doc.body, { childList: true });
+    // Las escenas del juego (la novela, las quedadas) abren su ventana dentro de la pantalla del
+    // juego y la quitan nada más cerrarla: su aviso de «cerrada» ya no llega a la página.
+    const shellRoot = doc.querySelector('.gs-root');
+    if (shellRoot) watcher?.observe(shellRoot, { childList: true });
     return () => {
         doc.removeEventListener('keydown', onKey, true);
         doc.removeEventListener('pointerdown', onPointer, true);

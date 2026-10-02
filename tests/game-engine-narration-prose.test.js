@@ -89,6 +89,15 @@ describe('noteProse: rolls, boards, cases and levels', () => {
         expect(read('🎲 Guardia de Gerd: 12 contra 10 ✓')).toMatch(/^Gerd hace la guardia: saca un 12/);
     });
 
+    // Tanda 16: e2e-magia fallaba en «examinar a la luz»: la tirada sumaba +2, pero al contarla se
+    // perdía con el desglose del dado.
+    test('what helps a roll is still said: «+2 por la Luz» (D-J51), but not the die breakdown', () => {
+        expect(read('🎲 [TIRADA] Investigación de Lía: 23 contra CD 12 ✓ Éxito (d20 19 +4 · +2 por la Luz). Lía da con un detalle.'))
+            .toBe('Lía prueba con Investigación: saca un 23 (+2 por la Luz), y le hacía falta un 12. Sale bien. Lía da con un detalle.');
+        expect(read('🎲 Persuasión de Irene: 9 contra CD 12 ✗ Fallo (d20 7 +2 · desventaja: 7 y 15, no habla su lengua)'))
+            .toBe('Irene prueba con Persuasión: saca un 9 (desventaja: 7 y 15, no habla su lengua), y le hacía falta un 12. No sale.');
+    });
+
     test('doors, locks, chests, cases and levels lose their squares, commands and abbreviations', () => {
         expect(read('[BOARD] La puerta de (3, 4) queda abierta: da a la cocina.')).toBe('La puerta queda abierta: da a la cocina.');
         expect(read('🗝️ [BOARD] Irene saca la ganzúa: la cerradura baja de CD 15 a 13.')).not.toMatch(LOG);

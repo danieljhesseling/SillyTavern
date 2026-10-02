@@ -291,6 +291,12 @@ export function explainLock(map, locationId, context) {
  * Doors are boundaries, not floor: otherwise two rooms joined by a doorway would be one
  * room and the door would guard nothing.
  *
+ * Tanda 16: but only a **closed** door guards anything. One drawn open (`o`) is seen
+ * through, so the two sides are one room: the command tent of 1387 drew its two doors open,
+ * and Captain Keller and her escort slept unseen on the other side of them, because an
+ * open door cannot be opened (pressing it closes it). The door still counts among the
+ * room's doors, and its cell is not floor of the room.
+ *
  * @param {import('../board/terrain.js').BoardTerrain} terrain
  * @param {number} gridWidth
  * @param {number} gridHeight
@@ -324,13 +330,15 @@ export function deriveRooms(terrain, gridWidth, gridHeight, options = {}) {
             const cells = [];
             /** @type {Set<string>} */
             const doors = new Set();
+            /** @type {Array<{x: number, y: number, door?: boolean}>} */
             const queue = [{ x, y }];
             seen.add(key);
 
             while (queue.length > 0) {
                 const cell = queue.pop();
                 if (!cell) break;
-                cells.push(cellKey(cell.x, cell.y));
+                // Una puerta abierta se cruza con la vista, pero no es suelo de la sala.
+                if (!cell.door) cells.push(cellKey(cell.x, cell.y));
 
                 for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
                     const nx = cell.x + dx;
@@ -338,7 +346,12 @@ export function deriveRooms(terrain, gridWidth, gridHeight, options = {}) {
                     if (nx < 0 || ny < 0 || nx >= width || ny >= height) continue;
 
                     if (typeAt(nx, ny) === 'door') {
-                        doors.add(cellKey(nx, ny));
+                        const door = cellKey(nx, ny);
+                        doors.add(door);
+                        if (terrain?.cells?.[door]?.open === true && !seen.has(door)) {
+                            seen.add(door);
+                            queue.push({ x: nx, y: ny, door: true });
+                        }
                         continue;
                     }
                     const next = cellKey(nx, ny);
@@ -400,4 +413,34 @@ export function awakePlacements(rooms, placements) {
     const visible = new Set(list.filter(r => r.revealed).flatMap(r => r.cells));
     return (Array.isArray(placements) ? placements : [])
         .filter(p => p && visible.has(cellKey(Number(p.x) || 0, Number(p.y) || 0)));
+}
+
+/**
+ * Tanda 16: lo que se ve por una puerta abierta no está escondido. Las salas de un tablero
+ * guardado antes de que `deriveRooms` lo supiera (la tienda de mando de 1387, con sus dos
+ * puertas dibujadas abiertas) se ponen al día: una sala unida por una puerta abierta a otra
+ * ya revelada queda revelada también, y así en cadena.
+ *
+ * @param {any} rooms Las salas guardadas del tablero, tal cual.
+ * @param {import('../board/terrain.js').BoardTerrain} terrain
+ * @returns {any} Las mismas salas si no cambia nada; si no, una copia con esas reveladas.
+ */
+export function revealThroughOpenDoors(rooms, terrain) {
+    if (!Array.isArray(rooms)) return rooms;
+    const list = normalizeRooms(rooms);
+    const open = (/** @type {string} */ key) => terrain?.cells?.[key]?.type === 'door' && terrain.cells[key].open === true;
+    const shown = new Set(list.filter(r => r.revealed).map(r => r.id));
+    const before = shown.size;
+    let grew = shown.size > 0;
+    while (grew) {
+        grew = false;
+        const seenDoors = new Set(list.filter(r => shown.has(r.id)).flatMap(r => r.doors).filter(open));
+        for (const room of list) {
+            if (shown.has(room.id) || !room.doors.some(d => seenDoors.has(d))) continue;
+            shown.add(room.id);
+            grew = true;
+        }
+    }
+    if (shown.size === before) return rooms;
+    return rooms.map(r => (r && typeof r === 'object' && !r.revealed && shown.has(String(r.id)) ? { ...r, revealed: true } : r));
 }

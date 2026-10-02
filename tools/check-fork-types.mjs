@@ -335,6 +335,8 @@ const FORK_FILES = [
     'public/scripts/game-engine/rules/level-up.js',
     'public/scripts/game-engine/rules/abilities.js',
     'public/scripts/game-engine/rules/death-saves.js',
+    // Tanda 16: estabilizar a quien ha caído.
+    'public/scripts/game-engine/rules/stabilize.js',
     'public/scripts/game-engine/board/reachability.js',
     // J12.8 a J12.12: tableros a partir de un mapa en imagen.
     'public/scripts/game-engine/board/map-image.js',

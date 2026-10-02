@@ -538,10 +538,10 @@ try {
         const acts = (await placeScene()).acts;
         const camp = acts.find(a => a.id === 'chip:camp') ?? acts.find(a => a.id === 'clock:long');
         if (camp) await placeOpen(camp.id);
-    } else {
-        if (!(await chips()).some(c => /^Acampar aquí$/.test(c))) await clickChip(/^\+\d+ más$/);
-        await page.waitForTimeout(400);
-        await clickChip(/^Acampar aquí$/);
+    } else if (!(await clickChip(/^Acampar aquí$/))) {
+        // En «+N más», que abre su lista.
+        await clickChip(/^\+\d+ más$/);
+        await page.locator('.popup:visible .hp-item[data-chip="camp"]').first().click({ timeout: 5000 }).catch(() => {});
     }
     // Acampar abre su ventana: el fuego, las guardias y la cena. «Pasar la noche».
     await page.waitForSelector('.popup:visible .cp-root', { timeout: 8000 }).catch(() => {});

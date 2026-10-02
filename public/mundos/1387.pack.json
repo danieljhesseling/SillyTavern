@@ -4832,13 +4832,7 @@
         "backdrop": "posada",
         "beats": [
           {
-            "text": "Viernes por la mañana. Te despiertas en el cuarto más barato de la posada de El Pueblo de Barro. Hoy toca pagar la semana, y no te queda ni una moneda."
-          },
-          {
-            "text": "Al calzarte, notas algo duro en el petate: un cáliz de oro macizo, con sangre seca en el borde. No es tuyo."
-          },
-          {
-            "text": "Abajo hay gritos. Alguien sube la escalera de dos en dos."
+            "text": "Viernes por la mañana. Te despiertas en el cuarto más barato de la posada de El Pueblo de Barro, sin una moneda. En el petate hay un cáliz de oro con sangre seca. No es tuyo."
           },
           {
             "who": "Torres",
@@ -4924,14 +4918,16 @@
         "sceneDialogue": "giles-lo-que-vio",
         "beats": [
           {
-            "text": "Sales por la ventana y caes de espaldas en el barro del callejón. Arriba, los guardias gritan cómo eres a todo el que pasa."
+            "text": "Sales por la ventana y caes de espaldas en el barro del callejón."
           },
           {
-            "text": "Medio pueblo te busca con antorchas. Solo queda una puerta que nadie vigila: la de atrás de la taberna de Giles, el tabernero que te cobra la cama.",
-            "presenta": "el-tabernero-giles"
+            "who": "Torres",
+            "mood": "enfadado",
+            "text": "¡Buscad {al forastero|a la forastera} del cáliz! ¡Va {lleno|llena} de barro, no puede ir lejos!"
           },
           {
-            "text": "Por la rendija sale olor a cerveza agria, y se oye a Giles fregar jarras. Está solo.",
+            "text": "Solo queda una puerta que nadie vigila: la de atrás de la taberna de Giles, el tabernero que te cobra la cama. Dentro se le oye fregar jarras, solo.",
+            "presenta": "el-tabernero-giles",
             "options": [
               {
                 "id": "llamar",
@@ -5011,10 +5007,7 @@
         "backdrop": "El Camino Viejo",
         "beats": [
           {
-            "text": "El barro del camino viejo está helado, pero el rastro que te vendió Giles se sigue bien: botas de hombre pesado, y una gota de sangre cada pocos pasos."
-          },
-          {
-            "text": "En el lindero del bosque, una flecha se clava a un palmo de tu bota."
+            "text": "El rastro que te vendió Giles se sigue bien por el barro helado. En el lindero del bosque, una flecha se clava a un palmo de tu bota."
           },
           {
             "who": "Nils",
@@ -5106,13 +5099,12 @@
         "backdrop": "Castillo de Vane",
         "beats": [
           {
-            "text": "Sales del campamento con el cáliz envuelto en un trapo. El cielo se ha puesto gris plomo."
+            "text": "Sales del campamento con el cáliz envuelto en un trapo. Empiezan a caer copos gordos y lentos."
           },
           {
-            "text": "Empiezan a caer copos gordos y lentos. Al mediodía ya no se ve el camino, y un pastor baja corriendo del sur: la nieve ha tapado el paso de la montaña."
-          },
-          {
-            "text": "Hasta la primavera, nadie sale del valle. Tampoco tú."
+            "who": "Nils",
+            "mood": "neutral",
+            "text": "Con esta nieve se cierra el paso del sur. Hasta la primavera no sale nadie del valle. Tampoco tú."
           },
           {
             "text": "Llegas a las puertas del castillo de Vane con el cáliz en la mano. Desde la muralla te apuntan dos ballestas."
@@ -5211,10 +5203,7 @@
         "backdrop": "El Camino Viejo",
         "beats": [
           {
-            "text": "Llevas semanas {atrapado|atrapada} por el hielo. El pan del pueblo ya sabe a serrín, y hay cola en la puerta del granero."
-          },
-          {
-            "text": "Una tarde, en el camino del bosque, Karl el Sordo te sale al paso. Viene solo y sin arco."
+            "text": "Llevas semanas {atrapado|atrapada} por el hielo, y el pan ya sabe a serrín. Una tarde, en el camino del bosque, Karl el Sordo te sale al paso, solo y sin arco."
           },
           {
             "who": "Karl",
@@ -5995,6 +5984,28 @@
         "title": "La soga de Darek",
         "hint": "",
         "scene": "Darek se afloja la soga del cuello para poder hablar. Lleva meses sin que nadie le pregunte nada, así que lo cuenta todo: la horca de Vane, la rama que se partió y los tres días que pasó muerto de miedo. Antes de que anochezca, en el campamento de los furtivos ya saben que alguien le ha escuchado.",
+        "backdrop": "El Camino Viejo",
+        "beats": [
+          {
+            "who": "Darek",
+            "mood": "triste",
+            "presenta": true,
+            "text": "Me llamo Darek. Hace meses que nadie me pregunta nada."
+          },
+          {
+            "who": "Darek",
+            "mood": "enfadado",
+            "text": "Los de Vane me colgaron de un roble. La rama se partió, y pasé tres días en una zanja, muerto de miedo."
+          },
+          {
+            "who": "Darek",
+            "mood": "neutral",
+            "text": "Desde entonces llevo la soga puesta. Que la vea todo el que pasa."
+          },
+          {
+            "text": "Esa misma noche, en el campamento de los Lobos ya saben que le has escuchado."
+          }
+        ],
         "opens": {
           "kind": "start"
         },

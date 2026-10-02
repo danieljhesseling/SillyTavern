@@ -184,6 +184,9 @@ const memory = { board: '', x: -1, y: -1, focused: false };
 /** Lo que se abre desde el tablero y vuelve a él: la tarjeta de un enemigo, los dados. */
 const FROM_BOARD = '.tc-overlay, .wm-dice-overlay';
 
+/** Las barras de colocar al grupo que ya se llevaron el foco una vez (`attachBoardKeys`). */
+const offered = new WeakSet();
+
 /**
  * Si quien juega está en el tablero (o en algo que abrió desde él). Se apunta también en la
  * página (`html[data-gs-board="on"]`): así, si el foco se pierde, `keyboard-nav.js` lo trae al
@@ -368,6 +371,15 @@ export function attachBoardKeys(container, content, input) {
     const scene = container.closest('.gs-scene-map');
     const active = doc.activeElement;
     const elsewhere = active && (scene?.contains(active) || active.closest('.gs-actions'));
+    // Antes de la pelea sale la barra de colocar al grupo: la primera vez que se ve, el foco va a
+    // su «Empezar» (lo que se hace casi siempre). Con Mayús+Tab se vuelve al tablero a mover a alguien.
+    const placing = /** @type {HTMLElement|null} */ (doc.querySelector('.cv-place'));
+    const start = /** @type {HTMLElement|null} */ (placing?.querySelector('.cv-place-start') ?? null);
+    if (placing && start && !offered.has(placing) && keyboardInUse() && (focusLost(doc) || elsewhere || active === container)) {
+        offered.add(placing);
+        start.focus({ preventScroll: true });
+        return;
+    }
     if (memory.focused && keyboardInUse() && !active?.closest(FROM_BOARD) && (focusLost(doc) || elsewhere)) {
         container.focus({ preventScroll: true });
     }

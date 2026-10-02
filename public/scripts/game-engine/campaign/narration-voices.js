@@ -60,9 +60,10 @@ export const VOICE_FALLBACKS = {
     'voz-mercenario-entra': 'Por {precio}, cuenta conmigo. Voy contigo hasta que me despidas.',
     'voz-mercenario-sale': 'Me quedo en el gremio, entonces. Ya sabes dónde encontrarme.',
     'voz-noche-tranquila': 'Noche tranquila. Ni un ruido.',
-    'voz-noche-intruso': 'Anoche se acercó {intruso}, pero {vigia} lo vio venir y se fue sin nada.',
-    'voz-noche-intruso-yo': 'Anoche se acercó {intruso}, pero lo vi venir y se fue sin nada.',
-    'voz-noche-robo': 'Anoche entró {intruso} y nadie lo vio. Faltan {precio}.',
+    'voz-noche-intruso': 'Anoche se acercó {intruso}, pero {vigia} dio la voz y se fue sin nada.',
+    'voz-noche-intruso-tu': 'Anoche se acercó {intruso}, pero diste la voz a tiempo. Bien visto.',
+    'voz-noche-intruso-yo': 'Anoche se acercó {intruso}, pero di la voz a tiempo y se fue sin nada.',
+    'voz-noche-robo': 'Anoche entró {intruso} y nadie se dio cuenta. Faltan {precio}.',
     'voz-noche-revuelve': 'Anoche entró {intruso} y lo revolvió todo, pero no se llevó nada.',
     'voz-noche-frio': 'Con este tiempo y sin fuego no he pegado ojo.',
     'voz-noche-fuego': 'Menos mal que encendimos fuego, con el frío que hacía.',
@@ -70,8 +71,10 @@ export const VOICE_FALLBACKS = {
     'voz-cena-fria': 'La cena, fría y poca. Otra vez será.',
     'voz-cena-sin-fuego': 'Sin fuego, cena fría.',
     'voz-charla-anoche': 'Me gustó charlar contigo anoche.',
+    'voz-charla-contigo': 'Anoche estuviste de charla con {otro} hasta tarde, ¿eh?',
     'voz-charla-otros': '{a} y {b} estuvieron de charla hasta tarde.',
     'voz-paces-yo': '{otro} y yo hemos hecho las paces.',
+    'voz-paces-tu': 'Me alegro de que {otro} y tú lo hayáis arreglado.',
     'voz-paces-otros': '{a} y {b} han hecho las paces. Ya era hora.',
 };
 
@@ -234,34 +237,49 @@ function sayAs(kind, facts, speaker, { rows, seed, turn, who }) {
  * @param {string} body
  * @param {VoicePerson} speaker
  * @param {(kind: string, facts?: Record<string, any>) => string} say
+ * @param {string} [you] Tu héroe: a quien se le habla de tú («diste la voz a tiempo»).
  * @returns {{said: string[], rest: string[]}}
  */
-function campSpeech(body, speaker, say) {
+function campSpeech(body, speaker, say, you = '') {
     const me = text(speaker?.name);
+    const hero = text(you);
     /** @type {string[]} */
     const said = [];
     /** @type {string[]} */
     const rest = [];
-    for (const sentence of sentencesOf(body)) {
+    // Quien entra sin que nadie le vea son dos frases («…: nadie hacía guardia (9 contra 12). Se lleva
+    // 17 de oro.»), con un paréntesis en medio: se lee entera antes de partir la noche en frases.
+    let night = text(body);
+    const theft = night.match(/^(.+?) entra en el campamento de noche: [^.]*\.\s*(?:Se lleva (\d+) de oro\.|Revuelve, pero no encuentra nada que llevarse\.)\s*/u);
+    if (theft) {
+        said.push(theft[2] ? say('voz-noche-robo', { intruso: someone(theft[1]), precio: coinWords(theft[2]) }) : say('voz-noche-revuelve', { intruso: someone(theft[1]) }));
+        night = night.slice(theft[0].length);
+    }
+    for (const sentence of sentencesOf(night)) {
         /** @type {RegExpMatchArray|null} */
         let m = null;
         if (/^La noche pasa sin sobresaltos\.$/u.test(sentence)) said.push(say('voz-noche-tranquila'));
         else if ((m = sentence.match(/^(.+?) se acerca de noche, pero (.+?) lo ve venir(?: \([^)]*\))?: se va sin nada\.$/u))) {
-            said.push(text(m[2]) === me ? say('voz-noche-intruso-yo', { intruso: someone(m[1]) }) : say('voz-noche-intruso', { intruso: someone(m[1]), vigia: m[2] }));
-        } else if ((m = sentence.match(/^(.+?) entra en el campamento de noche: .+?\. Se lleva (\d+) de oro\.$/u))) {
-            said.push(say('voz-noche-robo', { intruso: someone(m[1]), precio: coinWords(m[2]) }));
-        } else if ((m = sentence.match(/^(.+?) entra en el campamento de noche: .+?\. Revuelve, pero no encuentra nada que llevarse\.$/u))) {
-            said.push(say('voz-noche-revuelve', { intruso: someone(m[1]) }));
+            const intruso = someone(m[1]);
+            said.push(text(m[2]) === me ? say('voz-noche-intruso-yo', { intruso })
+                : text(m[2]) === hero ? say('voz-noche-intruso-tu', { intruso })
+                    : say('voz-noche-intruso', { intruso, vigia: m[2] }));
         } else if (/^Sin fuego y con este tiempo no duerme nadie de verdad/u.test(sentence)) said.push(say('voz-noche-frio'));
         else if (/^El fuego aguanta el frío: se duerme\.$/u.test(sentence)) said.push(say('voz-noche-fuego'));
         else if (/^Sin fuego no hay cena caliente\.$/u.test(sentence)) said.push(say('voz-cena-sin-fuego'));
         else if (/^No sale nada que echar al fuego: se cena frío, y poco\.$/u.test(sentence)) said.push(say('voz-cena-fria'));
         else if (/^Se cena caliente junto al fuego: nadie pasa hambre\.$/u.test(sentence)) said.push(say('voz-cena-caliente'));
         else if ((m = sentence.match(/^(.+?) y (.+?) hablan hasta tarde(?: junto al fuego)?\.$/u))) {
-            said.push(text(m[2]) === me ? say('voz-charla-anoche') : say('voz-charla-otros', { a: m[1], b: m[2] }));
+            const [a, b] = [text(m[1]), text(m[2])];
+            // Con quien habla, de tú; si no, quien habló contigo, o los dos por su nombre.
+            said.push(a === me || b === me ? say('voz-charla-anoche')
+                : a === hero || b === hero ? say('voz-charla-contigo', { otro: a === hero ? b : a })
+                    : say('voz-charla-otros', { a, b }));
         } else if ((m = sentence.match(/^(.+?) y (.+?) (?:charlan junto al fuego, y )?hacen las paces\.$/u))) {
-            const other = text(m[1]) === me ? m[2] : text(m[2]) === me ? m[1] : '';
-            said.push(other ? say('voz-paces-yo', { otro: other }) : say('voz-paces-otros', { a: m[1], b: m[2] }));
+            const [a, b] = [text(m[1]), text(m[2])];
+            said.push(a === me || b === me ? say('voz-paces-yo', { otro: a === me ? b : a })
+                : a === hero || b === hero ? say('voz-paces-tu', { otro: a === hero ? b : a })
+                    : say('voz-paces-otros', { a, b }));
         } else rest.push(sentence);
     }
     return { said: said.filter(Boolean), rest };
@@ -407,7 +425,7 @@ export function voiceNote(note, { told = '', scene = {}, rows = [], seed = '', t
     if (tag === 'CAMPAMENTO') {
         const speaker = companionOf(scene, `${seed}|${body}`);
         if (!speaker) return notice;
-        const speech = campSpeech(body, speaker, (kind, facts = {}) => sayAs(kind, { solo, ...facts }, speaker, input));
+        const speech = campSpeech(body, speaker, (kind, facts = {}) => sayAs(kind, { solo, ...facts }, speaker, input), text(scene?.hero?.name));
         if (speech.said.length === 0) return notice;
         return {
             mode: 'line', who: text(speaker.name), mood: '', kind: 'voz-campamento',

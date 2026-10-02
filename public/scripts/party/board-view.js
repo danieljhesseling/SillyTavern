@@ -38,7 +38,7 @@ import { hasAction } from '../game-engine/combat/turn-machine.js';
 import { holdDuringCombat } from '../game-engine/combat/combat-hold.js';
 import { traitBonus } from '../game-engine/campaign/feats.js';
 import { buildTargetCard, describeTargetCard } from '../game-engine/combat/target-card.js';
-import { awakePlacements } from '../game-engine/campaign/campaign-map.js';
+import { awakePlacements, revealThroughOpenDoors } from '../game-engine/campaign/campaign-map.js';
 import { planUltimate } from '../game-engine/combat/bond-perks.js';
 import { getBondProgress } from '../game-engine/campaign/bonds.js';
 import { createCombatLogPanel, setRound, renderLogFilters, logFilterOf } from '../game-engine/ui/combat-log.js';
@@ -1305,6 +1305,15 @@ function drawLocationMapsPreview() {
         // quietos, y son los mismos que ofrece el botón de empezar. Solo lo que el grupo **ve
         // de verdad**: `awakePlacements` esconde a los de una sala sin revelar, y la niebla al
         // resto. Un tablero ya ganado no los vuelve a poner.
+        // Tanda 16: lo que se ve por una puerta abierta ya no duerme (la Capitana Keller en su
+        // tienda); un tablero guardado antes de saberlo se pone al día aquí, fuera de combate.
+        if (!combatEncounter.active) {
+            const seenRooms = revealThroughOpenDoors(selectedBoard.rooms, boardTerrain);
+            if (seenRooms !== selectedBoard.rooms) {
+                selectedBoard.rooms = seenRooms;
+                persistBoardTerrain(selectedBoard);
+            }
+        }
         const waiting = combatEncounter.active || isBoardWon(currentLocationName, selectedBoard.name) ? [] : awakePlacements(selectedBoard.rooms, selectedBoard.enemyPlacements ?? [])
             .filter((/** @type {any} */ p) => !fogOn
                 || fogState.visible.has(cellKey(Number(p.x) || 0, Number(p.y) || 0)));

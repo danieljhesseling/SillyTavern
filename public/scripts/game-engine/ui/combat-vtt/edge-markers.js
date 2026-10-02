@@ -158,6 +158,19 @@ export function markerBox(marker, width, height, bounds = null) {
  */
 
 /**
+ * Si la caja de `width` × `height` con su esquina en `at` pisa la caja `r`.
+ *
+ * @param {{x: number, y: number}} at
+ * @param {number} width
+ * @param {number} height
+ * @param {Box} r
+ * @returns {boolean}
+ */
+function boxesMeet(at, width, height, r) {
+    return Boolean(r) && at.x < num(r.right) && at.x + width > num(r.left) && at.y < num(r.bottom) && at.y + height > num(r.top);
+}
+
+/**
  * Aparta la caja de un marcador de las islas del HUD (la cámara, el minimapa, la barra de abajo):
  * si pisa alguna, se corre a lo largo de su borde hasta el lado libre más cercano de esa isla.
  * Si no hay sitio libre dentro de `bounds`, se queda donde estaba.
@@ -232,16 +245,41 @@ export function dodgeMarkers(box, width, height, placed = [], avoid = [], bounds
 }
 
 /**
+ * Tanda 16: dónde están en pantalla los nombres de las fichas del tablero (`.wm-token-name`),
+ * contados desde la esquina de la capa de los marcadores. Sin DOM que mida, ninguno.
+ *
+ * @param {HTMLElement} layer La capa de los marcadores (dentro del HUD, junto al tablero).
+ * @returns {Box[]}
+ */
+export function tokenLabelBoxes(layer) {
+    if (!layer || typeof layer.getBoundingClientRect !== 'function') return [];
+    // El HUD va junto al tablero, en el mismo sitio: los nombres son de las fichas de al lado.
+    const root = layer.closest?.('[data-map-root]') ?? layer.parentElement?.parentElement ?? null;
+    if (!root || typeof root.querySelectorAll !== 'function') return [];
+    const origin = layer.getBoundingClientRect();
+    return [...root.querySelectorAll('.wm-token-name')]
+        .map(node => node.getBoundingClientRect())
+        .filter(r => r.width > 0 && r.height > 0)
+        .map(r => ({ left: r.left - origin.left, top: r.top - origin.top, right: r.right - origin.left, bottom: r.bottom - origin.top }));
+}
+
+/**
  * Pone los marcadores en su capa. Cada uno es un botón: pulsarlo llama a `onPick` con su ficha.
+ *
+ * Tanda 16 (revisor): en el teléfono, un marcador junto al borde tapaba el nombre de una ficha que
+ * estaba allí. Ahora se aparta también de los nombres, como de las islas; si no hay sitio libre de
+ * los dos, mandan las islas y los otros marcadores.
  *
  * @param {HTMLElement} layer
  * @param {EdgeMarker[]} markers
  * @param {(id: number|string) => void} onPick
  * @param {Box|null} [bounds] De aquí no se salen.
  * @param {Box[]} [avoid] Las islas del HUD que no pisan (contadas como `bounds`).
+ * @param {Box[]|null} [labels] Los nombres de las fichas; sin decirlo, se miden en el tablero (`tokenLabelBoxes`).
  */
-export function renderEdgeMarkers(layer, markers, onPick, bounds = null, avoid = []) {
+export function renderEdgeMarkers(layer, markers, onPick, bounds = null, avoid = [], labels = null) {
     if (!layer) return;
+    const names = Array.isArray(markers) && markers.length > 0 ? (Array.isArray(labels) ? labels : tokenLabelBoxes(layer)) : [];
     /** @type {Map<string, HTMLButtonElement>} */
     const before = new Map();
     for (const node of /** @type {HTMLButtonElement[]} */ ([...layer.querySelectorAll('.vtt-edge')])) before.set(String(node.dataset.tokenId), node);
@@ -289,9 +327,13 @@ export function renderEdgeMarkers(layer, markers, onPick, bounds = null, avoid =
         // La flecha de Font Awesome apunta arriba a la derecha (-45°).
         const arrow = /** @type {HTMLElement} */ (button.querySelector('.vtt-edge-arrow'));
         arrow.style.transform = `rotate(${marker.angle + 45}deg)`;
-        const box = dodgeMarkers(dodgeIslands(markerBox(marker, button.offsetWidth, button.offsetHeight, bounds),
-            button.offsetWidth, button.offsetHeight, marker.side, avoid, bounds),
-        button.offsetWidth, button.offsetHeight, taken, avoid, bounds);
+        const w = button.offsetWidth;
+        const h = button.offsetHeight;
+        const fit = (/** @type {Box[]} */ blockers) => dodgeMarkers(dodgeIslands(markerBox(marker, w, h, bounds), w, h, marker.side, blockers, bounds),
+            w, h, taken, blockers, bounds);
+        let box = fit(names.length > 0 ? [...avoid, ...names] : avoid);
+        // Sin sitio libre de nombres: antes un nombre tapado que una isla o un marcador pisado.
+        if (names.length > 0 && [...avoid, ...taken, ...names].some(r => boxesMeet(box, w, h, r))) box = fit(avoid);
         if (button.offsetWidth > 0 && button.offsetHeight > 0) {
             taken.push({ left: box.x, top: box.y, right: box.x + button.offsetWidth, bottom: box.y + button.offsetHeight });
         }
