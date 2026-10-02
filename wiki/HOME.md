@@ -2,7 +2,7 @@
 title: SillyTavern RPG Engine - Wiki Central & Hub de Conocimiento
 tags: [home, wiki, moc, silleytavern, rpg, dnd, obsidian, ai-agent, index]
 created: 2026-09-20
-updated: 2026-09-29
+updated: 2026-10-02
 author: DanielJHesseling / Antigravity AI / Claude Opus 5.5
 ---
 
@@ -16,6 +16,7 @@ Bienvenido a la **Wiki de SillyTavern & Motor RPG** (`my-silly`, el fork de Dani
 > | Vengo a… | Abre |
 > | :--- | :--- |
 > | **Jugar** | [[EMPEZAR_UNA_CAMPANA]] |
+> | **Aprender a hacer algo, paso a paso** | **[[Tutoriales]]**: jugar, el móvil, crear campañas con los Gems, el guion en Word y las herramientas |
 > | **Saber qué le falta al juego** | **[[LO_QUE_FALTA]]**: lo que falta fuera del plan, puesto al día el 2026-09-29, con el orden recomendado |
 > | **Ver el plan de ahora** | **[[ROADMAP_SIN_CONEXION]]**: el juego entero sin IA, con gremio, campañas y amigos (J0–J18) |
 > | **Ver lo último que se construyó** | La tabla «Cómo va» de [[ROADMAP_SIN_CONEXION]], y la A17 de [[POR_HACER]] |
@@ -39,6 +40,11 @@ mindmap
   root((SillyTavern RPG))
     Jugar
       [[EMPEZAR_UNA_CAMPANA]]
+    Tutoriales
+      [[Tutoriales]]
+      [[GEM_COMO_HACER_CAMPANA]]
+      [[TUTORIAL_GUION_WORD]]
+      [[SERVIDOR_PRIVADO]]
     Lo que falta y lo que se hace
       [[ROADMAP_SIN_CONEXION]]
       [[LO_QUE_FALTA]]
