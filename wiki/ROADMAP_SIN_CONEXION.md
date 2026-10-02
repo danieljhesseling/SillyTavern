@@ -121,6 +121,9 @@ Todo lo contado está en commits (el último, a9c72fe9f).
 | La Luz no da su +2 al examinar | Arreglos del tablero |
 | En 1387, «La tienda de mando» sale sin la capitana Keller ni su escolta | Arreglos del tablero |
 | Los sitios donde 1387 se calla o se atasca (38 apuntados por el bot) | 1387 de punta a punta |
+| **Los ataques del grupo no sumaban el bonificador de competencia** (+2 a nivel 1): un guerrero acertaba con +3 en vez de +5, alrededor del 50 % en vez del 65 % contra CA 13. Además, un 1 natural no siempre fallaba en el cálculo | Competencia al ataque, con la simulación repasada |
+| Atacar a un enemigo desde el menú, y que se note quién se lleva el golpe | Objetivos en el menú (J12.18) |
+| Golpes y muertes que apenas se notan | Efectos (J12.19) |
 
 **Después de este roadmap, en este orden** (lo dijiste el 2026-10-02):
 1. **Escribir bien las tres campañas experimentales**, con la calidad de 1387 y Strahd: *El mundo tras la pantalla* (isekai), *Las tierras del ocaso* (fantasía épica) y *La costa que no duerme* (terror). Cada una tendrá:
