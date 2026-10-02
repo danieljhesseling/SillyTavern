@@ -82,7 +82,14 @@ Todo lo contado está en commits (el último, 62b4e7ec4).
   - quitar «La casa» del tablón de Barovia;
   - lo que se puede mirar en la sala del gremio, también en la fila de abajo.
 - **El revisor de los criterios del tablero.**
-- **Historias en tres actos (J10.7):** sus últimas pruebas, y se guarda para el modo mundo semiabierto.
+- **Historias en tres actos (J10.7):** sus últimas pruebas. Con D-J57, sirve ya para las tres campañas de semilla, como experimentales.
+- **D-J58:** apagar la simulación de facciones; se quedan la reputación y lo que la historia hace con ella.
+- **Los Gems, al día**, para que hagan casi todo el trabajo de crear campañas:
+  - el formato gana el aspecto de cada persona (para sus retratos), romances y misiones personales por campaña;
+  - las reglas D-J54 (conversaciones), D-J56, D-J58, D-J46 y J13.7, con ejemplos;
+  - instrucciones compactas para el Gem, más un anexo de consulta;
+  - el guionista, reescrito;
+  - una guía nueva, , con el proceso paso a paso.
 
 **En pausa, con su avance guardado en su `progreso.md`**, para retomarlos en grupos pequeños:
 La prioridad es que el prólogo, el gremio, 1387 y Strahd se jueguen enteros y bien (D-J55):
