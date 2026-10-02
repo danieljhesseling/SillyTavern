@@ -85,7 +85,13 @@ Después: revisar que lo escrito vaya en conversaciones y no en el narrador (D-J
    - lanzar a más nivel (J19.3);
    - el APK.
 
-**Cuando esto termine:** [[ROADMAP_AUTOMATIZAR]] reúne lo que hoy se hace a mano y se podría hacer con código: contar el avance, comprobar con una sola orden, encontrar lo construido sin enchufar, revisar los textos, pedir el arte que falta, vueltas de noche y el APK.
+**Cuando esto termine:** [[ROADMAP_AUTOMATIZAR]] reúne lo que el juego podría hacer solo, sin IA:
+- la gente habla sola con conversaciones de novela visual;
+- misiones personales y romances para cualquier compañero;
+- un mundo que se mueve y te llega como noticias;
+- campañas enteras con un botón;
+- el juego hace lo aburrido: explorar, peleas fáciles, subir de nivel y equipar;
+- un director de juego que lleva el ritmo.
 
 **Jugar con amigos (J6) está aparcado** hasta nueva orden (lo dijiste el 2026-09-28). Tampoco hay más personajes que los mercenarios sencillos del gremio.
 
