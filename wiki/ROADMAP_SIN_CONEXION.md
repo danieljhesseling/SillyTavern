@@ -43,9 +43,9 @@ author: DanielJHesseling / Claude Opus 5.5
 
 ## 📍 Cómo va (2026-10-02)
 
-**Avance, sobre 151 filas activas** (sin lo aparcado ni las decisiones):
-- **95 % jugable** (143 filas).
-- **98 % construido** (148 filas).
+**Avance, sobre 153 filas activas** (sin lo aparcado ni las decisiones):
+- **93 % jugable** (143 filas).
+- **97 % construido** (148 filas).
 
 Todo lo contado está en commits (el último, a9c72fe9f).
 
@@ -500,6 +500,7 @@ Tus respuestas a D-J11…D-J38. «⏳» significa que está por hacer.
 | J5.6 | **Comprobar una campaña antes de jugarla**: el medidor de densidad (`tools/check-world-density.mjs`) le dice si le falta algo (sitios sin nada, hitos sin salida, misiones sin tablero) | A | S | La herramienta, con tu JSON |
 | J5.7 | **Exportar el guion a Word** (lo pediste el 2026-10-02): todo el texto de una campaña como un guion de lectura, ordenado por capítulos, hitos y escenas. Cada línea lleva quién la dice, su gesto y el texto («**Posadero** *(enfadado)*: ¡Al ladrón!»), con las opciones, los diálogos, las salidas habladas, lo que se mira y los romances. Cada línea lleva una marca pequeña en gris para poder volver | A | M | El guion de 1387 en Word, leído de un tirón |
 | J5.8 | **Importar el guion corregido**: el motor cambia solo los textos tocados (en Strahd, en sus fuentes) y avisa de lo que no encuentra y de las marcas de género rotas. Las líneas nuevas quedan como notas para el Gem guionista. Más adelante, botones en el gremio | A | M | Cambiar tres líneas en Word, importarlo y verlas en el juego |
+| J5.9 | **El taller de campañas, dentro del juego y sin IA** (lo pediste el 2026-10-02). En el gremio, junto a «Añadir una campaña»:<br>• subir el guion tal cual (las rondas en Markdown del Gem guionista, el Word o el JSON), que se convierte en el navegador con el mismo código de `guion-a-paquete`, con los errores en castellano y su línea;<br>• el informe, con «Copiar la lista para tu Gem»;<br>• rellenar los huecos;<br>• una simulación rápida de cada pelea que dice si es fácil o difícil;<br>• exportar e importar el guion en Word con dos botones;<br>• el editor de mapas en imagen.<br>Escribir el contenido a partir de un libro sigue siendo cosa del Gem o tuya; lo demás lo hace el juego | A | L | Subir las rondas de 1387 desde el gremio y jugarla, sin consola ni chat |
 
 **Hecho cuando** me pasas un JSON, lo conviertes con un comando (o lo subes al gremio) y la campaña aparece en el tablón y se juega.
 
@@ -767,6 +768,7 @@ Así no hay que reescribir el motor para el servidor. El riesgo: si el anfitrió
 | J16.3 | **La vuelta de dos jugadores**: dos navegadores en la misma sala, una pelea y una votación | A | M | En `e2e-todo.mjs` |
 | J16.4 | **Los números que importan** (sección 6), al final de cada vuelta | A | S | Salen en el registro |
 | J16.5 | **Vuestras pruebas**: una plantilla corta para apuntar qué aburre, qué confunde y qué engancha. Vuestra opinión manda sobre los números | D | S | — |
+| J16.6 | **La app del bot, `ProbarCampañas.exe`** (lo pediste el 2026-10-02):<br>• un menú para elegir la campaña (el prólogo, 1387, Strahd, las experimentales o un JSON tuyo), peleas rápidas o de verdad, y «Correr»;<br>• una ventana con pestañas: **Bien** (llega a un final sin silencios), **Regular** (llega, pero con silencios, rescates o atajos) y **Mal** (se atasca o hay errores);<br>• cada resultado con dónde pasó, la captura, el tiempo y los números, y su historial | A | M | Elegir 1387, darle a Correr y ver el resultado en su pestaña |
 
 ---
 
