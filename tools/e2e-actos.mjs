@@ -124,7 +124,7 @@ let browser = null;
 let page = null;
 
 function startServer() {
-    server = spawn(process.execPath, ['server.js', '--port', String(PORT), '--dataRoot', dataRoot], { cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'] });
+    server = spawn(process.execPath, ['server.js', '--browserLaunchEnabled', 'false', '--port', String(PORT), '--dataRoot', dataRoot], { cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'] });
     const child = server;
     return new Promise((resolve, reject) => {
         // Con muchos servidores y pruebas a la vez, arrancar tarda: hasta diez minutos.
@@ -274,6 +274,8 @@ try {
     });
     /** @type {Array<{plate: string, text: string}>} Lo que se ha leído en las escenas del hilo, en orden. */
     const read = [];
+    /** Lo leído donde sale una línea (por su principio: la ventana puede ir escribiéndola). */
+    const heard = (/** @type {string} */ line) => read.find(r => r.text.includes(line.slice(0, 40)));
     /** @type {string[]} Las decisiones tomadas en las escenas, por su id. */
     const chosen = [];
     /** Leer las escenas que se abran, hasta que no quede ninguna. La primera opción, siempre. */
@@ -564,12 +566,16 @@ try {
         atLair && now3.done.includes(ACT_IDS.lair) && now3.open.includes(ACT_IDS.strike), JSON.stringify(now3));
     const lairFight = await enterAndWin(LAIR_BOARD);
     const now4 = await state();
+    /** Las líneas que dice el contacto del bando B: abren su acto 3, y no deben salir. */
+    const sideBLines = [...(M(ACT_IDS.sideB).beats ?? []), ...(M(ACT_IDS.climaxB).beats ?? [])].map((/** @type {any} */ b) => String(b.text));
+    const unheard = sideBLines.filter(line => !heard(line));
     check(`acto 2: se gana en «${LAIR_BOARD}», y la escena de la encrucijada decide: el bando A`,
         lairFight.won && now4.done.includes(ACT_IDS.strike) && now4.done.includes(ACT_IDS.crossroads)
         && chosen.includes('a') && now4.done.includes(ACT_IDS.sideA) && now4.closed.includes(ACT_IDS.sideB) && now4.open.includes(ACT_IDS.climaxA)
-        // La escena del bando que no se ha elegido no sale (se cerró).
-        && !read.some(r => r.text.includes(String(PACK.plot.milestones.find((/** @type {any} */ m) => m.id === ACT_IDS.sideB)?.scene ?? '§').slice(0, 30))),
-        JSON.stringify({ lairFight, fightLog, now4, chosen: chosen.filter(Boolean), last: read.slice(-4) }));
+        // Lo que diría el contacto del bando que no se ha elegido no sale (se cerró, D-J54: sus
+        // líneas van en la escena que abre su acto 3).
+        && unheard.length === sideBLines.length && sideBLines.length > 0,
+        JSON.stringify({ lairFight, fightLog, now4, chosen: chosen.filter(Boolean), heardB: sideBLines.filter(l => !unheard.includes(l)), last: read.slice(-4) }));
     if (await clickChip(/^Salir del tablero$/)) {
         await page.waitForTimeout(800);
         await settle();
@@ -587,6 +593,20 @@ try {
         atRefuge && finalFight.won && finalFight.enemies.some((/** @type {string} */ n) => n.startsWith(VILLAIN)) && finalFight.warned
         && ended && now5.ending === ACT_ENDINGS.a && now5.done.includes(ACT_IDS.climaxA),
         JSON.stringify({ atRefuge, finalFight, now5 }));
+
+    // ------------------------------------------------------------ D-J54
+    // Lo que cuentan los actos lo dice la gente: cada línea sale en su ventana con la placa de quien
+    // la dice (su nombre, o su oficio si aún no se ha presentado); el narrador, sin placa y corto.
+    const spoken = [ACT_IDS.hook, ACT_IDS.clues, ACT_IDS.lair, ACT_IDS.strike, ACT_IDS.crossroads, ACT_IDS.climaxA]
+        .flatMap(id => (M(id).beats ?? []).map((/** @type {any} */ b) => ({ id, who: String(b.who ?? ''), text: String(b.text), got: heard(String(b.text)) })));
+    const plateOk = (/** @type {any} */ line) => (line.who
+        ? line.got.plate.includes(line.who) || line.got.plate.toLowerCase().includes(roleOf(line.who).toLowerCase())
+        : line.got.plate === '' && line.text.length < 100);
+    const wrong = spoken.filter(line => !line.got || !plateOk(line));
+    const narrated = spoken.filter(line => !line.who).length;
+    check(`D-J54: las escenas de los actos las dice la gente (${spoken.length - narrated} líneas con placa, ${narrated} del narrador)`,
+        spoken.length > 0 && wrong.length === 0 && narrated <= 2,
+        JSON.stringify(wrong.map(line => ({ id: line.id, who: line.who, text: line.text.slice(0, 60), plate: line.got?.plate ?? '(no salió)' }))));
 
     // ------------------------------------------------------------ el final
     const endShown = () => page.evaluate(() => Boolean(document.querySelector('.popup .end-root')));

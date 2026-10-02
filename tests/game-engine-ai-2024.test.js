@@ -154,6 +154,16 @@ describe('lo que hace un enemigo en vez de su golpe', () => {
         expect(chooseEnemyAction2024({ actor: brute(), canAttack: true, foes: [mage], ground: open() })).toBeNull();
     });
 
+    test('a cada uno lo intenta agarrar una vez por pelea: si se le suelta, le pega', () => {
+        const mage = foe({ caster: true, saveMod: 0 });
+        const other = foe({ id: 'gerd', x: 1, y: 1 });
+        expect(chooseEnemyAction2024({ actor: brute({ grabbed: ['lia'] }), canAttack: true, foes: [mage, other], ground: open() })).toBeNull();
+        // A otro que lanza, sí.
+        const second = foe({ id: 'nella', x: 5, y: 4, caster: true, saveMod: 0 });
+        expect(chooseEnemyAction2024({ actor: brute({ grabbed: ['lia'] }), canAttack: true, foes: [mage, second, other], ground: open() }))
+            .toMatchObject({ kind: 'grapple', targetId: 'nella' });
+    });
+
     test('un esbirro le abre la guardia al jefe que pega el triple', () => {
         const minion = brute({ id: 'esbirro', role: 'tanque', str: 10, avgDamage: 3.5 });
         const boss = { id: 'jefe', x: 6, y: 5, hp: 60, maxHp: 60, reachFeet: 5, avgDamage: 14 };
@@ -210,6 +220,12 @@ describe('lo que hace un enemigo antes de moverse', () => {
         // El bruto y el jefe pelean hasta el final.
         expect(chooseEnemyBefore2024({ actor: brute({ hp: 4 }), plan: stays, foes: two, friends: [friend] }).before).toBeNull();
         expect(chooseEnemyBefore2024({ actor: guard, plan: stays, foes: two, friends: [friend] }).before?.reason).toMatch(/Acorralado/);
+    });
+
+    test('se cubre una vez por pelea: la siguiente, pelea (si no, con otro curándole no acababa)', () => {
+        const two = [foe(), foe({ id: 'gerd', x: 4, y: 4 })];
+        const friend = { id: 'otro', x: 0, y: 0, hp: 10, maxHp: 10 };
+        expect(chooseEnemyBefore2024({ actor: brute({ role: 'tanque', hp: 4, dodged: true }), plan: stays, foes: two, friends: [friend] }).before).toBeNull();
     });
 
     test('si irse le cuesta un golpe y no iba a pegar, se destraba', () => {

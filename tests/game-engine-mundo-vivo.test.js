@@ -5,8 +5,9 @@
  * de cada campaña; y el mapa dibujado, con sus puertas.
  */
 
-import { describe, test, expect } from '@jest/globals';
+import { describe, test, expect, beforeAll, afterAll } from '@jest/globals';
 import { readFileSync } from 'node:fs';
+import { FACTION_WORLD } from '../public/scripts/game-engine/campaign/factions.js';
 import {
     gateRoutes, gateStatus, keyringOf, newlyOpened, describeOpened, gateWarnings,
 } from '../public/scripts/game-engine/world/route-gates.js';
@@ -123,6 +124,10 @@ describe('J10.1: caminos que se abren por reputación, por fama, con una barca o
 });
 
 describe('J10.3 y D-J42: sucesos por facción y reputación, y los propios de cada campaña', () => {
+    // D-J58: los sucesos por reloj son del mundo vivo, apagado en el juego; aquí, encendido.
+    beforeAll(() => { FACTION_WORLD.on = true; });
+    afterAll(() => { FACTION_WORLD.on = false; });
+
     const rows1387 = mergeSucesoRows(compendio, p1387.sucesos);
     const rowsStrahd = mergeSucesoRows(compendio, strahd.sucesos);
 

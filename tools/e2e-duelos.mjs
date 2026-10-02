@@ -6,8 +6,9 @@
  *   «Jugar sin conexión», Tessa → saltar la prueba y contratar a Gerd → el pueblo, la taberna:
  *   por la mañana no hay con quién pelear (se dice por qué) → «Pasar el rato»: por la tarde,
  *   «Armar una pelea» y el duelo por dinero con Rosa la Remera →
- *   el duelo por 10 de oro: su escena, el tablero de la taberna, el cartel con la regla, Gerd
- *   mirando desde la pared (sin turno), los puños (solo al de al lado) → se gana: +10 de oro, la
+ *   el duelo por 10 de oro: su escena, el tablero de la taberna, el cartel con la regla, colocarse
+ *   antes de la iniciativa (solo Tessa; Rosa espera a la vista) y «Empezar», Gerd mirando desde la
+ *   pared (sin turno), los puños (solo al de al lado), agarrar y empujar → se gana: +10 de oro, la
  *   escena del final, de vuelta al pueblo, el tablero fuera y la parte del día gastada →
  *   la pelea que armas tú, y se pierde: quien cae queda fuera de combate (sin salvaciones), nadie
  *   muere, al acabar todos con 1 PG, la bolsa más ligera, lo roto, y Tomás enfadado →
@@ -209,6 +210,7 @@ try {
         };
     });
     const enterPlace = async (/** @type {string} */ id) => {
+        await clearDice();
         if ((await placeScene()).place === id) return true;
         if (await page.locator('#game-shell .gs-town-scene').count() > 0) {
             await page.locator('#game-shell .gs-town-back').click({ timeout: 5000 }).catch(() => {});
@@ -219,7 +221,32 @@ try {
         return until(async () => (await placeScene()).place === id, 8000);
     };
     const brawlActs = async () => (await placeScene()).acts.filter(a => a.id.startsWith('brawl-'));
-    const clickAct = (/** @type {string} */ id) => page.locator(`#game-shell .gs-town-scene .gs-town-act[data-action="${id}"]`).click({ timeout: 5000 });
+    // Antes de pulsar, los dados que sigan a la vista (el último golpe de una pelea tapaba la tarjeta).
+    const clickAct = async (/** @type {string} */ id) => {
+        await clearDice();
+        await page.locator(`#game-shell .gs-town-scene .gs-town-act[data-action="${id}"]`).click({ timeout: 5000 });
+    };
+    /** La barra de colocarse (tanda 10), como se ve: quién se coloca, las casillas azules y si ya hay pelea. */
+    const placement = () => page.evaluate(async () => {
+        const bar = document.querySelector('.cv-place');
+        const fe = await import('/scripts/party/fight-entry.js');
+        return {
+            bar: Boolean(bar),
+            title: (bar?.querySelector('.cv-place-title')?.textContent || '').trim(),
+            hint: (bar?.querySelector('.cv-place-hint')?.textContent || '').trim(),
+            faces: [...(bar?.querySelectorAll('.cv-place-face') ?? [])].map(f => ({ name: (f.querySelector('.cv-place-name')?.textContent || '').trim(), locked: f.classList.contains('locked') })),
+            cells: [...document.querySelectorAll('#game-shell .wm-highlight-place')].map(n => ({ x: Number(n.getAttribute('data-x')), y: Number(n.getAttribute('data-y')) })),
+            foes: [...document.querySelectorAll('#game-shell .wm-token.wm-token-enemy')].map(t => (t.getAttribute('title') || t.textContent || '').trim().slice(0, 40)),
+            entry: fe.fightEntryState(),
+            fighting: Boolean(window.SillyTavern.getContext().chatMetadata?.combatEncounter?.active),
+        };
+    });
+    /** «Empezar» en la barra de colocarse: la iniciativa. */
+    const startFromPlacement = async () => {
+        await dropToasts();
+        await page.locator('.cv-place .cv-place-start').click({ timeout: 5000 }).catch(() => {});
+        return until(async () => (await state()).fighting, 10000);
+    };
     /** La ventana de la taberna (la de las salidas de una pelea), como se ve. */
     const exitWindow = () => page.evaluate(() => {
         const dialog = document.querySelector('dialog.ev-dialog[open]');
@@ -433,10 +460,27 @@ try {
     const goldBeforeDuel = (await state()).gold;
     const duelFrom = await chatLength();
     await pickExit('apuesta-10');
-    await until(async () => (await state()).fighting, 10000);
+    // Tanda 10: decidido en la taberna, se coloca uno antes de la iniciativa (en un duelo, solo quien pelea).
+    await until(async () => (await placement()).bar, 10000);
+    await page.waitForTimeout(400);
+    const duelBanner = await banner();
+    const duelPlace = await placement();
+    await shoot('duelo-colocarse');
+    check('J12.7: tras apostar, a colocarse antes de la iniciativa: solo Tessa elige casilla (Gerd mira), Rosa espera a la vista, y aún no hay pelea',
+        duelPlace.bar && !duelPlace.fighting && duelPlace.entry.placing && /^Duelo con Rosa la Remera/.test(duelPlace.title)
+        && /Elige dónde empiezas/.test(duelPlace.hint) && JSON.stringify(duelPlace.faces.map(f => f.name)) === JSON.stringify(['Tessa'])
+        && duelPlace.cells.length >= 4 && duelPlace.foes.some(f => /Rosa/.test(f)), JSON.stringify(duelPlace));
+    // Un paso hacia Rosa: la casilla azul de la derecha.
+    const tessaBefore = (await state()).party.find(p => p.name === 'Tessa')?.at ?? '';
+    const [bx, by] = tessaBefore.split(',').map(Number);
+    const closer = duelPlace.cells.find(c => c.x === bx + 1 && c.y === by) ?? duelPlace.cells.find(c => c.x > bx);
+    if (closer) await page.locator(`#game-shell .wm-highlight-place[data-x="${closer.x}"][data-y="${closer.y}"]`).click({ timeout: 5000 }).catch(() => {});
+    await page.waitForTimeout(500);
+    const tessaAfter = (await state()).party.find(p => p.name === 'Tessa')?.at ?? '';
+    check('J12.7: pulsar una casilla azul pone ahí a Tessa', Boolean(closer) && tessaAfter === `${closer?.x},${closer?.y}`, JSON.stringify({ tessaBefore, closer, tessaAfter }));
+    await startFromPlacement();
     await page.waitForTimeout(500);
     const duelStart = await state();
-    const duelBanner = await banner();
     const duelFight = await fight();
     const gerd = duelStart.party.find(p => p.name === 'Gerd el Mellado');
     const gerdToken = await page.evaluate(() => [...document.querySelectorAll('#game-shell .wm-token:not(.wm-token-enemy)')]
@@ -466,7 +510,6 @@ try {
     await until(async () => !(await state()).fighting, 10000);
     await until(async () => (await exitWindow())?.kind === 'brawl', 8000);
     const duelEnd = await exitWindow();
-    const duelLog = await chatSince(duelFrom);
     const afterDuel = await state();
     await shoot('duelo-ganado');
     const fistsCard = punches.find(p => p.menu)?.menu;
@@ -474,6 +517,12 @@ try {
         punches.some(p => p.punched) && /^Puños$/.test(fistsCard?.weapon ?? '') && (fistsCard?.cards ?? []).some(c => c.badges.some(b => /1d4/.test(b)))
         && !(fistsCard?.cards ?? []).some(c => /^swapattack:/.test(c.pick) && !c.off) && punches.some(p => !p.punched || /5 pies/.test(JSON.stringify(p.menu))),
         JSON.stringify({ punches: punches.map(p => ({ punched: p.punched, said: p.said })), fistsCard }).slice(0, 1500));
+    // Pegada a Rosa, la barra de 2024 ofrece también agarrar y empujar: el arma va guardada, y el escudo no quita la otra mano.
+    const closeMenu = punches.map(p => p.menu).find(m => (m?.cards ?? []).some((/** @type {any} */ c) => /^attack:/.test(c.pick)));
+    const grab = (closeMenu?.cards ?? []).find((/** @type {any} */ c) => c.pick === 'unarmed:agarrar');
+    const shove = (closeMenu?.cards ?? []).find((/** @type {any} */ c) => c.pick === 'unarmed:empujar');
+    check('J12.7: al lado de Rosa, «Agarrar» y «Empujar» se pueden (sin arma en la mano), además del puñetazo',
+        Boolean(grab) && grab.off === false && Boolean(shove) && shove.off === false, JSON.stringify({ grab, shove }));
     check('J12.7: se gana: la escena del final con Rosa, «Ganas el duelo» y +10 de oro',
         duelEnd?.title === 'Ganas el duelo' && duelEnd.plate === 'Rosa la Remera' && duelEnd.lines.some(l => /\+10 de oro/.test(l))
         && afterDuel.gold === goldBeforeDuel + 10, JSON.stringify({ duelEnd, gold: [goldBeforeDuel, afterDuel.gold] }));
@@ -499,7 +548,14 @@ try {
     const brawlFrom = await chatLength();
     await dropToasts();
     await clickAct('brawl-start').catch(() => {});
-    await until(async () => (await state()).fighting, 10000);
+    await until(async () => (await placement()).bar, 10000);
+    await page.waitForTimeout(400);
+    const brawlPlace = await placement();
+    await shoot('pelea-colocarse');
+    check('J12.7: armarla lleva a colocarse en el tablero de la taberna: el grupo entero, los camorristas a la vista junto a la barra, y aún sin pelea',
+        brawlPlace.bar && !brawlPlace.fighting && /^Pelea en /.test(brawlPlace.title) && brawlPlace.faces.length === 2
+        && brawlPlace.foes.length === 2 && brawlPlace.cells.length >= 2 && (await state()).board === 'Pelea en la taberna', JSON.stringify(brawlPlace));
+    await startFromPlacement();
     await page.waitForTimeout(500);
     const brawlStart = await state();
     const brawlFight = await fight();
@@ -602,10 +658,12 @@ try {
     await setLife([60, 20]);
     const honorFrom = await chatLength();
     await pickExit('aceptar');
-    await until(async () => (await state()).fighting, 10000);
+    await until(async () => (await placement()).bar, 10000);
+    const honorPlaced = (await placement()).bar;
+    await startFromPlacement();
     const honorStart = await state();
-    check('J12.7: aceptado: un duelo por honor contra Ramiro, y Gerd mira',
-        honorStart.brawl?.kind === 'duelo' && honorStart.brawl?.way === 'honor' && honorStart.brawl?.rival === 'Ramiro'
+    check('J12.7: aceptado: a colocarse, «Empezar», y un duelo por honor contra Ramiro, y Gerd mira',
+        honorPlaced && honorStart.brawl?.kind === 'duelo' && honorStart.brawl?.way === 'honor' && honorStart.brawl?.rival === 'Ramiro'
         && honorStart.left.length === 1, JSON.stringify({ brawl: honorStart.brawl, left: honorStart.left }));
     // En mitad del duelo, «Abandonar» (tanda 10: ya no hay «Hablar» en la barra): rendirse o seguir.
     await toMyTurn();

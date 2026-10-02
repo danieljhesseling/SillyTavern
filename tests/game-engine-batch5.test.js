@@ -1,4 +1,5 @@
-import { describe, test, expect } from '@jest/globals';
+import { describe, test, expect, beforeAll, afterAll } from '@jest/globals';
+import { FACTION_WORLD } from '../public/scripts/game-engine/campaign/factions.js';
 import { recordManeuver, startTurn, attackEdge, canHide, hideDC, isHidden, revealHidden, judgeManeuvers } from '../public/scripts/game-engine/combat/maneuvers.js';
 import { throwablesOf, judgeThrows, burningPuddle, THROWABLES } from '../public/scripts/game-engine/combat/throwables.js';
 import { buildTracker } from '../public/scripts/game-engine/combat/initiative-tracker.js';
@@ -152,6 +153,10 @@ describe('el grupo', () => {
 });
 
 describe('el mundo', () => {
+    // D-J58: la guerra que encarece el acero es del mundo vivo, apagado en el juego.
+    beforeAll(() => { FACTION_WORLD.on = true; });
+    afterAll(() => { FACTION_WORLD.on = false; });
+
     test('52: la fama, peldaño a peldaño, y lo que rebaja', () => {
         let out = addFame(null, 'El Pueblo', 1);
         expect(out.rose).toBe(false);

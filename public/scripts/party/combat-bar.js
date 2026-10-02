@@ -456,7 +456,8 @@ export function buildCombatBarSnapshot({ full = true } = {}) {
         unarmed: {
             damage: unarmedDamage(member).damage,
             dc: unarmedDC(member),
-            freeHand: freeHand({ weapon: main, shield: equippedIn(member, 'shield') }),
+            // J12.7: en una pelea sin muertes el arma va guardada: queda una mano para agarrar.
+            freeHand: freeHand({ weapon: brawl ? null : main, shield: equippedIn(member, 'shield') }),
             targets: close.map(e => ({ ...e, note: `salva con ${escapeSave(getAliveEnemies().find(en => String(en.instanceId) === e.id)).label}` })),
         },
         abilities: abilityViews(member),
@@ -573,7 +574,7 @@ export function unarmedStrike(mode, targetId) {
     const target = enemyInReach(member, targetId, 5);
     if (!target) return '';
     if (mode === 'agarrar') {
-        const hand = freeHand({ weapon: weaponOf(member), shield: equippedIn(member, 'shield') });
+        const hand = freeHand({ weapon: brawlOf(combatEncounter) ? null : weaponOf(member), shield: equippedIn(member, 'shield') });
         if (!hand.ok) {
             toastr.warning(hand.reason, 'Agarrar');
             return '';

@@ -39,6 +39,7 @@ import { readPlaces } from './town.js';
 import { readSights } from './sights.js';
 import { spellById, magicInData } from '../rules/grimoire.js';
 import { resolveGender } from './grammar.js';
+import { companionStoryRows, hasStories, STORIES_KEY } from './companion-stories.js';
 
 /**
  * @typedef {Object} EntrySpec
@@ -148,6 +149,8 @@ export function buildPackEntries(pack) {
                 // J13.7: su género y su id, para llamarle por lo que es hasta que se presente.
                 ...(text(person.id) ? { id: text(person.id) } : {}),
                 ...(text(person.gender) ? { gender: text(person.gender) } : {}),
+                // Los Gems al día: cómo es por fuera, para su retrato (`tools/retratos-pendientes.mjs`).
+                ...(text(person.aspecto) ? { aspecto: text(person.aspecto) } : {}),
                 motive: text(person.motive) === 'coin' ? 'coin' : 'bond',
                 // R4/R10: los conjuros que sabe, por su id del grimorio. Lo que no existe no entra.
                 ...(Array.isArray(person.spells) ? { abilities: person.spells.map(text).filter((/** @type {string} */ id) => spellById(id)) } : {}),
@@ -200,6 +203,7 @@ export function buildPackEntries(pack) {
                 ...(text(person.gender) ? { gender: text(person.gender) } : {}),
                 ...(text(person.stranger) ? { stranger: text(person.stranger) } : {}),
                 ...(person.famous === true ? { famous: true } : {}),
+                ...(text(person.aspecto) ? { aspecto: text(person.aspecto) } : {}),
                 service: text(person.service),
                 mapPosition: { locationName: text(person.where), gridX: 0, gridY: 0 },
             },
@@ -538,6 +542,9 @@ export function buildImportPlan(raw, options = {}) {
             // J10.3 y D-J42: los sucesos propios de la campaña, con sus disparadores de facción
             // y de reputación. Se juntan con los del compendio al sortear (`suceso-triggers.js`).
             ...(Array.isArray(pack.sucesos) && pack.sucesos.length > 0 ? { sucesos: pack.sucesos } : {}),
+            // Los Gems al día: los romances y las misiones personales de sus compañeros, con la forma
+            // del compendio. Se juntan con los de `compendio/` al leerlos (`companion-stories.js`).
+            ...(hasStories(companionStoryRows(pack)) ? { [STORIES_KEY]: companionStoryRows(pack) } : {}),
             // Los encargos del tablon que trae el mundo. El tablero de cada uno se guarda
             // por nombre, que es como lo encuentra el juego.
             writtenContracts: (pack.contracts ?? []).filter((/** @type {any} */ c) => text(c?.id) && text(c?.title))

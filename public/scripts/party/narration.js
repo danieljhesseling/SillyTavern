@@ -33,6 +33,10 @@ import { splitModelNote } from '../game-engine/campaign/model-note.js';
 import { narrate as narrateMoment, rememberUsed, listNames } from '../game-engine/campaign/engine-narrator.js';
 import { countedName, sucesoProse } from '../game-engine/campaign/narration-notes.js';
 import { noteProse } from '../game-engine/campaign/narration-prose.js';
+import { voiceNote, voiceArrivalHook } from '../game-engine/campaign/narration-voices.js';
+import { servicesOf } from '../game-engine/campaign/services.js';
+import { tagLength } from '../game-engine/ui/shell/engine-tags.js';
+import { currentTownPlace } from '../game-engine/ui/shell/town-scene.js';
 import { resolveGender } from '../game-engine/campaign/grammar.js';
 import { readCases, cluesHere } from '../game-engine/campaign/cases.js';
 import { readTaggedLine, foldPlan, describeFold } from '../game-engine/campaign/chronicle.js';
@@ -43,6 +47,7 @@ import {
     describeEffect,
 } from '../game-engine/campaign/sucesos.js';
 import { mergeSucesoRows, sucesoWorld, readSucesoEffect, describeWorldEffect } from '../game-engine/campaign/suceso-triggers.js';
+import { factionWorldOn } from '../game-engine/campaign/factions.js';
 import { laterRows, scheduleFollows } from '../game-engine/campaign/aftermath.js';
 import { visitorFollow } from '../game-engine/campaign/guild-memory.js';
 import { planTip, nextQueuedTip } from '../game-engine/ui/shell/tips.js';
@@ -70,7 +75,7 @@ import {
 } from './combat-state.js';
 import { pushCombatLogEntry, pushCombatLogLines } from './combat-log.js';
 import {
-    announceOpenedRoads, currentSeason, getLocationBoards, giveWorldKey, guildVisitorRows, lastCampaignSucesos, lastCompendium,
+    announceOpenedRoads, currentSeason, getLocationBoards, giveWorldKey, guildVisitorRows, hereLocation, lastCampaignSucesos, lastCompendium,
     lastHub, lastHubHome, lastPack, lastWorldNpcs,
 } from './world.js';
 import { pushFactionClock, rulerOf, shiftFactionStanding } from './factions.js';
@@ -168,7 +173,17 @@ export function postCombatNarration(text) {
     // J13.1: sin modelo, lo que se lee es la nota contada («Le toca a Irene.», no «Turno de
     // Irene (Jugador)»). El mensaje guarda la de siempre, con sus datos, para el modelo.
     // Con el género otra vez, por si la frase contada trae «{solo|sola}».
-    const told = narratorMode() === 'motor' ? sayGendered(noteProse(text.trim(), { key: String(chat.length) })) : '';
+    const prose = narratorMode() === 'motor' ? sayGendered(noteProse(text.trim(), { key: String(chat.length) })) : '';
+    // D-J54: y sin modelo, la dice quien está allí (la tendera, el posadero, uno de los tuyos),
+    // sale como aviso corto o no sale en la caja, si ya se ve en pantalla.
+    const voice = narratorMode() === 'motor' ? voiceOf(text.trim(), prose) : null;
+    if (voice && voice.mode !== 'notice') {
+        postVoiced(text.trim(), prose, voice);
+        petReact(text);
+        return;
+    }
+    // J13.7: el aviso no nombra a quien aún no se ha presentado («lo pide la tendera del mercado»).
+    const told = prose ? shownText(prose, { mask: true }) : '';
     if (!told || told === text.trim()) {
         sendSystemMessage(system_message_types.GENERIC, text.trim(), {
             isSmallSys: true,
@@ -186,6 +201,171 @@ export function postCombatNarration(text) {
     }
     // R5: la mascota, a veces, dice algo de lo que acaba de pasar. Gratis: es del motor.
     petReact(text);
+}
+
+/** D-J54: dónde se durmió el último descanso (`techo`, `cielo`), para saber quién da los buenos días. */
+let lastRestUnder = '';
+
+/** D-J54: cuántas frases de cada clase `voz-*` se han dicho ya, para que vayan por turnos sin repetirse. */
+const voiceTurns = new Map();
+
+/**
+ * D-J54: quién está ahora para decir una nota: quien atiende cada sitio de aquí, el sitio del
+ * pueblo abierto, los tuyos que siguen en pie y dónde se durmió.
+ *
+ * @returns {import('../game-engine/campaign/narration-voices.js').VoiceScene}
+ */
+function voiceScene() {
+    const here = String(currentLocationName || '').toLowerCase();
+    /** @type {Record<string, {name: string, gender: string}>} */
+    const keepers = {};
+    for (const npc of /** @type {any[]} */ (lastWorldNpcs)) {
+        const service = String(npc?.service || '');
+        if (!service || npc.dead || String(npc.where || '').toLowerCase() !== here || keepers[service]) continue;
+        keepers[service] = { name: String(npc.name), gender: String(npc.gender || '') };
+    }
+    const hero = partyMembers.find(m => !m.guest) ?? partyMembers[0];
+    const person = (/** @type {any} */ m) => ({ name: String(m?.name || ''), gender: String(m?.gender || '') });
+    return {
+        keepers,
+        services: hereLocation() ? servicesOf(hereLocation()) : [],
+        open: currentTownPlace(),
+        // Los mercenarios y quien se escolta también están, y también hablan.
+        companions: partyMembers.filter(m => m !== hero && !m.dead && (Number(m.hp) || 0) > 0).map(person),
+        party: partyMembers.map(person),
+        hero: hero ? person(hero) : null,
+        restUnder: lastRestUnder,
+    };
+}
+
+/**
+ * D-J54: cómo llega una nota a quien juega sin modelo: quién la dice, un aviso o nada.
+ *
+ * @param {string} note La nota con su etiqueta.
+ * @param {string} told La nota contada, que es el aviso si nadie la dice.
+ * @returns {import('../game-engine/campaign/narration-voices.js').VoicedNote}
+ */
+function voiceOf(note, told) {
+    return voiceNote(note, { told, ...voiceInput() });
+}
+
+/**
+ * D-J54: con qué se elige quién habla y su frase: quién está, el banco, la partida y los turnos.
+ *
+ * @returns {{scene: import('../game-engine/campaign/narration-voices.js').VoiceScene, rows: any[], seed: string, turn: (kind: string) => number, who: Record<string, any>}}
+ */
+function voiceInput() {
+    return {
+        scene: voiceScene(),
+        rows: lastCompendium?.has?.('frases') ? lastCompendium.find('frases', {}) : [],
+        seed: String(chat_metadata?.[METADATA_KEY] || ''),
+        turn: (kind) => {
+            const n = voiceTurns.get(kind) ?? 0;
+            voiceTurns.set(kind, n + 1);
+            return n;
+        },
+        who: whoPlays(),
+    };
+}
+
+/** D-J54: lo que conviene saber del sitio al que se llega, para decirlo después de la llegada. */
+/** @type {{hook: string, arrival: string}|null} */
+let pendingHook = null;
+
+/**
+ * D-J54: al llegar, lo que conviene saber del sitio («aquí está vuestro encargo») lo dice uno de
+ * los tuyos; a solas, un aviso corto. No va al Diario: es una pista, no algo que pasó.
+ *
+ * @param {string} hook
+ */
+function sayArrivalHook(hook) {
+    const voice = voiceArrivalHook(hook, voiceInput());
+    if (voice.mode === 'quiet') return;
+    const note = voice.text;
+    if (voice.mode === 'line') postVoiced(note, '', voice);
+    else pushSystemNote(note, { display_text: shownText(sayGendered(note), { mask: true }), told: '' });
+}
+
+/**
+ * Un aviso del juego en el chat, para quien juega: un mensaje de sistema con su `extra` propio
+ * (el de `getSystemMessageByType` lo comparten todos: tocarlo cambiaría todas las notas).
+ *
+ * @param {string} mes Lo que se guarda: la nota con su etiqueta.
+ * @param {Record<string, any>} extra
+ */
+function pushSystemNote(mes, extra) {
+    const message = getSystemMessageByType(system_message_types.GENERIC, mes, { isSmallSys: true, isNarrator: true });
+    message.extra = { ...message.extra, ...extra };
+    chat.push(message);
+    addOneMessage(message);
+    setSendButtonState(false);
+}
+
+/**
+ * La etiqueta de una nota («🛒 [TIENDA] »), para ponerla delante de lo que se lee: el Diario y el
+ * plegado del chat la leen; la caja y el registro la esconden.
+ *
+ * @param {string} note
+ * @returns {string}
+ */
+function tagOf(note) {
+    return note.slice(0, tagLength(note));
+}
+
+/**
+ * D-J54: una nota del motor dicha por alguien que está allí, o que no sale en la caja. Sigue siendo
+ * un mensaje de sistema (no llega al modelo); el que habla le pone su nombre y su cara, y la caja
+ * lo pinta con su placa y su retrato (`extra.voiced`). La nota contada se guarda para el Diario.
+ *
+ * @param {string} note
+ * @param {string} told
+ * @param {import('../game-engine/campaign/narration-voices.js').VoicedNote} voice
+ */
+function postVoiced(note, told, voice) {
+    if (voice.mode === 'quiet') {
+        pushSystemNote(note, { display_text: told || note, quiet: true });
+        return;
+    }
+    // Lo de la nota que no le toca decir a quien habla, antes, como aviso (sin entrar dos veces en el Diario).
+    if (voice.before) pushSystemNote(`${tagOf(note)}${voice.before}`, { display_text: `${tagOf(note)}${sayGendered(voice.before)}`, told: '' });
+    const who = String(voice.who || '');
+    const said = sayGendered(voice.text);
+    hearLine({ who, text: said });
+    const member = partyMembers.find(m => String(m?.name) === who);
+    const message = buildGameMessage({
+        text: note,
+        channel: CHANNEL.PLAYER,
+        name: who,
+        // Su retrato en pixel si lo tiene; si no, la cara de su ficha. Nunca la del sistema: la
+        // caja la tomaría por el narrador y no le pondría placa.
+        avatar: firstArt('portrait', { name: who, pack: lastPack }) || String(member?.avatar || ''),
+        timestamp: getMessageTimeStamp(),
+        compact: true,
+    });
+    Object.assign(/** @type {any} */ (message.extra), {
+        voiced: true,
+        // J13.7: lo que se lee no nombra a quien aún no se ha presentado.
+        display_text: `${tagOf(note)}${shownText(said, { mask: true })}`,
+        told: told || note,
+        ...(voice.mood ? { mood: voice.mood } : {}),
+    });
+    chat.push(message);
+    addOneMessage(message);
+    setSendButtonState(false);
+}
+
+/**
+ * D-J54: lo último que ha dicho alguien al dar una nota (la tendera al cobrarte), si es lo último
+ * del chat. La pantalla del sitio lo pone en su caja, en vez del saludo.
+ *
+ * @param {string} name
+ * @returns {{text: string, mood: string}|null}
+ */
+export function lastVoicedLine(name) {
+    const last = /** @type {any} */ (chat?.[chat.length - 1]);
+    if (!last?.extra?.voiced || !name || String(last.name) !== String(name)) return null;
+    const shown = String(last.extra.display_text || '');
+    return { text: shown.slice(tagLength(shown)).trim(), mood: String(last.extra.mood || '') };
 }
 
 /** @returns {boolean} */
@@ -397,6 +577,8 @@ function applySucesoEffects(effects, random, names = {}) {
         // J10.3: lo que mueve a una facción por su id, y lo que abre caminos (J10.1).
         const world = readSucesoEffect(String(effect));
         if ((world.kind === 'faccion' || world.kind === 'reloj') && world.target) {
+            // D-J58: sin el mundo vivo, ningún plan se retrasa ni adelanta, y no se dice.
+            if (world.kind === 'reloj' && !factionWorldOn()) continue;
             const who = currentWorldFactions.find(f => String(f?.id) === world.target);
             if (!who || !world.amount) continue;
             if (world.kind === 'faccion') void shiftFactionStanding(world.target, Math.sign(world.amount));
@@ -495,6 +677,8 @@ function applySucesoEffects(effects, random, names = {}) {
  * @returns {string}
  */
 export function tellMoment(moment, facts) {
+    // D-J54: dónde se durmió, para quién da los buenos días (el posadero, o nadie al raso).
+    if (moment === 'descanso') lastRestUnder = String(facts?.bajo ?? '');
     if (modelNarrates() || !lastCompendium?.has?.('frases')) return '';
     const rows = lastCompendium.find('frases', {});
     const random = createSeededRandom(derive(String(chat_metadata?.[METADATA_KEY] || ''), 'narrador', moment, String(chat.length)));
@@ -503,8 +687,14 @@ export function tellMoment(moment, facts) {
     // escrita para el invierno (`when: {estacion: 'invierno'}`) solo sale en invierno.
     // J13.1: y si vas a solas, sin las frases que piden a varios («os miráis unos a otros»).
     const solo = partyMembers.filter(m => !m.dead).length <= 1 ? 'sí' : 'no';
-    const told = narrateMoment({ rows, moment, facts: { estacion: currentSeason(), solo, ...facts, generos: whoPlays(facts) }, random, recent: chat_metadata?.[NARRATOR_RECENT_KEY] });
+    // D-J54: sin modelo, al llegar el narrador dice solo que se llega. Cómo es el sitio ya está en
+    // pantalla, quién anda por allí sale en sus fichas, y lo que conviene saber lo dice uno de los
+    // tuyos justo después (`pendingHook`, en `postForModel`).
+    const arriving = moment === 'llegada' && narratorMode() === 'motor';
+    const said = arriving ? { ...facts, descripcion: '', gente: '', gente_n: 0, gancho: '' } : facts;
+    const told = narrateMoment({ rows, moment, facts: { estacion: currentSeason(), solo, ...said, generos: whoPlays(facts) }, random, recent: chat_metadata?.[NARRATOR_RECENT_KEY] });
     if (chat_metadata && told.used.length > 0) chat_metadata[NARRATOR_RECENT_KEY] = rememberUsed(chat_metadata[NARRATOR_RECENT_KEY], told.used);
+    if (arriving) pendingHook = String(facts?.gancho ?? '').trim() && told.text ? { hook: String(facts.gancho), arrival: told.text } : null;
     return told.text;
 }
 
@@ -613,17 +803,43 @@ export async function postForModel(text, options = {}) {
     const seen = !modelNarrates() && typeof options?.show === 'string' && options.show.trim() ? sayGendered(options.show.trim()) : said;
     // J13.1: y sin modelo, contada, sin lo que quedaba de registro.
     const told = narratorMode() === 'motor' ? sayGendered(noteProse(seen, { key: String(chat.length) })) : seen;
-    // J13.7: quien habla y dice su nombre se ha presentado; lo que se ve no nombra a quien aún no
-    // se conoce (sale por lo que es: «el posadero»). El modelo sigue leyendo los nombres.
-    // Del narrador, solo lo que alguien dice entre comillas («¡Gracias! Soy Tomás…»).
-    hearLine(speaker ? { who: speaker, text: told } : { who: '', text: told, quotes: true });
-    const shown = shownText(told, { mask: true });
-    if (shown !== message.mes) /** @type {any} */ (message.extra).display_text = shown;
+    // D-J54: sin modelo, y si nadie lo dice ya, lo dice quien está allí (la sacerdotisa al
+    // curaros); o no sale en la caja, si es lo mismo otra vez. El modelo sigue leyendo la nota.
+    const voice = !speaker && narratorMode() === 'motor' ? voiceOf(seen, told) : null;
+    if (voice?.mode === 'line') {
+        if (voice.before) pushSystemNote(`${tagOf(seen)}${voice.before}`, { display_text: `${tagOf(seen)}${sayGendered(voice.before)}`, told: '' });
+        const who = String(voice.who || '');
+        const line = sayGendered(voice.text);
+        const member = partyMembers.find(m => String(m?.name) === who);
+        message.name = who;
+        message.force_avatar = firstArt('portrait', { name: who, pack: lastPack }) || String(member?.avatar || '');
+        hearLine({ who, text: line });
+        Object.assign(/** @type {any} */ (message.extra), {
+            voiced: true,
+            display_text: `${tagOf(seen)}${shownText(line, { mask: true })}`,
+            told,
+            ...(voice.mood ? { mood: voice.mood } : {}),
+        });
+    } else {
+        // J13.7: quien habla y dice su nombre se ha presentado; lo que se ve no nombra a quien aún no
+        // se conoce (sale por lo que es: «el posadero»). El modelo sigue leyendo los nombres.
+        // Del narrador, solo lo que alguien dice entre comillas («¡Gracias! Soy Tomás…»).
+        hearLine(speaker ? { who: speaker, text: told } : { who: '', text: told, quotes: true });
+        const shown = shownText(told, { mask: true });
+        if (shown !== message.mes) /** @type {any} */ (message.extra).display_text = shown;
+        if (voice?.mode === 'quiet') /** @type {any} */ (message.extra).quiet = true;
+    }
 
     chat.push(message);
     await eventSource.emit(event_types.MESSAGE_RECEIVED, chat.length - 1, 'game-engine');
     addOneMessage(message);
     await eventSource.emit(event_types.CHARACTER_MESSAGE_RENDERED, chat.length - 1, 'game-engine');
+    // D-J54: tras la llegada, lo que conviene saber del sitio, dicho por uno de los tuyos.
+    if (pendingHook && seen.includes(pendingHook.arrival)) {
+        const { hook } = pendingHook;
+        pendingHook = null;
+        sayArrivalHook(hook);
+    }
     await saveChatConditional();
 }
 

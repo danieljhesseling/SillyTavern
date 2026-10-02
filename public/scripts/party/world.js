@@ -38,6 +38,7 @@ import {
     addWorldKey, describeOpened, gateRoutes, gateStatus, keyringOf, newlyOpened,
 } from '../game-engine/world/route-gates.js';
 import { readCampaignSucesos } from '../game-engine/campaign/suceso-triggers.js';
+import { readCompanionStories, STORIES_KEY } from '../game-engine/campaign/companion-stories.js';
 import {
     planRulesetChange, readRememberedRuleset, rememberRuleset, setActiveRuleset, needsReload,
 } from '../game-engine/rules/ruleset.js';
@@ -174,6 +175,7 @@ export async function reloadWorldFactions() {
         lastDialogues = [];
         lastCampaignSucesos = [];
         lastPack = '';
+        lastCompanionStories = readCompanionStories(null);
         return currentWorldFactions;
     }
     try {
@@ -197,6 +199,7 @@ export async function reloadWorldFactions() {
         // J10.3 y D-J42: los sucesos propios de la campaña, que se sortean con los del compendio.
         lastCampaignSucesos = readCampaignSucesos(data?.metadata?.sucesos);
         lastPack = packOfWorld(data?.metadata);
+        lastCompanionStories = readCompanionStories(data?.metadata?.[STORIES_KEY]);
         lastWorldSeason = readSeason(data?.metadata?.season);
         lastWorldGenre = String(data?.metadata?.genre ?? '');
         lastWorldNpcs = Object.values(data?.entries ?? {})
@@ -362,6 +365,13 @@ export let lastDialogues = [];
 export let lastCampaignSucesos = [];
 /** El paquete del mundo abierto (`gremio`, `1387`…), para los retratos y los escenarios; vacío si no es de ninguno. */
 export let lastPack = '';
+/**
+ * Los Gems al día: los romances y las misiones personales de los compañeros de la campaña abierta,
+ * con la forma del compendio (`companion-stories.js`). Se juntan con los de `compendio/` al leerlos.
+ *
+ * @type {import('../game-engine/campaign/companion-stories.js').StoryRows}
+ */
+export let lastCompanionStories = { companeros: [], romances: [], personales: [], quedadas: [] };
 /** @type {any} */
 export let lastMix = null;
 /** J11.4: lo que el gremio recuerda de las campañas terminadas, si el mundo abierto es un gremio. */

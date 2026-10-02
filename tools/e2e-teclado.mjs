@@ -57,21 +57,30 @@ let server = null;
 /** @type {any} */
 let browser = null;
 
+/** Lo último que dijo el servidor: si se cae a mitad, el informe dice por qué. */
+let serverTail = '';
+
 function startServer() {
     server = spawn(process.execPath, ['server.js', '--browserLaunchEnabled', 'false', '--port', String(PORT), '--dataRoot', dataRoot], { cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'] });
     const child = server;
     return new Promise((resolve, reject) => {
         const timer = setTimeout(() => reject(new Error('the server did not start in 180s')), 180000);
+        let up = false;
         const watch = (/** @type {any} */ buffer) => {
             const text = String(buffer);
-            if (text.includes(String(PORT)) || text.toLowerCase().includes('listening')) {
+            serverTail = (serverTail + text).slice(-3000);
+            if (!up && (text.includes(String(PORT)) || text.toLowerCase().includes('listening'))) {
+                up = true;
                 clearTimeout(timer);
                 setTimeout(() => resolve(child), 1500);
             }
         };
         child.stdout.on('data', watch);
         child.stderr.on('data', watch);
-        child.on('exit', (/** @type {number} */ code) => reject(new Error(`the server exited with code ${code}`)));
+        child.on('exit', (/** @type {number} */ code) => {
+            if (!up) reject(new Error(`the server exited with code ${code}`));
+            else console.log(`(el servidor se cerró con el código ${code}; lo último que dijo:)\n${serverTail.slice(-1500)}`);
+        });
     });
 }
 

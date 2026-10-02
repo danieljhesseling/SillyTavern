@@ -8,6 +8,9 @@
  *
  * El vigilante del teclado de SillyTavern (`keyboard.js`) mira cada cambio una vez, y solo lo de
  * más arriba (`outermostConnected`): antes era lo que más pesaba al redibujar el juego.
+ *
+ * jQuery recuerda todos los selectores de los toques (`widenSelectorCache`, en `app-mode.js`):
+ * con los 50 suyos, cada toque volvía a traducir los ~126 de SillyTavern.
  */
 
 /* global globalThis */
@@ -90,5 +93,40 @@ describe('J20.6: el teclado de SillyTavern mira cada cambio una vez', () => {
         const gone = node('quitado', null, false);
         const kept = node('puesto');
         expect(outermostConnected(new Set([gone, kept])).map(n => n.name)).toEqual(['puesto']);
+    });
+});
+
+describe('J20.6: jQuery recuerda todos los selectores de la página', () => {
+    /** @type {typeof import('../public/scripts/game-engine/ui/app-mode.js')} */
+    let appMode;
+
+    beforeAll(async () => {
+        appMode = await import('../public/scripts/game-engine/ui/app-mode.js');
+    });
+
+    /** Lo que se mira de jQuery: su `expr.cacheLength` (Sizzle). */
+    const jqWith = (cacheLength) => ({ expr: { cacheLength } });
+
+    test('los 50 de jQuery suben a los del juego, y lo dice', () => {
+        const jq = jqWith(50);
+        expect(appMode.widenSelectorCache(jq)).toBe(true);
+        expect(jq.expr.cacheLength).toBe(appMode.SELECTOR_CACHE_SIZE);
+        // Sitio para los ~126 selectores de los clics y los ~121 de escribir, juntos.
+        expect(appMode.SELECTOR_CACHE_SIZE).toBeGreaterThanOrEqual(250);
+    });
+
+    test('nunca lo baja, y sin jQuery no hace nada', () => {
+        const big = jqWith(5000);
+        expect(appMode.widenSelectorCache(big)).toBe(false);
+        expect(big.expr.cacheLength).toBe(5000);
+        expect(appMode.widenSelectorCache(null)).toBe(false);
+        expect(appMode.widenSelectorCache({})).toBe(false);
+    });
+
+    test('al abrirse la página (markAppMode) se ensancha, con app o sin ella', () => {
+        const jq = jqWith(50);
+        const doc = { defaultView: { jQuery: jq }, documentElement: { classList: { toggle: () => {} } }, querySelector: () => null };
+        appMode.markAppMode(/** @type {any} */ (doc), { search: '' });
+        expect(jq.expr.cacheLength).toBe(appMode.SELECTOR_CACHE_SIZE);
     });
 });

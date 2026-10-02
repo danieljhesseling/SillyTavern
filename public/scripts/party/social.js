@@ -43,7 +43,8 @@ import { openPack } from '../game-engine/ui/pixel-art.js';
 import { isShellOpen, refreshGameShell } from '../game-engine/ui/shell/game-shell.js';
 import { APPROVAL_KEY, PLOT_STATE_KEY } from './keys.js';
 import { combatEncounter, currentBoardName, currentLocationName, partyMembers } from './state.js';
-import { hereLocation, lastCompendium, lastConfidantEntries, lastHub, lastWorldNpcs, rememberedHello } from './world.js';
+import { hereLocation, lastCompendium, lastCompanionStories, lastConfidantEntries, lastHub, lastWorldNpcs, rememberedHello } from './world.js';
+import { withCampaignRows } from '../game-engine/campaign/companion-stories.js';
 import { buildHallData, hubChips } from './hub.js';
 import {
     campaignDay, getCampaignBonds, getCampaignCalendar, recordCampaignBondEvent, saveCampaignState, spendDayPart,
@@ -51,7 +52,7 @@ import {
 import { getPlot } from './plot.js';
 import { changeAttitude, offerPersonalQuests } from './companions.js';
 import { partyPurse, payFromParty } from './roster.js';
-import { postCombatNarration } from './narration.js';
+import { lastVoicedLine, postCombatNarration } from './narration.js';
 import { festivalHere } from './town.js';
 import { romanceMeetup, romanceAfterMeetup, romanceWantsFor, romanceLabelFor, packRomance, unpackRomance } from './romance.js';
 
@@ -96,17 +97,19 @@ function saveSocial(state) {
 /**
  * Las charlas y las quedadas del compendio, leídas una vez por compendio.
  *
- * @type {{from: any, talk: import('../game-engine/campaign/small-talk.js').TalkRow[], meet: ReturnType<typeof readMeetupRows>}}
+ * @type {{from: any, own: any, talk: import('../game-engine/campaign/small-talk.js').TalkRow[], meet: ReturnType<typeof readMeetupRows>}}
  */
-let rows = { from: null, talk: [], meet: { people: [], scenes: [], unlocks: [] } };
+let rows = { from: null, own: null, talk: [], meet: { people: [], scenes: [], unlocks: [] } };
 
 /** @returns {typeof rows} */
 function socialRows() {
-    if (rows.from !== lastCompendium) {
+    // Los Gems al día: lo que abre la misión personal de un compañero de la campaña, en su rango.
+    if (rows.from !== lastCompendium || rows.own !== lastCompanionStories) {
         rows = {
             from: lastCompendium,
+            own: lastCompanionStories,
             talk: readTalkRows(lastCompendium.find('charlas')),
-            meet: readMeetupRows(lastCompendium.find('quedadas')),
+            meet: readMeetupRows(withCampaignRows(lastCompendium.find('quedadas'), lastCompanionStories.quedadas)),
         };
     }
     return rows;
@@ -587,7 +590,11 @@ export function townNow() {
         // primeras, y sin las demás no salían el cofre, el patio, los edificios ni la memoria.
         hubChips: hubChips(),
         // J11.3 y J11.4: el saludo de quien atiende, si recuerda lo que hicisteis (vacío si no), y su cara.
-        greet: (/** @type {any} */ place, /** @type {string} */ slot = '') => rememberedHello(place, { slot, hero: partyMembers.find(m => !m.guest) ?? partyMembers[0] ?? null }),
+        // D-J54: y si acaba de decir algo al darte una nota (la tendera al cobrarte), eso, con su cara.
+        greet: (/** @type {any} */ place, /** @type {string} */ slot = '') => {
+            const said = lastVoicedLine(String(place?.keeper?.name ?? ''));
+            return said ? { ...said, remembered: false } : rememberedHello(place, { slot, hero: partyMembers.find(m => !m.guest) ?? partyMembers[0] ?? null });
+        },
     };
 }
 

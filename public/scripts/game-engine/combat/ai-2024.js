@@ -327,8 +327,8 @@ const SHOVE_WHY = {
  * rodeado, y ocultarse si no llega a nadie y hay dónde.
  *
  * @param {Object} input
- * @param {Body & {profile?: string, role?: string, str?: number, dex?: number, cr?: number, freeHand?: boolean, grappling?: string, hidden?: boolean}} input.actor
- *   Donde queda **después** de moverse.
+ * @param {Body & {profile?: string, role?: string, str?: number, dex?: number, cr?: number, freeHand?: boolean, grappling?: string, grabbed?: string[], hidden?: boolean}} input.actor
+ *   Donde queda **después** de moverse. `grabbed`: a quién ha intentado agarrar ya en esta pelea.
  * @param {boolean} input.canAttack Si su golpe de siempre llega a alguien.
  * @param {Body[]} input.foes
  * @param {Body[]} [input.friends]
@@ -359,10 +359,12 @@ export function chooseEnemyAction2024({ actor, canAttack, foes, friends = [], gr
     }
 
     // 2. Agarrar al que lanza o dispara, para que no se le escape. Con una mano libre, y sin
-    // gastarlo en quien ya está casi en el suelo (a ese, mejor pegarle).
+    // gastarlo en quien ya está casi en el suelo (a ese, mejor pegarle). Una vez a cada uno por
+    // pelea: si se le suelta, ya le pega (agarrar cada ronda alargaba la pelea sin hacer daño).
+    const tried = new Set((actor.grabbed || []).map(String));
     if (brute && actor.freeHand !== false && !actor.grappling) {
         const hold = adjacent
-            .filter(f => f.caster && fraction(f) >= 0.5 && !(f.conditions || []).some(c => /grappled|restrained/i.test(c)))
+            .filter(f => f.caster && fraction(f) >= 0.5 && !tried.has(String(f.id)) && !(f.conditions || []).some(c => /grappled|restrained/i.test(c)))
             .map(f => ({ foe: f, odds: failChance(dc, Number(f.saveMod) || 0) }))
             .filter(o => o.odds >= 0.3)
             .sort((a, b) => b.odds - a.odds || String(a.foe.id).localeCompare(String(b.foe.id)))[0];
@@ -416,7 +418,8 @@ export function chooseEnemyAction2024({ actor, canAttack, foes, friends = [], gr
  * si está acorralado y malherido, o destrabarse si irse le costaría un golpe.
  *
  * @param {Object} input
- * @param {Body & {profile?: string, role?: string, potions?: number}} input.actor
+ * @param {Body & {profile?: string, role?: string, potions?: number, dodged?: boolean}} input.actor
+ *   `dodged`: si ya se ha cubierto una vez en esta pelea.
  * @param {{action: string, movementCostFeet: number, rationale?: string}} input.plan Lo que iba a hacer (`planEnemyTurn`).
  * @param {Body[]} input.foes
  * @param {Body[]} [input.friends]
@@ -440,9 +443,10 @@ export function chooseEnemyBefore2024({ actor, plan, foes, friends = [], provoke
     const stays = !(Number(plan?.movementCostFeet) > 0);
 
     // Cubrirse: malherido, acorralado (dos encima, o sin a dónde irse) y con los suyos aún en pie,
-    // que vienen a ayudar. El jefe y el bruto no se cubren: pelean hasta el final.
+    // que vienen a ayudar. El jefe y el bruto no se cubren: pelean hasta el final. Una vez por
+    // pelea: cubrirse cada ronda mientras otro le curaba dejaba la pelea sin acabar.
     const cornered = adjacent.length >= 2 || (adjacent.length >= 1 && stays && plan?.action !== 'attack');
-    if (after < 0.3 && cornered && standing > 0 && !actor.boss && text(actor.role) !== 'bruto') {
+    if (after < 0.3 && cornered && standing > 0 && !actor.boss && text(actor.role) !== 'bruto' && !actor.dodged) {
         return { potion, before: { kind: 'dodge', reason: 'Acorralado y malherido: se cubre y espera a los suyos.' } };
     }
 

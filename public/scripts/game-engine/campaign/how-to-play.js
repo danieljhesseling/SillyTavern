@@ -11,6 +11,7 @@
 
 import { LETTERS, modeOf, modeLabel, hasLetter } from '../rules/modes.js';
 import { CATEGORIES } from './chronicle.js';
+import { factionWorldOn } from './factions.js';
 
 /**
  * @typedef {Object} HelpSection
@@ -93,7 +94,8 @@ export function buildHowToPlay({ survival, legend = {}, pet = false, magic = fal
                 : 'En este modo no hay cuenta semanal.',
             `La mesa (${say('`/mesa`', 'el botón «Mesa», arriba')}) junta lo que pide atención esta semana, con su plazo y lo que pasa si no se atiende. No cabe todo: elegir es el juego.`,
             on('c')
-                ? 'El mundo se mueve aunque no mires: facciones, rivales, casos. «Lo que viene» dice lo próximo.'
+                // D-J58: las facciones, solo con su mundo vivo encendido.
+                ? `El mundo se mueve aunque no mires: ${factionWorldOn() ? 'facciones, rivales, casos' : 'rivales y casos'}. «Lo que viene» dice lo próximo.`
                 : 'En este modo el mundo espera a que vuelvas.',
         ],
     });

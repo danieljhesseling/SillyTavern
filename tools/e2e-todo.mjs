@@ -4,12 +4,12 @@
  * a la vez?»).
  *
  * Cada e2e arranca su propio servidor, en su puerto y con sus datos en una carpeta temporal,
- * así que no se pisan entre ellos ni tocan tu partida del puerto 8000. La vuelta larga va en
- * dos mitades (`e2e-campaign.mjs --parte a` y `--parte b`), que también corren a la vez.
+ * así que no se pisan entre ellos ni tocan tu partida del puerto 8000. La vuelta larga antigua
+ * (`e2e-campaign.mjs`) ya no entra: el juego es el de sin conexión, y lo cubren las vueltas a clics.
  *
  * Uso:
- *   node tools/e2e-todo.mjs            # unitarios, rápido, sin modelo, el gremio, el móvil y la vuelta larga en dos mitades
- *   node tools/e2e-todo.mjs --rapido   # sin la vuelta larga: lo de cada cambio
+ *   node tools/e2e-todo.mjs            # todo: unitarios, las pruebas de cada parte y las vueltas a clics
+ *   node tools/e2e-todo.mjs --rapido   # sin las de cada parte ni las vueltas: lo de cada cambio
  *
  * Cada prueba escribe su registro entero en una carpeta temporal, que se dice al final; aquí
  * solo sale cuándo acaba cada una y, al final, lo que ha fallado.
@@ -73,8 +73,13 @@ const jobs = [
         // Si la barra de combate no responde a sus clics, los turnos del grupo van con el gancho.
         { name: 'vuelta 1387 a clics', kind: 'e2e', args: ['tools/vuelta-1387.mjs'] },
         { name: 'vuelta del gremio a clics', kind: 'e2e', args: ['tools/vuelta-gremio.mjs'] },
-        { name: 'vuelta 1-48', kind: 'e2e', args: ['tools/e2e-campaign.mjs', '--parte', 'a', '--port', '8126'] },
-        { name: 'vuelta 49-73', kind: 'e2e', args: ['tools/e2e-campaign.mjs', '--parte', 'b', '--port', '8127'] },
+        // M4: Strahd de punta a punta, a clics (puerto 8388). Y la vuelta de cualquier campaña,
+        // con la muestra del Gem añadida desde su archivo y jugada hasta su final (puerto 8249).
+        { name: 'vuelta Strahd a clics', kind: 'e2e', args: ['tools/vuelta-strahd.mjs'] },
+        { name: 'vuelta de una campaña del Gem', kind: 'e2e', args: ['tools/vuelta-campana.mjs', '--ejemplo'] },
+        // La vuelta larga antigua (`e2e-campaign.mjs`, el modo de campaña de un solo mundo) ya no
+        // va en la batería: Daniel está centrado en el juego sin conexión (2026-10-02) y lo que
+        // mira lo cubren las vueltas de arriba. Se puede seguir pasando a mano, en sus dos mitades.
     ])),
 ];
 

@@ -1278,6 +1278,12 @@ function renderNovel(scene, view, place = '') {
         if (messages[i].getAttribute('is_user') === 'true') break;
         start = i;
     }
+    // D-J54: el mensaje de cada nodo, para saber si lo dice alguien (`extra.voiced`: una nota del
+    // juego dicha por quien está allí, con su placa aunque sea de sistema) o si no sale en la caja
+    // (`extra.quiet`: lo que ya se ve en pantalla).
+    const chatNow = /** @type {any[]} */ (/** @type {any} */ (globalThis).SillyTavern?.getContext?.()?.chat ?? []);
+    const messageOf = (/** @type {Element} */ node) => chatNow[Number(node.getAttribute('mesid'))] ?? null;
+    const systemLine = (/** @type {Element} */ node) => node.getAttribute('is_system') === 'true' && !messageOf(node)?.extra?.voiced;
     // J18.10: lo que se lee es la copia del mensaje sin las etiquetas del motor («[HILO] Hecho:
     // …», «🗣️ [DUELO]»): solo la prosa. Un mensaje que era solo etiqueta no ocupa sitio.
     /** @type {Map<Element, Element>} */
@@ -1285,6 +1291,7 @@ function renderNovel(scene, view, place = '') {
     const said = (/** @type {Element} */ node) => {
         const body = node.querySelector('.mes_text');
         if (!body || !(body.textContent || '').trim()) return false;
+        if (messageOf(node)?.extra?.quiet) return false;
         // J13.1: sin conexión, una nota del motor guardada sin su versión contada (de una partida
         // de antes) se cuenta aquí.
         const copy = (offline && engineNoteCopy(node)) || /** @type {Element} */ (body.cloneNode(true));
@@ -1309,7 +1316,7 @@ function renderNovel(scene, view, place = '') {
     text.textContent = '';
     const keyOf = (/** @type {Element} */ node) => `${node.getAttribute('mesid')}:${(node.querySelector('.mes_text')?.textContent || '').trim().slice(0, 60)}`;
     let fresh = 0;
-    const people = lines.filter(m => m.getAttribute('is_system') !== 'true');
+    const people = lines.filter(m => !systemLine(m));
     const last = people[people.length - 1] ?? null;
     const speakerName = (last?.getAttribute('ch_name') || '').trim();
     // «La figura del narrador sobra» (Daniel, 2026-10-01): lo que cuenta quien narra sale sin
@@ -1318,7 +1325,7 @@ function renderNovel(scene, view, place = '') {
     // «Narrador» a secas es el nombre de relleno de lo que cuenta el motor sin ficha delante.
     const isNarrator = (/** @type {string} */ name) => Boolean(name && (name === narratorNow || name === 'Narrador'));
     for (const line of lines) {
-        const system = line.getAttribute('is_system') === 'true';
+        const system = systemLine(line);
         const who = (line.getAttribute('ch_name') || '').trim();
         const block = el('div', `gs-vn-line${system ? ' gs-vn-note' : ''}`);
         // Cuando en la caja habla más de uno, cada frase dice de quién es (menos el narrador).

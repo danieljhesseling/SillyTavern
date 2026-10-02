@@ -190,8 +190,36 @@ export function launchedAsApp(env = browserEnv()) {
  */
 export function markAppMode(doc = /** @type {any} */ (globalThis).document ?? null, env = browserEnv()) {
     const on = launchedAsApp(env);
+    // J20.6: con app o sin ella, que cada toque pese menos (`widenSelectorCache`).
+    widenSelectorCache(/** @type {any} */ (doc)?.defaultView?.jQuery);
     if (!doc?.documentElement) return on;
     doc.documentElement.classList.toggle('gs-app', on);
     if (on) doc.querySelector('meta[name="theme-color"]')?.setAttribute('content', APP_INFO.theme);
     return on;
+}
+
+/**
+ * J20.6: cuántos selectores ya traducidos recuerda jQuery (los suyos son 50).
+ *
+ * SillyTavern escucha los toques de toda la página con unos 126 selectores
+ * (`$(document).on('click', '#…', …)`), y con cada toque jQuery mira cada uno en cada caja
+ * por la que sube el toque. Con sitio para 50, los traducía todos de nuevo cada vez. Medido
+ * con un toque en el juego (`pointerdown` a `click`, 16 cajas de hondo): 45 ms con 50 y
+ * 14 ms con sitio para todos, en un ordenador; un teléfono tarda unas cuatro veces más.
+ */
+export const SELECTOR_CACHE_SIZE = 1000;
+
+/**
+ * J20.6: deja a jQuery recordar todos los selectores de la página (`SELECTOR_CACHE_SIZE`).
+ * Nunca lo baja. Dice si lo cambió.
+ *
+ * @param {any} [jq] jQuery; sin él (las pruebas, una página sin jQuery), nada.
+ * @param {number} [size]
+ * @returns {boolean}
+ */
+export function widenSelectorCache(jq = /** @type {any} */ (globalThis).jQuery, size = SELECTOR_CACHE_SIZE) {
+    const expr = jq?.expr;
+    if (!expr || typeof expr.cacheLength !== 'number' || expr.cacheLength >= size) return false;
+    expr.cacheLength = size;
+    return true;
 }

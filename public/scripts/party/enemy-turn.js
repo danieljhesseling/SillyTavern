@@ -743,6 +743,8 @@ function enemyBody(enemy, weapon = null) {
         profile: String(enemy.profile ?? ''), role: String(/** @type {any} */ (enemy).role ?? ''), boss: Boolean(enemy.boss),
         str: Number(enemy.strength) || 10, dex: Number(enemy.dexterity) || 10, cr: Number(enemy.cr) || 0,
         freeHand: !(weapon && weapon.hands >= 2), grappling: holding ? String(holding.id) : '',
+        grabbed: Array.isArray(/** @type {any} */ (enemy).grabbed) ? /** @type {any} */ (enemy).grabbed.map(String) : [],
+        dodged: Boolean(/** @type {any} */ (enemy).dodged),
         hidden: readManeuvers(combatEncounter.maneuvers).hidden?.some(h => h.id === String(enemy.instanceId)) ?? false,
     };
 }
@@ -909,6 +911,8 @@ function beforeMove2024(enemy, plan) {
         out.drank = true;
     }
     if (before?.kind === 'dodge') {
+        // Una vez por pelea (`chooseEnemyBefore2024`): se apunta aquí.
+        /** @type {any} */ (enemy).dodged = true;
         combatEncounter.maneuvers = recordManeuver(combatEncounter.maneuvers, 'esquivar', id);
         out.lines.push(`🛡️ ${enemy.name}: ${before.reason} Pegarle va con desventaja hasta su próximo turno.`);
         out.dodged = true;
@@ -960,7 +964,11 @@ function insteadOfStrike2024(enemy, canAttack) {
         const friend = getEnemyByInstanceId(String(choice.friendId ?? ''));
         return `🤝 ${enemy.name}: ${choice.reason} Distrae a ${target.name}: el próximo golpe de ${friend?.name ?? 'los suyos'} contra él irá con ventaja.`;
     }
-    // Agarrar y empujar: salva quien lo recibe, con su Fuerza o su Destreza (2024).
+    // Agarrar y empujar: salva quien lo recibe, con su Fuerza o su Destreza (2024). A cada uno lo
+    // intenta agarrar una vez por pelea (`chooseEnemyAction2024`): se apunta aquí.
+    if (choice.kind === 'grapple') {
+        /** @type {any} */ (enemy).grabbed = [...(Array.isArray(/** @type {any} */ (enemy).grabbed) ? /** @type {any} */ (enemy).grabbed : []), String(target.id)];
+    }
     const dc = enemySaveDC(enemy, 'strength');
     const save = escapeSave(target);
     const natural = rollDiceDetailed('1d20', 20).total;

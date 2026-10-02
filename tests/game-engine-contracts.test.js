@@ -1,4 +1,5 @@
-import { describe, test, expect } from '@jest/globals';
+import { describe, test, expect, beforeAll, afterAll } from '@jest/globals';
+import { FACTION_WORLD } from '../public/scripts/game-engine/campaign/factions.js';
 import {
     RANKS, CONTRACT_KINDS, GUILD_THEMES, ranksFor, generateBoardOfContracts,
     deadlineOf, expireContracts, describeContract, contractsFromFactions, describeStake,
@@ -182,6 +183,10 @@ describe('leído en el tablón', () => {
 });
 
 describe('encargos que toman partido', () => {
+    // D-J58: lo que un encargo hace al reloj de una facción es del mundo vivo; aquí, encendido.
+    beforeAll(() => { FACTION_WORLD.on = true; });
+    afterAll(() => { FACTION_WORLD.on = false; });
+
     const bandos = () => ([
         {
             id: 'molino', name: 'Los del Molino', seat: 'El molino', enemies: ['ermita'],

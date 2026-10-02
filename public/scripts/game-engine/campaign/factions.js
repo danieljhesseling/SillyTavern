@@ -46,6 +46,35 @@ export const DEFAULT_SEGMENTS = 6;
 export const STANDING = 5;
 
 /**
+ * D-J58 (Daniel, 2026-10-02): el interruptor del mundo vivo de las facciones, para el modo
+ * mundo semiabierto. Hasta entonces, apagado: el juego es un D&D de campaña escrita.
+ *
+ * Apagado **se queda** lo que es historia: la reputación con cada grupo (`changeStanding`), y
+ * las puertas, los peajes y los finales que dependen de ella (`route-gates.js`,
+ * `world-memory.js`, `plot.js`). **Se apaga** lo que es simulación, todo desde aquí:
+ *
+ * - los relojes que avanzan solos con los días o con un empujón (`tickFactions`, `pushClock`),
+ *   y lo que se cuenta de ellos: las noticias (`newsFor`), la Mesa, «Lo que viene» y el Diario;
+ * - quién manda en cada sitio, en lo que cuesta vivir y comprar allí (`priceFactor`,
+ *   `economy.js`) y en la tienda;
+ * - los encargos que salen de sus planes (`busyFactions`) y los sucesos que salen por cómo va
+ *   su reloj (`suceso-triggers.js`).
+ *
+ * No se borra nada: encenderlo lo devuelve todo como era. Las pruebas de la simulación lo
+ * encienden dentro.
+ */
+export const FACTION_WORLD = { on: false };
+
+/**
+ * Si las facciones tienen vida propia (D-J58).
+ *
+ * @returns {boolean}
+ */
+export function factionWorldOn() {
+    return FACTION_WORLD.on === true;
+}
+
+/**
  * @param {any} value
  * @returns {string}
  */
@@ -216,6 +245,8 @@ export function heldBack(faction, here) {
  * @returns {{factions: any[], events: any[]}}
  */
 export function tickFactions({ factions, days = 1, here = '' }) {
+    // D-J58: sin el mundo vivo, los días pasan y ningún reloj se mueve.
+    if (!factionWorldOn()) return { factions: readFactions(factions), events: [] };
     const total = Math.max(0, whole(days, 1));
     const names = namesOf(factions);
     /** @type {any[]} */
@@ -508,6 +539,8 @@ export function describeStanding(value) {
  * @returns {number}
  */
 export function priceFactor(value) {
+    // D-J58: sin el mundo vivo, quien manda no cobra distinto por lo que piense de ti.
+    if (!factionWorldOn()) return 1;
     const at = Math.max(-STANDING, Math.min(STANDING, whole(value, 0)));
     // Un 5% por escalon: cinco encargos cambian el precio un cuarto, que se nota en la
     // cuenta del viernes sin volverla gratis.
@@ -532,8 +565,9 @@ export function priceFactor(value) {
 export function pushClock(faction, segments, names = {}) {
     const read = readFaction(faction);
     const move = whole(segments, 0);
-    // Lo ya cumplido no se deshace: el sitio ya cambio de manos.
-    if (!read.goal.kind || read.goal.done || move === 0) return { faction: read, event: null };
+    // Lo ya cumplido no se deshace: el sitio ya cambio de manos. Y sin el mundo vivo (D-J58),
+    // un encargo o un suceso no empuja ningun reloj: solo cambia lo que piensan de ti.
+    if (!factionWorldOn() || !read.goal.kind || read.goal.done || move === 0) return { faction: read, event: null };
 
     const at = Math.min(read.goal.of, Math.max(0, read.goal.at + move));
     if (at === read.goal.at) return { faction: read, event: null };
@@ -584,6 +618,8 @@ export function pushFaction(factions, id, segments) {
  * @returns {any[]}
  */
 export function busyFactions(factions) {
+    // D-J58: sin el mundo vivo, nadie tiene planes que el tablon pueda ofrecer.
+    if (!factionWorldOn()) return [];
     return readFactions(factions).filter(faction => clockOf(faction).moving);
 }
 
@@ -602,6 +638,8 @@ export function busyFactions(factions) {
  * @returns {string[]}
  */
 export function newsFor({ events, here = '', locations = [], factions = [] }) {
+    // D-J58: sin el mundo vivo no llegan noticias de lo que hacen; tampoco las que esperaban.
+    if (!factionWorldOn()) return [];
     const where = text(here);
     const place = (Array.isArray(locations) ? locations : [])
         .find(l => text(l?.name).toLowerCase() === where.toLowerCase());
@@ -785,6 +823,8 @@ export function describeFaction(faction, names = {}) {
     // Lo que quiere una meta `destruir` es otra faccion, y su objetivo es un id.
     const target = text(names?.[read.goal.target]) || read.goal.target;
     const where = read.seat ? ` (${read.seat})` : '';
+    // D-J58: sin el mundo vivo no hay reloj que enseñar; queda lo que piensan de ti.
+    if (!factionWorldOn()) return `${read.name}${where} · ${describeStanding(read.reputation)}`;
     if (!clock.moving) return `${read.name}${where} · sin nada entre manos`;
 
     const many = speaksPlural(read.name);

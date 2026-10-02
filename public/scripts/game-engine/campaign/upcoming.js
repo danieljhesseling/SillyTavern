@@ -13,7 +13,7 @@
  * Ver wiki/ROADMAP_PEGAMENTO.md, U3.
  */
 
-import { readFactions, clockOf } from './factions.js';
+import { readFactions, clockOf, factionWorldOn } from './factions.js';
 import { readDebt } from './patronage.js';
 import { visibleOpen, daysLeftOf } from './plot.js';
 import { SEASONS, SEASON_ORDER, DEFAULT_START, seasonOf, daysLeftInSeason } from '../world/seasons.js';
@@ -76,7 +76,8 @@ export function upcoming({ today, factions = [], billDue = 0, bill = 0, purse = 
         if (days >= 0 && days <= horizon && text) out.push({ in: days, kind, text });
     };
 
-    for (const faction of readFactions(factions)) {
+    // D-J58: sin el mundo vivo, ningún plan de facción tiene fecha.
+    for (const faction of factionWorldOn() ? readFactions(factions) : []) {
         const clock = clockOf(faction);
         if (!clock.moving) continue;
         const verb = GOAL_VERBS[/** @type {keyof typeof GOAL_VERBS} */ (faction.goal.kind)] ?? 'consigue lo que quiere en';

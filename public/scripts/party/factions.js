@@ -13,7 +13,7 @@ import { createSeededRandom } from '../game-engine/combat/seeded-random.js';
 import { derive } from '../game-engine/campaign/seed.js';
 import {
     readFactions, tickFactions, outcomeOf, applyOutcome, newsFor, describeFaction, pushFaction, speaksPlural,
-    namesOf, changeStanding, describeStanding, standingWith,
+    namesOf, changeStanding, describeStanding, standingWith, factionWorldOn,
 } from '../game-engine/campaign/factions.js';
 import { reactionTo } from '../game-engine/campaign/world-echoes.js';
 import { neighboursOf, fateAt, describeFate } from '../game-engine/world/people-fate.js';
@@ -112,7 +112,8 @@ export function bannerOf(placeName, rawFactions) {
 
     // «Es de La casa del Vado, los que quieren…» no lo dice nadie: el nombre manda.
     const many = speaksPlural(owner.name);
-    const wants = {
+    // D-J58: sin el mundo vivo, sus planes no se cuentan.
+    const wants = !factionWorldOn() ? '' : {
         encontrar: `${many ? 'buscan' : 'busca'} el camino a ${owner.goal.target}`,
         conquistar: `${many ? 'quieren' : 'quiere'} ${owner.goal.target}`,
         recuperar: `${many ? 'quieren' : 'quiere'} recuperar ${owner.goal.target}`,
@@ -336,7 +337,8 @@ function passFactionDays(days) {
  */
 async function passFactionDaysNow(days) {
     const worldName = String(chat_metadata?.[METADATA_KEY] || '');
-    if (!worldName || days <= 0) return;
+    // D-J58: sin el mundo vivo, los días de las facciones no pasan (ni se carga ni se guarda nada).
+    if (!worldName || days <= 0 || !factionWorldOn()) return;
 
     try {
         const data = await loadWorldInfo(worldName);

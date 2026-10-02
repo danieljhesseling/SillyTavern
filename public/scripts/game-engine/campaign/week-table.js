@@ -18,7 +18,7 @@
  * Ver wiki/ROADMAP_PEGAMENTO.md, U5.
  */
 
-import { readFactions, clockOf, describeStanding } from './factions.js';
+import { readFactions, clockOf, describeStanding, factionWorldOn } from './factions.js';
 import { readDebt } from './patronage.js';
 import { visibleOpen, daysLeftOf } from './plot.js';
 import { deadlineOf } from './contracts.js';
@@ -100,12 +100,15 @@ export function affairsOf({ today, factions = [], taken = null, board = [], plot
         const left = daysLeftOf(plot, plotState, milestone.id, now);
         out.push({
             id: `hito:${milestone.id}`, kind: 'hito', title: milestone.title, detail: milestone.hint || 'El hilo de la historia',
-            in: left, ifIgnored: left !== null ? 'Se pasa el plazo, y la historia sigue sin vosotros' : 'Espera: el hilo no se va, pero el mundo sí se mueve',
+            in: left, ifIgnored: left !== null ? 'Se pasa el plazo, y la historia sigue sin vosotros'
+                // D-J58: sin el mundo vivo, nada se mueve mientras esperáis.
+                : (factionWorldOn() ? 'Espera: el hilo no se va, pero el mundo sí se mueve' : 'Espera: el hilo no se va'),
             where: text(milestone.asks?.place),
         });
     }
 
-    for (const faction of readFactions(factions)) {
+    // D-J58: los planes de las facciones solo piden mesa con el mundo vivo encendido.
+    for (const faction of factionWorldOn() ? readFactions(factions) : []) {
         const clock = clockOf(faction);
         if (!clock.moving || clock.days > FACTION_HORIZON) continue;
         const verb = GOAL_VERBS[/** @type {keyof typeof GOAL_VERBS} */ (faction.goal.kind)] ?? 'consigue lo que quiere en';

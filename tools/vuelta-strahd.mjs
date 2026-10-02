@@ -34,7 +34,7 @@ import { createRequire } from 'node:module';
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { createBot, startOffline, runCampaign, fixedNumbers, proseNotes } from './vuelta-bot.mjs';
+import { createBot, startOffline, runCampaign, fixedNumbers, proseNotes, printFindings } from './vuelta-bot.mjs';
 
 const ROOT = new URL('..', import.meta.url).pathname.replace(/^[/]([A-Za-z]:)/, '$1');
 const argAfter = (/** @type {string} */ flag) => (process.argv.includes(flag) ? process.argv[process.argv.indexOf(flag) + 1] : '');
@@ -546,23 +546,13 @@ try {
     // --- El recuento --------------------------------------------------------------------------
     const all = fixedNumbers(readJson);
     const notes = proseNotes(ROOT);
-    console.log('\n--- los silencios ---');
-    for (const s of bot.silences) console.log(`  #${s.n} ${s.where} · ${s.what}\n      se ve: ${s.sees.slice(0, 260)}${s.module ? `\n      módulo: ${s.module}` : ''}`);
-    if (bot.silences.length === 0) console.log('  (ninguno)');
-    console.log('\n--- los atascos ---');
-    for (const b of bot.blocks) console.log(`  #${b.n} ${b.where} · ${b.goal}\n      se ve: ${b.sees.slice(0, 300)}\n      rescate: ${b.rescue}`);
-    if (bot.blocks.length === 0) console.log('  (ninguno)');
-    // Lo que se ve mal sin ser un silencio (si el bot lo mira: una etiqueta del motor, una
-    // ventana encima de otra, la escena de un hito ya cumplido).
-    const odd = /** @type {any} */ (bot).oddities ?? [];
-    if (odd.length > 0) {
-        console.log('\n--- lo que se ve raro ---');
-        for (const o of odd) console.log(`  ${o.kind} #${o.n} ${o.where} · ${o.text.slice(0, 220)}`);
-    }
-    console.log('\n--- lo que se eligió ---');
-    for (const c of bot.choices) console.log(`  ${c.scene}: ${c.option}`);
+    // Silencios, atascos, lo que se ve mal, caídas, clics lentos y lo elegido: como en las otras vueltas.
+    printFindings(bot);
+    // J18.10: las notas con su etiqueta del motor que quedan en el chat. La caja de la novela las
+    // limpia al pintarlas: lo que se VE lo mira el bot en cada paso (`oddities`, «crudo»).
+    const visible = bot.oddities.filter(o => o.kind === 'crudo');
     if (raw.length > 0) {
-        console.log('\n--- notas en crudo a la vista ---');
+        console.log('\n--- notas con etiqueta del motor en el chat (sin pintar; la caja las limpia) ---');
         for (const t of [...new Set(raw)].slice(0, 12)) console.log(`  ${t.slice(0, 160)}`);
     }
 
@@ -576,8 +566,19 @@ try {
     number('Pasos (clics)', bot.steps.length);
     number('Peleas, escenas con decisión, sucesos, charlas, viajes y tiradas',
         `${bot.counts.fights} · ${bot.counts.options} · ${bot.counts.sucesos} · ${bot.counts.talks} · ${bot.counts.travels} · ${bot.counts.checks}`);
-    number('Notas del juego con su versión en prosa', `${notes.prose} de ${notes.total} (en crudo a la vista en la vuelta: ${raw.length})`);
+    number('Notas del juego con su versión en prosa', `${notes.prose} de ${notes.total} (etiqueta del motor a la vista en la vuelta: ${visible.length}; en el chat, sin pintar: ${raw.length})`);
+    number('Escenas del hilo que salen con su hito ya cumplido', bot.oddities.filter(o => o.kind === 'tarde').length);
+    number('Ventanas abiertas encima de otra a medias', bot.oddities.filter(o => o.kind === 'encima').length);
+    number('Peleas que tardan en cerrarse sin enemigos en pie (más de 3 s)', bot.oddities.filter(o => o.kind === 'cierre').length);
+    number('Veces que cae el grupo entero', `${bot.falls.length} (partidas cargadas después: ${bot.counts.loads})`);
+    number('Descansos (posada, acampar, cazar), al ver el agotamiento o media vida', bot.counts.rests);
+    number('«Otra salida» antes o en mitad de una pelea (la vuelta elige pelear)', bot.counts.exits);
+    number('Turnos del grupo jugados con el gancho (la barra de combate no respondía)', bot.counts.hooked);
+    number('Clics lentos (más de 1,5 s)', bot.slow.length ? `${bot.slow.length} (el peor, ${Math.max(...bot.slow.map(s => s.ms))} ms)` : 0);
+    number('Filas del narrador (frases.json)', all.frases);
+    number('Sucesos con decisión (sucesos.json)', all.sucesos);
     number('Charlas con ramas escritas en Strahd', all.charlasStrahd);
+    number('Jugadores en la partida', 1);
     number('Lo que tarda la vuelta', clock(Date.now() - t0));
     if (STRICT) {
         check('ningún silencio', bot.silences.length === 0, bot.silences.map(s => `#${s.n} ${s.what}`).join(' · '));

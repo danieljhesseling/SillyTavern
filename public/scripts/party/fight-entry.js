@@ -48,6 +48,13 @@ import { postCombatNarration } from './narration.js';
  * @property {string} selected El elegido para colocar.
  * @property {string} said Lo que se cuenta al empezar.
  * @property {{update: (view: any) => void, destroy: () => void}|null} bar
+ * @property {(() => void)|null} start J12.7: lo que empieza la pelea al pulsar «Empezar», si no
+ *   es la de los que esperan en el tablero (una pelea de taberna o un duelo, con sus rivales hechos).
+ * @property {string[]|null} only J12.7: los únicos que se colocan (en un duelo, quien pelea: los
+ *   demás miran desde la pared).
+ * @property {string} title Lo que dice la barra arriba, si no es lo de siempre.
+ * @property {string} hint Lo que dice la barra debajo, si no es lo de siempre.
+ * @property {(() => void)|null} onDrop Si se olvida sin empezar (se va del tablero).
  */
 
 /** @type {PendingFight|null} */
@@ -116,7 +123,8 @@ async function openFightIfNoticed() {
         return;
     }
     const board = getActiveBoardContext().board;
-    if (!board) return;
+    // J12.7: una pelea de taberna o un duelo ya se ha decidido en la taberna (`party/brawl.js`).
+    if (!board || board.brawl) return;
     const placements = [...lastWaiting.placements];
     const ways = avoidFor(board, foesOf(placements)).length;
     const opening = fightOpening({ ways });
@@ -168,13 +176,15 @@ export function beginAmbushPlacement(placements) {
 }
 
 /**
- * Los del grupo que se colocan: vivos y en este sitio.
+ * Los del grupo que se colocan: vivos y en este sitio (J12.7: y, si se dice, solo esos).
  *
+ * @param {string[]|null} [only] Por defecto, los de la pelea que se coloca ahora.
  * @returns {Array<{id: string, name: string, x: number, y: number, locked: boolean, member: any}>}
  */
-function placers() {
+function placers(only = pending?.only ?? null) {
     return partyMembers
         .filter(m => !m.dead && (Number(m.hp) || 0) > 0
+            && (!only || only.includes(String(m.id)))
             && (!m.mapPosition?.locationName || m.mapPosition.locationName === currentLocationName))
         .map(m => ({
             id: String(m.id),
@@ -193,15 +203,21 @@ function placers() {
  * @param {Array<{name: string, x: number, y: number}>} input.placements
  * @param {boolean} [input.ambush]
  * @param {string} [input.said]
+ * @param {(() => void)|null} [input.start] J12.7: lo que empieza la pelea, si no son los que esperan.
+ * @param {string[]|null} [input.only] J12.7: los únicos del grupo que se colocan (por id).
+ * @param {string} [input.title] J12.7: lo que dice la barra, si no es lo de siempre.
+ * @param {string} [input.hint]
+ * @param {(() => void)|null} [input.onDrop] J12.7: si se olvida sin empezar.
  * @returns {boolean} Si ha empezado.
  */
-export function beginPlacement({ placements, ambush = false, said = '' }) {
+export function beginPlacement({ placements, ambush = false, said = '', start = null, only = null, title = '', hint = '', onDrop = null }) {
     if (combatEncounter.active) return false;
     const { board, terrain, gridWidth, gridHeight } = getActiveBoardContext();
     if (!board) return false;
-    const people = placers();
+    const launch = start ?? (() => startWaitingFight(placements, said ? { said } : {}));
+    const people = placers(only);
     if (people.length === 0) {
-        startWaitingFight(placements);
+        launch();
         return true;
     }
     const traps = [...knownTrapsHere()].map(key => parseCellKey(key)).filter(cell => cell !== null);
@@ -215,7 +231,7 @@ export function beginPlacement({ placements, ambush = false, said = '' }) {
     });
     if (cells.length < people.length) {
         // Sin sitio para todos, se empieza donde está cada uno: mejor eso que un grupo a medias.
-        startWaitingFight(placements, said ? { said } : {});
+        launch();
         return true;
     }
     const placement = defaultPlacement({ members: people, cells });
@@ -235,6 +251,11 @@ export function beginPlacement({ placements, ambush = false, said = '' }) {
         selected: people.find(p => !p.locked)?.id ?? '',
         said,
         bar: null,
+        start,
+        only: only ? only.map(String) : null,
+        title: String(title || ''),
+        hint: String(hint || ''),
+        onDrop,
     };
     setCombatBoardSelection({ tokenId: null, boardName: '', locationName: '' });
     showBar();
@@ -250,8 +271,8 @@ function barView() {
     const chosen = people.find(p => p.id === now.selected);
     const touch = typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)')?.matches === true;
     return {
-        title: now.ambush ? '¡Emboscada!' : 'Colocad al grupo',
-        hint: placementHint({ ambush: now.ambush, selected: chosen?.name ?? '', touch }),
+        title: now.title || (now.ambush ? '¡Emboscada!' : 'Colocad al grupo'),
+        hint: now.hint || placementHint({ ambush: now.ambush, selected: chosen?.name ?? '', touch }),
         ambush: now.ambush,
         members: people.map(p => ({
             id: p.id,
@@ -295,11 +316,23 @@ function showBar() {
     });
 }
 
-/** Olvidar lo que se estaba colocando (se ha ido del tablero, o ha empezado otra pelea). */
-function dropPlacement() {
+/**
+ * Olvidar lo que se estaba colocando (se ha ido del tablero, o ha empezado otra pelea).
+ *
+ * @param {{started?: boolean}} [options] `started`: se olvida porque empieza (no se deshace nada).
+ */
+function dropPlacement({ started = false } = {}) {
+    const dropped = pending;
     pending?.bar?.destroy();
     pending = null;
     document.querySelector('#game-shell')?.classList.remove('cv-placing');
+    if (!started && dropped?.onDrop) {
+        try {
+            dropped.onDrop();
+        } catch (error) {
+            console.error('[pelea] no se pudo deshacer la pelea a medio colocar', error);
+        }
+    }
 }
 
 /**
@@ -353,9 +386,10 @@ function moveTo(id, x, y) {
 export function confirmPlacement() {
     if (!pending) return;
     const done = pending;
-    dropPlacement();
+    dropPlacement({ started: true });
     savePartyState();
-    startWaitingFight(done.placements, done.said ? { said: done.said } : {});
+    if (done.start) done.start();
+    else startWaitingFight(done.placements, done.said ? { said: done.said } : {});
     if (isShellOpen()) refreshGameShell();
 }
 

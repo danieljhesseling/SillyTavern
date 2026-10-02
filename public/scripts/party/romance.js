@@ -35,7 +35,8 @@ import { HIRELINGS } from '../game-engine/campaign/guests.js';
 import { keyOf } from '../game-engine/campaign/social.js';
 import { romanceOn } from '../game-engine/ui/romance-option.js';
 import { partyMembers } from './state.js';
-import { lastCompendium } from './world.js';
+import { lastCompendium, lastCompanionStories } from './world.js';
+import { withCampaignRows } from '../game-engine/campaign/companion-stories.js';
 import { campaignDay } from './time.js';
 
 /** @param {any} value @returns {string} */
@@ -59,18 +60,20 @@ function saveRomances(state) {
 /**
  * Las fichas, las escenas y la gente del compendio, leídas una vez por compendio.
  *
- * @type {{from: any, cards: import('../game-engine/campaign/romance.js').RomanceCard[],
+ * @type {{from: any, own: any, cards: import('../game-engine/campaign/romance.js').RomanceCard[],
  *   rows: import('../game-engine/campaign/romance.js').RomanceData, meet: ReturnType<typeof readMeetupRows>}}
  */
-let written = { from: null, cards: [], rows: { scenes: [], notes: {}, epilogues: {} }, meet: { people: [], scenes: [], unlocks: [] } };
+let written = { from: null, own: null, cards: [], rows: { scenes: [], notes: {}, epilogues: {} }, meet: { people: [], scenes: [], unlocks: [] } };
 
 /** @returns {typeof written} */
 function romanceData() {
-    if (written.from !== lastCompendium) {
+    // Los Gems al día: los romances de los compañeros de la campaña abierta, delante de los del compendio.
+    if (written.from !== lastCompendium || written.own !== lastCompanionStories) {
         written = {
             from: lastCompendium,
-            cards: readRomanceCards(lastCompendium.find('companeros')),
-            rows: readRomanceRows(lastCompendium.find('romances')),
+            own: lastCompanionStories,
+            cards: readRomanceCards(withCampaignRows(lastCompendium.find('companeros'), lastCompanionStories.companeros)),
+            rows: readRomanceRows(withCampaignRows(lastCompendium.find('romances'), lastCompanionStories.romances)),
             meet: readMeetupRows(lastCompendium.find('quedadas')),
         };
     }

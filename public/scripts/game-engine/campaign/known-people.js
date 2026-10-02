@@ -153,6 +153,8 @@ export function peopleOf(list) {
     if (cached) return cached;
     /** @type {Person[]} */
     const people = [];
+    /** @type {Map<string, Person>} */
+    const byName = new Map();
     for (const raw of list) {
         const person = typeof raw === 'string' ? { name: text(raw) }
             : isObject(raw) ? {
@@ -164,7 +166,19 @@ export function peopleOf(list) {
                 famous: raw.famous === true,
                 fromClass: raw.fromClass === true || (!text(raw.trade || raw.title) && Boolean(text(raw.className || raw.charClass))),
             } : null;
-        if (person?.name) people.push(person);
+        if (!person?.name) continue;
+        // La misma persona dos veces (un compañero de campaña está en la gente del lorebook y en
+        // los confidentes): una sola, con lo que diga cada ficha. Dos copias harían que su nombre de
+        // pila («Lía» de «Lía Remos») pareciera de dos personas, y no se aprendería al oírlo.
+        const same = byName.get(fold(person.name));
+        if (same) {
+            for (const [key, value] of Object.entries(person)) {
+                if (!(/** @type {any} */ (same))[key] && value) (/** @type {any} */ (same))[key] = value;
+            }
+            continue;
+        }
+        byName.set(fold(person.name), person);
+        people.push(person);
     }
     readLists.set(list, people);
     return people;

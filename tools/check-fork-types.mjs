@@ -126,6 +126,7 @@ const FORK_FILES = [
     'public/scripts/game-engine/campaign/narration.js',
     'public/scripts/game-engine/campaign/narration-notes.js',
     'public/scripts/game-engine/campaign/narration-prose.js',
+    'public/scripts/game-engine/campaign/narration-voices.js',
     'public/scripts/game-engine/combat/throwables.js',
     'public/scripts/game-engine/campaign/legacy.js',
     'public/scripts/game-engine/campaign/fame.js',
@@ -383,6 +384,9 @@ const FORK_FILES = [
     'public/scripts/game-engine/ui/shown-names.js',
     // J14.10: el romance, opcional (las reglas y la opción).
     'public/scripts/game-engine/campaign/romance.js',
+    // Los Gems al día: los romances y las misiones de cada campaña, y cómo se escribe hoy.
+    'public/scripts/game-engine/campaign/companion-stories.js',
+    'public/scripts/game-engine/campaign/gem-guide.js',
     'public/scripts/game-engine/ui/romance-option.js',
     // J14.11: trabajos y ratos libres (servir mesas, la forja, las cartas, leer y pescar).
     'public/scripts/game-engine/campaign/card-game.js',

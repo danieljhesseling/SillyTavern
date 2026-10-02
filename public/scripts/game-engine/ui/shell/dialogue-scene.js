@@ -42,7 +42,9 @@ import { buildPartyStrip } from './party-strip.js';
  * @returns {boolean}
  */
 function canSpeak(message) {
-    return Boolean(message) && message.is_user !== true && message.is_system !== true;
+    // D-J54: una nota del juego que dice alguien (la tendera al cobrar) es de sistema, para que
+    // no llegue al modelo, pero habla quien la dice (`extra.voiced`).
+    return Boolean(message) && message.is_user !== true && (message.is_system !== true || message.extra?.voiced === true);
 }
 
 /**

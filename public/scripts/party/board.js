@@ -573,8 +573,9 @@ export function buildBoardIdleEnemyTokens(waiting) {
             maxHp: Number(template?.maxHp) || undefined,
             isEnemy: true,
             idle: true,
-            // Su dibujo en pixel, también por su arquetipo del bestiario.
-            archetype: archetypeOf(template),
+            // Su dibujo en pixel, también por su arquetipo del bestiario (J12.7: o el que trae
+            // escrito quien espera sin plantilla, como los camorristas de una pelea de taberna).
+            archetype: archetypeOf(template) || String(/** @type {any} */ (placement).archetype ?? '').trim(),
             // El jefe se ve antes de pelear: su corona.
             boss: Boolean(/** @type {any} */ (placement).boss || /** @type {any} */ (template)?.boss),
         };

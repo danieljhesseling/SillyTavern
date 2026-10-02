@@ -16,7 +16,7 @@ import {
 import { addItemToInventory, removeItemFromInventory, createItem } from '../dnd-system.js';
 import { createSeededRandom } from '../game-engine/combat/seeded-random.js';
 import { derive } from '../game-engine/campaign/seed.js';
-import { priceFactor } from '../game-engine/campaign/factions.js';
+import { priceFactor, factionWorldOn } from '../game-engine/campaign/factions.js';
 import { marketPressure, warPressure } from '../game-engine/campaign/economy.js';
 import { abilitiesFor, asAbility } from '../game-engine/compendio/skills.js';
 import { rollDiceDetailed, nextRandom } from './combat-rules.js';
@@ -341,7 +341,8 @@ function shopHere() {
     const worldName = String(chat_metadata?.[METADATA_KEY] || '');
     const today = Math.max(1, Math.floor(Number(getCampaignCalendar()?.day) || 1));
     const week = Math.floor((today - 1) / 7);
-    const ruler = rulerOf(currentLocationName);
+    // D-J58: quién manda aquí no toca la tienda (precio, género, magia) sin el mundo vivo.
+    const ruler = factionWorldOn() ? rulerOf(currentLocationName) : null;
     const market = currentMarket();
     const haggle = chat_metadata?.[HAGGLE_KEY];
     const triedToday = Boolean(haggle && haggle.place === currentLocationName && Number(haggle.day) === today);

@@ -5361,6 +5361,86 @@
         "title": "La oferta del castillo",
         "hint": "Lord Vane te ofrece plata por las cabezas de los líderes de los Lobos. Convéncele de que te adelante la mitad.",
         "scene": "Te convocan al gran salón del castillo. Dentro hace tanto frío como fuera, pero aquí se bebe vino caliente. Lord Vane está desesperado: sabe que las arcas se vacían. Pone una bolsa de plata sobre la mesa: es tuya si le traes las cabezas de los líderes de los Lobos. Si no aceptas, te recuerda que la posada es suya y que puede dejarte durmiendo en la nieve. Si quieres ver esa plata antes de jugarte el cuello, tendrás que convencerle de que te adelante la mitad.",
+        "backdrop": "Castillo de Vane",
+        "beats": [
+          {
+            "text": "Esa noche te llevan al gran salón del castillo. Arde un fuego pequeño en una chimenea enorme."
+          },
+          {
+            "who": "Oswald el Senescal",
+            "mood": "neutral",
+            "presenta": true,
+            "text": "Soy Oswald, el senescal. Llevo las cuentas de este castillo, y las cuentas no salen. Su señoría te recibe ahora."
+          },
+          {
+            "who": "Lord Edmund Vane",
+            "mood": "neutral",
+            "text": "Perdona la tos. Me trajiste el cáliz, y eso en este valle no lo hace nadie."
+          },
+          {
+            "who": "Lord Edmund Vane",
+            "mood": "enfadado",
+            "text": "Los Lobos me roban el grano y cuelgan a mis recaudadores. Tráeme las cabezas de Karl y de Nils, y esta bolsa de plata es tuya."
+          },
+          {
+            "who": "Oswald el Senescal",
+            "mood": "neutral",
+            "text": "La plata, al acabar el trabajo. Las arcas no están para adelantos."
+          },
+          {
+            "who": "Lord Edmund Vane",
+            "mood": "neutral",
+            "text": "Piénsalo. Aquí dentro se duerme caliente. La posada del pueblo también es mía, y fuera nieva.",
+            "options": [
+              {
+                "id": "mitad-por-delante",
+                "text": "Quiero la mitad por delante. Sin plata no se pelea bien.",
+                "check": {
+                  "skill": "persuasion",
+                  "dc": 12,
+                  "success": {
+                    "effects": [
+                      {
+                        "gold": 10
+                      },
+                      {
+                        "milestone": "la-oferta-del-castillo"
+                      }
+                    ],
+                    "reply": [
+                      {
+                        "who": "Lord Edmund Vane",
+                        "mood": "alegre",
+                        "text": "Tienes razón, y además tienes prisa. Oswald, dale la mitad."
+                      },
+                      {
+                        "who": "Oswald el Senescal",
+                        "mood": "enfadado",
+                        "text": "Diez monedas. Las apunto en el libro, que conste."
+                      }
+                    ]
+                  },
+                  "failure": {
+                    "reply": {
+                      "who": "Lord Edmund Vane",
+                      "mood": "enfadado",
+                      "text": "Primero las cabezas. Si quieres plata antes, vuelve con mejores razones."
+                    }
+                  }
+                }
+              },
+              {
+                "id": "pensarlo",
+                "text": "Dame una noche para pensarlo.",
+                "reply": {
+                  "who": "Oswald el Senescal",
+                  "mood": "neutral",
+                  "text": "Una noche, no más. Las velas también cuestan."
+                }
+              }
+            ]
+          }
+        ],
         "opens": {
           "kind": "after",
           "milestone": "el-hambre-de-los-lobos"
@@ -5387,6 +5467,51 @@
         "title": "La vanguardia de Keller",
         "hint": "Recupera el peaje: lo ha tomado la vanguardia acorazada de Keller, y Vane te paga por echarla.",
         "scene": "Ha pasado lo peor: la nieve no ha frenado a la Casa Keller. Su vanguardia ha cruzado a pie las montañas del norte y ha masacrado a la guardia del peaje. Lord Vane te paga para que dirijas el contraataque. Te esperan en El Peaje Norte: armaduras negras contra la nieve, gente de oficio, y más que vosotros.",
+        "beats": [
+          {
+            "text": "Al amanecer, alguien aporrea la puerta."
+          },
+          {
+            "who": "Garret",
+            "mood": "triste",
+            "text": "¡Arriba, deprisa! Ha llegado uno del peaje, medio muerto de frío."
+          },
+          {
+            "who": "El Tuerto",
+            "mood": "enfadado",
+            "text": "Del peaje solo quedo yo. Los del norte han cruzado el monte a pie, con la nieve por la cintura."
+          },
+          {
+            "who": "El Tuerto",
+            "mood": "triste",
+            "text": "Llevan armaduras negras y saben lo que hacen. Son más que vosotros."
+          },
+          {
+            "who": "Lord Edmund Vane",
+            "mood": "enfadado",
+            "text": "Si el peaje cae, en primavera el valle es suyo. Te pago para que los eches. Ve a El Peaje Norte.",
+            "options": [
+              {
+                "id": "voy",
+                "text": "Voy. Que me guarden la cena.",
+                "reply": {
+                  "who": "Lord Edmund Vane",
+                  "mood": "alegre",
+                  "text": "Eso quería oír. La cena, y la paga."
+                }
+              },
+              {
+                "id": "cuantos",
+                "text": "¿Cuántos son, exactamente?",
+                "reply": {
+                  "who": "El Tuerto",
+                  "mood": "enfadado",
+                  "text": "Una docena. Y uno enorme que rompe el hielo a mazazos."
+                }
+              }
+            ]
+          }
+        ],
         "opens": {
           "kind": "after",
           "milestone": "la-oferta-del-castillo"
@@ -5417,6 +5542,58 @@
         "title": "El paso de los contrabandistas",
         "hint": "Ve a la mina abandonada: alguien mete armas en el valle por un túnel bajo la montaña.",
         "scene": "Un rastro de sangre que sale del peaje te lleva a un sitio del que casi nadie se acuerda: la vieja mina de hierro. Huele a carbón y a sudor frío. Alguien mete acero de contrabando en el valle para armar a los furtivos y debilitar a Lord Vane. Descubrir quién está detrás cambiará la guerra.",
+        "backdrop": "La Mina Abandonada",
+        "beats": [
+          {
+            "text": "La vieja mina de hierro huele a carbón y a sudor frío."
+          },
+          {
+            "who": "Maese Ambrosio",
+            "mood": "alegre",
+            "presenta": true,
+            "text": "¡Una visita! Maese Ambrosio, boticario y proveedor de géneros difíciles de encontrar."
+          },
+          {
+            "who": "Maese Ambrosio",
+            "mood": "neutral",
+            "text": "Aquí abajo se vende de todo: hierbas, pólvora… y acero del norte, si se paga bien."
+          },
+          {
+            "who": "Maese Ambrosio",
+            "mood": "triste",
+            "text": "Alguien mete espadas en el valle por un túnel bajo la montaña, para armar a los furtivos. Así Vane se debilita, y Keller entra sin pelear."
+          },
+          {
+            "who": "Maese Ambrosio",
+            "mood": "neutral",
+            "text": "Yo solo vendo hierbas, ¿eh? Pero el que trae ese acero sigue ahí dentro.",
+            "options": [
+              {
+                "id": "quien",
+                "text": "¿Quién es?",
+                "reply": {
+                  "who": "Maese Ambrosio",
+                  "mood": "triste",
+                  "text": "Uno que tose y casi no habla. Enseguida le verás."
+                }
+              },
+              {
+                "id": "amenazar",
+                "text": "Si me mientes, te bajo yo al túnel.",
+                "effects": [
+                  {
+                    "attitude": -1
+                  }
+                ],
+                "reply": {
+                  "who": "Maese Ambrosio",
+                  "mood": "enfadado",
+                  "text": "¡Qué modales! Yo colaboro, yo colaboro."
+                }
+              }
+            ]
+          }
+        ],
         "opens": {
           "kind": "after",
           "milestone": "la-vanguardia-de-keller"
@@ -5442,6 +5619,32 @@
         "presenta": "el-espia-de-keller",
         "hint": "Derrota al espía norteño en la mina: lleva el plano de un túnel que llega a las bodegas del castillo, y no debe escapar.",
         "scene": "En la boca de los túneles hay huellas frescas en la nieve y un farol que alguien acaba de apagar. Es el espía de los Keller, al que llaman Sombra: lleva un plano de cuero con un túnel que llega a las bodegas del castillo. Si sale del valle con ese plano, Vane está perdido. Atrápalo en los túneles antes de que se te escape.",
+        "backdrop": "La Mina Abandonada",
+        "beats": [
+          {
+            "text": "En la boca de los túneles hay huellas frescas y un farol aún caliente."
+          },
+          {
+            "who": "Maese Ambrosio",
+            "mood": "triste",
+            "text": "Ahí lo tienes. Le llaman Sombra, y trabaja para los Keller."
+          },
+          {
+            "who": "Sombra",
+            "mood": "neutral",
+            "text": "Este plano lleva a las bodegas del castillo. Con él, Vane cae en una sola noche."
+          },
+          {
+            "who": "Sombra",
+            "mood": "enfadado",
+            "text": "Apártate. Nadie más tiene que toser sangre esta noche."
+          },
+          {
+            "who": "Maese Ambrosio",
+            "mood": "enfadado",
+            "text": "¡Que no salga del valle con ese plano! Si cae Vane, aquí no queda nadie que me compre nada."
+          }
+        ],
         "opens": {
           "kind": "after",
           "milestone": "el-paso-de-los-contrabandistas"
@@ -5478,6 +5681,63 @@
         "title": "El asalto al peaje",
         "hint": "Los Keller han roto las defensas del peaje. Es una masacre: pelea en las empalizadas.",
         "scene": "Al salir de la mina ves el cielo rojo hacia el norte: el peaje arde. El ejército de Keller no ha esperado a la primavera y ha traído a sus rompehielos, la infantería pesada. Llueven flechas incendiarias sobre las empalizadas, y la gente de Vane no aguantará mucho. Vuelve al peaje y pelea en las empalizadas, o el norte entrará en el valle esta misma noche.",
+        "beats": [
+          {
+            "text": "Al salir de la mina, el cielo del norte está rojo."
+          },
+          {
+            "who": "Pip",
+            "mood": "triste",
+            "presenta": true,
+            "text": "¡Por fin te encuentro! Me llamo Pip, llevo recados por el valle. Me manda el tuerto del peaje."
+          },
+          {
+            "who": "Pip",
+            "mood": "triste",
+            "text": "¡El peaje arde! Los Keller han traído a los rompehielos, los grandes de las mazas."
+          },
+          {
+            "who": "Pip",
+            "mood": "enfadado",
+            "text": "Tiran flechas con fuego a las empalizadas. La gente de Vane no aguanta hasta la noche."
+          },
+          {
+            "who": "Pip",
+            "mood": "neutral",
+            "text": "¿Vas o no vas? ¡Yo me vuelvo corriendo!",
+            "options": [
+              {
+                "id": "voy",
+                "text": "Voy ahora mismo.",
+                "reply": {
+                  "who": "Pip",
+                  "mood": "alegre",
+                  "text": "¡Corre, que yo corro más!"
+                }
+              },
+              {
+                "id": "avisar",
+                "text": "Toma una moneda, y corre a avisar al castillo.",
+                "if": {
+                  "gold": 1
+                },
+                "effects": [
+                  {
+                    "gold": -1
+                  },
+                  {
+                    "attitude": 1
+                  }
+                ],
+                "reply": {
+                  "who": "Pip",
+                  "mood": "alegre",
+                  "text": "¡Hecho! Nadie corre como yo."
+                }
+              }
+            ]
+          }
+        ],
         "opens": {
           "kind": "after",
           "milestone": "la-nieve-manchada"
@@ -5504,6 +5764,32 @@
         "title": "El deshielo",
         "hint": "La nieve se ha fundido. Vuelve a El Pueblo de Barro, lleno de lodo y refugiados.",
         "scene": "El agua gotea sobre la madera podrida: se acaba el invierno. El deshielo ha convertido los caminos en ríos de barro y sangre vieja, y el pueblo está lleno de heridos y desertores. Ya nadie tiene dinero para pagarte. Ha llegado la hora de la verdad: las tres facciones están a un día de marcha de aniquilarse entre sí.",
+        "backdrop": "El Pueblo de Barro",
+        "beats": [
+          {
+            "text": "El agua gotea de todos los tejados. Se acaba el invierno."
+          },
+          {
+            "who": "Giles",
+            "mood": "triste",
+            "text": "Mira la plaza: heridos, desertores y gente del monte. Y ni uno con una moneda."
+          },
+          {
+            "who": "Torres",
+            "mood": "enfadado",
+            "text": "¡Ni se te ocurra empezar otra pelea en mi pueblo! Bastante tengo con lo que tengo."
+          },
+          {
+            "who": "Torres",
+            "mood": "triste",
+            "text": "Los Lobos bajan del bosque, Vane cierra el castillo y los Keller acampan a un día de aquí. Esto revienta esta semana."
+          },
+          {
+            "who": "Giles",
+            "mood": "neutral",
+            "text": "Siéntate y come algo. Esta noche vendrá gente a buscarte, y no para invitarte a cerveza."
+          }
+        ],
         "opens": {
           "kind": "after",
           "milestone": "el-asalto-al-peaje"
@@ -5528,6 +5814,33 @@
         "title": "El ultimátum",
         "hint": "Emisarios de los tres bandos te buscan. Elige a quién le vendes la espada.",
         "scene": "Ya nadie disimula. Lord Vane se ha atrincherado en su castillo, Karl el Sordo prepara las antorchas y la Capitana Keller ha plantado su estandarte negro a las afueras. Emisarios de los tres te buscan. Saben que tú, {el perro de guerra|la espada a sueldo} que ha sobrevivido al invierno, decidirás quién gana. Hay dos caminos: asaltar el castillo de Vane con los Lobos o con los Keller, o cobrar de Vane y caer sobre la tienda de mando de Keller. No hay vuelta atrás.",
+        "backdrop": "El Pueblo de Barro",
+        "beats": [
+          {
+            "text": "Esa noche, en la taberna de Giles, te esperan en tres mesas distintas."
+          },
+          {
+            "who": "Nils",
+            "mood": "neutral",
+            "text": "Karl prepara las antorchas. Esta vez vamos a por el castillo, y te queremos con nosotros."
+          },
+          {
+            "who": "Ulric",
+            "mood": "neutral",
+            "presenta": true,
+            "text": "Ulric, intendente de la Capitana Keller. Mi capitana paga bien y paga a tiempo. Eso no lo puede decir nadie más en este valle."
+          },
+          {
+            "who": "Oswald el Senescal",
+            "mood": "triste",
+            "text": "Su señoría te ofrece lo último que le queda. Y te recuerda quién te dio techo este invierno."
+          },
+          {
+            "who": "Giles",
+            "mood": "neutral",
+            "text": "Tres bolsas y una sola espada. Elijas lo que elijas, mañana alguien te odia."
+          }
+        ],
         "opens": {
           "kind": "after",
           "milestone": "el-deshielo"
@@ -5553,6 +5866,29 @@
         "title": "La última paga: las puertas del castillo",
         "hint": "Con Keller o con los Lobos, asalta las puertas del castillo: ahí acaba todo.",
         "scene": "Los Lobos y los Keller te ofrecen lo mismo: asaltar juntos las puertas del castillo de Vane. Irás con quien mejor te mire de los dos. Allí te esperan Lord Vane y sus alabarderos, con el barro hasta los tobillos. Si cargas contra esas puertas, ahí acaba todo.",
+        "backdrop": "Castillo de Vane",
+        "beats": [
+          {
+            "who": "Nils",
+            "mood": "neutral",
+            "text": "Los Lobos y los de Keller iremos juntos contra las puertas del castillo. Por una vez."
+          },
+          {
+            "who": "Ulric",
+            "mood": "neutral",
+            "text": "Una alianza de conveniencia. Cuando caiga Vane, ya haremos cuentas entre nosotros."
+          },
+          {
+            "who": "Nils",
+            "mood": "enfadado",
+            "text": "Vane espera detrás del rastrillo con sus alabarderos. Si vienes, vienes hasta el final."
+          },
+          {
+            "who": "Ulric",
+            "mood": "neutral",
+            "text": "Y al final mandará quien mejor te mire de los dos. Así cuadran las cuentas."
+          }
+        ],
         "opens": {
           "kind": "after",
           "milestone": "el-ultimatum"
@@ -5578,6 +5914,23 @@
         "title": "La última paga: la tienda de Keller",
         "hint": "Con Vane, asalta la tienda de mando de la Capitana Keller: ahí acaba todo.",
         "scene": "Lord Vane te da la última bolsa de plata que le queda, y ni siquiera es suya. Si la Capitana Keller cae, el norte se retirará del valle. Su tienda de mando está en el campamento de los Keller, al otro lado del peaje.",
+        "beats": [
+          {
+            "who": "Oswald el Senescal",
+            "mood": "triste",
+            "text": "Su señoría te manda la última bolsa de plata del castillo. Y ni siquiera es suya."
+          },
+          {
+            "who": "Oswald el Senescal",
+            "mood": "neutral",
+            "text": "Si la Capitana Keller cae, el norte se retira del valle. Su tienda de mando está en el campamento de los Keller, pasado el peaje."
+          },
+          {
+            "who": "Oswald el Senescal",
+            "mood": "enfadado",
+            "text": "Decide pronto. Los Lobos ya afilan las hachas contra nuestras puertas."
+          }
+        ],
         "opens": {
           "kind": "after",
           "milestone": "el-ultimatum"

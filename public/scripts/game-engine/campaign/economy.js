@@ -24,7 +24,7 @@
  * Ver wiki/ROADMAP_COMPENDIO.md, B10 (F3).
  */
 
-import { speaksPlural, priceFactor, describeStanding } from './factions.js';
+import { speaksPlural, priceFactor, describeStanding, factionWorldOn } from './factions.js';
 
 /** Lo que encarece cada cosa. Poco cada una: lo que pesa es que se juntan. */
 const CLOSED_ROAD = 0.15;
@@ -78,6 +78,9 @@ function placeNamed(locations, here) {
  * @returns {{food: number, tax: number, reasons: string[], holder: string, cut: boolean}}
  */
 export function marketPressure({ here, locations = [], factions = [] }) {
+    // D-J58: esto es el mundo vivo de las facciones (quién manda, sus caminos cerrados y sus
+    // peajes en la cuenta). Apagado, la vida cuesta lo que pone la campaña.
+    if (!factionWorldOn()) return { food: 1, tax: 1, reasons: [], holder: '', cut: false };
     const place = placeNamed(locations, here);
     /** @type {string[]} */
     const reasons = [];
@@ -173,6 +176,8 @@ export const WAR_PRICE = { anywhere: 1.2, here: 1.35 };
  * @returns {{steel: number, reasons: string[]}}
  */
 export function warPressure({ here, factions = [] }) {
+    // D-J58: sin el mundo vivo, ninguna facción está en guerra por su cuenta.
+    if (!factionWorldOn()) return { steel: 1, reasons: [] };
     const where = text(here).toLowerCase();
     const atWar = (Array.isArray(factions) ? factions : []).filter((/** @type {any} */ f) =>
         WAR_GOALS.includes(text(f?.goal?.kind)) && !f?.goal?.done

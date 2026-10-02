@@ -1,12 +1,13 @@
 import { describe, test, expect, afterEach } from '@jest/globals';
-import { readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
     slugify, classIdOf, genderFileOf, readManifest, artFor, firstArt, isPlainFace, buildPixelManifest, packOfWorld,
     setPixelManifest, loadPixelManifest, pixelManifest, PIXEL_BASE, boardBiome, terrainTile, hazardTile, enemyArt,
-    pastimePlace,
+    pastimePlace, bridgeTiles, cliffFace, CLIFF_FACE,
 } from '../public/scripts/game-engine/ui/pixel-art.js';
+import { terrainFromAsciiMap } from '../public/scripts/game-engine/board/terrain.js';
 import { pixelManifestText } from '../tools/pixel-manifest.mjs';
 import { jailScene, guardOf } from '../public/scripts/game-engine/campaign/jail.js';
 
@@ -87,6 +88,17 @@ function missingMoods(manifest, pack) {
             .filter(mood => firstArt('portrait', { name: p.name, pack, mood }, manifest) !== `${PIXEL_BASE}retratos/${pack}/${base}--${mood}.png`)
             .map(mood => `${pack}: ${p.name} (${mood})`);
     });
+}
+
+/**
+ * Las carpetas de retratos que son de un paquete del juego (`public/mundos/`). Las de tus campañas
+ * (`tuya-…`, los Gems al día) tienen su paquete entre tus archivos, no aquí.
+ *
+ * @param {import('../public/scripts/game-engine/ui/pixel-art.js').PixelManifest} manifest
+ * @returns {string[]}
+ */
+function gamePacks(manifest) {
+    return manifest.packs.filter(pack => existsSync(new URL(`../public/mundos/${pack}.pack.json`, import.meta.url)));
 }
 
 afterEach(() => setPixelManifest(null));
@@ -265,12 +277,12 @@ describe('el índice', () => {
 
     test('cada persona de los paquetes con retrato se encuentra por su nombre', () => {
         const manifest = readManifest(JSON.parse(readFileSync(join(PIXEL_DIR, 'manifest.json'), 'utf8')));
-        expect(manifest.packs.flatMap(pack => lostPortraits(manifest, pack))).toEqual([]);
+        expect(gamePacks(manifest).flatMap(pack => lostPortraits(manifest, pack))).toEqual([]);
     });
 
     test('quien tiene retrato en un paquete tiene también sus tres gestos, y se encuentran por su nombre', () => {
         const manifest = readManifest(JSON.parse(readFileSync(join(PIXEL_DIR, 'manifest.json'), 'utf8')));
-        expect(manifest.packs.flatMap(pack => missingMoods(manifest, pack))).toEqual([]);
+        expect(gamePacks(manifest).flatMap(pack => missingMoods(manifest, pack))).toEqual([]);
     });
 
     test('la gente nueva de 1387 y Strahd ya tiene cara, con su gesto', () => {
@@ -522,6 +534,82 @@ describe('las casillas del tablero', () => {
             .map(({ pack, board, enemy }) => ({ board, name: enemy.name, art: enemyArt({ name: enemy.name, archetype: String(enemy.archetype || ''), pack }, manifest) }))
             .filter(found => !found.art || found.art.includes('enemigo-sin-dibujo'));
         expect(undrawn).toEqual([]);
+    });
+
+    test('un puente es suelo que cruza el agua o el abismo y llega a tierra por las dos puntas, con su baranda en los bordes', () => {
+        // Un río de agua honda, un puente de una casilla (x 2) y otro de dos (x 5 y 6).
+        const river = terrainFromAsciiMap([
+            '........',
+            'WW.WW..W',
+            'WW.WW..W',
+            '........',
+        ]);
+        const found = bridgeTiles(river, 8, 4);
+        expect(found.map(b => `${b.x},${b.y}`)).toEqual(['2,1', '5,1', '6,1', '2,2', '5,2', '6,2']);
+        expect(found.find(b => b.x === 2 && b.y === 1)?.layers).toEqual(['puente-baranda-oeste', 'puente-baranda-este', 'puente-ns']);
+        expect(found.find(b => b.x === 5 && b.y === 1)?.layers).toEqual(['puente-baranda-oeste', 'puente-ns']);
+        expect(found.find(b => b.x === 6 && b.y === 1)?.layers).toEqual(['puente-baranda-este', 'puente-ns']);
+        // De este a oeste sobre un abismo: las barandas, al norte y al sur.
+        const across = bridgeTiles(terrainFromAsciiMap(['.vv.', '....', '.vv.']), 4, 3);
+        expect(across).toEqual([
+            { x: 1, y: 1, along: 'eo', layers: ['puente-baranda-norte', 'puente-baranda-sur', 'puente-eo'] },
+            { x: 2, y: 1, along: 'eo', layers: ['puente-baranda-norte', 'puente-baranda-sur', 'puente-eo'] },
+        ]);
+    });
+
+    test('ni un embarcadero que acaba en el agua, ni una isla, ni una calzada ancha son puentes', () => {
+        // El embarcadero: suelo que entra en el agua y acaba en ella.
+        expect(bridgeTiles(terrainFromAsciiMap(['....', 'W.WW', 'W.WW', 'WWWW']), 4, 4)).toEqual([]);
+        // La isla: agua por los cuatro lados.
+        expect(bridgeTiles(terrainFromAsciiMap(['WWW', 'W.W', 'WWW']), 3, 3)).toEqual([]);
+        // Cuatro de ancho ya no es un puente.
+        expect(bridgeTiles(terrainFromAsciiMap(['......', 'W....W', '......']), 6, 3)).toEqual([]);
+        // Al borde del tablero no hay tierra.
+        expect(bridgeTiles(terrainFromAsciiMap(['W.W', 'W.W']), 3, 2)).toEqual([]);
+        expect(bridgeTiles(null, 3, 3)).toEqual([]);
+    });
+
+    test('con cotas, un paso alto entre dos mesetas sobre un barranco es un puente; un escalón de 5 pies, no', () => {
+        // Dos mesetas a 30 pies (x 0-1 y x 4-5) y el paso (x 2-3, fila 1) a su altura, sobre el suelo a 0.
+        const elevation = {};
+        for (let y = 0; y < 3; y++) for (const x of [0, 1, 4, 5]) elevation[`${x},${y}`] = 30;
+        elevation['2,1'] = 30;
+        elevation['3,1'] = 30;
+        const open = terrainFromAsciiMap(['......', '......', '......']);
+        expect(bridgeTiles(open, 6, 3, elevation).map(b => `${b.x},${b.y}:${b.along}`)).toEqual(['2,1:eo', '3,1:eo']);
+        const low = Object.fromEntries(Object.entries(elevation).map(([key]) => [key, 5]));
+        expect(bridgeTiles(open, 6, 3, low)).toEqual([]);
+    });
+
+    test('la cara de un acantilado va en la casilla de abajo, pegada al borde, y se llama por hacia dónde se cae', () => {
+        expect(cliffFace({ x: 2, y: 3, side: 'down', drop: 20 })).toEqual({ id: 'acantilado-sur', x: 2, y: 4, width: 1, height: CLIFF_FACE });
+        expect(cliffFace({ x: 2, y: 3, side: 'down', drop: -20 })).toEqual({ id: 'acantilado-norte', x: 2, y: 4 - CLIFF_FACE, width: 1, height: CLIFF_FACE });
+        expect(cliffFace({ x: 2, y: 3, side: 'right', drop: 10 })).toEqual({ id: 'acantilado-este', x: 3, y: 3, width: CLIFF_FACE, height: 1 });
+        expect(cliffFace({ x: 2, y: 3, side: 'right', drop: -10 })).toEqual({ id: 'acantilado-oeste', x: 3 - CLIFF_FACE, y: 3, width: CLIFF_FACE, height: 1 });
+    });
+
+    test('los puentes y los acantilados tienen su dibujo, del tamaño que pide el tablero', () => {
+        const manifest = readManifest(JSON.parse(readFileSync(join(PIXEL_DIR, 'manifest.json'), 'utf8')));
+        const size = (/** @type {string} */ file) => {
+            const png = readFileSync(join(PIXEL_DIR, 'tablero', `${file}.png`));
+            return [png.readUInt32BE(16), png.readUInt32BE(20)];
+        };
+        for (const file of ['puente-ns', 'puente-eo', 'puente-baranda-oeste', 'puente-baranda-este', 'puente-baranda-norte', 'puente-baranda-sur']) {
+            expect(firstArt('tile', { id: file }, manifest)).toBe(url(`tablero/${file}.png`));
+            expect(size(file)).toEqual([48, 48]);
+        }
+        for (const [file, wide] of /** @type {Array<[string, boolean]>} */ ([['acantilado-sur', true], ['acantilado-norte', true], ['acantilado-este', false], ['acantilado-oeste', false]])) {
+            expect(firstArt('tile', { id: file }, manifest)).toBe(url(`tablero/${file}.png`));
+            expect(size(file)).toEqual(wide ? [48, 16] : [16, 48]);
+        }
+    });
+
+    test('el puente sobre el abismo de Ravenloft se dibuja como puente', () => {
+        const data = JSON.parse(readFileSync(fileURLToPath(new URL('../public/mundos/strahd.pack.json', import.meta.url)), 'utf8'));
+        const board = data.boards.find((/** @type {any} */ b) => b.name === 'Entrada a Ravenloft');
+        const found = bridgeTiles(terrainFromAsciiMap(board.map), board.map[0].length, board.map.length);
+        expect(found.length).toBeGreaterThanOrEqual(4);
+        expect(found.every(b => b.along === 'ns')).toBe(true);
     });
 });
 

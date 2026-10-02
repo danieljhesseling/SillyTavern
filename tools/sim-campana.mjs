@@ -22,7 +22,7 @@
 
 import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { appendFileSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { entrarEnLaPelea } from './e2e-entrar-pelea.mjs';
@@ -74,6 +74,8 @@ const MAX_ROUNDS = 30;
 // Tanda 12: con --sin-ia-2024, los enemigos y los compañeros pelean como antes (sin maestrías,
 // agarrar, empujar, esquivar…), para comparar cuántas peleas se ganan con y sin.
 const NO_AI_2024 = process.argv.includes('--sin-ia-2024');
+// Con --registro <archivo>, el registro entero de cada pelea, para leer qué ha pasado en ella.
+const LOG_FILE = argAfter('--registro', '');
 
 const require = createRequire(join(ROOT, 'tests/package.json'));
 const { chromium } = require('@playwright/test');
@@ -86,7 +88,7 @@ let browser = null;
 let broken = false;
 
 function startServer() {
-    server = spawn(process.execPath, ['server.js', '--port', String(PORT), '--dataRoot', dataRoot], { cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'] });
+    server = spawn(process.execPath, ['server.js', '--browserLaunchEnabled', 'false', '--port', String(PORT), '--dataRoot', dataRoot], { cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'] });
     const child = server;
     return new Promise((resolve, reject) => {
         const timer = setTimeout(() => reject(new Error('the server did not start in 180s')), 180000);
@@ -153,6 +155,14 @@ try {
         }
     };
 
+    /** Con --registro: el registro de la pelea, tal cual, al final del archivo. */
+    const dumpFight = async (/** @type {number} */ from, /** @type {string} */ how) => {
+        if (!LOG_FILE) return;
+        const lines = await page.evaluate((start) => (window.SillyTavern.getContext().chat ?? []).slice(start)
+            .map((/** @type {any} */ m) => String(m?.mes ?? '')), from).catch(() => []);
+        appendFileSync(LOG_FILE, `\n==================== pelea (${how})\n${lines.join('\n')}\n`, 'utf8');
+    };
+
     /**
      * Juega la pelea que espera en el tablero abierto, entera.
      *
@@ -185,8 +195,23 @@ try {
         for (const line of adjusted.said) console.log(`  ${line}`);
         if (adjusted.foes.length > 0) console.log(`  enemigos: ${adjusted.foes.join(', ')}`);
         let rounds = 0;
-        for (let step = 0; step < 600 && await fighting(); step++) {
+        // D-J56: el tope es de rondas, no de pasos. Con 600 pasos, una pelea lenta (o el PC cargado
+        // con varias simulaciones) salía «pierde» a las 16-27 rondas con la pelea viva, y el tablero
+        // siguiente empezaba encima de ella. Si una ronda no avanza en 4 minutos, está atascada.
+        let seenRound = -1;
+        let seenAt = Date.now();
+        for (let step = 0; await fighting(); step++) {
             rounds = await page.evaluate(async () => Number((await import('/scripts/party.js')).getCombatEncounter()?.round) || 0);
+            if (rounds !== seenRound) {
+                seenRound = rounds;
+                seenAt = Date.now();
+            }
+            if (Date.now() - seenAt > 240000) {
+                console.log(`  atascada en la ronda ${rounds}: no avanza en 4 minutos`);
+                await dumpFight(chatBefore, 'atascada');
+                await slash('/combat-stop');
+                return { result: 'atascada', rounds };
+            }
             if (rounds > MAX_ROUNDS) {
                 // Quién queda en pie y dónde: para ver si es un tablero que no se puede acabar.
                 const left = await page.evaluate(async () => {
@@ -196,6 +221,7 @@ try {
                         .map(c => `${c.name} ${c.currentHp ?? c.hp ?? '?'}pg (${c.x ?? c.position?.x},${c.y ?? c.position?.y})`);
                 });
                 console.log(`  sin acabar tras ${MAX_ROUNDS} rondas; en pie: ${left.join(' · ')}`);
+                await dumpFight(chatBefore, 'no acaba');
                 await slash('/combat-stop');
                 return { result: 'no acaba', rounds };
             }
@@ -209,7 +235,7 @@ try {
         const cast = await page.evaluate(async ({ from, names }) => {
             const lines = (window.SillyTavern.getContext().chat ?? []).slice(from).flatMap((/** @type {any} */ m) => String(m?.mes ?? '').split('\n'));
             const foe = (/** @type {string} */ l) => names.some((/** @type {string} */ n) => l.includes(n));
-            return [...new Set(lines.filter(l => foe(l) && /\blanza\b|se concentra en/.test(l)).map(l => l.replace(/^[^\p{L}]+/u, '').slice(0, 90)))].slice(0, 6);
+            return [...new Set(lines.filter(l => foe(l) && /\blanza\b|se concentra en/.test(l) && !/al que lanza/.test(l)).map(l => l.replace(/^[^\p{L}]+/u, '').slice(0, 90)))].slice(0, 6);
         }, { from: chatBefore, names: adjusted.foes.map(f => f.replace(/\s+\d+pg.*$/, '').replace(/\s+\d+$/, '')) }).catch(() => []);
         if (cast.length > 0) console.log(`  conjuros: ${cast.join(' · ')}`);
         // Tanda 12: lo de 2024 que se ha usado en la pelea, contado en el registro (los dos bandos).
@@ -235,6 +261,22 @@ try {
                 .map(([name, n]) => `${name} ${n}`);
         }, chatBefore).catch(() => []);
         if (used.length > 0) console.log(`  2024: ${used.join(' · ')}`);
+        // Tanda 12: quién del grupo cae, y quién no se levanta (para ver qué los mata).
+        const fallen = await page.evaluate((from) => {
+            const lines = (window.SillyTavern.getContext().chat ?? []).slice(from).flatMap((/** @type {any} */ m) => String(m?.mes ?? '').split('\n'));
+            const out = [];
+            for (const l of lines) {
+                const down = l.match(/🩸 (.+?) cae a 0 PG/u);
+                const hit = l.match(/Golpe sobre (.+?), que está en el suelo/u);
+                const dead = l.match(/El golpe remata a (.+?)\.|☠️ (.+?) saca \d+ y no despierta/u);
+                if (down) out.push(`${down[1]} cae`);
+                if (hit) out.push(`le pegan en el suelo a ${hit[1]}`);
+                if (dead) out.push(`muere ${String(dead[1] ?? dead[2]).replace(/^.*☠️\s*/u, '')}`);
+            }
+            return out;
+        }, chatBefore).catch(() => []);
+        if (fallen.length > 0) console.log(`  caídos: ${fallen.join(' · ')}`);
+        await dumpFight(chatBefore, 'acaba');
         // Ganada es ganada en el juego: el tablero queda apuntado como ganado. Leer el chat
         // confundía la victoria de la pelea anterior con esta.
         const won = await page.evaluate(() => {

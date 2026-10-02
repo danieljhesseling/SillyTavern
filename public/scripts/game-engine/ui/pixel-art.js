@@ -21,6 +21,7 @@
  */
 
 import { HUB_CAMPAIGN_KEY, HUB_PACK, isHubWorld } from '../campaign/hub.js';
+import { CLIFF_FEET } from '../board/heights.js';
 
 /** Donde están las imágenes, relativo a la página. */
 export const PIXEL_BASE = 'img/game-engine/pixel/';
@@ -164,6 +165,137 @@ export function terrainTile(cell, { biome = 'mazmorra', edge = false } = {}) {
  */
 export function hazardTile(hazard) {
     return /fuego|fire/i.test(text(hazard?.kind)) ? 'fuego' : 'trampa';
+}
+
+/**
+ * Tanda 12: lo que no se pisa a la altura de un puente. Lo que va debajo de las tablas ya se ve
+ * en las casillas de al lado (el agua, el abismo), así que el puente tapa la suya entera.
+ */
+const BRIDGE_GAPS = new Set(['deep_water', 'water', 'chasm']);
+
+/** Lo más ancho que se dibuja como puente: más, ya es un dique o una calzada. */
+const BRIDGE_WIDTH = 3;
+
+/**
+ * Tanda 12: los puentes del tablero. El motor no tiene un tipo «puente», ni le hace falta: un
+ * puente es suelo que cruza algo que no se pisa a su altura, y se anda como el suelo. Aquí se
+ * encuentran para dibujarlos: una tira de suelo de 1 a 3 casillas de ancho con el agua, el
+ * abismo o un barranco de las cotas (J12.10: 10 pies o más por debajo) a los dos lados, que
+ * llega a tierra por las dos puntas. Un embarcadero que acaba en el agua no es un puente, ni
+ * una isla rodeada de agua.
+ *
+ * Cada casilla trae sus capas, la de encima primero: la baranda de su lado si está en el borde
+ * de la tira, y las tablas (`puente-ns` se cruza de norte a sur; `puente-eo`, de este a oeste).
+ *
+ * @param {{cells?: Record<string, {type?: string}>}|null|undefined} terrain
+ * @param {number} gridWidth
+ * @param {number} gridHeight
+ * @param {Record<string, number>|null} [elevation] Las cotas del tablero, si las tiene.
+ * @returns {Array<{x: number, y: number, along: 'ns'|'eo', layers: string[]}>}
+ */
+export function bridgeTiles(terrain, gridWidth, gridHeight, elevation = null) {
+    const cells = terrain?.cells && typeof terrain.cells === 'object' ? terrain.cells : {};
+    const width = Math.trunc(Number(gridWidth) || 0);
+    const height = Math.trunc(Number(gridHeight) || 0);
+    const inside = (/** @type {number} */ x, /** @type {number} */ y) => x >= 0 && y >= 0 && x < width && y < height;
+    const typeAt = (/** @type {number} */ x, /** @type {number} */ y) => text(cells[`${x},${y}`]?.type) || 'floor';
+    const feetAt = (/** @type {number} */ x, /** @type {number} */ y) => {
+        const feet = Number(elevation?.[`${x},${y}`]);
+        return Number.isFinite(feet) ? feet : 0;
+    };
+    const deck = (/** @type {number} */ x, /** @type {number} */ y) => inside(x, y) && typeAt(x, y) === 'floor';
+    // Un hueco, mirado desde una casilla a `level` pies: el agua, el abismo, o una caída.
+    const gap = (/** @type {number} */ x, /** @type {number} */ y, /** @type {number} */ level) => inside(x, y)
+        && (BRIDGE_GAPS.has(typeAt(x, y)) || level - feetAt(x, y) >= CLIFF_FEET);
+    // `along` es por dónde se cruza; el ancho va de lado. Se guarda lo ya visto: cada tira se mira una vez.
+    /** @type {Map<string, {from: number, to: number}|null>} */
+    const seen = new Map();
+    const crossing = (/** @type {number} */ x, /** @type {number} */ y, /** @type {'ns'|'eo'} */ along) => {
+        const id = `${x},${y},${along}`;
+        if (seen.has(id)) return seen.get(id);
+        let found = null;
+        if (deck(x, y)) {
+            const level = feetAt(x, y);
+            const [dx, dy] = along === 'ns' ? [1, 0] : [0, 1];
+            const same = (/** @type {number} */ k) => deck(x + dx * k, y + dy * k) && feetAt(x + dx * k, y + dy * k) === level;
+            let from = 0;
+            let to = 0;
+            while (from > -BRIDGE_WIDTH && same(from - 1)) from--;
+            while (to < BRIDGE_WIDTH && same(to + 1)) to++;
+            if (to - from < BRIDGE_WIDTH && gap(x + dx * (from - 1), y + dy * (from - 1), level) && gap(x + dx * (to + 1), y + dy * (to + 1), level)) {
+                found = { from, to };
+            }
+        }
+        seen.set(id, found);
+        return found;
+    };
+    // Que la tira llegue a tierra por las dos puntas: siguiendo el cruce, lo primero que no es
+    // puente tiene que ser algo que se pisa a su altura (no el agua, ni el borde del tablero).
+    const landsBothEnds = (/** @type {number} */ x, /** @type {number} */ y, /** @type {'ns'|'eo'} */ along) => {
+        const [dx, dy] = along === 'ns' ? [0, 1] : [1, 0];
+        const level = feetAt(x, y);
+        for (const sign of [-1, 1]) {
+            let k = sign;
+            while (crossing(x + dx * k, y + dy * k, along) && Math.abs(k) <= width + height) k += sign;
+            const ex = x + dx * k;
+            const ey = y + dy * k;
+            if (!inside(ex, ey) || gap(ex, ey, level)) return false;
+        }
+        return true;
+    };
+    // Solo se mira junto a lo que puede ser un hueco: el agua, el abismo y lo que tiene cota.
+    const near = new Set();
+    for (const key of [...Object.keys(cells).filter(k => BRIDGE_GAPS.has(text(cells[k]?.type))), ...Object.keys(elevation ?? {})]) {
+        const [cx, cy] = key.split(',').map(Number);
+        if (!Number.isFinite(cx) || !Number.isFinite(cy)) continue;
+        for (const [dx, dy] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]]) {
+            if (inside(cx + dx, cy + dy)) near.add(`${cx + dx},${cy + dy}`);
+        }
+    }
+    /** @type {Array<{x: number, y: number, along: 'ns'|'eo', layers: string[]}>} */
+    const out = [];
+    for (const key of near) {
+        const [x, y] = key.split(',').map(Number);
+        const ns = crossing(x, y, 'ns');
+        const eo = crossing(x, y, 'eo');
+        // Con hueco por los cuatro lados es una isla o un pilar, no un puente.
+        if (Boolean(ns) === Boolean(eo)) continue;
+        const along = ns ? 'ns' : 'eo';
+        const run = /** @type {{from: number, to: number}} */ (ns ?? eo);
+        if (!landsBothEnds(x, y, along)) continue;
+        const layers = [];
+        if (run.from === 0) layers.push(along === 'ns' ? 'puente-baranda-oeste' : 'puente-baranda-norte');
+        if (run.to === 0) layers.push(along === 'ns' ? 'puente-baranda-este' : 'puente-baranda-sur');
+        layers.push(`puente-${along}`);
+        out.push({ x, y, along, layers });
+    }
+    return out.sort((a, b) => a.y - b.y || a.x - b.x);
+}
+
+/** Lo que mide de grueso la cara de un acantilado, en casillas (`acantilado-sur.png` es de 48×16). */
+export const CLIFF_FACE = 1 / 3;
+
+/**
+ * Tanda 12: el dibujo de un acantilado de las cotas (J12.10, `cliffEdges` en `board/heights.js`):
+ * la cara de roca va en la casilla de abajo, pegada al borde, con la luz en el lado alto. El
+ * nombre dice hacia dónde se cae (`acantilado-sur`: lo alto está al norte). La caja va en
+ * casillas: quien pinta la multiplica por lo que mide una.
+ *
+ * @param {{x: number, y: number, side: 'right'|'down'|string, drop: number}} edge
+ * @returns {{id: string, x: number, y: number, width: number, height: number}}
+ */
+export function cliffFace(edge) {
+    const x = Number(edge?.x) || 0;
+    const y = Number(edge?.y) || 0;
+    const fallsAway = Number(edge?.drop) > 0;
+    if (edge?.side === 'right') {
+        return fallsAway
+            ? { id: 'acantilado-este', x: x + 1, y, width: CLIFF_FACE, height: 1 }
+            : { id: 'acantilado-oeste', x: x + 1 - CLIFF_FACE, y, width: CLIFF_FACE, height: 1 };
+    }
+    return fallsAway
+        ? { id: 'acantilado-sur', x, y: y + 1, width: 1, height: CLIFF_FACE }
+        : { id: 'acantilado-norte', x, y: y + 1 - CLIFF_FACE, width: 1, height: CLIFF_FACE };
 }
 
 /**

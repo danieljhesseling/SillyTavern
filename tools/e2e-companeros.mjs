@@ -146,8 +146,9 @@ try {
         if (chip instanceof HTMLElement) chip.click();
         return Boolean(chip);
     }, pattern.source);
+    // D-J54: una nota dicha por alguien guarda lo que dice en `display_text` y la nota en `mes`: vale cualquiera de los dos.
     const chatHas = (/** @type {RegExp} */ pattern) => page.evaluate((source) => (window.SillyTavern.getContext().chat || [])
-        .some((/** @type {any} */ m) => new RegExp(source).test(String(m.extra?.display_text || m.mes || ''))), pattern.source);
+        .some((/** @type {any} */ m) => [m.extra?.display_text, m.mes].some(said => new RegExp(source).test(String(said || '')))), pattern.source);
     const until = async (/** @type {() => Promise<boolean>} */ test, ms = 30000) => {
         const end = Date.now() + ms;
         while (Date.now() < end) {

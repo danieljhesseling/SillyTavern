@@ -8,7 +8,7 @@ import { cliffEdges, elevationAt, isCliff } from './game-engine/board/heights.js
 import { centerOn, isInView, isLargeBoard, readableScale } from './game-engine/board/board-camera.js';
 import { zoneAt } from './game-engine/board/zones.js';
 import { cellRectsHtml, fogRects, inWindow, visibleWindow, windowCovers } from './game-engine/board/draw-light.js';
-import { boardBiome, enemyArt, firstArt, hazardTile, isPlainFace, loadPixelManifest, openPack, pixelManifest, terrainTile } from './game-engine/ui/pixel-art.js';
+import { boardBiome, bridgeTiles, cliffFace, enemyArt, firstArt, hazardTile, isPlainFace, loadPixelManifest, openPack, pixelManifest, terrainTile } from './game-engine/ui/pixel-art.js';
 import { initialsFor } from './game-engine/ui/hero-face.js';
 import { attachBoardKeys } from './game-engine/ui/board-keys.js';
 import { keyboardInUse } from './game-engine/ui/keyboard-nav.js';
@@ -59,7 +59,7 @@ function boxStyle(left, top, width, height) {
 }
 
 /** Lo que va en una clase: letras, cifras y guiones. @param {unknown} text */
-const classSafe = (text) => String(text ?? '').replace(/[^a-z0-9-]/gi, '');
+const classSafe = (text) => String(text ?? '').replace(/[^a-z0-9_-]/gi, '');
 
 /**
  * Una dirección para `url('…')` dentro de un `style="…"`: sin comillas, espacios ni nada que
@@ -1261,6 +1261,16 @@ export function renderLocationView(target, options) {
 
             terrainLayer.append(el);
         }
+        // Tanda 12: los puentes, el suelo que cruza el agua, el abismo o un barranco (`bridgeTiles`
+        // en `pixel-art.js`): sus tablas y su baranda, por capas. Sobre un mapa dibujado ya están.
+        const bridges = tiled ? bridgeTiles(terrain, gridWidth, gridHeight, elevation) : [];
+        for (const bridge of bridges) {
+            const boards = tile(bridge.layers[bridge.layers.length - 1]);
+            if (!boards || !inWindow(area, bridge.x, bridge.y)) continue;
+            const layers = [...bridge.layers.slice(0, -1).map(id => tile(id)).filter(Boolean), boards];
+            plain += `<div class="wm-terrain-cell wm-terrain-bridge wm-terrain-tiled" style="`
+                + `${boxStyle(bridge.x * cellW, bridge.y * cellH, cellW, cellH)};background-image:${layers.map(url => `url('${cssUrl(url)}')`).join(',')}"></div>`;
+        }
         // Debajo de lo demás (puertas, trampas, zonas), como cuando se ponían una a una.
         terrainLayer[0].insertAdjacentHTML('afterbegin', plain);
 
@@ -1312,16 +1322,25 @@ export function renderLocationView(target, options) {
                 if (!at || !(Number(feet) > 0) || at.x >= gridWidth || at.y >= gridHeight || !inWindow(area, at.x, at.y)) continue;
                 marks += `<div class="wm-elevated" style="${boxStyle(at.x * cellW, at.y * cellH, cellW, cellH)};opacity:${Math.min(0.9, 0.3 + Number(feet) / 100)}"></div>`;
             }
+            // Tanda 12: el borde de un puente alto se queda con la raya; la roca es para los riscos.
+            const onBridge = new Set(bridges.map(bridge => `${bridge.x},${bridge.y}`));
             for (const edge of cliffEdges(elevation, gridWidth, gridHeight)) {
                 if (!inWindow(area, edge.x, edge.y)) continue;
                 const right = edge.side === 'right';
                 // El lado alto lleva la luz: se ve hacia dónde se cae.
                 const highFirst = edge.drop > 0;
-                const box = right
-                    ? boxStyle((edge.x + 1) * cellW - 2, edge.y * cellH, 4, cellH)
-                    : boxStyle(edge.x * cellW, (edge.y + 1) * cellH - 2, cellW, 4);
-                marks += `<div class="wm-cliff ${right ? 'wm-cliff-v' : 'wm-cliff-h'} ${highFirst ? 'wm-cliff-high-first' : 'wm-cliff-high-second'}"`
-                    + ` title="Acantilado: ${Math.abs(Number(edge.drop) || 0)} pies. No se cruza andando." style="${box}"></div>`;
+                // Tanda 12: en un tablero sin imagen, la cara de roca en la casilla de abajo
+                // (`cliffFace`); sin su dibujo, o sobre un mapa dibujado, la raya de siempre.
+                const high = highFirst ? `${edge.x},${edge.y}` : right ? `${edge.x + 1},${edge.y}` : `${edge.x},${edge.y + 1}`;
+                const face = cliffFace(edge);
+                const rock = onBridge.has(high) ? '' : tile(face.id);
+                const box = rock
+                    ? boxStyle(face.x * cellW, face.y * cellH, face.width * cellW, face.height * cellH)
+                    : right
+                        ? boxStyle((edge.x + 1) * cellW - 2, edge.y * cellH, 4, cellH)
+                        : boxStyle(edge.x * cellW, (edge.y + 1) * cellH - 2, cellW, 4);
+                marks += `<div class="wm-cliff ${right ? 'wm-cliff-v' : 'wm-cliff-h'} ${highFirst ? 'wm-cliff-high-first' : 'wm-cliff-high-second'}${rock ? ' wm-cliff-drawn' : ''}"`
+                    + ` title="Acantilado: ${Math.abs(Number(edge.drop) || 0)} pies. No se cruza andando." style="${box}${rock ? `;background-image:url('${cssUrl(rock)}')` : ''}"></div>`;
             }
             terrainLayer[0].insertAdjacentHTML('beforeend', marks);
         }
@@ -1481,7 +1500,7 @@ export function renderLocationView(target, options) {
             const py = (token.gridY + 0.5) * cellH;
             const hpPct = (token.maxHp && token.maxHp > 0) ? Math.min(100, ((token.hp || 0) / token.maxHp) * 100) : 100;
 
-            const enemyClass = token.isEnemy ? ` wm-token-enemy${token.idle ? ' wm-token-idle' : ''}${token.boss ? ' wm-token-boss' : ''}` : (token.isSummon ? ' wm-token-summon' : '');
+            const enemyClass = token.isEnemy ? ` wm-token-enemy${token.idle ? ' wm-token-idle' : ''}${token.boss ? ' wm-token-boss' : ''}` : (token.isSummon ? ' wm-token-summon' : token.isNPC ? ' wm-token-npc' : '');
             const metaText = token.isEnemy
                 ? `${token.boss && !token.role ? 'Jefe · ' : ''}${token.idle ? 'Aquí, sin pelear todavía' : `${token.role ? `${token.role.label} · ` : ''}CA ${token.level || 10}`}`
                 : token.isSummon

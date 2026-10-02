@@ -2254,24 +2254,37 @@
 /* ================================================================================
    5. EL ARTE DEL TABLERO (tanda 12)
    Las casillas en pixel las elige `ui/pixel-art.js` (`terrainTile`, `artFor('tile')`); aquí solo
-   va lo que se pinta con CSS: el agua honda con su dibujo, los marcos de las fichas y el anillo
-   de las casillas de salida. Los dibujos, en public/img/game-engine/pixel/tablero/.
+   va lo que se pinta con CSS: el agua honda con su dibujo, las coberturas, los acantilados, los
+   marcos de las fichas y el anillo de las casillas de salida. Los dibujos, en
+   public/img/game-engine/pixel/tablero/.
    ================================================================================ */
 
 /* El agua honda trae su dibujo (`agua-honda.png`, más oscura y azul): sin el oscurecido de la
-   sección 3, que era para cuando se pintaba con el de la poco honda. La clase sale sin el guion
-   bajo (`classSafe` del tablero lo quita), así que van las dos. Sin dibujo, el color de la 3. */
-.wm-terrain-deep_water.wm-terrain-tiled[style*="agua-honda"],
-.wm-terrain-deepwater.wm-terrain-tiled[style*="agua-honda"] {
+   sección 3, que era para cuando se pintaba con el de la poco honda. Sin dibujo, el color de la
+   3 (la clase ya lleva su guion bajo: `classSafe` del tablero lo deja). */
+.wm-terrain-deep_water.wm-terrain-tiled[style*="agua-honda"] {
     filter: none;
     box-shadow: none;
 }
 
-.wm-terrain-deepwater:not(.wm-terrain-tiled) {
-    background: repeating-linear-gradient(0deg,
-        rgba(18, 58, 125, 0.78) 0px, rgba(18, 58, 125, 0.78) 3px,
-        rgba(18, 58, 125, 0.56) 3px, rgba(18, 58, 125, 0.56) 6px);
-    border: 1px solid rgba(30, 80, 160, 0.7);
+/* Una cobertura con su dibujo (la peña, el árbol, la caja) no lleva además el recuadro azul de
+   world-map.css, que es para el tablero sin arte y para el mapa dibujado. */
+.wm-terrain-cover_half.wm-terrain-tiled,
+.wm-terrain-cover_three_quarters.wm-terrain-tiled {
+    background-color: transparent;
+}
+
+/* Los acantilados de las cotas (J12.10) con su dibujo: la cara de roca en la casilla de abajo,
+   pegada al borde, con la luz en el lado alto (`acantilado-*.png`, `cliffFace` en
+   `ui/pixel-art.js`). Sin dibujo, o sobre un mapa dibujado, la raya de world-map.css. Los
+   puentes no necesitan nada aquí: son casillas con su dibujo, como las demás. */
+.wm-terrain-layer .wm-cliff.wm-cliff-drawn {
+    background-color: transparent;
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+    border: none;
+    box-shadow: none;
+    image-rendering: pixelated;
 }
 
 /* Los marcos de las fichas en la mesa virtual: un aro de metal en pixel alrededor de la cara

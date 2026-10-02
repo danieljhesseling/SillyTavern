@@ -40,6 +40,7 @@ import { DEFAULT_SIGHT_SKILL } from './sights.js';
 import { checkCampaignSucesos } from './suceso-triggers.js';
 import { gateWarnings } from '../world/route-gates.js';
 import { checkIntroductions } from './known-people.js';
+import { checkCompanionStories } from './companion-stories.js';
 
 /**
  * @typedef {Object} Issue
@@ -875,6 +876,9 @@ export function validatePack(raw) {
     // con sus disparadores. Lo que está mal no para la importación: ese camino o ese suceso,
     // simplemente, no se abre o no sale.
     warnings.push(...gateWarnings(pack));
+    // Los Gems al día: los romances y las misiones personales de los compañeros. Lo que esté a
+    // medias no sale, pero la campaña se juega igual.
+    warnings.push(...checkCompanionStories(pack));
     if (raw && typeof raw === 'object' && raw.sucesos !== undefined) {
         warnings.push(...checkCampaignSucesos(raw.sucesos, { factions: pack.world.factions, skills: Object.keys(SKILLS) }));
     }

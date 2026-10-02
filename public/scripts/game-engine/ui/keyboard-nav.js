@@ -858,15 +858,23 @@ export function handleTab(event) {
  */
 function keepFocusThrough(node, doc) {
     const key = focusKeyOf(node);
+    // Un botón de una ventana: su sitio acaba en la ventana. Si la ventana se cierra con él («Terminar»),
+    // el foco no se busca en lo que la rodea (la cabecera, «Diario»): es de quien la cierra
+    // (`installKeyboard`, a lo que la abrió o a lo principal de la escena).
+    const box = /** @type {HTMLElement|null} */ (node.closest('dialog, [role="dialog"]'));
     /** @type {HTMLElement[]} */
     const around = [];
-    for (let up = node.parentElement; up && up !== doc.body && up !== doc.documentElement; up = up.parentElement) around.push(up);
+    for (let up = node.parentElement; up && up !== doc.body && up !== doc.documentElement; up = up.parentElement) {
+        around.push(up);
+        if (up === box) break;
+    }
     const attempt = (/** @type {number[]} */ waits) => setTimeout(() => {
         if (!focusLost(doc) && doc.activeElement !== node) return;
         if (node.isConnected) {
             if (waits.length > 1) attempt(waits.slice(1));
             return;
         }
+        if (box && (!box.isConnected || (box.tagName === 'DIALOG' && !box.hasAttribute('open')))) return;
         const home = around.find(up => up.isConnected);
         if (!home) return;
         const same = focusablesIn(home).find(other => focusKeyOf(other) === key) ?? null;

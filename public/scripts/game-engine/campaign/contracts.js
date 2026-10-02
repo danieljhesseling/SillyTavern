@@ -19,6 +19,8 @@
  * Ver wiki/ROADMAP_MAESTRO.md, Niveles 3 y 4.
  */
 
+import { factionWorldOn, speaksPlural } from './factions.js';
+
 /**
  * @typedef {Object} Contract
  * @property {string} id
@@ -344,6 +346,11 @@ export function contractsFromFactions({ factions, random = Math.random, renown =
 export function describeStake(contract, factionName) {
     if (!contract?.faction) return '';
     const who = String(factionName || 'ellos');
+    // D-J58: sin el mundo vivo no hay reloj que mover; lo que cambia es lo que piensan de ti.
+    if (!factionWorldOn()) {
+        const verb = (!factionName || speaksPlural(who)) ? 'os mirarán' : 'os mirará';
+        return `Si sale bien, ${who} ${verb} ${contract.against ? 'peor' : 'mejor'}.`;
+    }
     return contract.against
         ? `Si sale bien, ${who} pierde una semana de trabajo.`
         : `Si sale bien, ${who} gana una semana.`;

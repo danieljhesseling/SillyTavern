@@ -1,13 +1,18 @@
-import { describe, test, expect } from '@jest/globals';
+import { describe, test, expect, beforeAll, afterAll } from '@jest/globals';
 import {
     GOALS, readFaction, readFactions, clockOf, heldBack, tickFactions,
     outcomeOf, applyOutcome, newsFor, describeFaction, rollFactions, validateFactionRows,
     pushClock, pushFaction, busyFactions, speaksPlural, describeOutcome, namesOf,
-    STANDING, standingWith, changeStanding, describeStanding, priceFactor,
+    STANDING, standingWith, changeStanding, describeStanding, priceFactor, FACTION_WORLD,
 } from '../public/scripts/game-engine/campaign/factions.js';
 import { createCompendium, validateBattery } from '../public/scripts/game-engine/compendio/compendio.js';
 import { createSeededRandom } from '../public/scripts/game-engine/combat/seeded-random.js';
 import fs from 'node:fs';
+
+// D-J58: estas pruebas son de la simulación de facciones (relojes, noticias, precios), que en el
+// juego está apagada hasta el mundo semiabierto. Aquí se enciende: lo de antes sigue funcionando.
+beforeAll(() => { FACTION_WORLD.on = true; });
+afterAll(() => { FACTION_WORLD.on = false; });
 
 const faction = (extra = {}) => ({
     id: 'molino', name: 'Los del Molino', seat: 'El Molino',

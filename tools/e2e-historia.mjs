@@ -11,8 +11,8 @@
  *   sale → «Hablar» con Giles abre su charla directamente, con «Otras cosas» (D-J36) → lo que
  *   dice sale en la novela con su cara y su gesto → las escenas de los hitos 3 y 4, que piden llegar a
  *   un sitio, salen al llegar (J9.1), no antes del viaje →
- *   la de Karl ya es la charla y cumple su hito (D-J39) → el hito siguiente, que solo trae
- *   texto, se abre como una escena corta del narrador (D-J40) → el Diario apunta lo decidido y
+ *   la de Karl ya es la charla y cumple su hito (D-J39) → el hito siguiente, la oferta del
+ *   castillo, es una conversación con el senescal y Lord Vane (D-J54) → el Diario apunta lo decidido y
  *   lo que os han contado → la estación de hoy llega al narrador (J13).
  *
  *   Y en otra pestaña, el prólogo del gremio: la escena del muelle → ganar al ratero → la
@@ -32,6 +32,7 @@ import { createRequire } from 'node:module';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { entrarEnLaPelea } from './e2e-entrar-pelea.mjs';
 
 const ROOT = new URL('..', import.meta.url).pathname.replace(/^[/]([A-Za-z]:)/, '$1');
 const argAfter = (/** @type {string} */ flag) => (process.argv.includes(flag) ? process.argv[process.argv.indexOf(flag) + 1] : '');
@@ -273,8 +274,8 @@ try {
 
     // --- Ganar en el cuarto de la posada: la escena siguiente espera al panel de victoria ----
     await dropToasts();
-    const canFight = await until(async () => (await chips()).some(c => /^Iniciar combate/.test(c)), 15000);
-    await clickChip(/^Iniciar combate/);
+    // Tanda 10: ya no hay «Iniciar combate»: la pelea se abre sola (la decisión, «Pelear» y «Empezar»).
+    const canFight = await entrarEnLaPelea(page, { ms: 25000 });
     await until(() => page.evaluate(async () => Boolean((await import('/scripts/party.js')).getCombatEncounter()?.active)), 10000);
     await clearDice();
     await page.evaluate(async () => {
@@ -461,12 +462,18 @@ try {
     check('D-J39: la escena de Karl ya es la charla: cumple su propio hito sin tener que hablar con él',
         [...karlPlates, ...karlFrames.map(f => f.plate)].includes('Karl') && now.done.includes('el-hambre-de-los-lobos'),
         JSON.stringify({ done: now.done, plates: [...karlPlates, ...karlFrames.map(f => f.plate)] }));
-    const textOnly = await until(async () => (await story())?.id === 'la-oferta-del-castillo', 15000);
-    const offer = await story();
-    check('D-J40: el hito siguiente, que solo trae texto, se abre en la ventana como una escena corta del narrador',
-        textOnly && Boolean(offer?.narrator) && !offer?.plateShown && String(offer?.text).length > 40, JSON.stringify(offer));
-    await shoot('texto');
-    await playScene();
+    // D-J54: el hito siguiente ya no es un párrafo del narrador: es una conversación en el gran
+    // salón. El senescal se presenta y habla Lord Vane, cada uno con su placa; el narrador solo pone
+    // el sitio, en una línea corta. Se elige pensarlo (la tirada de la otra opción cumpliría el hito).
+    const offerOpen = await until(async () => (await story())?.id === 'la-oferta-del-castillo', 15000);
+    await shoot('oferta');
+    const offerFrames = await playScene(['pensarlo']);
+    const offerPlates = offerFrames.filter(f => !f.narrator && f.plateShown).map(f => f.plate);
+    const offerNarrator = offerFrames.filter(f => f.narrator);
+    check('D-J54: la oferta del castillo es una conversación: se presenta el senescal y habla Lord Vane, con una sola línea corta del narrador',
+        offerOpen && offerPlates.includes('Lord Edmund Vane') && offerPlates.some(p => /Oswald/.test(p))
+        && offerNarrator.length <= 1 && offerNarrator.every(f => String(f.text).length < 120),
+        JSON.stringify({ plates: offerPlates, narrator: offerNarrator.map(f => f.text) }));
     await page.waitForTimeout(800);
 
     // --- J9.6 y J8.6: el Diario ----------------------------------------------------------------
@@ -561,13 +568,13 @@ try {
     await page.waitForTimeout(1000);
     now = await meta();
     check('Gremio: Tomás grita con su cara; «Yo me encargo» hace que os mire mejor, y la escena queda jugada',
-        pierFrames.some(f => f.plate === 'Tomás' && /retratos\/gremio\/tomas--/.test(f.face)) && now.played.includes('el-muelle') && Number(now.attitudes['Tomás']) >= 1,
+        // J13.7: antes de presentarse, su placa dice lo que es («Posadero»); la cara es la suya.
+        pierFrames.some(f => /^(Tomás|Posadero)$/.test(f.plate) && /retratos\/gremio\/tomas--/.test(f.face)) && now.played.includes('el-muelle') && Number(now.attitudes['Tomás']) >= 1,
         JSON.stringify({ plates: pierFrames.map(f => `${f.plate}:${f.mood}`), played: now.played, attitudes: now.attitudes }));
 
     // La pelea del muelle: ganarla abre la escena de la charla con Tomás, tras el panel de victoria.
     await dropToasts();
-    const pierFight = await until(async () => (await chips()).some(c => /^Iniciar combate \(Ratero/.test(c)), 15000);
-    await clickChip(/^Iniciar combate \(Ratero/);
+    const pierFight = await entrarEnLaPelea(page, { ms: 25000 });
     await until(() => page.evaluate(async () => Boolean((await import('/scripts/party.js')).getCombatEncounter()?.active)), 10000);
     await clearDice();
     await page.evaluate(async () => {

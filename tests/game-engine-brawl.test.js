@@ -17,6 +17,8 @@ import {
     dayPartLabel,
 } from '../public/scripts/game-engine/campaign/tavern-brawl.js';
 import { terrainFromAsciiMap, isPassable } from '../public/scripts/game-engine/board/terrain.js';
+import { startCells, defaultPlacement } from '../public/scripts/game-engine/combat/placement.js';
+import { freeHand } from '../public/scripts/game-engine/rules/unarmed.js';
 import { boardBiome } from '../public/scripts/game-engine/ui/pixel-art.js';
 import { DOMAINS, validateBattery } from '../public/scripts/game-engine/compendio/compendio.js';
 import { DEEDS, addMark, readEchoes, rememberedGreeting, markRumors } from '../public/scripts/game-engine/campaign/world-marks.js';
@@ -179,6 +181,54 @@ describe('J12.7: el tablero de la taberna', () => {
         expect(band[0]).toMatchObject({ attackRangeFeet: 5, brawler: true, archetype: 'cunado-de-lope', maxHp: 14, currentHp: 14 });
         const [rival] = rivalFighters({ kind: 'duelo', way: 'apuesta', level: 3, who: [{ name: 'Rosa la Remera' }] });
         expect(rival.maxHp).toBeGreaterThan(band[0].maxHp);
+    });
+});
+
+describe('J12.7: colocarse antes de la iniciativa (tanda 10)', () => {
+    /** Las casillas de salida del tablero de la pelea, como las calcula `fight-entry.js`. */
+    const cellsFor = (/** @type {ReturnType<typeof brawlBoard>} */ plan, /** @type {number} */ fighting) => {
+        const terrain = terrainFromAsciiMap(plan.board.map);
+        return startCells({
+            terrain, gridWidth: plan.board.map[0].length, gridHeight: plan.board.map.length,
+            starts: plan.board.partyStart,
+            party: plan.partyCells.slice(0, fighting),
+            enemies: plan.rivalCells,
+        });
+    };
+    const touches = (/** @type {{x: number, y: number}} */ a, /** @type {{x: number, y: number}} */ b) => Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y)) <= 1;
+
+    test('en un duelo se coloca solo quien pelea, en el corro: ni la pared de los que miran ni pegado al rival', () => {
+        const plan = brawlBoard({ kind: 'duelo', town: 'Puerto Alba', fighters: 4, rivals: 1 });
+        expect(plan.board.partyStart).toEqual([plan.partyCells[0]]);
+        const cells = cellsFor(plan, 1);
+        expect(cells.length).toBeGreaterThanOrEqual(4);
+        for (const cell of cells) {
+            expect(touches(cell, plan.partyCells[0])).toBe(true);
+            expect(plan.partyCells.slice(1)).not.toContainEqual(cell);
+            expect(touches(cell, plan.rivalCells[0])).toBe(false);
+        }
+        // Sin cambiar nada, empieza donde se le puso.
+        expect(defaultPlacement({ members: [{ id: 'h', name: 'Tessa', ...plan.partyCells[0] }], cells })).toEqual({ h: plan.partyCells[0] });
+    });
+
+    test('en la taberna hay sitio para todo el grupo junto a la puerta, lejos de los camorristas', () => {
+        for (const n of [0, 0.99]) {
+            const plan = brawlBoard({ kind: 'taberna', town: 'Puerto Alba', fighters: 4, rivals: 4, random: always(n) });
+            const cells = cellsFor(plan, 4);
+            expect(cells.length).toBeGreaterThanOrEqual(4);
+            for (const cell of cells) for (const foe of plan.rivalCells) expect(touches(cell, foe)).toBe(false);
+            const members = plan.partyCells.map((c, i) => ({ id: String(i), name: `M${i}`, ...c }));
+            const placed = defaultPlacement({ members, cells });
+            expect(Object.keys(placed)).toHaveLength(4);
+            expect(new Set(Object.values(placed).map(c => `${c.x},${c.y}`)).size).toBe(4);
+        }
+    });
+
+    test('a puñetazos el arma va guardada: con escudo queda una mano para agarrar', () => {
+        const shield = { name: 'Escudo' };
+        expect(freeHand({ weapon: { name: 'Espada larga', hands: 1 }, shield }).ok).toBe(false);
+        // Lo que pasa `combat-bar.js` en una pelea sin muertes: sin arma en la mano.
+        expect(freeHand({ weapon: null, shield })).toEqual({ ok: true, reason: '' });
     });
 });
 

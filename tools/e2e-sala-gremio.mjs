@@ -53,7 +53,7 @@ let browser = null;
 let page = null;
 
 function startServer() {
-    server = spawn(process.execPath, ['server.js', '--port', String(PORT), '--dataRoot', dataRoot], { cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'] });
+    server = spawn(process.execPath, ['server.js', '--browserLaunchEnabled', 'false', '--port', String(PORT), '--dataRoot', dataRoot], { cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'] });
     const child = server;
     return new Promise((resolve, reject) => {
         const timer = setTimeout(() => reject(new Error('the server did not start in 180s')), 180000);
@@ -340,6 +340,13 @@ try {
         ['El tablón', 'Tu gente', 'La casa', 'La memoria del gremio', 'La salida'].every(g => hall.groups.includes(g))
         && ['hub-board', 'hub-errands', 'hub-heroes', 'hub-hire', 'hub-chest', 'hub-train', 'hub-house', 'hub-sleep', 'hub-memory', 'hub-exit'].every(id => ids.includes(id))
         && /^Rango D /.test(hall.rank), JSON.stringify({ groups: hall.groups, ids, rank: hall.rank }));
+    // D-J56: lo que se puede mirar en la sala sale también en la fila de abajo, y delante de lo de la plaza
+    // (lo que no quepa, tras «+N más», como todo).
+    const hallLooks = ids.filter(id => id.startsWith('look:'));
+    const footLooks = await page.evaluate(() => [...document.querySelectorAll('#game-shell .gs-chips-foot [data-chip^="look:"]')].map(b => b.getAttribute('data-chip') || ''));
+    const firstLooks = footLooks.slice(0, Math.min(hallLooks.length, footLooks.length));
+    check('D-J56: lo que se puede mirar en la sala del gremio sale también en la fila de abajo',
+        firstLooks.length > 0 && firstLooks.every(id => hallLooks.includes(id)), JSON.stringify({ hallLooks, footLooks }));
     await shot('sala');
 
     // 5. J3.4: el cofre. Antes, algo que no se lleve puesto: lo más barato de la tienda.

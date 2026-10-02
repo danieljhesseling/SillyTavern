@@ -4,12 +4,13 @@
  */
 
 /* global globalThis */
+import fs from 'node:fs';
 import { describe, test, expect, beforeAll, afterAll } from '@jest/globals';
 import {
     BASE_CELL_PX, ZOOM_MAX, ZOOM_MIN, cellCenter, centerPoint, centerPointFit, clampPan, clampScale, fitBoard, followDecision, isPointShown,
     safeRect, toBoard, toScreen, visibleArea, wheelScale, zoomAt, zoomLabel, zoomLimits, zoomOf,
 } from '../public/scripts/game-engine/ui/combat-vtt/camera.js';
-import { dodgeIslands, edgeParts, edgeText, markerBox, placeEdgeMarkers, renderEdgeMarkers } from '../public/scripts/game-engine/ui/combat-vtt/edge-markers.js';
+import { dodgeIslands, dodgeMarkers, edgeParts, edgeText, markerBox, placeEdgeMarkers, renderEdgeMarkers } from '../public/scripts/game-engine/ui/combat-vtt/edge-markers.js';
 import { minimapCells, minimapLayout, minimapToBoard, viewOnMinimap } from '../public/scripts/game-engine/ui/combat-vtt/minimap.js';
 import { buildInitiative, initialOf, turnLine } from '../public/scripts/game-engine/ui/combat-vtt/initiative.js';
 import { SUMMARY_FOLD_KEY, buildSummary, startsFolded } from '../public/scripts/game-engine/ui/combat-vtt/summary.js';
@@ -349,6 +350,46 @@ describe('los marcadores de borde', () => {
         expect(dodgeIslands({ x: 22, y: 310 }, 170, 30, 'left', [wall], rect)).toEqual({ x: 22, y: 310 });
     });
 
+    test('dos marcadores que se pisan junto a una esquina: el segundo se aparta al sitio libre más cercano (revisor r4)', () => {
+        // El teléfono de pie: uno en el borde de la derecha y otro en el de arriba, casi en el mismo sitio.
+        const phone = { left: 0, top: 0, right: 390, bottom: 600 };
+        const first = { left: 196, top: 360, right: 386, bottom: 390 };
+        expect(dodgeMarkers({ x: 190, y: 366 }, 190, 30, [first], [], phone)).toEqual({ x: 190, y: 394 });
+        // Sin pisar: no se mueve.
+        expect(dodgeMarkers({ x: 190, y: 420 }, 190, 30, [first], [], phone)).toEqual({ x: 190, y: 420 });
+        // Debajo hay una isla: se va arriba.
+        const island = { left: 0, top: 392, right: 390, bottom: 500 };
+        expect(dodgeMarkers({ x: 190, y: 366 }, 190, 30, [first], [island], phone)).toEqual({ x: 190, y: 326 });
+        // Sin ningún sitio libre, se queda.
+        const wall = { left: 0, top: 0, right: 390, bottom: 600 };
+        expect(dodgeMarkers({ x: 190, y: 366 }, 190, 30, [first], [wall], phone)).toEqual({ x: 190, y: 366 });
+    });
+
+    test('al ponerlos, ninguno pisa a otro', () => {
+        // El falso DOM no mide: aquí cada marcador mide 190 × 30.
+        Object.defineProperty(FakeNode.prototype, 'offsetWidth', { configurable: true, get: () => 190 });
+        Object.defineProperty(FakeNode.prototype, 'offsetHeight', { configurable: true, get: () => 30 });
+        try {
+            const layer = /** @type {any} */ (new FakeNode('div'));
+            const phone = { left: 0, top: 0, right: 390, bottom: 600 };
+            const markers = placeEdgeMarkers({
+                targets: [{ id: -1, name: 'Guardia de Montesclaros', x: 1000, y: -1000, feet: 15 }, { id: -2, name: 'Alguacil Torres', x: 1000, y: -900, feet: 20 }],
+                rect: phone,
+            });
+            renderEdgeMarkers(layer, markers, () => {}, phone, []);
+            const boxes = layer.querySelectorAll('.vtt-edge').map((/** @type {any} */ b) => ({ x: parseFloat(b.style.left), y: parseFloat(b.style.top) }));
+            expect(boxes).toHaveLength(2);
+            const [a, b] = boxes;
+            // Lo que se pisan, en píxeles cuadrados: nada.
+            const across = Math.max(0, Math.min(a.x, b.x) + 190 - Math.max(a.x, b.x));
+            const down = Math.max(0, Math.min(a.y, b.y) + 30 - Math.max(a.y, b.y));
+            expect(across * down).toBe(0);
+        } finally {
+            delete (/** @type {any} */ (FakeNode.prototype)).offsetWidth;
+            delete (/** @type {any} */ (FakeNode.prototype)).offsetHeight;
+        }
+    });
+
     test('los pies van en su propio trozo, que no encoge: solo el nombre lleva los puntos suspensivos', () => {
         expect(edgeParts('Guardia de Montesclaros 3', 30)).toEqual({ name: 'Guardia de Montesclaros 3', feet: ' · 30 pies' });
         expect(edgeParts('Lobo')).toEqual({ name: 'Lobo', feet: '' });
@@ -527,5 +568,23 @@ describe('el resumen del combate', () => {
         toggle.fire('click');
         expect(panel.classList.contains('collapsed')).toBe(false);
         expect(store[SUMMARY_FOLD_KEY]).toBe('false');
+    });
+});
+
+describe('el lienzo y el arte del tablero', () => {
+    const source = () => fs.readFileSync(new URL('../public/scripts/world-map-renderer.js', import.meta.url), 'utf8');
+
+    test('la clase de la casilla guarda el guion bajo: «wm-terrain-deep_water», como dice el CSS', () => {
+        const line = source().split('\n').find(l => l.startsWith('const classSafe ='));
+        expect(line).toBeDefined();
+        // Se evalúa la misma línea: lo que no es letra, número, «_» o «-» se va.
+        const classSafe = new Function(`${line}; return classSafe;`)();
+        expect(classSafe('deep_water')).toBe('deep_water');
+        expect(classSafe('cover_three_quarters')).toBe('cover_three_quarters');
+        expect(classSafe('x" onload="y')).toBe('xonloady');
+    });
+
+    test('quien no pelea lleva su clase (su marco gris), no el dorado de los tuyos', () => {
+        expect(source()).toMatch(/token\.isSummon \? ' wm-token-summon' : token\.isNPC \? ' wm-token-npc' : ''/);
     });
 });

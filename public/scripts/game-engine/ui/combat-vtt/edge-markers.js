@@ -195,6 +195,43 @@ export function dodgeIslands(box, width, height, side, avoid = [], bounds = null
 }
 
 /**
+ * Que dos marcadores no se pisen (revisor, r4: en el teléfono de pie, uno en el borde de arriba y
+ * otro en el de la derecha caían uno encima del otro junto a la esquina). Si la caja pisa uno de
+ * los ya puestos (`placed`), prueba arriba, abajo, a la izquierda y a la derecha de él, y se queda
+ * con el sitio libre más cercano (sin marcadores ni islas, dentro de `bounds`). Si no hay ninguno,
+ * se queda donde estaba.
+ *
+ * @param {{x: number, y: number}} box
+ * @param {number} width
+ * @param {number} height
+ * @param {Box[]} [placed] Los marcadores ya puestos.
+ * @param {Box[]} [avoid] Las islas del HUD.
+ * @param {Box|null} [bounds]
+ * @returns {{x: number, y: number}}
+ */
+export function dodgeMarkers(box, width, height, placed = [], avoid = [], bounds = null) {
+    const w = Math.max(0, num(width));
+    const h = Math.max(0, num(height));
+    const valid = (/** @type {Box[]} */ list) => (Array.isArray(list) ? list : []).filter(r => r && num(r.right) > num(r.left) && num(r.bottom) > num(r.top));
+    const markers = valid(placed);
+    const solid = [...markers, ...valid(avoid)];
+    const overlaps = (/** @type {{x: number, y: number}} */ at, /** @type {Box} */ r) => at.x < num(r.right) && at.x + w > num(r.left) && at.y < num(r.bottom) && at.y + h > num(r.top);
+    const inside = (/** @type {{x: number, y: number}} */ at) => !bounds
+        || (at.x >= num(bounds.left) && at.x + w <= num(bounds.right) && at.y >= num(bounds.top) && at.y + h <= num(bounds.bottom));
+    const start = { x: num(box?.x), y: num(box?.y) };
+    const hit = markers.find(r => overlaps(start, r));
+    if (!hit) return start;
+    // Los sitios junto a cada caja que estorba (empezando por la que pisa), a 4 px.
+    const options = [hit, ...solid.filter(r => r !== hit)].flatMap(r => [
+        { x: start.x, y: num(r.top) - h - 4 }, { x: start.x, y: num(r.bottom) + 4 },
+        { x: num(r.left) - w - 4, y: start.y }, { x: num(r.right) + 4, y: start.y },
+    ]);
+    const free = options.filter(at => inside(at) && !solid.some(r => overlaps(at, r)));
+    free.sort((a, b) => Math.hypot(a.x - start.x, a.y - start.y) - Math.hypot(b.x - start.x, b.y - start.y));
+    return free[0] ?? start;
+}
+
+/**
  * Pone los marcadores en su capa. Cada uno es un botón: pulsarlo llama a `onPick` con su ficha.
  *
  * @param {HTMLElement} layer
@@ -208,6 +245,8 @@ export function renderEdgeMarkers(layer, markers, onPick, bounds = null, avoid =
     /** @type {Map<string, HTMLButtonElement>} */
     const before = new Map();
     for (const node of /** @type {HTMLButtonElement[]} */ ([...layer.querySelectorAll('.vtt-edge')])) before.set(String(node.dataset.tokenId), node);
+    /** @type {Box[]} Los marcadores ya puestos en esta vuelta: el siguiente no los pisa. */
+    const taken = [];
 
     for (const marker of markers) {
         const key = String(marker.id);
@@ -250,8 +289,12 @@ export function renderEdgeMarkers(layer, markers, onPick, bounds = null, avoid =
         // La flecha de Font Awesome apunta arriba a la derecha (-45°).
         const arrow = /** @type {HTMLElement} */ (button.querySelector('.vtt-edge-arrow'));
         arrow.style.transform = `rotate(${marker.angle + 45}deg)`;
-        const box = dodgeIslands(markerBox(marker, button.offsetWidth, button.offsetHeight, bounds),
-            button.offsetWidth, button.offsetHeight, marker.side, avoid, bounds);
+        const box = dodgeMarkers(dodgeIslands(markerBox(marker, button.offsetWidth, button.offsetHeight, bounds),
+            button.offsetWidth, button.offsetHeight, marker.side, avoid, bounds),
+        button.offsetWidth, button.offsetHeight, taken, avoid, bounds);
+        if (button.offsetWidth > 0 && button.offsetHeight > 0) {
+            taken.push({ left: box.x, top: box.y, right: box.x + button.offsetWidth, bottom: box.y + button.offsetHeight });
+        }
         button.style.left = `${Math.round(box.x)}px`;
         button.style.top = `${Math.round(box.y)}px`;
     }

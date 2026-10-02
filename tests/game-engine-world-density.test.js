@@ -1,7 +1,7 @@
 import { describe, test, expect } from '@jest/globals';
 import { readFileSync } from 'node:fs';
 import {
-    checkWorldDensity, placeDensity, secretsOf, PLACE_NEEDS, SECRET_WAYS, QUOTA,
+    checkWorldDensity, placeDensity, secretsOf, storyFactions, PLACE_NEEDS, SECRET_WAYS, QUOTA,
 } from '../public/scripts/game-engine/campaign/world-density.js';
 import {
     readSights, sightsOf, pickLooks, findLook, lookLabel, lookFound, DEFAULT_SIGHT_SKILL,
@@ -212,5 +212,49 @@ describe('las dos campañas escritas pasan el medidor ampliado', () => {
         expect(way('La Cascada del Tser')).toEqual(['rumor']);
         expect(way('El Nido de la Pluma')).toEqual(['persona']);
         expect(way('La puerta sin pomo')).toEqual(['tirada']);
+    });
+});
+
+describe('D-J58: una facción cuenta por la reputación que usa la historia', () => {
+    /** Tres facciones: una que mueve un hito, una que solo tiene reloj y sede, y una que mira un camino. */
+    const withFactions = () => {
+        const pack = /** @type {any} */ (small());
+        pack.world.factions = [
+            { id: 'los-de-arriba', name: 'Los de Arriba', seat: 'El Pueblo', goal: { kind: 'expand' }, enemies: ['nadie'] },
+            { id: 'la-sombra', name: 'La Sombra', seat: 'El Pueblo', goal: { kind: 'expand' }, holds: ['Ningún Sitio'] },
+            { id: 'el-gremio-gris', name: 'El Gremio Gris' },
+        ];
+        pack.plot.milestones[0].changes = { standing: { 'los-de-arriba': 1 } };
+        pack.plot.milestones.push({ id: 'm-reloj', title: 'Llega la sombra', opens: { kind: 'clock', faction: 'la-sombra' }, asks: { kind: 'none' } });
+        pack.locations[0].factionName = 'La Sombra';
+        pack.npcs[0].faction = 'la-sombra';
+        pack.locations[1].routes[0].opensWith = [{ standing: 'el-gremio-gris', min: 1 }];
+        return pack;
+    };
+
+    test('cuenta lo que mueve o mira la historia; no la sede, el reloj, quién manda ni el bando de alguien', () => {
+        expect(storyFactions(withFactions())).toEqual({ used: ['Los de Arriba', 'El Gremio Gris'], unused: ['La Sombra'] });
+        // Las salidas de un tablero la nombran por su nombre: también cuenta.
+        const pack = withFactions();
+        pack.boards = [{ id: 'b1', name: 'B', avoid: [{ success: { effects: [{ standing: 'La Sombra', amount: 1 }] } }] }];
+        expect(storyFactions(pack).unused).toEqual([]);
+    });
+
+    test('el informe ya no habla de facciones vivas ni de enemigos', () => {
+        const report = checkWorldDensity(withFactions());
+        expect(report.counts.some(line => line.includes('Facciones vivas'))).toBe(false);
+        expect(report.counts).toContain(`✗ Facciones que pesan en la historia: 2 (mínimo ${QUOTA.factions})`);
+        const said = [...report.errors, ...report.warnings].join('\n');
+        expect(said).not.toMatch(/enemig|controla/);
+        expect(report.warnings).toContain('Facción La Sombra: nada de la historia mueve ni mira cómo os mira (ni una decisión, ni un camino, ni un final): es decorado');
+    });
+
+    test('1387 y Strahd: todas sus facciones pesan en la historia', () => {
+        for (const file of ['1387.pack.json', 'strahd.pack.json']) {
+            const pack = load(file);
+            const { counts, warnings } = checkWorldDensity(pack);
+            expect(counts).toContain(`✓ Facciones que pesan en la historia: ${pack.world.factions.length} (mínimo ${QUOTA.factions})`);
+            expect(warnings.filter(w => w.startsWith('Facción'))).toEqual([]);
+        }
     });
 });

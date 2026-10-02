@@ -315,6 +315,72 @@ export function placeDensity(pack) {
 }
 
 /**
+ * Lo que no es historia, con D-J58: quién manda en cada sitio, los relojes que avanzan solos, de
+ * qué bando es alguien (sabor) y lo que cuenta el epílogo de cada grupo. Una facción que solo
+ * sale ahí no pesa en la partida.
+ */
+const NOT_STORY = new Set(['factionName', 'holds', 'controlledBy', 'controller', 'reloj', 'relojAqui', 'epilogues']);
+
+/**
+ * D-J58: las facciones que pesan en la historia. De una facción solo cuenta cómo os mira, y eso
+ * pesa si algo lo mueve (una decisión, un hito, un encargo, un suceso) o lo mira (un camino que
+ * se abre, un peaje, un final). Se busca su id (o su nombre, que es como lo escriben las
+ * salidas de los tableros) por todo el paquete, menos donde no es historia (`NOT_STORY`), la
+ * propia lista de facciones, los hitos que esperan un reloj y el bando de cada persona.
+ *
+ * @param {any} pack
+ * @returns {{used: string[], unused: string[]}} Los nombres, en el orden del paquete.
+ */
+export function storyFactions(pack) {
+    const factions = list(pack?.world?.factions).filter(f => text(f?.id) || text(f?.name));
+    /** @type {Map<string, any>} */
+    const byKey = new Map();
+    for (const f of factions) {
+        if (text(f.id)) byKey.set(low(f.id), f);
+        if (text(f.name)) byKey.set(low(f.name), f);
+    }
+    /** @type {Set<any>} */
+    const seen = new Set();
+    /** @param {string} value */
+    const mark = (value) => {
+        const said = low(value);
+        const hit = byKey.get(said) ?? byKey.get(said.match(/^faccion:([^:]+)/)?.[1] ?? '');
+        if (hit) seen.add(hit);
+    };
+    /**
+     * @param {any} node
+     * @param {string} parent La clave de la que cuelga.
+     */
+    const walk = (node, parent) => {
+        if (Array.isArray(node)) {
+            for (const item of node) walk(item, parent);
+            return;
+        }
+        if (typeof node === 'string') {
+            mark(node);
+            return;
+        }
+        if (!node || typeof node !== 'object') return;
+        if (node.kind === 'clock') return;
+        for (const [key, value] of Object.entries(node)) {
+            if (NOT_STORY.has(key)) continue;
+            if (key === 'faction' && (parent === 'npcs' || parent === 'confidants' || parent === 'heroes')) continue;
+            mark(key);
+            walk(value, key);
+        }
+    };
+    for (const [key, value] of Object.entries(pack ?? {})) {
+        if (key === 'world') {
+            for (const [inner, part] of Object.entries(value ?? {})) if (inner !== 'factions') walk(part, inner);
+        } else {
+            walk(value, key);
+        }
+    }
+    const name = (/** @type {any} */ f) => text(f.name) || text(f.id);
+    return { used: factions.filter(f => seen.has(f)).map(name), unused: factions.filter(f => !seen.has(f)).map(name) };
+}
+
+/**
  * El informe entero.
  *
  * @param {any} pack
@@ -359,7 +425,6 @@ export function checkWorldDensity(pack) {
     const bestiary = list(pack?.bestiary);
     const creatures = new Set(bestiary.map(b => low(b.name)));
     const factions = list(pack?.world?.factions);
-    const factionIds = new Set(factions.map(f => text(f.id)));
     const contracts = list(pack?.contracts);
     const rumors = list(pack?.rumors);
     const milestones = list(pack?.plot?.milestones);
@@ -385,7 +450,9 @@ export function checkWorldDensity(pack) {
     quota('Encuentros', encounters.length, QUOTA.encounters);
     quota('Bestiario', bestiary.length, QUOTA.bestiary);
     quota('Jefes', bestiary.filter(b => b.boss).length, QUOTA.bosses);
-    quota('Facciones vivas', factions.filter(f => text(f.seat) && f.goal).length, QUOTA.factions);
+    // D-J58: una facción cuenta por la reputación que usa la historia, no por su sede ni su reloj.
+    const storyUse = storyFactions(pack);
+    quota('Facciones que pesan en la historia', storyUse.used.length, QUOTA.factions);
     quota('Objetos', list(pack?.items).length, QUOTA.items);
     quota('Rumores', rumors.length, QUOTA.rumors);
     const objectiveKinds = new Set(quests.flatMap(q => list(q.objectives).map(o => text(o.type))));
@@ -432,11 +499,10 @@ export function checkWorldDensity(pack) {
         if (text(c.boardId) && !boardIds.has(text(c.boardId))) errors.push(`Encargo ${c.id}: su tablero «${c.boardId}» no existe`);
         if (!c.noFight && !text(c.boardId)) errors.push(`Encargo ${c.id}: tiene pelea pero no tiene tablero`);
     }
-    for (const f of factions) {
-        mustExist(`Facción ${f.name}, sede`, f.seat, places);
-        for (const h of list(f.holds)) mustExist(`Facción ${f.name} controla`, h, places);
-        for (const e of list(f.enemies)) if (!factionIds.has(text(e))) errors.push(`Facción ${f.name}: su enemigo «${e}» no existe`);
-        if (list(f.enemies).length === 0) warnings.push(`Facción ${f.name} no tiene enemigos: sus encargos no toman partido`);
+    // D-J58: sus enemigos y lo que controla ya no mueven nada (es del mundo semiabierto).
+    for (const f of factions) mustExist(`Facción ${f.name}, sede`, f.seat, places);
+    for (const name of storyUse.unused) {
+        warnings.push(`Facción ${name}: nada de la historia mueve ni mira cómo os mira (ni una decisión, ni un camino, ni un final): es decorado`);
     }
     for (const l of locations) {
         for (const r of list(l.routes)) mustExist(`Camino desde ${l.name} hacia`, r.to, places);

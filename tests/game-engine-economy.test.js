@@ -1,7 +1,13 @@
-import { describe, test, expect } from '@jest/globals';
+import { describe, test, expect, beforeAll, afterAll } from '@jest/globals';
 import {
     marketPressure, applyMarket, describeMarket,
 } from '../public/scripts/game-engine/campaign/economy.js';
+import { FACTION_WORLD } from '../public/scripts/game-engine/campaign/factions.js';
+
+// D-J58: lo que cuesta vivir según quién manda es del mundo vivo de las facciones, apagado en el
+// juego hasta el mundo semiabierto. Aquí se enciende: lo de antes sigue funcionando.
+beforeAll(() => { FACTION_WORLD.on = true; });
+afterAll(() => { FACTION_WORLD.on = false; });
 import { DEFAULT_UPKEEP, weeklyBill } from '../public/scripts/game-engine/rules/upkeep.js';
 
 const world = (extra = {}) => ([

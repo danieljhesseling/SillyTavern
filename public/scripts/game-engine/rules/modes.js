@@ -33,6 +33,7 @@
  */
 
 import { MORTALITY, SAVES, readSurvival } from './mortality.js';
+import { factionWorldOn } from '../campaign/factions.js';
 
 /**
  * @typedef {Object} SystemLetter
@@ -47,7 +48,15 @@ import { MORTALITY, SAVES, readSurvival } from './mortality.js';
 export const LETTERS = [
     { id: 'a', title: 'Heridas', note: 'Quien cae se levanta con una herida que tarda días en curar.' },
     { id: 'b', title: 'La cuenta', note: 'Cada semana se paga comida, sueldos y posada; quien no cobra acaba yéndose.' },
-    { id: 'c', title: 'El mundo se mueve', note: 'Las facciones avanzan, los rivales se llevan encargos, la gente se muda y a veces hay un caso.' },
+    {
+        id: 'c', title: 'El mundo se mueve',
+        // D-J58: sin el mundo vivo de las facciones, no se promete que avancen.
+        get note() {
+            return factionWorldOn()
+                ? 'Las facciones avanzan, los rivales se llevan encargos, la gente se muda y a veces hay un caso.'
+                : 'Los rivales se llevan encargos, la gente se muda y a veces hay un caso.';
+        },
+    },
     { id: 'd', title: 'El cuerpo', note: 'Hambre, sed y sueño: hay que comer, beber y dormir.' },
     { id: 'e', title: 'De hierro', note: 'Puede morir cualquiera, también los tuyos, y solo se guarda en el refugio.' },
     { id: 'f', title: 'La intemperie', note: 'El frío y el calor pesan, y dormir al raso se paga.', needs: 'd' },

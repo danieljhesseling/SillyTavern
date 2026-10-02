@@ -96,6 +96,32 @@ describe('J16: lo que pide cada hito, para el jugador automático', () => {
         expect(exitPick('', before)).toBeNull();
         expect(exitPick('avoid', [{ id: 'pelear', text: 'Pelear', locked: true }])).toBeNull();
     });
+
+    test('las campañas de un Gem (vuelta-campana): «any», confidentes y «Lobo 2»', () => {
+        const gem = {
+            boards: [{ name: 'El camino', locationName: 'El monte', enemies: [{ name: 'Lobo 1' }, { name: 'Lobo 2' }] }],
+            npcs: [{ name: 'Tobías', where: 'Brezo' }],
+            confidants: [{ name: 'Marta', where: 'El puerto' }],
+            plot: {
+                milestones: [
+                    // De varias formas: la primera que se hace a clics (un encargo del tablón, no).
+                    { id: 'a', asks: { kind: 'any', options: [{ kind: 'contract', id: 'e-1' }, { kind: 'talk', npc: 'Marta' }] } },
+                    { id: 'b', asks: { kind: 'defeat', enemy: 'Lobo' } },
+                    { id: 'c', asks: { kind: 'any', options: [] } },
+                    { id: 'd', asks: { kind: 'win', board: 'Sin dibujar', place: 'La ermita' } },
+                    { id: 'e', asks: { kind: 'contract', id: 'e-1' } },
+                ],
+            },
+        };
+        const target = targetsFromPack(gem);
+        expect(target('a')).toEqual({ id: 'a', kind: 'talk', npc: 'Marta', place: 'El puerto' });
+        expect(target('b')).toEqual({ id: 'b', kind: 'defeat', enemy: 'Lobo', board: 'El camino', place: 'El monte' });
+        expect(target('c')).toEqual({ id: 'c', kind: 'none' });
+        // El tablero que no está en el paquete: el sitio que dice el hito.
+        expect(target('d')).toEqual({ id: 'd', kind: 'win', board: 'Sin dibujar', place: 'La ermita' });
+        // Un encargo del tablón no se sigue a clics: la vuelta lo dirá como atasco.
+        expect(target('e')).toEqual({ id: 'e', kind: 'contract' });
+    });
 });
 
 /**

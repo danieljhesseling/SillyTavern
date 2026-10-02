@@ -27,6 +27,9 @@ import { ATTITUDE } from './attitudes.js';
 import { OPENS, ASKS } from './plot.js';
 import { BACKGROUNDS } from './backgrounds.js';
 import { DEFAULT_SPOT_DC } from '../board/hazards.js';
+import { ROMANCE_WITH } from './romance.js';
+import { STEP_KINDS } from './companion-quests.js';
+import { ROMANCE_KINDS } from './companion-stories.js';
 
 /** Schema version, so a pack can say which contract it was written against. */
 export const CAMPAIGN_PACK_VERSION = 1;
@@ -166,6 +169,126 @@ function parleyWay() {
     };
 }
 
+/**
+ * Los Gems al día: cómo es alguien por fuera, para dibujar su retrato (con PixelLab) y sus tres
+ * caras. Lo lee `tools/retratos-pendientes.mjs`; el juego no cambia nada por él.
+ */
+function aspecto() {
+    return {
+        type: 'string',
+        description: 'Cómo es por fuera, para dibujar su retrato y sus tres caras (alegre, enfadado, triste): edad, '
+            + 'complexión, ropa y un rasgo que se vea a la primera, en una o dos frases. «Mujer de unos cincuenta, '
+            + 'ancha de hombros, delantal de cuero y una quemadura en el antebrazo».',
+    };
+}
+
+/** Una escena de romance, como en `compendio/romances.json` (`campaign/romance.js`). */
+function romanceScene() {
+    const reply = {
+        type: 'object',
+        required: ['text'],
+        properties: {
+            text: { type: 'string', description: 'Lo que dices o haces tú.' },
+            bond: { type: 'integer', enum: [-1, 0, 1], description: 'Cómo cambia el vínculo.' },
+            romance: { type: 'string', enum: ['avanza', 'amigos'], description: 'avanza: la respuesta romántica (sale con un corazón); amigos: lo dejáis en amistad para siempre.' },
+            then: { type: 'string', description: 'Lo que contesta.' },
+            mood: { type: 'string', enum: MOODS, description: 'Su cara al contestar.' },
+            fade: { type: 'boolean', description: 'Solo en la noche: fundido a negro. Nada explícito.' },
+        },
+    };
+    return {
+        type: 'object',
+        required: ['kind'],
+        properties: {
+            kind: { type: 'string', enum: ROMANCE_KINDS, description: 'senal: la escena en la que se nota (opcional: sin ella, la común). cita: una de las tres, con su step. final: la noche. pareja: frases sueltas de pareja (lines). epilogo: su línea al acabar (home, away, hall).' },
+            step: { type: 'integer', minimum: 1, maximum: 3, description: 'Solo en cita: la 1, la 2 o la 3.' },
+            title: { type: 'string' },
+            where: { type: 'string', description: 'Dónde: posada, plaza, muelle…' },
+            beats: {
+                type: 'array',
+                description: 'De una a tres partes. note: lo que se ve, en una línea corta y sin nombre; say: lo que dice; replies: dos o tres respuestas.',
+                items: {
+                    type: 'object',
+                    properties: { note: { type: 'string' }, say: { type: 'string' }, mood: { type: 'string', enum: MOODS }, replies: { type: 'array', maxItems: 3, items: reply } },
+                },
+            },
+            lines: { type: 'array', items: { type: 'string' }, description: 'Solo en pareja: frases de un rato juntos.' },
+            home: { type: 'string', description: 'Solo en epilogo: si volvéis al gremio. Con {ending} y {nombre}.' },
+            away: { type: 'string', description: 'Solo en epilogo: si os quedáis. Con {ending} y {nombre}.' },
+            hall: { type: 'string', description: 'Solo en epilogo: su línea en el Salón de la fama. Con {heroe}, {nombre} y {day}.' },
+        },
+    };
+}
+
+/** El romance de un compañero (J14.10): quién lo permite y sus escenas. */
+function romanceField() {
+    return {
+        type: 'object',
+        description: 'Opcional: si con este compañero puede haber romance. Una señal, tres citas, una noche que acaba en fundido '
+            + 'a negro, y desde ahí una pareja que el juego recuerda. Para que salga hacen falta las tres citas y la noche.',
+        properties: {
+            with: {
+                anyOf: [{ type: 'string', enum: ROMANCE_WITH }, { type: 'array', items: { type: 'string', enum: ROMANCE_WITH } }],
+                description: 'Con quién, según el género del héroe: todos, hombres, mujeres, no-binario (o una lista), o nadie.',
+            },
+            no: { type: 'string', description: 'Lo que contesta, con cariño, si contigo no puede ser.' },
+            escenas: { type: 'array', items: romanceScene(), description: 'Las escenas, como en compendio/romances.json, sin who (es este compañero).' },
+        },
+    };
+}
+
+/** La misión personal de un compañero (J14.9), como en `compendio/personales.json`. */
+function personalQuestField() {
+    return {
+        type: 'object',
+        required: ['title', 'endings', 'steps'],
+        description: 'Opcional: lo suyo, que te pide al llegar al vínculo 4 y se juega como una misión pequeña: '
+            + 'viaje, escenas, una pelea y uno de sus dos finales.',
+        properties: {
+            id: { type: 'string', description: 'Corto, con guiones. Sin él, el de su nombre.' },
+            title: { type: 'string' },
+            where: { type: 'string', description: 'Adónde, en pocas palabras: «Robledo, una semana al norte».' },
+            pitch: { type: 'string', description: 'De qué va, en dos o tres frases llanas.' },
+            rank: { type: 'integer', minimum: 1, maximum: 10, description: 'El vínculo al que la pide. Sin él, 4.' },
+            endings: {
+                type: 'array',
+                minItems: 2,
+                maxItems: 2,
+                items: { type: 'object', required: ['id', 'title', 'summary'], properties: { id: { type: 'string' }, title: { type: 'string' }, summary: { type: 'string', description: 'Lo que pasó, en dos frases.' } } },
+            },
+            start: { type: 'string', description: 'El paso por el que empieza. Sin él, el primero.' },
+            steps: {
+                type: 'array',
+                description: 'viaje (to, days, text, next), escena (title, backdrop, beats como los del hilo, routes por opción '
+                    + 'o {bien, mal}, next), tablero (board con la forma de un tablero, bestiary, win, lose, flee) y final '
+                    + '(ending: el id de uno de endings; back: días de vuelta; effects: gold, bonds, fame, flags, memory).',
+                items: {
+                    type: 'object',
+                    required: ['id', 'kind'],
+                    properties: {
+                        id: { type: 'string' },
+                        kind: { type: 'string', enum: STEP_KINDS },
+                        title: { type: 'string' },
+                        text: { type: 'string', description: 'Una línea corta al llegar al paso.' },
+                        next: { type: 'string' },
+                        to: { type: 'string' },
+                        days: { type: 'integer' },
+                        backdrop: { type: 'string' },
+                        beats: { type: 'array', items: { type: 'object' }, description: 'La conversación, con la forma de plot.milestones[].beats.' },
+                        routes: { type: 'object', description: 'Adónde lleva cada opción: {"id-opcion": "paso"} o {"id-opcion": {"bien": "paso", "mal": "paso"}}.' },
+                        board: { type: 'object' },
+                        bestiary: { type: 'array', items: { type: 'object' } },
+                        win: { type: 'string' }, lose: { type: 'string' }, flee: { type: 'string' },
+                        ending: { type: 'string' },
+                        back: { type: 'integer' },
+                        effects: { type: 'object', properties: { gold: { type: 'integer' }, bonds: { type: 'integer' }, fame: { type: 'integer' }, flags: { type: 'array', items: { type: 'string' } }, memory: { type: 'string' } } },
+                    },
+                },
+            },
+        },
+    };
+}
+
 /** The objective schema, built from the seven types the engine actually judges. */
 function buildObjectiveSchema() {
     const properties = {
@@ -238,7 +361,8 @@ function buildSectionSchemas() {
                 items: { type: 'integer', minimum: 1, maximum: 20 },
                 minItems: 2,
                 maxItems: 2,
-                description: 'Para qué nivel es, desde y hasta: [1, 4]. Sale en el tablón del gremio. Sin nada, se calcula del desafío de los bichos.',
+                description: 'Para qué nivel es, desde y hasta: [1, 4], pensado para un grupo de 4 (D-J56). Sale en el tablón del gremio, '
+                    + 'y el juego ajusta las peleas dentro de un margen si vais más o menos. Sin nada, se calcula del desafío de los bichos.',
             },
             journey: {
                 type: 'object',
@@ -250,6 +374,8 @@ function buildSectionSchemas() {
             },
             factions: {
                 type: 'array',
+                description: 'Los grupos que pesan en la historia. Solo cuenta cómo os miran (su reputación) y lo que la historia escrita '
+                    + 'hace con ella: un camino que se abre, un peaje, un final (D-J58). Nada se mueve solo: sin relojes, sin sitios que cambien de manos.',
                 items: {
                     type: 'object',
                     required: ['name'],
@@ -257,7 +383,7 @@ function buildSectionSchemas() {
                         id: { type: 'string', description: 'Corto, en minúsculas y con guiones («los-vistani»): así la nombran el hilo y los encargos.' },
                         name: { type: 'string' },
                         goals: { type: 'string' },
-                        reputation: { type: 'integer' },
+                        reputation: { type: 'integer', description: 'Cómo os miran al empezar, de -5 a 5. Sin nada, 0.' },
                         magia: {
                             type: 'string',
                             enum: ['persigue', 'tolera', 'comercia'],
@@ -462,8 +588,31 @@ function buildSectionSchemas() {
                 type: { type: 'string', enum: LOCATION_TYPES },
                 description: { type: 'string' },
                 region: { type: 'string', description: 'La comarca o zona a la que pertenece.' },
-                factionName: { type: 'string', description: 'La facción que la controla, si alguna.' },
+                factionName: { type: 'string', description: 'De qué facción es, si de alguna: sabor para la historia. No cambia precios ni quién manda (D-J58).' },
                 hidden: { type: 'boolean', description: 'Si empieza escondida: no se puede ir hasta que la revela un hito del hilo (`changes.reveal`) o un rumor que lleva a ella (`leadsTo`).' },
+                // Los Gems al día: los caminos, que el importador ya leía y el contrato no contaba.
+                routes: {
+                    type: 'array',
+                    description: 'Los caminos que salen de aquí, en un sentido (el juego pone el de vuelta). Sin ninguno, se va de un sitio a otro directo.',
+                    items: {
+                        type: 'object',
+                        required: ['to'],
+                        properties: {
+                            to: { type: 'string', description: 'Adónde: el nombre de otra localización.' },
+                            days: { type: 'integer', minimum: 1, description: 'Días de camino. Sin ellos, 1.' },
+                            seasons: { type: 'array', items: { type: 'string' }, description: 'Si solo se pasa en unas estaciones: ["invierno"].' },
+                            sea: { type: 'boolean', description: 'Por mar.' },
+                            closedUntil: { type: 'string', description: 'Cerrado hasta que se cumple ese hito, por su id.' },
+                            opensWith: {
+                                type: 'array',
+                                description: 'Lo que lo abre, si está cerrado: {"standing": "id-de-faccion", "min": 1} (cómo os mira una facción, D-J58), '
+                                    + '{"fame": 3} (vuestra fama), {"key": "Nombre de un objeto"} o {"guide": "Nombre de alguien"} que os lleve. Basta con uno.',
+                                items: { type: 'object' },
+                            },
+                            gateNote: { type: 'string', description: 'Lo que se ve mientras está cerrado: «Los de la Cofradía no dejan pasar a forasteros».' },
+                        },
+                    },
+                },
                 places: {
                     type: 'array',
                     description: 'Opcional, para pueblos y ciudades: los sitios de dentro (la herrería, la posada, '
@@ -557,6 +706,10 @@ function buildSectionSchemas() {
                 act: { type: 'integer', description: 'Capítulo o acto al que pertenece.' },
                 description: { type: 'string' },
                 boardId: { type: 'string', description: 'Dónde se juega. Tiene que existir en boards.' },
+                // La forma corta (`pack-fill.js`): sin tablero, el juego dibuja uno aquí con estos bichos.
+                locationName: { type: 'string', description: 'Forma corta, sin boardId: la localización donde se juega. El juego dibuja allí su tablero.' },
+                enemies: { type: 'array', items: { type: 'string' }, description: 'Forma corta: a quién hay que vencer, uno por bicho, por su nombre (del bestiario del paquete o del juego).' },
+                levels: { type: 'array', items: { type: 'integer', minimum: 1, maximum: 20 }, minItems: 2, maxItems: 2, description: 'Si esta misión pide más nivel que el resto: [6, 7] (D-J56).' },
                 objectives: { type: 'array', items: buildObjectiveSchema() },
             },
         },
@@ -599,6 +752,11 @@ function buildSectionSchemas() {
             properties: {
                 name: { type: 'string' },
                 description: { type: 'string' },
+                // Los Gems al día (2026-10-02): lo que el importador ya leía y el contrato no decía.
+                id: { type: 'string', description: 'Corto, en minúsculas y sin espacios («mira»): es el de {npc:mira} en los textos y el nombre de su retrato.' },
+                gender: { type: 'string', enum: ['Mujer', 'Hombre'], description: 'Para llamarle bien hasta que se presente, y para los romances.' },
+                className: { type: 'string', description: 'Su clase, como la llama el compendio: Guerrero, Pícaro, Clérigo…' },
+                aspecto: aspecto(),
                 arcana: { type: 'string', description: 'Sabor, como en Persona. No cambia ninguna regla.' },
                 initialBondPoints: { type: 'integer', description: 'Puntos de vínculo de partida. 0 es lo normal.' },
                 arrivals: {
@@ -609,6 +767,24 @@ function buildSectionSchemas() {
                         properties: { place: { type: 'string' }, line: { type: 'string' } },
                     },
                 },
+                scenes: {
+                    type: 'array',
+                    description: 'Sus escenas de vínculo, una cada dos rangos (2, 4, 6, 8 y 10): salen al quedar con él. Mejor con beats '
+                        + '(la conversación: note, say, mood y dos o tres replies, como en el romance); con solo scene, el juego la pasa a escena solo.',
+                    items: {
+                        type: 'object',
+                        required: ['rank'],
+                        properties: {
+                            rank: { type: 'integer', minimum: 1, maximum: 10 },
+                            title: { type: 'string' },
+                            where: { type: 'string', description: 'Dónde: posada, plaza, muelle…' },
+                            scene: { type: 'string', description: 'Lo que pasa, en dos a cuatro frases, si no traes beats.' },
+                            beats: romanceScene().properties.beats,
+                        },
+                    },
+                },
+                romance: romanceField(),
+                misionPersonal: personalQuestField(),
             },
         },
     };
@@ -643,6 +819,7 @@ function buildSectionSchemas() {
                 knows: { type: 'string', description: 'Lo que sabe y puede contar, en una frase.' },
                 secret: { type: 'string', description: 'Lo que calla: solo sale si se descubre.' },
                 voice: { type: 'string', description: 'Cómo habla, en pocas palabras.' },
+                aspecto: aspecto(),
                 service: { type: 'string', enum: Object.values(PLACE_KINDS).map(kind => kind.service).filter(Boolean), description: 'Si atiende un servicio del sitio: la posada, la tienda, la herrería, el templo.' },
             },
         },
@@ -668,6 +845,7 @@ function buildSectionSchemas() {
                 },
                 background: { type: 'string', enum: ['soldado', 'criminal', 'erudito', 'acolito', 'forastero', 'artesano', 'noble', 'marinero', 'charlatan', 'ermitano'] },
                 about: { type: 'string', description: 'Quién es, en dos frases. Es lo que lee el narrador.' },
+                aspecto: aspecto(),
                 pitch: { type: 'string', description: 'Una línea para elegirlo: lo que le hace distinto.' },
                 spells: {
                     type: 'array',
@@ -711,6 +889,7 @@ function buildSectionSchemas() {
             background: { anyOf: [{ type: 'string' }, { type: 'array', items: { type: 'string' } }], description: 'El trasfondo: soldado, criminal, erudito, acolito, forastero, artesano, noble, marinero, charlatan, ermitano.' },
             gender: { type: 'string', enum: ['Mujer', 'Hombre'], description: 'Cómo le habla el texto a quien juega: Mujer, en femenino; Hombre, en masculino (también a quien es no binario y lo eligió así).' },
             said: { type: 'string', description: 'El id de una opción de esta charla que ya se eligió.' },
+            chose: { anyOf: [{ type: 'string' }, { type: 'array', items: { type: 'string' } }], description: 'El id de una opción que se eligió en una escena del hilo: así alguien se acuerda de lo que hiciste.' },
         },
     };
     // Lo que se repite (condición, efecto, rama) va una vez, en `definitions`, y se nombra con
@@ -808,7 +987,11 @@ function buildSectionSchemas() {
                         properties: {
                             id: { type: 'string' },
                             line: { type: 'string', description: 'Lo que dice, en una a tres frases llanas. Con {forma|forma} donde se habla a quien juega.' },
-                            again: { type: 'string', description: 'Lo que dice si ya os lo había dicho: más corto.' },
+                            again: {
+                                anyOf: [{ type: 'string' }, { type: 'array', items: { anyOf: [{ type: 'string' }, { type: 'object', properties: { if: ref('dialogueCondition'), text: { type: 'string' } } }] } }],
+                                description: 'Lo que dice si volvéis otro día: más corto. Una frase, o una lista (la primera con if que se cumpla; si no, una sin if, distinta cada día).',
+                            },
+                            more: { type: 'array', items: { type: 'string' }, description: 'Al volver a este nudo en la misma charla: frases cortas, por turnos («¿Algo más?», «Tú dirás.»).' },
                             presenta: presenta,
                             mood: { type: 'string', enum: MOODS, description: 'La cara del retrato.' },
                             journal: { type: 'string', description: 'Lo que queda en el Diario al oírlo.' },
@@ -824,6 +1007,10 @@ function buildSectionSchemas() {
                                         text: { type: 'string', description: 'Lo que dice o hace quien juega.' },
                                         if: conditions,
                                         next: { type: 'string', description: 'El nudo al que lleva. Sin él, se queda en este.' },
+                                        reply: {
+                                            anyOf: [{ type: 'string' }, { type: 'object', properties: { text: { type: 'string' }, mood: { type: 'string', enum: MOODS } } }],
+                                            description: 'Lo que contesta al momento, con su cara: «Gracias» → «No me las des». Ninguna respuesta corta del héroe se queda sin contestar.',
+                                        },
                                         effects: { type: 'array', items: ref('dialogueEffect') },
                                         end: { type: 'boolean', description: 'Acaba la charla.' },
                                         repeat: { type: 'boolean', description: 'Se puede elegir más de una vez («Me voy»).' },
@@ -861,8 +1048,13 @@ function buildSectionSchemas() {
         type: 'object',
         required: ['text'],
         properties: {
-            who: { type: 'string', description: 'Quién lo dice: alguien de npcs o de confidants, con su nombre exacto (sale su retrato). Sin who, lo cuenta el narrador, sin retrato.' },
-            mood: { type: 'string', enum: MOODS, description: 'La cara del retrato.' },
+            who: {
+                type: 'string',
+                description: 'Quién lo dice: alguien de npcs o de confidants, con su nombre exacto (sale su retrato y su placa). '
+                    + 'Casi todas las líneas llevan who: la historia se cuenta hablando (D-J54). Sin who, el narrador, sin retrato ni placa: '
+                    + 'solo una línea corta de ambiente o de paso del tiempo («Cae la noche sobre el puerto.»).',
+            },
+            mood: { type: 'string', enum: MOODS, description: 'La cara del retrato: neutral (la de siempre), alegre, enfadado o triste.' },
             text: { type: 'string', description: 'De una a tres frases llanas, sin acertijos. Con {forma|forma} donde se habla a quien juega.' },
             presenta,
         },
@@ -881,6 +1073,31 @@ function buildSectionSchemas() {
         required: ['text'],
         properties: {
             ...sceneLine.properties,
+            alt: {
+                type: 'array',
+                description: 'Otras versiones de la línea, según quién eres o lo que elegiste antes: vale la primera cuyo if se cumpla. '
+                    + 'Sirve para que la gente reaccione a tu clase, tu especie, tu género o tu última decisión.',
+                items: {
+                    type: 'object',
+                    required: ['if', 'text'],
+                    properties: {
+                        if: {
+                            type: 'object',
+                            description: 'chose (el id de una opción elegida en una escena), class, species, gender o background.',
+                            properties: {
+                                chose: { anyOf: [{ type: 'string' }, { type: 'array', items: { type: 'string' } }] },
+                                class: { anyOf: [{ type: 'string' }, { type: 'array', items: { type: 'string' } }] },
+                                species: { anyOf: [{ type: 'string' }, { type: 'array', items: { type: 'string' } }] },
+                                gender: { type: 'string', enum: ['Mujer', 'Hombre'] },
+                                background: { anyOf: [{ type: 'string' }, { type: 'array', items: { type: 'string' } }] },
+                            },
+                        },
+                        text: { type: 'string' },
+                        mood: { type: 'string', enum: MOODS },
+                        who: { type: 'string' },
+                    },
+                },
+            },
             options: {
                 type: 'array',
                 description: 'Una decisión, tras esta línea: lo que puede decir o hacer quien juega. Como las opciones de una charla, '
@@ -923,6 +1140,12 @@ function buildSectionSchemas() {
         required: ['id', 'title', 'hint', 'scene', 'opens', 'asks'],
         properties: {
             id: { type: 'string', description: 'Único en el hilo: es a lo que apuntan opens, changes y las charlas.' },
+            // La forma corta (`pack-fill.js`).
+            quest: {
+                type: 'string',
+                description: 'Forma corta: el id de una misión de quests. El juego pone lo que falte (title, hint, scene, opens tras el '
+                    + 'hito de antes y asks ganar su tablero). Con ella valen sueltos reveal, open, ending y endingBy, que van a changes.',
+            },
             act: { type: 'integer', minimum: 1, maximum: 9, description: 'El acto: del 1 al 3. Si el hilo trae chapters, el capítulo, hasta el último que traiga.' },
             title: { type: 'string' },
             hint: { type: 'string', description: 'Lo que se ve en pantalla mientras está abierto: qué hacer y dónde, en una frase.' },
@@ -956,10 +1179,10 @@ function buildSectionSchemas() {
                     + 'Ganar la prueba da el prólogo entero por hecho, aunque se haya saltado algo.',
             },
             hidden: { type: 'boolean', description: 'Un secreto: no se ve hasta que se cumple por casualidad.' },
-            within: { type: 'integer', description: 'Días para cumplirlo desde que se abre. Sin él, sin plazo.' },
+            within: { type: 'integer', description: 'Días para cumplirlo desde que se abre. Sin él, sin plazo. Los plazos están apagados por ahora (D-J46): se pueden escribir, pero no saltan.' },
             late: {
                 type: 'object',
-                description: 'Lo que pasa si se pasa el plazo.',
+                description: 'Lo que pasa si se pasa el plazo (apagado por ahora, D-J46).',
                 properties: { reveal: names('Localizaciones que se ponen en el mapa.'), open: names('Hitos que se abren.'), standing },
             },
             backgrounds: { type: 'array', items: { type: 'string', enum: Object.keys(BACKGROUNDS) }, description: 'Solo para héroes con uno de estos trasfondos. Sin nada, para todos.' },
@@ -967,7 +1190,8 @@ function buildSectionSchemas() {
                 type: 'object',
                 required: ['kind'],
                 description: 'Qué lo abre. start: al empezar. after: al cumplirse milestone. arrive: al llegar a place. '
-                    + 'contract: al entregar el encargo id. day: el día day. clock: cuando la facción faction llena su reloj.',
+                    + 'contract: al entregar el encargo id. day: el día day. clock: cuando la facción faction llena su reloj '
+                    + '(apagado por ahora, D-J58: los relojes no avanzan; no lo uses).',
                 properties: {
                     kind: { type: 'string', enum: OPENS },
                     milestone: { type: 'string' }, place: { type: 'string' }, id: { type: 'string' }, day: { type: 'integer' }, faction: { type: 'string' },
@@ -1169,6 +1393,11 @@ export function getPackRules() {
         'Cada final de `plot.endings` trae sus `epilogues`: qué fue de 3 a 5 personas o facciones que pesaron en la historia, una línea cada una. El `who` de cada uno es un nombre de `npcs`, `confidants` o `world.factions`, letra por letra.',
         // D-J15 y D-J17: el género.
         'Donde se le habla a quien juega —la sinopsis, la `description` de un compañero y sus escenas, las del hilo y sus finales, los epílogos, las charlas, los rumores, las misiones y el `twist` de un encargo—, lo que concuerda con su género lleva sus dos formas entre llaves: «Eres {un mercenario|una mercenaria}»; al grupo, en plural: «estáis {hechos|hechas}». Solo dos formas: quien es no binario elige si el texto le habla en masculino o en femenino. En los demás campos (la gente, los objetos, el resto de un encargo), escribe sin nada que concuerde con quien juega. Nunca «cansado/a».',
+        // D-J54: el narrador casi desaparece; la historia se cuenta hablando.
+        'La historia se cuenta con conversaciones (D-J54): en `beats`, en las charlas y en las escenas de un compañero, casi todas las líneas llevan `who` (alguien de `npcs` o `confidants`, que sale con su retrato y su placa) y su `mood`. Una línea sin `who` es del narrador, sin retrato: solo para una frase corta de ambiente o de paso del tiempo, y nunca dos seguidas.',
+        // Los Gems al día: el aspecto, para los retratos.
+        'Cada persona de `npcs` y de `confidants` trae su `aspecto`: edad, complexión, ropa y un rasgo que se vea, en una o dos frases. Con él se dibujan su retrato y sus tres caras (alegre, enfadado, triste).',
+        'El `romance` y la `misionPersonal` de un compañero son opcionales. Un romance sale solo si trae sus tres citas (`cita` con `step` 1, 2 y 3) y la noche (`final`, con una respuesta `fade`). Una misión personal trae sus dos `endings`, y cada paso `final` nombra uno de ellos; desde `start` se llega a los dos.',
     ];
 }
 
@@ -1240,7 +1469,10 @@ export function buildExamplePack() {
             ],
         },
         confidants: [
-            { name: 'Mira la Molinera', description: 'Heredó el molino y la costumbre de no bajar al sótano.', arcana: 'La Ermitaña', initialBondPoints: 0 },
+            {
+                name: 'Mira la Molinera', id: 'mira', gender: 'Mujer', description: 'Heredó el molino y la costumbre de no bajar al sótano.',
+                aspecto: 'Mujer joven y fuerte, harina en el pelo trenzado, mandil remendado y una hoz al cinto.', arcana: 'La Ermitaña', initialBondPoints: 0,
+            },
         ],
         items: [
             {

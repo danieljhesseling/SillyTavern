@@ -41,6 +41,7 @@ import {
 import { createEmptyCombatEncounter, nextRandom, rollDiceDetailed } from './combat-rules.js';
 import { getAliveEnemies, saveCombatState } from './combat-state.js';
 import { endCombat, restoreChatPlaceholder, startBrawlFight } from './combat-flow.js';
+import { beginPlacement } from './fight-entry.js';
 import { endOfFightMagic } from './spell-turn.js';
 import { enterBoard, getActiveBoardContext } from './board.js';
 import { renderLocationMapsPreview } from './board-view.js';
@@ -104,9 +105,20 @@ function tavernName() {
     return text(inn?.name) || 'la taberna';
 }
 
+/**
+ * El nombre de la taberna dentro de una frase: «Pelea en la taberna», no «Pelea en La taberna».
+ * Un nombre propio («El Agua Azul») se queda como está.
+ *
+ * @param {string} name
+ * @returns {string}
+ */
+function inSentence(name) {
+    return /^(la|el)\s+(taberna|posada|mes[oó]n|cantina|fonda)$/i.test(name) ? name.charAt(0).toLowerCase() + name.slice(1) : name;
+}
+
 /** Los huecos de las frases, con lo de aquí. */
 function factsHere() {
-    return { heroe: storyHero(), pueblo: currentLocationName, taberna: tavernName(), posadero: innkeeper() };
+    return { heroe: storyHero(), pueblo: currentLocationName, taberna: inSentence(tavernName()), posadero: innkeeper() };
 }
 
 /** Quien camina por el grupo: en pie y vivo. */
@@ -265,7 +277,7 @@ async function meetRowdy() {
             return { said: '', rolls: [], lines: [fightLine(rows, 'irse', facts, nextRandom)], notes: [], next: 'Seguir' };
         },
     });
-    postCombatNarration(`🍺 [TABERNA] ${rowdy.name} te busca pelea en ${tavernName()}.`);
+    postCombatNarration(`🍺 [TABERNA] ${rowdy.name} te busca pelea en ${inSentence(tavernName())}.`);
     if (picked && fight) {
         const band = rowdyBand(rows, rowdy, rowdyCount(standing().length), luck('banda'));
         await startBrawl({ kind: 'taberna', started: 'ellos', rival: rowdy, who: band });
@@ -424,9 +436,12 @@ async function removeBrawlBoard(town, name) {
 }
 
 /**
- * Empezar una pelea sin muertes: el tablero de taberna en la localización, cada uno en su
- * casilla (en un duelo, tu gente mirando desde la pared), los de enfrente y el combate con su
- * bandera.
+ * Empezar una pelea sin muertes, como empiezan todas (tanda 10: decisión → colocarse →
+ * iniciativa). La decisión ya está tomada en la taberna (pelear, aceptar el reto, apostar o
+ * armarla tú). Aquí: el tablero de taberna en la localización, cada uno en su casilla (en un
+ * duelo, tu gente mirando desde la pared), los de enfrente quietos a la vista, el cartel con la
+ * regla y la barra de colocarse (`fight-entry.js`); «Empezar» tira la iniciativa y el combate
+ * lleva su bandera.
  *
  * @param {Object} input
  * @param {'taberna'|'duelo'} input.kind
@@ -450,6 +465,13 @@ async function startBrawl({ kind, way = '', started = '', stake = 0, rival, who 
     const watchers = kind === 'duelo' ? up.filter(m => m !== hero) : [];
     const plan = brawlBoard({ kind, town: currentLocationName, fighters: fighters.length + watchers.length, rivals: who.length, random: luck('tablero') });
     const terrain = terrainFromAsciiMap(plan.board.map);
+    const level = Math.max(1, Math.round(fighters.reduce((sum, m) => sum + (Number(m.level) || 1), 0) / fighters.length));
+    const enemies = rivalFighters({ kind, way, level, who }).map((enemy, index) => ({
+        ...enemy,
+        instanceId: generateEnemyInstanceId(),
+        gridX: plan.rivalCells[index]?.x ?? plan.rivalCells[0].x,
+        gridY: plan.rivalCells[index]?.y ?? plan.rivalCells[0].y,
+    }));
     const board = {
         name: plan.board.name,
         description: kind === 'duelo' ? 'Las mesas, apartadas contra las paredes; en medio, el corro.' : 'Serrín en el suelo, jarras en las mesas y nadie con ganas de irse.',
@@ -457,8 +479,11 @@ async function startBrawl({ kind, way = '', started = '', stake = 0, rival, who 
         gridWidth: plan.board.map[0].length,
         gridHeight: plan.board.map.length,
         terrain,
-        partyStart: plan.partyCells,
-        enemyPlacements: [],
+        // Las casillas de salida al colocarse: en un duelo, solo el corro (la pared es de los que miran).
+        partyStart: plan.board.partyStart,
+        // Los de enfrente, quietos a la vista mientras os colocáis (el tablero los dibuja como a
+        // los que esperan; la pelea no empieza sola: `fight-entry.js` se salta los tableros `brawl`).
+        enemyPlacements: enemies.map(e => ({ name: e.name, x: e.gridX, y: e.gridY, ...(e.archetype ? { archetype: e.archetype } : {}) })),
         objectives: [],
         // Se quita al acabar: no es un tablero del sitio.
         brawl: true,
@@ -478,34 +503,51 @@ async function startBrawl({ kind, way = '', started = '', stake = 0, rival, who 
         member.mapPosition = { locationName: currentLocationName, gridX: cell.x, gridY: cell.y };
     });
     savePartyState();
-    const level = Math.max(1, Math.round(fighters.reduce((sum, m) => sum + (Number(m.level) || 1), 0) / fighters.length));
-    const enemies = rivalFighters({ kind, way, level, who }).map((enemy, index) => ({
-        ...enemy,
-        instanceId: generateEnemyInstanceId(),
-        gridX: plan.rivalCells[index]?.x ?? plan.rivalCells[0].x,
-        gridY: plan.rivalCells[index]?.y ?? plan.rivalCells[0].y,
-    }));
     /** @type {Brawl} */
     const brawl = {
         kind, way: kind === 'duelo' ? (way || 'apuesta') : '', started: kind === 'taberna' ? (started || 'ellos') : '',
-        stake: Math.max(0, Math.floor(Number(stake) || 0)), rival: rival.name, town: currentLocationName, tavern: tavernName(),
+        stake: Math.max(0, Math.floor(Number(stake) || 0)), rival: rival.name, town: currentLocationName, tavern: inSentence(tavernName()),
         board: board.name, furniture: countFurniture(terrain), watching: watchers.map(m => String(m.id)), rivals: enemies.length, back,
     };
     noteHere(kind === 'taberna' ? (started === 'tu' ? 'armada' : 'camorra') : way === 'honor' ? 'honor' : 'duelo', rival.name);
     postCombatNarration(`🥊 [COMBAT] ${RULE_LINE}`);
-    startBrawlFight(/** @type {any} */ (enemies), brawl);
     renderPartyMembers();
+    if (isShellOpen()) setScene('combat');
     renderLocationMapsPreview();
-    if (isShellOpen()) {
-        setScene('combat');
-        refreshGameShell();
-    }
+    if (isShellOpen()) refreshGameShell();
+    // El cartel con la regla, mientras os colocáis: se sabe antes de elegir sitio.
     showBrawlBanner({
         title: kind === 'taberna' ? `Pelea en ${brawl.tavern}` : `Duelo con ${rival.name}`,
         rule: RULE_LINE,
         stakes: kind === 'duelo' ? (brawl.way === 'apuesta' ? `${brawl.stake} de oro en la mesa.` : `Lo que se juega: lo que se diga de ti en ${brawl.town}.`) : '',
         watching: watchers.map(m => String(m.name)),
+        ms: 7000,
     });
+    // «Empezar»: la iniciativa, y el combate con su bandera.
+    const launch = () => {
+        if (combatEncounter.active) return;
+        startBrawlFight(/** @type {any} */ (enemies), brawl);
+        renderPartyMembers();
+        renderLocationMapsPreview();
+        if (isShellOpen()) {
+            setScene('combat');
+            refreshGameShell();
+        }
+    };
+    const placing = beginPlacement({
+        placements: enemies.map(e => ({ name: e.name, x: e.gridX, y: e.gridY })),
+        start: launch,
+        only: fighters.map(m => String(m.id)),
+        title: kind === 'duelo' ? `Duelo con ${rival.name}: tu sitio` : `Pelea en ${brawl.tavern}: colocaos`,
+        hint: kind === 'duelo'
+            ? 'Elige dónde empiezas: pulsa una casilla azul (o arrastra tu ficha). «Empezar» tira la iniciativa.'
+            : '',
+        // Si se va del tablero sin empezar, la pelea no ha pasado: el tablero fuera y de vuelta.
+        onDrop: () => {
+            void removeBrawlBoard(brawl.town, brawl.board).then(() => renderLocationMapsPreview());
+        },
+    });
+    if (!placing) launch();
     return true;
 }
 

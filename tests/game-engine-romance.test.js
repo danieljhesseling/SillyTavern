@@ -23,6 +23,8 @@ const osric = /** @type {any} */ (romanceCardOf(cards, 'Osric'));
 const gerd = /** @type {any} */ (romanceCardOf(cards, 'Gerd el Mellado'));
 const tessa = { name: 'Tessa', gender: 'Mujer' };
 const bruno = { name: 'Bruno', gender: 'Hombre' };
+/** Una frase dicha entre comillas dentro de otra (D-J54: eso es narrar). El nombre de una barca, «Gaviota», no lo es. */
+const QUOTED_SPEECH = /«[^»]*[.,!?…]»/;
 
 /** Jugar una escena eligiendo, en cada paso, la respuesta con corazón (o la primera). */
 const playHeart = (/** @type {any} */ scene) => scene.beats.map((/** @type {any} */ beat, /** @type {number} */ i) => {
@@ -71,7 +73,9 @@ describe('J14.10: quién lo permite (el campo `romance` de cada compañero)', ()
         expect(nella.with).toEqual(['todos']);
         expect(osric.with).toEqual(['todos']);
         expect(gerd.with).toEqual([]);
-        expect(gerd.no).toMatch(/Gerd/);
+        // Su «no» lo dice él (D-J54): solo habla, sin narrar ni comillas.
+        expect(gerd.no).toMatch(/te quiero como a/);
+        for (const card of [gerd, nella, osric]) expect(card.no).not.toMatch(QUOTED_SPEECH);
         for (const hero of [tessa, bruno, { gender: 'No binario (en femenino)' }]) {
             expect(canRomance(nella, data, hero)).toBe(true);
             expect(canRomance(osric, data, hero)).toBe(true);
@@ -100,6 +104,26 @@ describe('J14.10: los dos romances escritos', () => {
             expect(data.epilogues[mine[0].key]).toMatchObject({ home: expect.stringContaining('{ending}'), away: expect.stringContaining('{ending}'), hall: expect.stringContaining('{day}') });
         });
     }
+
+    test('son conversaciones (D-J54): una nota corta como mucho, en el primer paso; lo que contestan, solo habla', () => {
+        for (const scene of json('romances.json').rows.filter((/** @type {any} */ r) => Array.isArray(r.beats))) {
+            const notes = scene.beats.map((/** @type {any} */ b, /** @type {number} */ i) => [i, String(b.note ?? '')]).filter((/** @type {any} */ n) => n[1]);
+            expect(notes.length).toBeLessThanOrEqual(1);
+            for (const [i, note] of notes) {
+                expect(i).toBe(0);
+                expect(note.length).toBeLessThanOrEqual(110);
+            }
+            for (const beat of scene.beats) {
+                expect(String(beat.say ?? '').trim()).not.toBe('');
+                // Lo que contestan, sin una frase entre comillas: si la hay, alguien lo está narrando.
+                for (const reply of beat.replies) expect(String(reply.then ?? '')).not.toMatch(QUOTED_SPEECH);
+            }
+        }
+        // Las frases de pareja también las dice ella o él: sin su nombre delante.
+        for (const row of json('romances.json').rows.filter((/** @type {any} */ r) => r.kind === 'pareja')) {
+            for (const line of row.lines) expect(line.startsWith(row.who.split(' ')[0])).toBe(false);
+        }
+    });
 
     test('se leen a la primera, con las dos formas: sin llaves sueltas, para ella y para él', () => {
         const all = JSON.stringify(json('romances.json').rows);
@@ -218,9 +242,15 @@ describe('J14.10: la señal, las citas y la noche', () => {
         expect(news.join(' ')).toMatch(/empezáis algo.*van 1 de 3.*van 2 de 3.*Tercera cita.*sois pareja/);
         // Ya no hay escena que sustituir: el rato lleva una frase suya.
         expect(romanceScene({ ...who, state, slot: 'night' })).toBeNull();
-        expect(coupleNote(data, 'Osric Mediapaga', 1)).toMatch(/Osric/);
-        const rato = { beats: [{ note: 'Pasas la tarde con Osric.', say: '', replies: [] }] };
-        expect(withCoupleNote(rato, 'Te roza la mano.').beats[0].note).toBe('Pasas la tarde con Osric. Te roza la mano.');
+        expect(coupleNote(data, 'Osric Mediapaga', 1)).toMatch(/tu peor nudo/);
+        // La frase de pareja la dice él (D-J54): la nota del rato se queda, y lo que traía el
+        // rato pasa a un segundo paso con sus respuestas.
+        const empty = { beats: [{ note: 'Pasas la tarde con Osric.', say: '', replies: [] }] };
+        expect(withCoupleNote(empty, 'Siéntate aquí.').beats).toEqual([{ note: 'Pasas la tarde con Osric.', say: 'Siéntate aquí.', mood: 'alegre', replies: [] }]);
+        const talk = { beats: [{ note: 'Pasas la tarde con Osric.', say: 'Mañana llueve.', replies: [{ text: 'Vale.', bond: 0, then: '' }] }] };
+        const both = withCoupleNote(talk, 'Siéntate aquí.');
+        expect(both.beats.map(b => [b.note, b.say, b.replies.length])).toEqual([['Pasas la tarde con Osric.', 'Siéntate aquí.', 0], ['', 'Mañana llueve.', 1]]);
+        expect(withCoupleNote(talk, '')).toBe(talk);
     });
 
     test('lo guardado: con forma aunque llegue roto, y viaja con el grupo (lo de quien llega manda)', () => {

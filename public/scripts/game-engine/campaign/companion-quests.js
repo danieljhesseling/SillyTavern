@@ -527,7 +527,9 @@ export function checkQuest(row, info) {
     const reached = new Set([row.start]);
     const queue = [row.start];
     while (queue.length > 0) {
-        const step = row.steps.find(s => s.id === queue.shift());
+        // El siguiente, sacado una vez: dentro del `find` se sacaría uno por cada paso mirado.
+        const next = queue.shift();
+        const step = row.steps.find(s => s.id === next);
         if (!step) continue;
         for (const to of targets(step)) if (!reached.has(to)) {
             reached.add(to);

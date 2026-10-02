@@ -351,7 +351,9 @@ const DUEL_WATCH = [{ x: 1, y: 7 }, { x: 4, y: 7 }, { x: 8, y: 7 }, { x: 12, y: 
  * @param {number} input.rivals Cuántos hay enfrente.
  * @param {() => number} [input.random] Para elegir la taberna.
  * @returns {{board: {id: string, name: string, locationName: string, map: string[], partyStart: Array<{x: number, y: number}>, enemies: any[]},
- *   partyCells: Array<{x: number, y: number}>, rivalCells: Array<{x: number, y: number}>}}
+ *   partyCells: Array<{x: number, y: number}>, rivalCells: Array<{x: number, y: number}>}} `board.partyStart`:
+ *   alrededor de dónde se coloca quien pelea antes de la iniciativa; `partyCells`: dónde empieza cada uno, quien
+ *   pelea primero y, en un duelo, luego los que miran.
  */
 export function brawlBoard({ kind, town, fighters, rivals, random = Math.random }) {
     const place = text(town) || 'el pueblo';
@@ -364,7 +366,8 @@ export function brawlBoard({ kind, town, fighters, rivals, random = Math.random 
                 name: DUEL_BOARD,
                 locationName: place,
                 map: [...DUEL_MAP],
-                partyStart: partyCells.map(c => ({ ...c })),
+                // Las casillas de salida al colocarse (tanda 10): solo el corro; la pared es de los que miran.
+                partyStart: [{ ...DUEL_HERO }],
                 enemies: [],
             },
             partyCells: partyCells.map(c => ({ ...c })),

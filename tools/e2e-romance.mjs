@@ -199,6 +199,9 @@ try {
             plate: (dialog?.querySelector('.qd-nameplate')?.textContent ?? '').trim(),
             title: (dialog?.querySelector('.qd-title')?.textContent ?? '').trim(),
             lines: [...(dialog?.querySelectorAll('.qd-line') ?? [])].map(l => (l.textContent ?? '').trim()),
+            // D-J54: lo del narrador (sin placa, en cursiva) y lo que dice quien está contigo.
+            notes: [...(dialog?.querySelectorAll('.qd-line.qd-note') ?? [])].map(l => (l.textContent ?? '').trim()),
+            says: [...(dialog?.querySelectorAll('.qd-line.qd-say, .qd-line.qd-then') ?? [])].map(l => (l.textContent ?? '').trim()),
             // Solo el texto de la respuesta: delante va la tecla («1»).
             love: [...(dialog?.querySelectorAll('.qd-chip-love') ?? [])].map(c => (c.querySelector('.qd-label')?.textContent ?? c.textContent ?? '').trim()),
             chips: [...(dialog?.querySelectorAll('.qd-chip') ?? [])].map(c => (c.textContent ?? '').trim()),
@@ -211,14 +214,16 @@ try {
      * @param {{heart?: boolean, onLove?: (now: any) => Promise<void>, onFade?: (now: any) => Promise<void>}} [how]
      */
     const play = async ({ heart = true, onLove, onFade } = {}) => {
-        /** @type {{read: string[], summary: string[], loves: string[], fade: boolean, id: string, title: string}} */
-        const out = { read: [], summary: [], loves: [], fade: false, id: '', title: '' };
+        /** @type {{read: string[], notes: string[], says: string[], summary: string[], loves: string[], fade: boolean, id: string, title: string}} */
+        const out = { read: [], notes: [], says: [], summary: [], loves: [], fade: false, id: '', title: '' };
         for (let i = 0; i < 24; i++) {
             const now = await meetup();
             if (!now.open) break;
             out.id = out.id || now.id;
             out.title = out.title || now.title;
             out.read.push(...now.lines);
+            out.notes.push(...now.notes);
+            out.says.push(...now.says);
             if (now.love.length > 0) {
                 out.loves.push(...now.love);
                 if (onLove) await onLove(now);
@@ -237,6 +242,8 @@ try {
             const after = await meetup();
             if (after.open) {
                 out.read.push(...after.lines);
+                out.notes.push(...after.notes);
+                out.says.push(...after.says);
                 if (after.fade && !out.fade) {
                     out.fade = true;
                     if (onFade) await onFade(after);
@@ -244,6 +251,8 @@ try {
             }
         }
         out.read = [...new Set(out.read)];
+        out.notes = [...new Set(out.notes)];
+        out.says = [...new Set(out.says)];
         return out;
     };
     /** La ficha de un compañero, desde su cara en la tira del grupo. */
@@ -495,7 +504,7 @@ try {
         if (step === 1) await shot('cita-1');
         const date = await play();
         nella = await romanceOf('nella-tresflechas');
-        dates.push({ step, opened, where, fromTown, title: date.title, loves: date.loves.length, summary: date.summary, nella });
+        dates.push({ step, opened, where, fromTown, title: date.title, loves: date.loves.length, summary: date.summary, nella, notes: date.notes, says: date.says.length });
         if (step === 1) {
             check('J14.10 (4): la primera cita, desde el pueblo: en su sitio, Nella «quiere quedar contigo» (el corazón) porque tiene una cita',
                 Boolean(fromTown?.opened) && Boolean(fromTown?.heart) && /te espera para vuestra cita/.test(where?.why ?? ''), JSON.stringify({ where, fromTown }));
@@ -508,6 +517,9 @@ try {
         && dates.every((d, i) => d.loves === 1 && d.nella?.step === i + 1)
         && /van 1 de 3/.test(dates[0].summary.join(' ')) && /La próxima vez que quedéis de noche/.test(dates[2].summary.join(' ')),
         JSON.stringify(dates.map(d => ({ t: d.title, l: d.loves, s: d.nella?.step, sum: d.summary.slice(-1) }))));
+    check('D-J54: la señal y las citas son conversaciones: Nella habla en cada paso, y el narrador dice como mucho una línea corta por escena',
+        [{ notes: signal.notes, says: signal.says.length }, ...dates].every(d => d.notes.length <= 1 && d.notes.every((/** @type {string} */ n) => n.length <= 110) && d.says >= 3),
+        JSON.stringify([{ notes: signal.notes, says: signal.says.length }, ...dates.map(d => ({ notes: d.notes, says: d.says }))]));
 
     // 8. La noche: hasta que caiga, ratos de siempre; de noche, «quiere verte esta noche» y su escena.
     /** @type {any} */
@@ -532,9 +544,9 @@ try {
     nella = await romanceOf('nella-tresflechas');
     check('J14.10 (4): la noche llega de noche («quiere verte esta noche»), y antes solo hay ratos de siempre',
         Boolean(night) && /quiere verte esta noche/.test(night?.why ?? '') && waited.every(w => !/La ventana/.test(w)), JSON.stringify({ waited, why: night?.why }));
-    check('J14.10 (4): «Te quedas», con corazón, funde a negro: nada explícito, la vela y el mar',
-        Boolean(night?.fade) && night.read.some((/** @type {string} */ l) => /Nella sopla la vela\. Lo demás se queda entre vosotros y el mar/.test(l)),
-        JSON.stringify({ fade: night?.fade, last: night?.read.slice(-2) }));
+    check('J14.10 (4): «Te quedas», con corazón, funde a negro: nada explícito, el mar y la vela, y lo dice Nella',
+        Boolean(night?.fade) && night.says.some((/** @type {string} */ l) => /¿Oyes el mar\? Ya no hace falta la vela/.test(l)) && night.notes.length <= 1,
+        JSON.stringify({ fade: night?.fade, last: night?.read.slice(-2), notes: night?.notes }));
     check('J14.10 (4): y desde ahí, pareja: lo dice el resumen y queda guardado',
         night?.summary.some((/** @type {string} */ l) => /Nella Tresflechas y tú sois pareja/.test(l)) && nella?.status === 'pareja', JSON.stringify({ summary: night?.summary, nella }));
     await clearPopups();
@@ -551,8 +563,9 @@ try {
     // 10. El siguiente rato con Nella lleva una frase suya de pareja.
     await meetFromCard(NELLA);
     const rato = await play({ heart: false });
-    const coupleLine = rato.read.some(l => /te roba un trozo de pan|cinta roja atada al carcaj|beso rápido, de los que no ve nadie/.test(l));
-    check('J14.10 (4): sus frases lo mencionan: en un rato juntos, una de sus frases de pareja', coupleLine, JSON.stringify(rato.read.slice(0, 2)));
+    // D-J54: la frase de pareja la dice ella (con su placa), no el narrador.
+    const coupleLine = rato.says.some(l => /Te he guardado sitio|cinta roja del carcaj|un beso rápido, ahora que no mira nadie/.test(l));
+    check('J14.10 (4): sus frases lo mencionan: en un rato juntos, Nella te dice una de sus frases de pareja', coupleLine, JSON.stringify({ says: rato.says.slice(0, 2), notes: rato.notes }));
     await clearPopups();
     await dropToasts();
 

@@ -4,8 +4,15 @@
  * de «Jugar sin conexión» jugado con el ratón, mirando lo que se lee en la caja de la novela.
  *
  *   título → tu personaje → el prólogo (el ratero del muelle, Tomás, Brunilda y la bodega)
- *   → el pueblo del gremio: comprar en la tienda, comer, pasar el rato y dormir en la taberna
- *   → el tablón: el viaje a 1387 → un viaje dentro de la campaña → descansar fuera
+ *   → el gremio: contratar a un mercenario y aceptar un encargo del tablón
+ *   → el pueblo: comprar en la tienda, comer, pasar el rato y dormir en la taberna
+ *   → el viaje al sitio del encargo → una noche al raso (acampar)
+ *
+ * D-J54 (Daniel, 2026-10-02): el narrador casi desaparece. Cada nota del juego la dice quien está
+ * allí (la tendera, el posadero, Brunilda, un compañero junto al fuego), con su placa; o es un
+ * aviso corto sin placa; o no sale en la caja, si ya se ve en pantalla. Se mira que, tras el
+ * prólogo, la mayoría de las notas que se leen tengan quien las diga, y que ningún aviso sea un
+ * párrafo del narrador.
  *
  * Tras cada paso, cada mensaje nuevo del chat se pinta como lo pintaría la caja (sin sus
  * etiquetas: `cleanNovelCopy`) y se mira que se lea como prosa:
@@ -22,8 +29,8 @@
  * Y, en los momentos en que la caja está a la vista, lo mismo con lo que de verdad se lee en ella.
  *
  * Uso:
- *   node tools/e2e-prosa.mjs --port 8383
- *   node tools/e2e-prosa.mjs --port 8383 --volcar lineas.json --captura prosa.png
+ *   node tools/e2e-prosa.mjs --port 8425
+ *   node tools/e2e-prosa.mjs --port 8425 --volcar lineas.json --captura prosa.png
  */
 
 /* global window, document */
@@ -37,7 +44,7 @@ import { entrarEnLaPelea } from './e2e-entrar-pelea.mjs';
 
 const ROOT = new URL('..', import.meta.url).pathname.replace(/^[/]([A-Za-z]:)/, '$1');
 const argAfter = (/** @type {string} */ flag) => (process.argv.includes(flag) ? process.argv[process.argv.indexOf(flag) + 1] : '');
-const PORT = Number(argAfter('--port')) || 8383;
+const PORT = Number(argAfter('--port')) || 8425;
 const BASE = `http://127.0.0.1:${PORT}`;
 const HEADED = process.argv.includes('--headed');
 const SHOT = argAfter('--captura');
@@ -247,8 +254,9 @@ try {
         await until(() => page.evaluate(() => !document.querySelector('#game-shell .gs-town-scene')), 5000);
     };
     const enterPlace = async (/** @type {string} */ id) => {
-        await leavePlace();
+        // Primero a la pantalla del pueblo (la caja tapa el sitio abierto), y luego fuera del sitio.
         await carryOn('exploration');
+        await leavePlace();
         await page.locator(`#game-shell .gs-town-place[data-place="${id}"]`).click({ timeout: 8000 }).catch(() => {});
         return until(async () => (await placeScene()).place === id, 8000);
     };
@@ -263,8 +271,9 @@ try {
      * etiquetas (`cleanNovelCopy`). Por su `mesid`, para no mirar dos veces el mismo.
      */
     const boxRendering = () => page.evaluate(async () => {
-        const { cleanNovelCopy } = await import('/scripts/game-engine/ui/shell/engine-tags.js');
-        const chat = window.SillyTavern.getContext().chat || [];
+        const { cleanNovelCopy, tagLength } = await import('/scripts/game-engine/ui/shell/engine-tags.js');
+        const ctx = window.SillyTavern.getContext();
+        const chat = ctx.chat || [];
         return [...document.querySelectorAll('#chat .mes')].map(node => {
             const body = node.querySelector('.mes_text');
             const id = Number(node.getAttribute('mesid'));
@@ -272,12 +281,22 @@ try {
             const copy = /** @type {Element} */ (body.cloneNode(true));
             const kept = cleanNovelCopy(copy);
             const message = chat[id] ?? {};
+            const who = node.getAttribute('ch_name') || '';
+            const system = node.getAttribute('is_system') === 'true';
+            // D-J54: como la caja: lo que ya se ve en pantalla no sale (`extra.quiet`), y una nota
+            // dicha por alguien sale con su placa aunque sea de sistema (`extra.voiced`).
+            const narrator = !who || who === 'Narrador' || who === String(ctx.chatMetadata?.narrator_name || '') || who === String(ctx.name2 || '');
+            const mes = String(message.mes ?? '');
             return {
                 id,
-                who: node.getAttribute('ch_name') || '',
-                system: node.getAttribute('is_system') === 'true',
+                who,
+                system,
+                note: tagLength(mes) > 0,
+                tag: mes.slice(0, tagLength(mes)).trim(),
+                speaker: Boolean(message.extra?.voiced) || (!system && !narrator),
+                quiet: Boolean(message.extra?.quiet),
                 stored: String(message.extra?.display_text ?? message.mes ?? '').slice(0, 400),
-                shown: kept ? (/** @type {HTMLElement} */ (copy).innerText || copy.textContent || '').replace(/\s+/g, ' ').trim() : '',
+                shown: kept && !message.extra?.quiet ? (/** @type {HTMLElement} */ (copy).innerText || copy.textContent || '').replace(/\s+/g, ' ').trim() : '',
             };
         }).filter(Boolean);
     });
@@ -401,6 +420,36 @@ try {
         if (partyMembers[0]) partyMembers[0].gold = 300;
         (await import('/scripts/party/roster.js')).savePartyState();
     });
+    /** Pulsar algo del sitio abierto sin cerrar lo que abra (la ventana de contratar, la de los encargos). */
+    const placeOpen = async (/** @type {string} */ id) => {
+        await dropToasts();
+        await page.locator(`#game-shell .gs-town-scene .gs-town-act[data-action="${id}"]`).first().click({ timeout: 5000 }).catch(() => {});
+        await page.waitForTimeout(700);
+    };
+    // D-J54: un mercenario que se une lo dice él; un encargo del tablón te lo da Brunilda.
+    await enterPlace('gremio');
+    await placeOpen('hub-hire');
+    if (await page.locator('.hb-root [data-hireling]').count() === 0) await clickChip(/Contratar mercenarios/);
+    await page.waitForSelector('.hb-root [data-hireling]', { timeout: 15000 }).catch(() => {});
+    await page.locator('.hb-root [data-hireling]').first().click({ timeout: 5000 }).catch(() => {});
+    const hired = await until(async () => (await page.evaluate(async () => (await import('/scripts/party.js')).getPartyMembersSnapshot().length)) >= 2, 10000);
+    await clearPopups();
+    await look('contratar a un mercenario');
+    check('se contrata a un mercenario en el gremio', hired);
+    await enterPlace('gremio');
+    await placeOpen('hub-errands');
+    if (await page.locator('.hb-root .hb-card button').count() === 0) {
+        await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/encargos-gremio'));
+    }
+    await page.waitForSelector('.hb-root .hb-card button', { timeout: 15000 }).catch(() => {});
+    await page.locator('.hb-root .hb-card button').first().click({ timeout: 5000 }).catch(() => {});
+    const taken = await until(async () => Boolean(await page.evaluate(() => window.SillyTavern.getContext().chatMetadata?.contractTaken?.locationName)), 10000);
+    await page.waitForTimeout(800);
+    await clearPopups();
+    await look('aceptar un encargo');
+    const errandPlace = String(await page.evaluate(() => window.SillyTavern.getContext().chatMetadata?.contractTaken?.locationName || ''));
+    check('se acepta un encargo del tablón, con su sitio', taken && Boolean(errandPlace), errandPlace);
+    if (SHOT) await page.screenshot({ path: `${SHOT}.encargo.png` });
     const inShop = await enterPlace('tienda');
     const shopActs = (await placeScene()).acts.filter(a => a.id.startsWith('shop-buy:') && a.enabled);
     const goldBefore = (await state()).gold;
@@ -408,6 +457,19 @@ try {
     const bought = (await state()).gold < goldBefore;
     check('en la tienda del gremio se compra algo con un clic', inShop && bought, JSON.stringify({ inShop, shopActs: shopActs.map(a => a.id), goldBefore }));
     await look('comprar en la tienda');
+    // D-J54: en la pantalla de la tienda, la tendera dice lo que te cobra (no el saludo), con su placa.
+    const counter = await page.evaluate(() => ({
+        plate: (document.querySelector('#game-shell .gs-town-scene .gs-town-plate')?.textContent || '').trim(),
+        line: (document.querySelector('#game-shell .gs-town-scene .gs-town-line')?.textContent || '').trim(),
+        said: (() => {
+            const chat = window.SillyTavern.getContext().chat || [];
+            const last = chat[chat.length - 1];
+            return last?.extra?.voiced ? String(last.name) : '';
+        })(),
+    }));
+    check('tras comprar, quien atiende la tienda lo dice en su caja, con su placa y sin etiquetas (D-J54)',
+        Boolean(counter.said) && /moneda/.test(counter.line) && !badIn(counter.line) && Boolean(counter.plate), JSON.stringify(counter));
+    if (SHOT) await page.screenshot({ path: `${SHOT}.tienda.png` });
     const inInn = await enterPlace('posada');
     await placeAct('inn-meal');
     await look('comer en la taberna');
@@ -438,29 +500,11 @@ try {
     }
     await leavePlace();
 
-    // --- 4. El tablón: el viaje a 1387 ---------------------------------------------------------
+    // --- 4. El viaje al sitio del encargo ----------------------------------------------------
     await carryOn('exploration');
-    await until(async () => (await chips()).some(c => /Tablón de campañas/.test(c)), 15000);
-    await clickChip(/Tablón de campañas/);
-    await page.waitForSelector('.hb-root [data-campaign="1387"]', { timeout: 15000 }).catch(() => {});
-    await page.locator('.hb-root [data-campaign="1387"]').click({ timeout: 8000 }).catch(() => {});
-    const in1387 = await until(async () => /1387/.test((await state()).world), 150000);
-    await page.waitForTimeout(2500);
-    await clearPopups();
-    await look('el viaje a 1387');
-    check('del tablón a 1387', in1387);
-    if (await sceneNow() === 'dialogue') {
-        const tripBox = await boxNow();
-        check('el viaje a 1387 se lee en la caja sin «[VIAJE]» ni otra etiqueta (J18.10)', tripBox.length > 0 && tripBox.every(l => !badIn(l)), JSON.stringify(tripBox));
-        if (SHOT) await page.screenshot({ path: `${SHOT}.viaje.png` });
-    }
-    await leaveBoard();
-    await carryOn('exploration');
-    await look('fuera del tablero de 1387');
-
-    // --- 5. Un viaje dentro de la campaña, y descansar fuera -----------------------------------
+    await leavePlace();
     const from = (await state()).place;
-    const target = await page.evaluate(() => [...document.querySelectorAll('#game-shell .gs-place')]
+    const target = errandPlace || await page.evaluate(() => [...document.querySelectorAll('#game-shell .gs-place')]
         .filter(c => !(/** @type {HTMLButtonElement} */ (c).disabled))
         .map(c => (c.querySelector('.gs-place-name')?.textContent || '').trim()).find(Boolean) || '');
     if (target) {
@@ -475,50 +519,64 @@ try {
     }
     await page.waitForTimeout(1200);
     await look(`el viaje de ${from} a ${target}`);
-    check('un viaje dentro de 1387, con un clic en «Viajar»', Boolean(target) && (await state()).place === target, JSON.stringify({ from, target, now: await state() }));
+    check('un viaje con un clic en «Viajar», al sitio del encargo', Boolean(target) && (await state()).place === target, JSON.stringify({ from, target, now: await state() }));
     if (await sceneNow() === 'dialogue') {
         const roadBox = await boxNow();
-        check('el viaje se cuenta en la caja sin etiquetas (J13.1, J18.10)', roadBox.every(l => !badIn(l)), JSON.stringify(roadBox));
+        check('el viaje se lee en la caja sin etiquetas (J13.1, J18.10)', roadBox.every(l => !badIn(l)), JSON.stringify(roadBox));
         if (SHOT) await page.screenshot({ path: `${SHOT}.camino.png` });
     }
+    // Si al llegar hay pelea (el encargo), se gana y se sale del tablero.
+    if ((await state()).fighting) await winFight();
+    if ((await state()).board) await leaveBoard();
     await carryOn('exploration');
-    // Descansar: en la posada si la hay; si no, la tarjeta «Descansar» con acampar o el descanso largo.
+
+    // --- 5. Una noche al raso ----------------------------------------------------------------
+    // La tarjeta «Descansar» con acampar o, si no, la ficha «Acampar aquí» (abriendo «+N más»).
     const places = await page.evaluate(() => [...document.querySelectorAll('#game-shell .gs-town-place')].map(c => c.getAttribute('data-place') || ''));
-    if (places.includes('posada')) {
-        await enterPlace('posada');
-        await placeAct('inn-room');
-    } else if (places.includes('descanso')) {
+    if (places.includes('descanso')) {
         await enterPlace('descanso');
         const acts = (await placeScene()).acts;
         const camp = acts.find(a => a.id === 'chip:camp') ?? acts.find(a => a.id === 'clock:long');
-        if (camp) await placeAct(camp.id);
-        // Acampar abre su ventana: el fuego, las guardias y la cena.
-        await page.locator('.popup:visible .cp-go, .popup:visible .popup-button-ok').first().click({ timeout: 5000 }).catch(() => {});
-        await page.waitForTimeout(1200);
-        await clearPopups();
+        if (camp) await placeOpen(camp.id);
     } else {
-        // Sin posada ni tarjeta «Descansar»: la ficha «Acampar aquí» o «Descanso corto», abriendo
-        // «+N más» si hace falta, como quien juega.
-        if (!(await chips()).some(c => /^(?:Acampar aquí|Descanso corto)$/.test(c))) await clickChip(/^\+\d+ más$/);
+        if (!(await chips()).some(c => /^Acampar aquí$/.test(c))) await clickChip(/^\+\d+ más$/);
         await page.waitForTimeout(400);
-        if (await clickChip(/^Acampar aquí$/)) {
-            await page.locator('.popup:visible .cp-go, .popup:visible .popup-button-ok').first().click({ timeout: 5000 }).catch(() => {});
-        } else {
-            await clickChip(/^Descanso corto$/);
-        }
-        await page.waitForTimeout(1500);
-        await clearPopups();
+        await clickChip(/^Acampar aquí$/);
     }
-    await page.waitForTimeout(1000);
-    await look('descansar fuera del gremio');
-    if (SHOT) await page.screenshot({ path: `${SHOT}.descanso.png` });
+    // Acampar abre su ventana: el fuego, las guardias y la cena. «Pasar la noche».
+    await page.waitForSelector('.popup:visible .cp-root', { timeout: 8000 }).catch(() => {});
+    const camped = await page.locator('.popup:visible:has(.cp-root) .popup-button-ok').first().click({ timeout: 5000 }).then(() => true).catch(() => false);
+    await page.waitForTimeout(2500);
+    await clearPopups();
+    await page.waitForTimeout(800);
+    await look('una noche al raso');
+    check('se acampa fuera del pueblo y se pasa la noche', camped, JSON.stringify(places));
+    if (await sceneNow() === 'dialogue' || await carryOn('dialogue') === 'dialogue') {
+        if (SHOT) await page.screenshot({ path: `${SHOT}.campamento.png` });
+    }
 
     // --- Lo visto --------------------------------------------------------------------------------
     const shown = [...lines.values()].filter(l => l.shown);
     console.log(`\nLíneas miradas: ${shown.length} (${Object.entries(perStep).map(([k, v]) => `${k}: ${v}`).join('; ')})`);
-    check('se han mirado líneas de cada tramo: el prólogo, el pueblo, el viaje y el descanso',
-        shown.length >= 10 && ['la llegada al muelle', 'comprar en la tienda', 'dormir en la taberna', 'el viaje a 1387'].every(s => (perStep[s] ?? 0) > 0),
+    check('se han mirado líneas de cada tramo: el prólogo, el gremio, el pueblo, el viaje y la noche al raso',
+        shown.length >= 10 && ['la llegada al muelle', 'aceptar un encargo', 'comprar en la tienda', 'dormir en la taberna', 'una noche al raso'].every(s => (perStep[s] ?? 0) > 0)
+        && Object.keys(perStep).some(s => /^el viaje de /.test(s) && perStep[s] > 0),
         JSON.stringify(perStep));
+    // D-J54: tras el prólogo (que es una escena escrita), las notas del juego que se leen las dice
+    // alguien: la mayoría, con su placa. Las demás, avisos cortos: ninguno es un párrafo del narrador.
+    const prologue = new Set(['la llegada al muelle', 'la pelea del muelle', 'hablar con Tomás', 'hablar con Brunilda', 'la prueba de la bodega']);
+    const notes = shown.filter(l => l.note && !prologue.has(l.step));
+    const spoken = notes.filter(l => l.speaker);
+    console.log(`\nNotas tras el prólogo: ${notes.length}; dichas por alguien: ${spoken.length}`);
+    for (const l of notes) console.log(`   ${l.speaker ? `[${l.who}]` : '[aviso]'} ${l.step}: ${l.shown.slice(0, 160)}`);
+    check('tras el prólogo, la mayoría de las notas del juego las dice alguien, con su placa (D-J54)',
+        notes.length >= 5 && spoken.length * 2 > notes.length, JSON.stringify({ notes: notes.length, spoken: spoken.length, who: [...new Set(spoken.map(l => l.who))] }));
+    const sentences = (/** @type {string} */ t) => t.split(/(?<=[.!?…])\s+(?=[\p{Lu}¿¡«])/u).filter(Boolean).length;
+    const paragraphs = shown.filter(l => !l.speaker && !prologue.has(l.step) && (sentences(l.shown) > 3 || l.shown.length > 280));
+    check('ningún aviso sin placa es un párrafo del narrador: como mucho tres frases cortas (D-J54)', paragraphs.length === 0,
+        JSON.stringify(paragraphs.map(l => `${l.step}: ${l.shown}`).slice(0, 6)));
+    const tagged = shown.filter(l => /^\S{0,3}\s*\[/u.test(l.shown));
+    check('ninguna línea de la caja empieza por «[» (J18.10)', tagged.length === 0, JSON.stringify(tagged.map(l => l.shown).slice(0, 6)));
     check('ninguna línea de la caja lleva etiquetas del motor, ids, casillas, inglés, números sueltos ni órdenes al narrador (J13.1, J18.10)',
         broken.length === 0, JSON.stringify(broken.slice(0, 12)));
     for (const bad of broken) console.log(`   ✘ [${bad.rule}] ${bad.step}: ${bad.shown}`);

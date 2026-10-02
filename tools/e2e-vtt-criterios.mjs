@@ -106,7 +106,7 @@ let browser = null;
 
 async function startServer() {
     dataRoot = mkdtempSync(join(tmpdir(), 'st-e2e-criterios-'));
-    server = spawn(process.execPath, ['server.js', '--port', String(PORT), '--dataRoot', dataRoot], { cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'] });
+    server = spawn(process.execPath, ['server.js', '--browserLaunchEnabled', 'false', '--port', String(PORT), '--dataRoot', dataRoot], { cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'] });
     const child = server;
     await new Promise((resolve, reject) => {
         const timer = setTimeout(() => reject(new Error('the server did not start in 600s')), 600000);
@@ -397,8 +397,12 @@ function centredIn(v, t) {
     // Hasta dónde deja el borde: si para centrarla habría que enseñar vacío, vale lo que hay.
     const clampX = Boolean(b && ((dx < -tol && b.left >= L.left - 2) || (dx > tol && b.right <= L.right + 2)));
     const clampY = Boolean(b && ((dy < -tol && b.top >= L.top - 2) || (dy > tol && b.bottom <= L.bottom + 2)));
-    const ok = t.inView && !t.covered && (Math.abs(dx) <= tol || clampX) && (Math.abs(dy) <= tol || clampY);
-    return { ok, dx, dy, tol: Math.round(tol), clamped: `${clampX ? 'x' : ''}${clampY ? 'y' : ''}` };
+    // En el eje en que el tablero cabe entero, la cámara centra el tablero (`centerPointFit` de
+    // camera.js): la ficha se ve igual y un tablero pequeño no se queda pegado a un lado.
+    const fitX = Boolean(b && b.left >= L.left - 2 && b.right <= L.right + 2 && Math.abs((b.left + b.right) / 2 - L.x) <= tol);
+    const fitY = Boolean(b && b.top >= L.top - 2 && b.bottom <= L.bottom + 2 && Math.abs((b.top + b.bottom) / 2 - L.y) <= tol);
+    const ok = t.inView && !t.covered && (Math.abs(dx) <= tol || clampX || fitX) && (Math.abs(dy) <= tol || clampY || fitY);
+    return { ok, dx, dy, tol: Math.round(tol), clamped: `${clampX ? 'x' : ''}${clampY ? 'y' : ''}${fitX ? ' cabe-x' : ''}${fitY ? ' cabe-y' : ''}`.trim() };
 }
 
 /**
@@ -828,11 +832,57 @@ async function checkSpace(g, size, heroId) {
     const c = centredIn(after, me);
     const movedAway = Boolean(meAway && away && (Math.abs(meAway.x - away.look.x) > c.tol || Math.abs(meAway.y - away.look.y) > c.tol || !meAway.inView));
     const file = await shot(g, size, 'espacio');
+    await noteOverlaps(g, size, await edgeBoxes(g), 'tras centrar');
     note('C2', g.scene, size, c.ok && movedAway,
         { con: g.touch ? 'el botón «Centrar» (sin teclado)' : 'Espacio', antes: meAway && away ? { dx: Math.round(meAway.x - away.look.x), dy: Math.round(meAway.y - away.look.y), seVe: meAway.inView } : null, despues: { dx: c.dx, dy: c.dy, tapada: me?.covered, bajo: me?.under, alBorde: c.clamped }, tolerancia: c.tol, lejosAntes: movedAway, libre: L && { top: Math.round(L.top), bottom: Math.round(L.bottom), left: Math.round(L.left), right: Math.round(L.right) } }, file);
 }
 
 // ------------------------------------------------------------------ C3: los marcadores de borde
+/**
+ * Los marcadores de borde a la vista: su texto, su caja y si los pies se ven enteros. Con los pies
+ * en su propio `<span>` (`.vtt-edge-feet`), el nombre puede encoger (puntos suspensivos): lo que
+ * cuenta es que los pies se vean dentro del marcador.
+ *
+ * @param {Game} g
+ */
+const edgeBoxes = (g) => g.page.evaluate(() => [...document.querySelectorAll('#game-shell .vtt-edge')].map(e => {
+    const r = e.getBoundingClientRect();
+    const label = e.querySelector('.vtt-edge-text') ?? e;
+    const f = e.querySelector('.vtt-edge-feet')?.getBoundingClientRect();
+    const name = e.querySelector('.vtt-edge-name');
+    return {
+        text: (e.textContent || '').replace(/\s+/g, ' ').trim(), id: e.getAttribute('data-token-id') || '', x: r.left + r.width / 2, y: r.top + r.height / 2, w: r.width, h: r.height,
+        box: [r.left, r.top, r.right, r.bottom],
+        cut: f ? (f.width < 2 || f.right > r.right - 2) : label.scrollWidth > label.clientWidth + 1,
+        nameCut: Boolean(name && name.scrollWidth > name.clientWidth + 1),
+    };
+}));
+
+/**
+ * Dos marcadores no se pisan: si se tapan, uno no se lee ni se puede pulsar. Solo se apunta
+ * cuando hay dos o más.
+ *
+ * @param {Game} g
+ * @param {string} size
+ * @param {Array<{text: string, box: number[]}>} edges Lo que da `edgeBoxes`.
+ * @param {string} when
+ */
+async function noteOverlaps(g, size, edges, when) {
+    if (edges.length < 2) return;
+    /** @type {string[]} */
+    const overlaps = [];
+    for (let i = 0; i < edges.length; i++) {
+        for (let j = i + 1; j < edges.length; j++) {
+            const [a, b] = [edges[i].box, edges[j].box];
+            const w = Math.min(a[2], b[2]) - Math.max(a[0], b[0]);
+            const h = Math.min(a[3], b[3]) - Math.max(a[1], b[1]);
+            if (w > 4 && h > 4) overlaps.push(`«${edges[i].text}» y «${edges[j].text}» (${Math.round(w)}×${Math.round(h)} px)`);
+        }
+    }
+    note('C3', g.scene, `${size} marcadores`, overlaps.length === 0, { cuando: when, marcadores: edges.map(e => e.text), seTapan: overlaps },
+        overlaps.length ? await shot(g, size, `borde-solapados-${when.replace(/\W+/g, '-')}`) : '');
+}
+
 /**
  * @param {Game} g
  * @param {string} size
@@ -864,15 +914,8 @@ async function checkEdge(g, size, heroId) {
     }
     const out = await boardView(g);
     const foeOut = out?.tokens.find(x => x.id === foe.id);
-    const edges = await g.page.evaluate(() => [...document.querySelectorAll('#game-shell .vtt-edge')].map(e => {
-        const r = e.getBoundingClientRect();
-        // Si el texto no cabe (puntos suspensivos), lo que se ve no dice los pies.
-        const label = e.querySelector('.vtt-edge-text') ?? e;
-        return {
-            text: (e.textContent || '').replace(/\s+/g, ' ').trim(), id: e.getAttribute('data-token-id') || '', x: r.left + r.width / 2, y: r.top + r.height / 2, w: r.width, h: r.height,
-            cut: label.scrollWidth > label.clientWidth + 1,
-        };
-    }));
+    const edges = await edgeBoxes(g);
+    await noteOverlaps(g, size, edges, 'tras sacar al enemigo');
     const file = await shot(g, size, 'borde');
     const mine = edges.find(e => e.id === foe.id) ?? edges.find(e => e.text.startsWith(foe.name.replace(/ \d+$/, '')));
     const textOk = Boolean(mine && /· \d+ pies$/.test(mine.text) && !/\bft\b/.test(mine.text) && !mine.cut);
@@ -1077,6 +1120,9 @@ async function sizeSuite(g, size) {
     await clearDice(g);
     await dropToasts(g);
     await closeMenus(g);
+    // Una escena de la historia encima de la pelea tapa todo el tablero: se dice y se lee.
+    const over = await storyOver(g, `pelea-${size}`);
+    if (over) note('V5', g.scene, `${size} escena`, false, { porque: 'una escena de la historia sale encima de la pelea', escenaEncima: over }, over.captura);
     if (!await heroTurn(g, 30000) || !(await fightState(g)).fighting) {
         note('C1', g.scene, size, null, 'la pelea ya no sigue o no le toca al héroe');
         return;
@@ -1367,6 +1413,37 @@ const moveRule = (g) => g.page.evaluate(async () => {
 
 // ------------------------------------------------------------------ entrar en la pelea, mirándolo
 /**
+ * Una escena de la historia (`plot-scene.js`: `dialog.ps-dialog` que no es la decisión) encima del
+ * tablero mientras uno se coloca o pelea. Se apunta qué dice y se lee entera como quien juega
+ * («Seguir» y una opción libre, con el bot de las vueltas), para poder seguir mirando el tablero.
+ *
+ * @param {Game} g
+ * @param {string} when
+ * @returns {Promise<any>} Lo que se vio, o null si no había ninguna.
+ */
+async function storyOver(g, when) {
+    const open = () => g.page.evaluate(() => {
+        const d = document.querySelector('dialog.ps-dialog[open]:not(.ev-dialog)');
+        if (!d) return null;
+        return {
+            titulo: (d.querySelector('.qd-title')?.textContent || '').trim(),
+            paso: (d.querySelector('.qd-step')?.textContent || '').trim(),
+            dice: (d.querySelector('.ps-text')?.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 140),
+        };
+    });
+    const first = await open();
+    if (!first) return null;
+    const file = await shot(g, 'x', `escena-encima-${when}`);
+    const bot = createBot(g.page, { fast: true, log: () => {} });
+    let steps = 0;
+    for (; steps < 40 && await open(); steps++) {
+        if (!await bot.handleLayer(await bot.observe())) await g.page.waitForTimeout(300);
+    }
+    await clearDice(g);
+    return { cuando: when, ...first, pasos: steps, sigueAbierta: Boolean(await open()), captura: file };
+}
+
+/**
  * Del tablero con el ratero a la vista hasta la pelea, como quien juega, apuntando lo que se ve en
  * cada paso: la fila de fichas, la decisión, colocarse y la iniciativa.
  *
@@ -1375,7 +1452,7 @@ const moveRule = (g) => g.page.evaluate(async () => {
  */
 async function enterFightWatching(g, size) {
     /** @type {any} */
-    const seen = { rows: [], decision: null, placing: null, started: false, startChip: [], foreign: [] };
+    const seen = { rows: [], decision: null, placing: null, started: false, startChip: [], foreign: [], story: [] };
     const look = async (/** @type {string} */ when) => {
         const b = await visibleButtons(g);
         const start = [...b.chips, ...b.buttons].filter(t => START_CHIP.test(t));
@@ -1417,6 +1494,11 @@ async function enterFightWatching(g, size) {
             return { cells: cells.length, sea: cells.filter(k => board.terrain?.cells?.[k]?.type === 'deep_water').length, fighting: Boolean(window.SillyTavern.getContext().chatMetadata?.combatEncounter?.active) };
         });
         seen.placingShot = await shot(g, size, 'colocar');
+        // La escena que llega tarde (la que abre la campaña) puede salir encima mientras uno se
+        // coloca: se apunta (V5) y se lee, como quien juega.
+        await g.page.waitForTimeout(700);
+        const over = await storyOver(g, 'colocando');
+        if (over) seen.story.push(over);
         // Ponerse en la casilla de salida más lejos del enemigo, pulsándola: así la ruta hasta él
         // (V4) tiene algo que mirar.
         const far = await g.page.evaluate(async () => {
@@ -1451,6 +1533,9 @@ async function enterFightWatching(g, size) {
         seen.helper = await entrarEnLaPelea(g.page, { ms: 30000 });
         seen.started = await fighting(g);
     }
+    await g.page.waitForTimeout(700);
+    const overFight = await storyOver(g, 'peleando');
+    if (overFight) seen.story.push(overFight);
     await look('peleando');
     seen.decided = decided;
     return seen;
@@ -1464,8 +1549,9 @@ async function enterFightWatching(g, size) {
  * @param {any} seen
  */
 function noteEntry(g, size, seen) {
-    note('V5', g.scene, size, Boolean(seen.started && seen.decision && seen.placing && !seen.placing.fighting && seen.startChip.length === 0 && !seen.helper),
-        { decision: Boolean(seen.decision), colocarse: seen.placing, empezo: seen.started, conElAyudante: Boolean(seen.helper), iniciarCombate: seen.startChip }, seen.placingShot || '');
+    note('V5', g.scene, size, Boolean(seen.started && seen.decision && seen.placing && !seen.placing.fighting && seen.startChip.length === 0 && !seen.helper && seen.story.length === 0),
+        { decision: Boolean(seen.decision), colocarse: seen.placing, empezo: seen.started, conElAyudante: Boolean(seen.helper), iniciarCombate: seen.startChip, escenaEncima: seen.story },
+        [seen.placingShot, ...seen.story.map((/** @type {any} */ s) => s.captura)].filter(Boolean).join(' '));
     const options = (seen.decision?.options ?? []).map((/** @type {any} */ o) => o.id);
     note('V5b', g.scene, size, Boolean(seen.decision && options[0] === 'pelear' && options.length >= 2),
         { opciones: seen.decision?.options, sePuedeCerrar: seen.decision?.closable }, seen.decisionShot || '');
@@ -1604,15 +1690,23 @@ async function afterFight(g, size, hasSea, boardName = '') {
     }));
     // Hasta el tablero sin pelea, leyendo lo que salga antes: «Continuar» (si vuelve al tablero)
     // o la ventana de encima. Al volver a entrar, el sitio puede abrir antes su conversación.
+    // Lo que se ve en cada intento (para saber por qué no se llega al tablero sin pelea).
+    /** @type {string[]} */
+    const trail = [];
     const toBoard = (/** @type {number} */ ms) => g.until(async () => {
         await clearDice(g);
         const s = await state();
         if (s.scene === 'combat' && s.board && !s.fight) return true;
-        await g.page.evaluate(() => {
+        const did = await g.page.evaluate(() => {
             const top = document.querySelector('dialog[open] .ps-finish, dialog[open] .dw-finish, dialog[open] .qd-chip-next, dialog[open] .popup-button-ok');
-            if (top instanceof HTMLElement) top.click();
-            else /** @type {HTMLElement|null} */ (document.querySelector('#game-shell .gs-vn-box .gs-chip-continue'))?.click();
+            const go = top instanceof HTMLElement ? top : document.querySelector('#game-shell .gs-vn-box .gs-chip-continue');
+            const open = document.querySelector('dialog[open]');
+            const said = `${open ? `ventana ${String(open.className).slice(0, 30)}` : 'sin ventana'}; ${go instanceof HTMLElement ? `pulsa «${(go.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 30)}»` : 'nada que pulsar'}`;
+            if (go instanceof HTMLElement) go.click();
+            return said;
         });
+        const line = `${s.scene}/${s.board || '-'}${s.fight ? '/pelea' : ''}: ${did}`;
+        if (trail[trail.length - 1] !== line) trail.push(line);
         return false;
     }, ms);
     const onBoard = await toBoard(25000);
@@ -1628,6 +1722,8 @@ async function afterFight(g, size, hasSea, boardName = '') {
             entered = pick.name;
             const b = await g.page.evaluate((i) => {
                 const n = [...document.querySelectorAll('#game-shell .gs-board')].filter(x => x.getBoundingClientRect().width > 0)[i];
+                // La tarjeta puede quedar medio fuera, bajo la fila de fichas: a la vista primero.
+                n?.scrollIntoView({ block: 'center' });
                 const r = n?.getBoundingClientRect();
                 return r ? { x: r.left + r.width / 2, y: r.top + r.height / 2 } : null;
             }, pick.i);
@@ -1650,11 +1746,12 @@ async function afterFight(g, size, hasSea, boardName = '') {
             await g.page.evaluate((name) => { void window.SillyTavern.getContext().executeSlashCommandsWithOptions(`/enter ${name}`); }, boardName);
             back = await toBoard(20000);
         }
+        if (!back) await shot(g, size, 'tras-entrar');
     }
     const where = await state();
     const t120 = await check120(g, `tablero sin pelea (${where.board || 'ninguno'})`);
     if (!(where.scene === 'combat' && where.board && !where.fight)) {
-        note('V2', g.scene, size, t120.found.length === 0 ? null : false, { porque: 'tras la pelea no se vuelve a un tablero sin pelea; se mira lo que hay a la vista', entrando: entered, ...where, ...t120 });
+        note('V2', g.scene, size, t120.found.length === 0 ? null : false, { porque: 'tras la pelea no se vuelve a un tablero sin pelea; se mira lo que hay a la vista', entrando: entered, ...where, ...t120, rastro: trail.slice(-8) });
         return;
     }
     // Pasar el ratón (o un toque) por la ficha y por una casilla lejana: lo que dice el tablero.
@@ -1887,7 +1984,7 @@ async function scenario1387() {
 
 // ------------------------------------------------------------------ la vuelta
 const t0 = Date.now();
-const clock = (/** @type {number} */ ms) => `${Math.floor(ms / 60000)}:${String(Math.round((ms % 60000) / 1000)).padStart(2, '0')}`;
+const clock = (/** @type {number} */ ms) => { const s = Math.round(ms / 1000); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
 try {
     browser = await chromium.launch({ channel: 'msedge', headless: !HEADED });
     for (const [name, run] of /** @type {Array<[string, () => Promise<void>]>} */ ([['muelle', scenarioMuelle], ['movil', scenarioMovil], ['1387', scenario1387]])) {

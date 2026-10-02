@@ -147,12 +147,17 @@ function getCombatBoardHighlightState(gridWidth, gridHeight) {
     }
 
     const remainingFeet = getRemainingMovementFeet(member);
+    // Cuerpo a tierra, cada paso cuesta el doble (2024, `crawlCost` al andar en player-actions.js):
+    // solo se encienden las casillas a las que se llega arrastrándose. Antes salían las de ir de
+    // pie, y pulsarlas decía «Movimiento insuficiente».
+    const crawling = (Array.isArray(member.activeConditions) ? member.activeConditions : []).includes('Prone');
+    const reachFeet = crawling ? Math.floor(remainingFeet / 2) : remainingFeet;
     const pos = member.mapPosition || { gridX: 0, gridY: 0, locationName: '' };
     const attackable = getAttackableEnemiesForMember(member);
     /** @type {{gridX:number,gridY:number,kind:'attack'}[]} */
     const attackCells = attackable.map(enemy => ({ gridX: enemy.gridX || 0, gridY: enemy.gridY || 0, kind: 'attack' }));
     const movementCells = getReachableCells(
-        getActiveBoardTerrain(), pos.gridX || 0, pos.gridY || 0, remainingFeet, gridWidth, gridHeight,
+        getActiveBoardTerrain(), pos.gridX || 0, pos.gridY || 0, reachFeet, gridWidth, gridHeight,
         { occupied: new Set([...occupiedCellsFor(member), ...knownTrapsHere()]) },
     // La casilla en la que ya estas no es un sitio al que moverte: pulsarla gastaria
     // cero pies, y encendida solo servia para que tu propia ficha se comiera el clic.

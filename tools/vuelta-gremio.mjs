@@ -56,7 +56,7 @@ let browser = null;
 let page = null;
 
 function startServer() {
-    server = spawn(process.execPath, ['server.js', '--port', String(PORT), '--dataRoot', dataRoot], { cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'] });
+    server = spawn(process.execPath, ['server.js', '--browserLaunchEnabled', 'false', '--port', String(PORT), '--dataRoot', dataRoot], { cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'] });
     const child = server;
     return new Promise((resolve, reject) => {
         // Con muchas pruebas a la vez (e2e-todo.mjs), el servidor tarda en arrancar.
@@ -183,6 +183,8 @@ try {
 
     // --- 4. Volver al gremio ------------------------------------------------------------------
     const home = await fromGuild(/^Volver al gremio$/, (now) => now.world === guildWorld && !now.layer);
+    // Al cambiar de chat el mundo se queda vacío un momento (se lee «»): se espera a que se asiente.
+    await bot.until(async () => (await bot.observe()).world === guildWorld, 15000, 400);
     const back = await bot.observe();
     check('«Volver al gremio» lleva al pueblo del gremio, con el grupo entero (J4.4, J4.9)',
         home && back.world === guildWorld && back.party.length === guild.party.length,
@@ -242,6 +244,7 @@ try {
     number('Notas del juego con su versión en prosa', `${notes.prose} de ${notes.total} (etiqueta del motor a la vista en la vuelta: ${raw.length}; en el chat de Strahd, sin pintar: ${tagged.length})`);
     number('Escenas del hilo que salen con su hito ya cumplido', bot.oddities.filter(o => o.kind === 'tarde').length);
     number('Ventanas abiertas encima de otra a medias', bot.oddities.filter(o => o.kind === 'encima').length);
+    number('Peleas que tardan en cerrarse sin enemigos en pie (más de 3 s)', bot.oddities.filter(o => o.kind === 'cierre').length);
     number('Veces que cae el grupo entero', `${bot.falls.length} (partidas cargadas después: ${bot.counts.loads})`);
     number('Descansos (posada, acampar, cazar), al ver el agotamiento o media vida', bot.counts.rests);
     number('«Otra salida» antes o en mitad de una pelea (la vuelta elige pelear)', bot.counts.exits);

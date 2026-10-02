@@ -33,7 +33,7 @@
  * lo aplica.
  */
 
-import { readFactions, clockOf } from './factions.js';
+import { readFactions, clockOf, factionWorldOn } from './factions.js';
 import { fameAt } from './fame.js';
 
 /** Las claves de `when` que miran el mundo y no los hechos del momento. */
@@ -137,6 +137,9 @@ export function passesTriggers(row, world) {
     if (!hasTriggers(row)) return true;
     if (!world) return false;
     const when = row.when;
+    // D-J58: lo que sale porque una facción mueve su plan (su reloj) espera al mundo vivo. Lo
+    // que sale por quién manda aquí o por lo que os aprecian es historia, y sigue.
+    if (!factionWorldOn() && (when.reloj !== undefined || when.relojAqui !== undefined)) return false;
 
     if (when.faccion !== undefined) {
         if (!world.ruler) return false;
@@ -234,7 +237,8 @@ export function describeWorldEffect(effect, names = {}) {
     if (read.kind === 'llave') return read.target ? `conseguís: ${read.target}` : '';
     if (read.kind === 'guia') return read.target ? `${read.target} os guiará` : '';
     if (read.kind === 'faccion' && read.target) return read.amount < 0 ? `${who}: os miran peor` : `${who}: os miran mejor`;
-    if (read.kind === 'reloj' && read.target) return read.amount < 0 ? `${who} se retrasa en lo suyo` : `${who} adelanta en lo suyo`;
+    // D-J58: sin el mundo vivo, el plan de nadie se retrasa ni adelanta: no se dice.
+    if (read.kind === 'reloj' && read.target && factionWorldOn()) return read.amount < 0 ? `${who} se retrasa en lo suyo` : `${who} adelanta en lo suyo`;
     return '';
 }
 

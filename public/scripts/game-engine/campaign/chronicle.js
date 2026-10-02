@@ -101,7 +101,7 @@ export function readTaggedLine(said) {
 /**
  * La crónica de un chat: cada mensaje del juego con etiqueta, como suceso.
  *
- * @param {Array<{mes?: string, is_user?: boolean, extra?: {display_text?: string}}>} chat
+ * @param {Array<{mes?: string, is_user?: boolean, extra?: {display_text?: string, told?: string}}>} chat
  * @returns {ChronicleEntry[]}
  */
 export function chronicleOf(chat) {
@@ -111,7 +111,9 @@ export function chronicleOf(chat) {
         if (!message || message.is_user) return;
         // Lo que pasó, no la orden al narrador: sin esto la crónica del Diario y el resumen
         // del acto enseñaban «Dilo tal cual, sin explicarlo…» (ROADMAP_SIN_TOKENS, Z0).
-        const line = readTaggedLine(splitModelNote(String(message.extra?.display_text ?? message.mes ?? '')).said);
+        // D-J54: una nota que dice alguien («Son nueve monedas.») guarda aparte lo que pasó
+        // (`extra.told`): eso es lo que va al Diario.
+        const line = readTaggedLine(splitModelNote(String(message.extra?.told ?? message.extra?.display_text ?? message.mes ?? '')).said);
         if (line) out.push({ index, ...line });
     });
     return out;

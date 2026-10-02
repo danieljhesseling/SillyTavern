@@ -19,8 +19,9 @@
  *   respuesta): nada explícito. Desde ahí, sois pareja.
  *
  * Las escenas van en `compendio/romances.json` (`kind`: `senal`, `cita` con su `step`, `final`,
- * `pareja` con frases sueltas y `epilogo`), con la forma de las escenas de quedada. Las
- * respuestas llevan `romance: "avanza"` o `romance: "amigos"`.
+ * `pareja` con frases que te dice y `epilogo`), con la forma de las escenas de quedada: son
+ * conversaciones (D-J54), con una nota corta como mucho por escena. Las respuestas llevan
+ * `romance: "avanza"` o `romance: "amigos"`.
  *
  * Todo va **por el nombre** de cada persona (`keyOf`), como lo social: Nella es la misma en el
  * gremio y en Barovia. Se guarda en la clave `romances`.
@@ -52,11 +53,11 @@ export const HEART = '♥ ';
 /** Con quién puede ser, según quién eres. `nadie`: con nadie. */
 export const ROMANCE_WITH = ['todos', 'hombres', 'mujeres', 'no-binario', 'nadie'];
 
-/** Lo que dice quien no puede, si su ficha no lo trae escrito. */
-const GENERIC_NO = 'Te mira un momento y sonríe con cariño. «Te aprecio mucho. Pero no de esa manera.» Y todo sigue como antes entre vosotros.';
+/** Lo que dice quien no puede, si su ficha no lo trae escrito. Solo lo que dice (D-J54). */
+const GENERIC_NO = 'Te aprecio mucho, de verdad. Pero no de esa manera. Entre nosotros, todo sigue como antes, ¿vale?';
 
 /** Lo que dice quien sí puede, si su señal no está escrita (la común). */
-const GENERIC_YES = 'Te coge la mano, sin prisa. «Yo también lo había pensado.»';
+const GENERIC_YES = 'Yo también lo había pensado. Y mucho. Ven, dame la mano.';
 
 /** @param {any} value @returns {string} */
 const text = (value) => String(value ?? '').trim();
@@ -632,17 +633,21 @@ export function coupleNote(data, name, turn = 0) {
 }
 
 /**
- * Un rato juntos con su frase de pareja delante.
+ * Un rato juntos con su frase de pareja delante, dicha por quien está contigo (D-J54): la nota
+ * del rato se queda («Pasas la tarde con Nella…») y su frase de pareja es lo primero que dice.
+ * Si el rato ya traía algo que decir, pasa a un segundo paso, con sus respuestas.
  *
- * @template {{beats: Array<{note: string}>}} T
+ * @template {{beats: Array<{note?: string, say?: string, mood?: string}>}} T
  * @param {T} scene
- * @param {string} note
+ * @param {string} line
  * @returns {T}
  */
-export function withCoupleNote(scene, note) {
-    if (!text(note) || !scene?.beats?.length) return scene;
+export function withCoupleNote(scene, line) {
+    if (!text(line) || !scene?.beats?.length) return scene;
     const [first, ...rest] = scene.beats;
-    return { ...scene, beats: [{ ...first, note: [text(first.note), text(note)].filter(Boolean).join(' ') }, ...rest] };
+    if (!text(first.say)) return { ...scene, beats: [{ ...first, say: text(line), mood: first.mood || 'alegre' }, ...rest] };
+    const opening = { note: text(first.note), say: text(line), mood: 'alegre', replies: [] };
+    return { ...scene, beats: [opening, { ...first, note: '' }, ...rest] };
 }
 
 /**

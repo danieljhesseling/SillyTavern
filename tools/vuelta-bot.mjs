@@ -1,7 +1,8 @@
 /**
  * El jugador automático de las vueltas (J16 de wiki/ROADMAP_SIN_CONEXION.md): mira la
  * pantalla y pulsa, como quien juega con el ratón, sin escribir nada. Lo usan
- * `tools/vuelta-1387.mjs` y `tools/vuelta-gremio.mjs`.
+ * `tools/vuelta-1387.mjs`, `tools/vuelta-gremio.mjs`, `tools/vuelta-strahd.mjs` y
+ * `tools/vuelta-campana.mjs` (la de cualquier campaña, añadida desde un archivo).
  *
  * Cada paso es una sola cosa: pasar los dados, elegir una opción de una escena, «Seguir»,
  * cerrar una ventana, una ficha de la fila, un sitio del mapa, un botón de la pelea… Y tras
@@ -19,6 +20,7 @@
 
 /* global window, document */
 
+import { spawn } from 'node:child_process';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -133,7 +135,8 @@ export function observe(page) {
             // El combate nuevo (wiki/maquetas/ENCARGO_COMBATE_VTT.md) empieza solo al entrar en el
             // tablero: primero se colocan los tuyos y luego se confirma. El botón que lo confirma, si
             // se ve (fuera de las ventanas); se busca por lo que dice, que es lo que lee quien juega.
-            start: [...document.querySelectorAll('#game-shell button, #game-shell .menu_button, .gs-root button')]
+            // La barra de colocar (`.cv-place`, placement-bar.js) va en el Modo Juego o, si no está, suelta.
+            start: [...document.querySelectorAll('#game-shell button, #game-shell .menu_button, .gs-root button, .cv-place button')]
                 .filter(b => seen(b) && !b.closest('dialog') && !(/** @type {HTMLButtonElement} */ (b).disabled))
                 .map(b => said(b)).filter(t => /^(¡?A pelear!?|Empezar( la pelea| el combate)?|Comenzar( la pelea| el combate)?|Listo|Hecho, a pelear|Confirmar( la colocación)?)$/i.test(t)).slice(0, 3),
             world: String(meta.world_info || ''),
@@ -167,6 +170,9 @@ export function observe(page) {
             view.hero?.hp, view.hero?.gold, view.chat, view.last, view.toasts, view.menu, view.day, view.start,
             document.querySelector('#game-shell .gs-targets') ? said(document.querySelector('#game-shell .gs-targets')).slice(0, 80) : '',
             document.querySelector('.hc-root') ? 'hc' : '',
+            // El tablón: lo que dice al añadir una campaña (va debajo de las tarjetas) y si está comprobando.
+            said(document.querySelector('dialog[open] .hb-import')).slice(0, 120),
+            document.querySelector('dialog[open] .hb-add.is-busy') ? 'comprobando' : '',
         ]);
         return view;
     })]).finally(() => clearTimeout(timer));
@@ -230,7 +236,7 @@ export function createBot(page, { fast = true, log = console.log, prefer = [] } 
      * Lo que se ve mal sin ser un silencio ni un atasco: una etiqueta del motor en lo que se lee
      * («[HILO] …»), una ventana encima de otra a medias, la escena de un hito ya cumplido.
      *
-     * @type {Array<{kind: 'crudo'|'encima'|'tarde'|'descanso'|'portada', n: number, where: string, text: string}>}
+     * @type {Array<{kind: 'crudo'|'encima'|'tarde'|'descanso'|'portada'|'anda'|'cierre', n: number, where: string, text: string}>}
      */
     const oddities = [];
     const oddSeen = new Set();
@@ -263,6 +269,19 @@ export function createBot(page, { fast = true, log = console.log, prefer = [] } 
      */
     let walkedOn = '';
     let retriedOn = '';
+    /**
+     * Lo último que se anduvo («ronda:quién» y la casilla de salida): si en el mismo turno se sale
+     * otra vez de la misma casilla, la casilla encendida no llevó a ninguna parte. Se apunta (con
+     * el aviso que se vea) y se acaba el turno, en vez de pulsarla sin fin.
+     */
+    let lastWalk = { turn: '', from: '' };
+    /**
+     * Las peleas («tablero|ronda») sin enemigos en pie: desde cuándo se espera a que se cierren, o
+     * -1 si ya se midió.
+     *
+     * @type {Map<string, number>}
+     */
+    const closing = new Map();
     /** Se pulsó «Cargar partida» en la tarjeta de «ha caído el grupo»: en «Guardar y cargar», cargar. */
     let loadAfterFall = false;
     /** Cuántas veces se ha esperado en cada tablero a que la pelea empiece sola. */
@@ -557,6 +576,38 @@ export function createBot(page, { fast = true, log = console.log, prefer = [] } 
             return { unseen: unseen.length, live: live.length };
         }, fast).catch(() => ({ unseen: 0, live: 0 }));
         if (fresh.unseen > 0 && fresh.unseen === fresh.live) counts.fights++;
+        // Recién puestos al lado, la barra aún no los tiene a su alcance: se mira otra vez (si no,
+        // el primer turno se iba en «Fin de turno»).
+        if (fast && fresh.unseen > 0) {
+            await page.waitForTimeout(400);
+            v = await observe(page).catch(() => v);
+            if (!v.fight) return;
+        }
+        // Sin enemigos en pie la pelea se cierra sola (la victoria): quien juega espera, sin pulsar.
+        // Se mide cuánto tarda (si salen dados o una ventana, se atienden y se sigue esperando);
+        // si pasan 20 s y sigue abierta, se apunta y se sigue como siempre.
+        const closeKey = `${v.board}|${v.fight.round}`;
+        if (v.fight.foes.length === 0 && closing.get(closeKey) !== -1) {
+            if (!closing.has(closeKey)) closing.set(closeKey, Date.now());
+            const t0 = Number(closing.get(closeKey));
+            let now = v;
+            await until(async () => {
+                now = await observe(page);
+                return !now.fight || now.dice || Boolean(now.layer);
+            }, Math.max(0, 20000 - (Date.now() - t0)), 300);
+            if (now.fight && (now.dice || now.layer)) return;
+            const ms = Date.now() - t0;
+            closing.set(closeKey, -1);
+            steps.push({ n: steps.length + 1, what: `esperar a que se cierre la pelea, sin enemigos en pie (${ms} ms)`, silent: false, ms, where: where(v) });
+            if (now.fight || ms > 3000) {
+                const text = !now.fight
+                    ? `sin enemigos en pie, la pelea tarda ${(ms / 1000).toFixed(1)} s en cerrarse (sin barra ni «Fin de turno» mientras tanto)`
+                    : `sin enemigos en pie, la pelea sigue abierta a los 20 s, en el turno de ${now.fight.who} (barra: ${now.bar.map((/** @type {any} */ b) => b.text).join(' | ') || 'ninguna'})`;
+                oddities.push({ kind: 'cierre', n: steps.length, where: where(v), text });
+                log(`RARO  cierre #${steps.length} ${text} (${where(v)})`);
+            }
+            if (!now.fight) return;
+        }
         if (!v.fight.mine) {
             // El turno de los enemigos se juega solo; se espera un poco.
             await act(v, 'esperar el turno enemigo', async () => true, { quiet: true, wait: 1500 });
@@ -636,9 +687,15 @@ export function createBot(page, { fast = true, log = console.log, prefer = [] } 
             step = await pickStep();
         }
         if (step && step.x === undefined) step = null;
+        if (step && lastWalk.turn === turnKey && lastWalk.from === `${step.from.x},${step.from.y}`) {
+            const said = (await observe(page).catch(() => null))?.toasts?.join(' / ') || 'sin aviso';
+            oddities.push({ kind: 'anda', n: steps.length, where: where(v), text: `la casilla (${step.x + 1}, ${step.y + 1}) se enciende para andar, pero ${v.fight.who} no se mueve de (${step.from.x + 1}, ${step.from.y + 1}): ${said}` });
+            step = null;
+        }
         if (step) {
             markDecision();
             walkedOn = turnKey;
+            lastWalk = { turn: turnKey, from: `${step.from.x},${step.from.y}` };
             tally(await act(v, `andar a (${step.x + 1}, ${step.y + 1}) hacia (${step.goal.x + 1}, ${step.goal.y + 1})`,
                 () => press(page.locator(`.wm-highlight-clickable.wm-highlight-move[data-x="${step.x}"][data-y="${step.y}"]`)), { module: 'board-view.js' }));
             return;
@@ -821,7 +878,7 @@ export function createBot(page, { fast = true, log = console.log, prefer = [] } 
     const confirmStart = (v) => {
         markDecision();
         const said = String(v.start[0] || '');
-        return act(v, `«${said}» (colocados, a pelear)`, () => press(page.locator('#game-shell button:visible, #game-shell .menu_button:visible, .gs-root button:visible')
+        return act(v, `«${said}» (colocados, a pelear)`, () => press(page.locator('#game-shell button:visible, #game-shell .menu_button:visible, .gs-root button:visible, .cv-place button:visible')
             .filter({ hasText: new RegExp(`^\\s*${escape(said)}\\s*$`) })), { module: 'combate nuevo (colocar)', wait: 5000 });
     };
 
@@ -1119,6 +1176,89 @@ export async function startOffline(page, { name, gender = 'Mujer', race = 'Human
 }
 
 /**
+ * En el gremio recién hecho, como quien ya sabe jugar: la pelea del muelle (sola al entrar:
+ * «otra salida», colocar y «Empezar») y luego «Saltar la prueba». Devuelve si el prólogo quedó
+ * hecho (`la-prueba`).
+ *
+ * @param {ReturnType<typeof createBot>} bot
+ * @param {{guildPack: any, tries?: number}} input El paquete del gremio (lo que pide su muelle).
+ * @returns {Promise<boolean>}
+ */
+export async function skipTrial(bot, { guildPack, tries = 120 }) {
+    const goals = boardGoalsFromPack(guildPack);
+    let v = await bot.observe();
+    for (let i = 0; i < tries && !v.done.includes('la-prueba'); i++) {
+        v = await bot.observe();
+        if (await bot.handleLayer(v)) continue;
+        if (v.fight) {
+            await bot.fightTurn(v, goals.get(v.board) ?? null);
+            continue;
+        }
+        if (v.board && v.start.length > 0) {
+            await bot.confirmStart(v);
+            continue;
+        }
+        if (await bot.tapChip(v, /^Saltar la prueba$/, 'saltar la prueba', 'hub.js')) continue;
+        if (await bot.tapChip(v, /^Iniciar combate/, 'iniciar el combate', 'action-chips.js')) continue;
+        if (v.scene === 'dialogue' && v.vn.next) await bot.act(v, '«Continuar»', () => bot.press(bot.chip(/^Continuar$/)));
+        else await bot.page.waitForTimeout(300);
+    }
+    return v.done.includes('la-prueba');
+}
+
+/**
+ * Un servidor propio para la vuelta, con sus datos en `dataRoot` (una carpeta temporal): no toca
+ * tu partida. Con muchas pruebas a la vez (e2e-todo.mjs) tarda en arrancar: hasta seis minutos.
+ *
+ * @param {{root: string, port: number, dataRoot: string}} input
+ * @returns {Promise<import('node:child_process').ChildProcess>}
+ */
+export function startServer({ root, port, dataRoot }) {
+    const child = spawn(process.execPath, ['server.js', '--browserLaunchEnabled', 'false', '--port', String(port), '--dataRoot', dataRoot], { cwd: root, stdio: ['ignore', 'pipe', 'pipe'] });
+    return new Promise((resolve, reject) => {
+        const timer = setTimeout(() => reject(new Error('the server did not start in 360s')), 360000);
+        const watch = (/** @type {any} */ buffer) => {
+            const text = String(buffer);
+            if (text.includes(String(port)) || text.toLowerCase().includes('listening')) {
+                clearTimeout(timer);
+                setTimeout(() => resolve(child), 1500);
+            }
+        };
+        child.stdout?.on('data', watch);
+        child.stderr?.on('data', watch);
+        child.on('exit', (/** @type {number} */ code) => reject(new Error(`the server exited with code ${code}`)));
+    });
+}
+
+/**
+ * Lo que ha apuntado la vuelta, por partes: silencios, atascos, lo que se ve mal, las caídas del
+ * grupo y los clics lentos. Lo mismo en todas las vueltas, para leerlas igual.
+ *
+ * @param {ReturnType<typeof createBot>} bot
+ * @param {(line: string) => void} [log]
+ */
+export function printFindings(bot, log = console.log) {
+    log('\n--- los silencios ---');
+    for (const s of bot.silences) log(`  #${s.n} ${s.where} · ${s.what}\n      se ve: ${s.sees.slice(0, 260)}${s.module ? `\n      módulo: ${s.module}` : ''}`);
+    if (bot.silences.length === 0) log('  (ninguno)');
+    log('\n--- los atascos ---');
+    for (const b of bot.blocks) log(`  #${b.n} ${b.where} · ${b.goal}\n      se ve: ${b.sees.slice(0, 300)}\n      rescate: ${b.rescue}`);
+    if (bot.blocks.length === 0) log('  (ninguno)');
+    log('\n--- lo que se ve mal (sin ser silencio ni atasco) ---');
+    for (const o of bot.oddities) log(`  #${o.n} ${o.where} · ${o.kind}: ${o.text.slice(0, 300)}`);
+    if (bot.oddities.length === 0) log('  (nada)');
+    log('\n--- el grupo ha caído (la tarjeta «ha muerto») ---');
+    for (const f of bot.falls) log(`  #${f.n} ${f.where} · ${f.text}\n      salidas: ${f.ways.join(' | ') || '(ninguna)'}`);
+    if (bot.falls.length === 0) log('  (nunca)');
+    log('\n--- los clics lentos (la página tarda más de 1,5 s en atenderlos) ---');
+    for (const s of bot.slow) log(`  ${s.ms} ms · ${s.what} · ${s.where}`);
+    if (bot.slow.length === 0) log('  (ninguno)');
+    log('\n--- lo que se eligió ---');
+    for (const c of bot.choices) log(`  ${c.scene}: ${c.option}`);
+    if (bot.choices.length === 0) log('  (nada)');
+}
+
+/**
  * Los números fijos de la sección 6 del plan, que no dependen de la vuelta: cuántas filas
  * tiene el narrador, cuántos sucesos con decisión y cuántas charlas con ramas.
  *
@@ -1204,22 +1344,37 @@ export function boardGoalsFromPack(pack) {
  */
 export function targetsFromPack(pack) {
     const boardAt = new Map((pack.boards || []).map((/** @type {any} */ b) => [String(b.name), String(b.locationName || '')]));
-    const npcAt = new Map((pack.npcs || []).map((/** @type {any} */ n) => [String(n.name), String(n.where || '')]));
+    // Con quien se habla puede ser un PNJ o un confidente (las campañas del Gem traen los dos).
+    const npcAt = new Map([...(pack.confidants || []), ...(pack.npcs || [])].map((/** @type {any} */ n) => [String(n.name), String(n.where || '')]));
     const enemyBoard = new Map();
     for (const b of pack.boards || []) for (const e of b.enemies || []) if (!enemyBoard.has(String(e.name))) enemyBoard.set(String(e.name), String(b.name));
+    // «Derrotar a Lobo» lo cumple «Lobo 2» (el hilo mira el principio del nombre).
+    const boardOfEnemy = (/** @type {string} */ enemy) => enemyBoard.get(enemy)
+        ?? [...enemyBoard.entries()].find(([name]) => plain(name).startsWith(plain(enemy)))?.[1] ?? '';
     const byId = new Map((pack.plot?.milestones || []).map((/** @type {any} */ m) => [String(m.id), m]));
-    return (id) => {
-        const m = byId.get(id);
-        const asks = m?.asks || { kind: 'none' };
-        if (asks.kind === 'win') return { id, kind: 'win', board: String(asks.board), place: boardAt.get(String(asks.board)) || '' };
-        if (asks.kind === 'defeat') {
-            const board = enemyBoard.get(String(asks.enemy)) || '';
-            return { id, kind: 'defeat', enemy: String(asks.enemy), board, place: boardAt.get(board) || '' };
+    /**
+     * @param {string} id
+     * @param {any} asks
+     * @returns {Target}
+     */
+    const read = (id, asks) => {
+        // Idea 101: un hito que se cumple de varias formas: la vuelta sigue la primera que sabe
+        // hacer a clics (un encargo del tablón, no).
+        if (asks.kind === 'any') {
+            const options = (Array.isArray(asks.options) ? asks.options : []).filter((/** @type {any} */ o) => o && o.kind !== 'any');
+            const first = options.find((/** @type {any} */ o) => o.kind !== 'contract') ?? options[0];
+            return first ? read(id, first) : { id, kind: 'none' };
         }
-        if (asks.kind === 'talk') return { id, kind: 'talk', npc: String(asks.npc), place: npcAt.get(String(asks.npc)) || '' };
+        if (asks.kind === 'win') return { id, kind: 'win', board: String(asks.board), place: boardAt.get(String(asks.board)) || String(asks.place || '') };
+        if (asks.kind === 'defeat') {
+            const board = boardOfEnemy(String(asks.enemy));
+            return { id, kind: 'defeat', enemy: String(asks.enemy), board, place: boardAt.get(board) || String(asks.place || '') };
+        }
+        if (asks.kind === 'talk') return { id, kind: 'talk', npc: String(asks.npc), place: npcAt.get(String(asks.npc)) || String(asks.place || '') };
         if (asks.kind === 'arrive') return { id, kind: 'arrive', place: String(asks.place) };
-        if (asks.kind === 'check') return { id, kind: 'check', skill: String(asks.skill) };
+        if (asks.kind === 'check') return { id, kind: 'check', skill: String(asks.skill), ...(asks.place ? { place: String(asks.place) } : {}) };
         if (asks.kind === 'clues') return { id, kind: 'clues', place: String(asks.clues?.[0]?.place || ''), skill: String(asks.clues?.[0]?.skill || '') };
         return { id, kind: String(asks.kind || 'none') };
     };
+    return (id) => read(id, byId.get(id)?.asks || { kind: 'none' });
 }

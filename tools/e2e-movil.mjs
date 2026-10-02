@@ -416,6 +416,15 @@ try {
         }));
     check('la dirección de la guía del móvil (con «?juego») abre el juego como app, con su nombre para la pantalla de inicio (J20.7, J20.8)',
         app.marked && app.name === 'DnD Coin' && app.apple === 'DnD Coin' && /[?&]juego\b/.test(app.start), JSON.stringify(app));
+    // J20.6: jQuery recuerda todos los selectores de los toques (`widenSelectorCache`): con los
+    // 50 suyos, cada toque los volvía a traducir todos.
+    const selectors = await page.evaluate(() => {
+        const jq = /** @type {any} */ (window).jQuery;
+        const clicks = (jq?._data?.(document, 'events')?.click ?? []).filter((/** @type {any} */ h) => h.selector).length;
+        return { cache: Number(jq?.expr?.cacheLength) || 0, clicks };
+    });
+    check('J20.6: jQuery recuerda todos los selectores de los toques, sin volver a traducirlos en cada uno',
+        selectors.cache >= selectors.clicks && selectors.cache > 50, JSON.stringify(selectors));
 
     // 1. El título.
     const offline = page.locator('#game-shell .gs-menu-btn').filter({ hasText: 'Jugar sin conexión' });

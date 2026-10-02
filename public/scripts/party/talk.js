@@ -38,6 +38,7 @@ import { dialogueFor, dialogueMilestones } from '../game-engine/campaign/dialogu
 import { PLACE_KINDS, townPlaces } from '../game-engine/campaign/town.js';
 import { openDialogueWindow } from '../game-engine/ui/dialogue-window.js';
 import { isShellOpen, refreshGameShell } from '../game-engine/ui/shell/game-shell.js';
+import { currentTownPlace } from '../game-engine/ui/shell/town-scene.js';
 export { opinionsOn, optionTraits, opinionBadges } from '../game-engine/campaign/companion-opinions.js';
 import {
     ATTITUDES_KEY, CASES_KEY, CHECK_REQUESTS_KEY, DIALOGUE_MEMORY_KEY, FIELD_GAINS_KEY, OFFERS_KEY, PENDING_CHECK_KEY,
@@ -749,17 +750,37 @@ export function lookChips() {
     const place = hereLocation();
     // J10.2: primero lo que el paquete escribe para este sitio (`sights`); luego, lo del compendio.
     // J3.11: lo de un sitio de dentro del pueblo (la sala del gremio) sale al entrar en él, no aquí.
-    const sights = splitSights(sightsOf(place), placeKindsOf(place)).loose;
+    const { loose: sights, byPlace } = splitSights(sightsOf(place), placeKindsOf(place));
+    // D-J56: dentro de la sala del gremio, lo que se mira en ella sale también en la fila de
+    // abajo, delante: en su pantalla queda al final de una lista larga.
+    const looked = fieldGainsToday().looked;
+    const hall = openPlaceKind(place) === 'gremio'
+        ? (byPlace.gremio ?? []).filter(row => !looked.includes(`${currentLocationName}|${row.id}`))
+        : [];
     const rows = compendiumLooks(place);
-    if (sights.length === 0 && rows.length === 0) return [];
+    if (hall.length === 0 && sights.length === 0 && rows.length === 0) return [];
     const random = createSeededRandom(derive(String(chat_metadata?.[METADATA_KEY] || ''), 'mirar', currentLocationName, String(campaignDay())));
-    return pickLooks({ sights, rows, random, looked: fieldGainsToday().looked, here: currentLocationName })
+    return [...hall, ...pickLooks({ sights, rows, random, looked, here: currentLocationName })]
         .map((/** @type {any} */ row) => ({
             id: `look:${row.id}`,
             label: lookLabel(row),
             icon: SKILLS[/** @type {keyof typeof SKILLS} */ (row.skill)]?.icon ?? 'fa-eye',
             command: `/examinar ${row.id}`,
         }));
+}
+
+/**
+ * D-J56: la clase del sitio del pueblo que está abierto en su pantalla («gremio», «posada»…),
+ * o vacío en la plaza.
+ *
+ * @param {any} place La localización de aquí.
+ * @returns {string}
+ */
+function openPlaceKind(place) {
+    const id = currentTownPlace();
+    if (!id || !place) return '';
+    const guild = (Array.isArray(place.places) ? place.places : []).some((/** @type {any} */ p) => p?.kind === 'gremio');
+    return String(townPlaces({ location: place, guild }).places.find(p => p.id === id)?.kind ?? '');
 }
 
 /**

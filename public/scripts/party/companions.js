@@ -69,7 +69,8 @@ import { combatEncounter, currentBoardName, currentLocationName, partyMembers, s
 import { openOwnSheet } from './sheet.js';
 import { canLevelUp, openLevelUpCard } from './level-up.js';
 import { retireMember } from './hub.js';
-import { hereLocation, lastCompendium, lastConfidantEntries, lastHub, lastPack, lastWorldNpcs, saveCurrentBoard } from './world.js';
+import { hereLocation, lastCompendium, lastCompanionStories, lastConfidantEntries, lastHub, lastPack, lastWorldNpcs, saveCurrentBoard } from './world.js';
+import { withCampaignRows } from '../game-engine/campaign/companion-stories.js';
 import {
     advanceCampaignDay, campaignDay, getCampaignBonds, getCampaignCalendar, recordCampaignBondEvent, spendDayPart,
 } from './time.js';
@@ -606,11 +607,18 @@ export function offerPersonalQuests() {
 // J14.9: las misiones personales, jugadas (`campaign/companion-quests.js`).
 
 /** Las misiones de `personales.json`, leídas una vez por compendio. */
-let questData = { from: /** @type {any} */ (null), rows: /** @type {import('../game-engine/campaign/companion-quests.js').QuestRow[]} */ ([]) };
+let questData = { from: /** @type {any} */ (null), own: /** @type {any} */ (null), rows: /** @type {import('../game-engine/campaign/companion-quests.js').QuestRow[]} */ ([]) };
 
 /** @returns {import('../game-engine/campaign/companion-quests.js').QuestRow[]} */
 function questRows() {
-    if (questData.from !== lastCompendium) questData = { from: lastCompendium, rows: readQuestRows(lastCompendium.find('personales')) };
+    // Los Gems al día: las misiones de los compañeros de la campaña abierta, delante de las del compendio.
+    if (questData.from !== lastCompendium || questData.own !== lastCompanionStories) {
+        questData = {
+            from: lastCompendium,
+            own: lastCompanionStories,
+            rows: readQuestRows(withCampaignRows(lastCompendium.find('personales'), lastCompanionStories.personales)),
+        };
+    }
     return questData.rows;
 }
 

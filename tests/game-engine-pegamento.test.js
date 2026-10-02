@@ -1,5 +1,6 @@
 import fs from 'node:fs';
-import { describe, test, expect } from '@jest/globals';
+import { describe, test, expect, beforeAll, afterAll } from '@jest/globals';
+import { FACTION_WORLD } from '../public/scripts/game-engine/campaign/factions.js';
 import { startSession, readSession, enterScene, noteSent, noteClick, minutesByScene, describeSession } from '../public/scripts/game-engine/campaign/session-log.js';
 import { proposeDeed, readDeeds, recordDeed, worldMemoryBlock, PROPOSED_MAX, MAX_DEEDS } from '../public/scripts/game-engine/campaign/world-memory.js';
 import { upcoming, describeUpcoming, whenText } from '../public/scripts/game-engine/campaign/upcoming.js';
@@ -172,6 +173,10 @@ describe('U2: un solo estado de partida', () => {
 });
 
 describe('U3: lo que viene, de todos los relojes a la vez', () => {
+    // D-J58: el reloj de una facción es del mundo vivo, apagado en el juego; aquí, encendido.
+    beforeAll(() => { FACTION_WORLD.on = true; });
+    afterAll(() => { FACTION_WORLD.on = false; });
+
     const faction = { id: 'vane', name: 'Vane', goal: { kind: 'conquistar', target: 'El molino', of: 6, at: 4, pace: 3, days: 1 } };
 
     test('cada reloj dice cuándo le toca, y sale una lista ordenada por días', () => {
@@ -313,6 +318,10 @@ describe('U4: una sola crónica', () => {
 });
 
 describe('U5: la Mesa de la Semana', () => {
+    // D-J58: los planes de una facción en la mesa son del mundo vivo; aquí, encendido.
+    beforeAll(() => { FACTION_WORLD.on = true; });
+    afterAll(() => { FACTION_WORLD.on = false; });
+
     const vane = { id: 'vane', name: 'Vane', reputation: -2, goal: { kind: 'conquistar', target: 'El molino', of: 6, at: 4, pace: 3, days: 1 } };
 
     test('los asuntos salen de todos los relojes, con su plazo y lo que pasa si no se atienden', () => {

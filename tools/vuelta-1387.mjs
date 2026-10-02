@@ -229,6 +229,7 @@ try {
     number('Notas del juego con su versión en prosa', `${notes.prose} de ${notes.total} (etiqueta del motor a la vista en la vuelta: ${raw.length}; en el chat, sin pintar: ${tagged.length})`);
     number('Escenas del hilo que salen con su hito ya cumplido', bot.oddities.filter(o => o.kind === 'tarde').length);
     number('Ventanas abiertas encima de otra a medias', bot.oddities.filter(o => o.kind === 'encima').length);
+    number('Peleas que tardan en cerrarse sin enemigos en pie (más de 3 s)', bot.oddities.filter(o => o.kind === 'cierre').length);
     number('Veces que cae el grupo entero', `${bot.falls.length} (partidas cargadas después: ${bot.counts.loads})`);
     number('Descansos (posada, acampar, cazar), al ver el agotamiento o media vida', bot.counts.rests);
     number('«Otra salida» antes o en mitad de una pelea (la vuelta elige pelear)', bot.counts.exits);
