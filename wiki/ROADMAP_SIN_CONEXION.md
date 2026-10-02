@@ -44,10 +44,10 @@ author: DanielJHesseling / Claude Opus 5.5
 ## 📍 Cómo va (2026-10-02)
 
 **Avance, sobre 148 filas activas** (sin lo aparcado ni las decisiones; J10.7 queda aparcada por D-J55):
-- **87 % jugable** (129 filas).
-- **92 % construido** (136 filas).
+- **90 % jugable** (133 filas).
+- **95 % construido** (140 filas).
 
-Esto cuenta como hecho lo que está terminado y probado aunque aún no tenga commit: la partida es el gremio (J4.2), trabajos y ratos libres (J14.11) y las campañas del Gem (J5.2 a J5.6 y J12.5). Contando solo lo que tiene commit, es un 82 %.
+Todo lo contado está en commits (el último, 4f973fa88).
 
 | Hito | Jugable | Construido |
 | :--- | :---: | :---: |
@@ -55,36 +55,48 @@ Esto cuenta como hecho lo que está terminado y probado aunque aún no tenga com
 | M2 · El gremio y la primera campaña | 100 % | 100 % |
 | M3 · El pueblo y su gente | 100 % | 100 % |
 | M4 · Strahd con mapas y magia | 96 % | 100 % |
-| M5 · Una campaña bien contada | 84 % | 94 % |
+| M5 · Una campaña bien contada | 90 % | 100 % |
 | M6 · Los compañeros a fondo | 80 % | 100 % |
 | M7 · En el móvil | 78 % | 100 % |
 
-**En marcha ahora (2026-10-02): modo cerrar, siete agentes.** Lo pediste así: «céntrate en acabar cosas». Cada agente solo hace los pasos que le quedan:
-- solo sabes el nombre de quien se ha presentado, y el narrador sin placa (J13.7);
-- textos y reacciones más humanos (J13.8), que además arregla las dos pruebas del prólogo;
-- Strahd de punta a punta (M4);
-- historias en tres actos para las campañas sin hilo escrito (J10.7): ya casi estaba; se termina y se guarda para el modo mundo semiabierto (D-J55);
-- el contenido que falta: salidas habladas, cosas que mirar y trampas;
-- el calabozo (D-J47), con «Continuar» de vuelta al sitio cuando el tablero está vacío;
-- la pelea que empieza sola y el movimiento (J12.16, J12.17): el mar no se cruza, el camino va recto y las diagonales cuestan 5, 10, 5.
+**Lo último que ha entrado (commit 4f973fa88, 2026-10-02):**
+- **La partida es el gremio (J4.2):** un mismo gremio en todas las campañas.
+- **Trabajos y ratos libres (J14.11).**
+- **Las campañas del Gem** (J5.2, J5.3, J5.5, J5.6, J12.5).
+- **Solo sabes el nombre de quien se ha presentado (J13.7):** el narrador va sin placa y el oficio sale con su género.
+- **Textos y reacciones más humanos (J13.8).**
+- **Contenido:**
+  - salidas habladas en el gremio, 1387 y Strahd;
+  - cosas que mirar en Puerto Alba y en el gremio;
+  - trampas en las mazmorras.
+- **El calabozo (D-J47)**, con su escena en conversación (D-J54); «Continuar» vuelve al sitio si el tablero está vacío.
+- **La pelea empieza sola (J12.16):** primero la decisión, luego colocar a los tuyos y después la iniciativa.
+- **Moverse bien (J12.17):**
+  - el mar no se cruza;
+  - caminos rectos;
+  - diagonales 5/10/5, con el interruptor `DIAGONAL_RULE` en `board/pathfinding.js`.
+- **«Saltar la prueba»** ya no sale en el tablero del muelle: se salta saliendo del tablero a Puerto Alba.
 
-Después: revisar que lo escrito vaya en conversaciones y no en el narrador (D-J54), hacer el commit y recontar.
+**En marcha ahora (2026-10-02):**
+- **El tablero nuevo, en modo cerrar:**
+  - el lienzo y la cámara (J12.14), que ya está activo en el juego a medias: urge acabarlo;
+  - la barra de acciones de 2024 (J12.15), con lanzar a más nivel (J19.3) si el motor lo permite.
+  - Mientras tanto, la prueba del móvil falla por un mapa duplicado; lo arregla el lienzo.
+- **Strahd de punta a punta (M4):** 27 de 33 pasos.
+- **Historias en tres actos (J10.7):** se termina y se guarda para el modo mundo semiabierto (D-J55).
 
 **En pausa, con su avance guardado en su `progreso.md`**, para retomarlos en grupos pequeños:
 La prioridad es que el prólogo, el gremio, 1387 y Strahd se jueguen enteros y bien (D-J55):
-1. **El tablero nuevo:**
-   - el lienzo y la cámara (J12.14);
-   - la barra de acciones de 2024 (J12.15), que llevaba 5 de 14 pasos.
-2. **1387 de punta a punta y las vueltas automáticas** que lo comprueban (J9.1, J16).
-3. **Las notas del juego (J13.1, J18.10):** con D-J54 las dirá la gente en vez del narrador.
-4. **El teclado (J15.5):** 21 de 37.
-5. **Lo que da forma a la vida en el pueblo y el gremio:**
+1. **1387 de punta a punta y las vueltas automáticas** que lo comprueban (J9.1, J16).
+2. **Las notas del juego (J13.1, J18.10):** con D-J54 las dirá la gente en vez del narrador.
+3. **El teclado (J15.5):** 21 de 37.
+4. **Lo que da forma a la vida en el pueblo y el gremio:**
    - el romance (J14.10), con 24 de 36;
    - peleas de taberna y duelos (J12.7).
-6. **El arte que falta** en las dos campañas.
-7. **Más adelante:**
+5. **El arte que falta** en las dos campañas.
+6. **Más adelante:**
    - el móvil ligero y su guía (J20.6, J20.8), que esperan al tablero nuevo;
-   - lanzar a más nivel (J19.3);
+   - lanzar a más nivel (J19.3), si la barra nueva no lo trae;
    - el APK.
 
 **Para el modo mundo semiabierto, más adelante (D-J55):** [[ROADMAP_AUTOMATIZAR]] reúne lo que el juego podría hacer solo, sin IA:
