@@ -44,20 +44,20 @@ author: DanielJHesseling / Claude Opus 5.5
 ## 📍 Cómo va (2026-10-02)
 
 **Avance, sobre 149 filas activas** (sin lo aparcado ni las decisiones):
-- **92 % jugable** (137 filas).
-- **96 % construido** (143 filas).
+- **96 % jugable** (143 filas).
+- **99 % construido** (148 filas).
 
-Todo lo contado está en commits (el último, 2407cc696).
+Todo lo contado está en commits (el último, a9c72fe9f).
 
 | Hito | Jugable | Construido |
 | :--- | :---: | :---: |
-| M1 · Entrar y crear el personaje | 96 % | 100 % |
+| M1 · Entrar y crear el personaje | 100 % | 100 % |
 | M2 · El gremio y la primera campaña | 100 % | 100 % |
 | M3 · El pueblo y su gente | 100 % | 100 % |
 | M4 · Strahd con mapas y magia | 100 % | 100 % |
-| M5 · Una campaña bien contada | 90 % | 100 % |
-| M6 · Los compañeros a fondo | 80 % | 100 % |
-| M7 · En el móvil | 78 % | 100 % |
+| M5 · Una campaña bien contada | 94 % | 100 % |
+| M6 · Los compañeros a fondo | 100 % | 100 % |
+| M7 · En el móvil | 100 % | 100 % |
 
 **Lo último que ha entrado (commit 2407cc696, 2026-10-02):**
 - **El tablero nuevo, terminado (J12.14 a J12.17):**
@@ -81,36 +81,46 @@ Todo lo contado está en commits (el último, 2407cc696).
 - **La cabecera:** «Otoño · faltan 56 días para el invierno».
 - **Las pruebas** ya no abren pestañas, y la batería no pasa la vuelta larga antigua.
 
-**Cómo iba a las 16:00, cerca del límite de uso** (aproximado; todo en el árbol, sin commit, y cada frente con su `progreso.md`):
-- **Terminados:** el romance (J14.10), el móvil ligero y su guía (J20.6, J20.8).
-- **A punto:**
-  - los arreglos del combate, ~80 %;
-  - el arte de puentes y acantilados, ~85 %.
-- **A medias:**
-  - las peleas de taberna y duelos, ~70 %;
-  - las notas dichas por la gente, ~60 %;
-  - el teclado, ~55 %;
-  - las vueltas automáticas, ~50 %;
-  - los arreglos del tablero, ~40 %;
-  - 1387 de punta a punta, ~35 %.
-
-**En marcha ahora (2026-10-02, tarde): diez agentes.** Es todo lo que queda del roadmap:
-- 1387 de punta a punta y las vueltas automáticas, con un bot para cualquier campaña (J9.1, J16);
-- las notas del juego dichas por la gente (J13.1, J18.10, D-J54);
-- teclado y accesibilidad (J15.5);
+**Lo último que ha entrado (commits 4c0e654f6 y a9c72fe9f, 2026-10-02):**
 - el romance (J14.10);
-- peleas de taberna y duelos (J12.7);
+- las peleas de taberna y los duelos (J12.7);
 - el móvil ligero y su guía (J20.6, J20.8);
-- el arte de puentes y acantilados.
-- **Arreglos de los informes:**
-  - la escena que salía encima de colocarse;
-  - «Estabilizar» a un caído;
-  - la pelea acaba al caer el último enemigo;
-  - las trampas a 0 PG;
-  - inglés en el resumen;
-  - los avisos del borde sobre los nombres;
-  - la Luz en el examen;
-  - la tienda de mando de 1387.
+- el arte de puentes y acantilados;
+- las notas del juego dichas por la gente (J13.1, J18.10, D-J54).
+
+**En marcha ahora (2026-10-02, 18:10): ocho agentes.**
+
+| Tarea | % aprox. |
+| :--- | :---: |
+| Que el combate se sienta: el ataque, el dado 1d20 animado y el daño, en orden | 0 % (nuevo) |
+| El tablero se mueve y se lee: las fichas se deslizan, de quién es el turno, el cursor amarillo, los nombres cortados | 0 % (nuevo) |
+| El prólogo sin resumen del narrador, como conversación (y los arranques de 1387, Strahd y las experimentales) | 0 % (nuevo) |
+| Arreglos del combate (V5, «Estabilizar», fin de pelea, trampas, inglés, aviso de nivel D-J59) | ~80 % |
+| Arreglos del tablero (avisos del borde, la Luz, la tienda de mando) | ~40 % |
+| Teclado y accesibilidad (J15.5) | ~60 % |
+| Vueltas automáticas, con el bot para cualquier campaña (J16) | ~50 % |
+| 1387 de punta a punta (J9.1) | ~40 % |
+
+**Bugs y retoques abiertos** (lo que has visto jugando y lo que han encontrado los agentes). Todos tienen a alguien trabajando:
+
+| Bug | Quién lo arregla |
+| :--- | :--- |
+| El prólogo empieza con un párrafo del narrador que resume la escena del muelle (D-J54) | El prólogo |
+| Al atacar, la tirada y el daño se aplican antes de que acabe la animación | Que el combate se sienta |
+| La pelea termina antes de que salga el aviso de las tiradas | Que el combate se sienta |
+| No queda claro de quién es el turno | El tablero se mueve y se lee |
+| Las fichas se teletransportan en vez de deslizarse | El tablero se mueve y se lee |
+| El cuadro amarillo del cursor del teclado se queda en el tablero al usar el ratón | El tablero se mueve y se lee |
+| Los nombres de las fichas se cortan («Ratero del…») | El tablero se mueve y se lee |
+| En 1387, la escena del principio sale encima de colocarse (V5) | Arreglos del combate |
+| Un caído no se podía estabilizar, y los mercenarios morían a menudo | Arreglos del combate |
+| La pelea seguía tras caer el último enemigo y el caído seguía tirando salvaciones | Arreglos del combate |
+| Una trampa a 0 PG mataba sin salvaciones | Arreglos del combate |
+| El golpe especial del jefe sale en inglés en el resumen | Arreglos del combate |
+| En el móvil, los avisos del borde tapan nombres de fichas | Arreglos del tablero |
+| La Luz no da su +2 al examinar | Arreglos del tablero |
+| En 1387, «La tienda de mando» sale sin la capitana Keller ni su escolta | Arreglos del tablero |
+| Los sitios donde 1387 se calla o se atasca (38 apuntados por el bot) | 1387 de punta a punta |
 
 **Después de este roadmap, en este orden** (lo dijiste el 2026-10-02):
 1. **Un roadmap para que el juego sea más entretenido.** Saldrá de jugarlo y de tus pruebas (J16.5): qué aburre, qué confunde, qué engancha.
