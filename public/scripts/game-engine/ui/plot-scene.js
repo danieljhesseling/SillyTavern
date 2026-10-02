@@ -2,8 +2,10 @@
  * Las escenas del hilo en pantalla (J9.2 de wiki/ROADMAP_SIN_CONEXION.md): cada hito importante
  * jugado como una novela visual, en vez de contado en una nota «[HILO]».
  *
- * Quien habla sale grande, con su cara (`alegre`, `enfadado`, `triste`) y su nombre en la placa;
- * lo que cuenta el narrador sale sin retrato y en cursiva. Se sigue con un toque en cualquier
+ * Quien habla sale grande, con su cara (`alegre`, `enfadado`, `triste`) y su nombre en la placa.
+ * D-J60: en la caja solo habla alguien; lo que no dice nadie (lo que ha cambiado, la tirada, una
+ * línea sin `who` de un paquete de antes) sale en un aviso pequeño fuera de ella (`vn-aside.js`),
+ * y una pantalla sin nadie que hable se junta con la siguiente. Se sigue con un toque en cualquier
  * sitio de la escena (o Intro, o la ficha «Seguir»); en una decisión, las opciones son las de
  * una charla (`dialogue-window.js`): con su etiqueta, apagadas con el porqué si no se pueden, y
  * con su tirada. Lo que se elige lo aplica quien abre la escena (`applyEffects`), y la ventana
@@ -23,6 +25,7 @@ import { noReturnBadge, noReturnGuard } from './decision-warning.js';
 import { findOption } from '../campaign/companion-opinions.js';
 import { hearLine, shownName, shownText } from './shown-names.js';
 import { humanNote } from '../campaign/human-lines.js';
+import { asideBox, fillAside, splitLines } from './vn-aside.js';
 
 /** @param {any} value @returns {string} */
 const text = (value) => String(value ?? '').trim();
@@ -95,6 +98,41 @@ export function choiceFrames(at, result, notes = []) {
 }
 
 /**
+ * D-J60: sin narrador. Una pantalla en la que no habla nadie (una línea sin `who` de un paquete
+ * de antes, o una respuesta así) no se queda con la caja vacía: lo suyo va al aviso de la pantalla
+ * siguiente, o de la anterior si es la última. Una decisión se queda en su pantalla aunque no
+ * hable nadie: hay que elegir en ella.
+ *
+ * @param {SceneFrame[]} frames
+ * @returns {SceneFrame[]}
+ */
+export function foldNarration(frames) {
+    /** @type {SceneFrame[]} */
+    const out = [];
+    /** @type {SceneFrame['lines']} */
+    let carry = [];
+    let carriedPresenta = /** @type {any} */ (null);
+    for (const frame of Array.isArray(frames) ? frames : []) {
+        if (splitLines(frame.lines).box.length === 0 && !frame.ask) {
+            carry.push(...frame.lines);
+            // J13.7: quien se da a conocer en esa línea sigue dándose a conocer (salvo «quien habla», que no hay).
+            if (frame.presenta != null && frame.presenta !== true) carriedPresenta = frame.presenta;
+            continue;
+        }
+        const presenta = frame.presenta ?? carriedPresenta;
+        out.push(carry.length > 0 ? { ...frame, lines: [...carry, ...frame.lines], ...(presenta != null ? { presenta } : {}) } : frame);
+        carry = [];
+        carriedPresenta = null;
+    }
+    if (carry.length > 0) {
+        const last = out[out.length - 1];
+        if (last) out[out.length - 1] = { ...last, lines: [...last.lines, ...carry] };
+        else out.push({ ...frames[frames.length - 1], lines: carry });
+    }
+    return out;
+}
+
+/**
  * @typedef {Object} PlotSceneResult
  * @property {boolean} finished
  * @property {import('../campaign/plot-scenes.js').SceneChoice[]} choices Lo que se eligió.
@@ -137,7 +175,7 @@ export async function openPlotScene({
     /** @type {import('../campaign/plot-scenes.js').SceneChoice[]} */
     const choices = [];
     const where = scene?.backdrop?.place || scene?.backdrop?.town ? scene.backdrop : { place, town };
-    const frames = sceneFrames(scene);
+    const frames = foldNarration(sceneFrames(scene));
 
     // Solo la charla: se abre directamente, sin pantalla de líneas vacía.
     const talk = async () => (scene?.dialogue ? openDialogueWindow({
@@ -175,8 +213,12 @@ export async function openPlotScene({
     const chips = el('div', 'qd-chips dw-options ps-chips');
     const foot = el('div', 'qd-foot dw-foot');
     box.append(plate, head, lines, chips, foot);
-    root.append(backdrop, portrait, box);
+    // D-J60: lo que no dice nadie, fuera de la caja.
+    const aside = asideBox();
+    root.append(backdrop, portrait, aside, box);
     dialog.appendChild(root);
+    /** Lo que se ve ahora en el aviso, para añadirle un «no se puede». @type {Array<{kind: string, text: string}>} */
+    let asideNow = [];
 
     let at = 0;
     let busy = false;
@@ -184,7 +226,10 @@ export async function openPlotScene({
     const decided = new Set();
     // J11.1: lo que no tiene vuelta atrás se decide a la segunda pulsación.
     const guard = noReturnGuard(chips);
-    const total = scene.beats.length;
+    // Las pantallas que se ven, contadas tras juntar las que no dice nadie (D-J60). Lo que sale al
+    // decidir cuenta como la pantalla de la decisión.
+    const total = frames.length;
+    const stepOf = new Map(frames.map((frame, i) => [frame.beat, i + 1]));
 
     return new Promise(resolve => {
         const finish = async () => {
@@ -270,15 +315,18 @@ export async function openPlotScene({
             plate.textContent = shownName(frame.who);
             plate.hidden = !frame.who;
             drawPortrait(frame.who, frame.mood);
-            step.textContent = total > 1 ? `${frame.beat + 1} / ${total}` : '';
+            step.textContent = total > 1 ? `${stepOf.get(frame.beat) ?? 1} / ${total}` : '';
             lines.textContent = '';
-            for (const line of frame.lines) {
-                const kind = line.kind === 'narration' ? 'qd-note' : line.kind === 'you' ? 'qd-you' : line.kind === 'note' ? 'qd-note dw-note' : line.kind === 'roll' ? 'dw-roll' : 'qd-say';
-                const p = el('p', `qd-line ${kind} ps-${line.kind}`);
+            // D-J60: en la caja, lo que dice alguien (quien está en la placa, o tú); lo demás, al aviso.
+            const split = splitLines(frame.lines);
+            for (const line of split.box) {
+                const p = el('p', `qd-line ${line.kind === 'you' ? 'qd-you' : 'qd-say'} ps-${line.kind}`);
                 if (line.kind === 'you') p.appendChild(el('span', 'qd-who', 'Tú'));
-                p.appendChild(document.createTextNode(shownText(line.text, { mask: line.kind === 'note' })));
+                p.appendChild(document.createTextNode(shownText(line.text)));
                 lines.appendChild(p);
             }
+            asideNow = split.aside;
+            fillAside(aside, asideNow);
             lines.scrollTop = lines.scrollHeight;
             chips.textContent = '';
             foot.textContent = '';
@@ -384,7 +432,9 @@ export async function openPlotScene({
                 const frame = frames[at];
                 const result = chooseInScene(scene, frame.beat, id, { hero, world: getWorld(frame.who), rollD20 });
                 if (!result.ok) {
-                    lines.appendChild(el('p', 'qd-line qd-note ps-refused', result.reason));
+                    // D-J60: el porqué, en el aviso de fuera de la caja.
+                    asideNow = [...asideNow.filter(line => line.kind !== 'refused'), { kind: 'refused', text: result.reason }];
+                    fillAside(aside, asideNow);
                     return;
                 }
                 decided.add(frame.beat);
@@ -398,7 +448,7 @@ export async function openPlotScene({
                 } catch (error) {
                     console.error('[escena] no se pudo apuntar la elección', error);
                 }
-                frames.splice(at + 1, 0, ...choiceFrames(frame, result, [...notes, ...liked]));
+                frames.splice(at + 1, 0, ...foldNarration(choiceFrames(frame, result, [...notes, ...liked])));
                 at += 1;
                 draw();
             } finally {

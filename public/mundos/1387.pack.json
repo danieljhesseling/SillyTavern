@@ -4832,15 +4832,14 @@
         "backdrop": "posada",
         "beats": [
           {
-            "text": "Viernes por la mañana. Te despiertas en el cuarto más barato de la posada de El Pueblo de Barro, sin una moneda. En el petate hay un cáliz de oro con sangre seca. No es tuyo."
-          },
-          {
             "who": "Torres",
             "mood": "enfadado",
             "text": "¡Abrid en nombre de Lord Vane! ¡Buscamos {al forastero|a la forastera} que anoche mató al recaudador!"
           },
           {
-            "text": "La puerta salta de una patada. Entra el alguacil con dos guardias. Te mira a ti, y luego mira el cáliz."
+            "who": "Torres",
+            "mood": "enfadado",
+            "text": "¡Ahí está {el forastero|la forastera}! ¡Y mirad lo que tiene en el petate: el cáliz del recaudador, con sangre!"
           },
           {
             "who": "Torres",
@@ -4860,12 +4859,16 @@
                       }
                     ],
                     "reply": {
-                      "text": "Torres suda y no mira a sus guardias. No ha preguntado nada: ya sabía a quién venía a buscar."
+                      "who": "Torres",
+                      "mood": "enfadado",
+                      "text": "¿Qué me miras tanto? No me hace falta preguntar nada: sé muy bien a quién vengo a buscar."
                     }
                   },
                   "failure": {
                     "reply": {
-                      "text": "No sacas nada en claro. Solo ves a un hombre que grita mucho."
+                      "who": "Torres",
+                      "mood": "enfadado",
+                      "text": "¡Deja de mirarme así y suelta el arma!"
                     }
                   }
                 }
@@ -4880,13 +4883,17 @@
                   }
                 ],
                 "reply": {
-                  "text": "Abajo, en la taberna, alguien deja de fregar jarras para escuchar."
+                  "who": "Giles",
+                  "mood": "neutral",
+                  "text": "¡Eh, ahí arriba! ¿Qué es ese escándalo en mi posada?"
                 }
               }
             ]
           },
           {
-            "text": "Los guardias sacan las espadas. La ventana da al callejón: o sales por ahí, o te abres paso."
+            "who": "Torres",
+            "mood": "enfadado",
+            "text": "¡Sacad las espadas! ¡Y que no se escape por la ventana, que da al callejón!"
           }
         ],
         "opens": {
@@ -4918,15 +4925,14 @@
         "sceneDialogue": "giles-lo-que-vio",
         "beats": [
           {
-            "text": "Sales por la ventana y caes de espaldas en el barro del callejón."
-          },
-          {
             "who": "Torres",
             "mood": "enfadado",
             "text": "¡Buscad {al forastero|a la forastera} del cáliz! ¡Va {lleno|llena} de barro, no puede ir lejos!"
           },
           {
-            "text": "Solo queda una puerta que nadie vigila: la de atrás de la taberna de Giles, el tabernero que te cobra la cama. Dentro se le oye fregar jarras, solo.",
+            "who": "Torres",
+            "mood": "enfadado",
+            "text": "¡Vigilad la plaza y el pozo! La puerta de atrás de la taberna de Giles dejadla, que ese no esconde ni a una rata.",
             "presenta": "el-tabernero-giles",
             "options": [
               {
@@ -4957,7 +4963,9 @@
                       }
                     ],
                     "reply": {
-                      "text": "Nadie te ve entrar. Desde la cocina ves a Giles contar monedas, y guardarlas deprisa."
+                      "who": "Giles",
+                      "mood": "alegre",
+                      "text": "Treinta y una, treinta y dos… Bien pagado, sí señor. Y nadie tiene por qué saber de dónde sale."
                     }
                   },
                   "failure": {
@@ -4976,6 +4984,11 @@
                 }
               }
             ]
+          },
+          {
+            "who": "Giles",
+            "mood": "neutral",
+            "text": "Siéntate, anda, antes de que vuelvan los guardias. Tú y yo tenemos que hablar."
           }
         ],
         "opens": {
@@ -5007,15 +5020,14 @@
         "backdrop": "El Camino Viejo",
         "beats": [
           {
-            "text": "El rastro que te vendió Giles se sigue bien por el barro helado. En el lindero del bosque, una flecha se clava a un palmo de tu bota."
+            "who": "Nils",
+            "mood": "enfadado",
+            "text": "Esa flecha era un aviso. Ni un paso más: la próxima va al ojo."
           },
           {
             "who": "Nils",
-            "mood": "enfadado",
-            "text": "Ni un paso más. La próxima va al ojo."
-          },
-          {
-            "text": "Entre las ramas asoman media docena de arcos tensos. Son los Lobos del Bosque, los furtivos del valle."
+            "mood": "neutral",
+            "text": "Mira entre las ramas: seis arcos, y todos te apuntan. Somos los Lobos del Bosque."
           },
           {
             "who": "Nils",
@@ -5067,7 +5079,9 @@
             ]
           },
           {
-            "text": "Nils se da la vuelta y te lleva por el bosque hasta el campamento de los Lobos: chozas de rama, humo y gente flaca que te mira en silencio."
+            "who": "Nils",
+            "mood": "neutral",
+            "text": "Sígueme al campamento. Y no mires mucho a la gente: tienen hambre, no ganas de visitas."
           }
         ],
         "opens": {
@@ -5099,20 +5113,14 @@
         "backdrop": "Castillo de Vane",
         "beats": [
           {
-            "text": "Sales del campamento con el cáliz envuelto en un trapo. Empiezan a caer copos gordos y lentos."
-          },
-          {
             "who": "Nils",
             "mood": "neutral",
-            "text": "Con esta nieve se cierra el paso del sur. Hasta la primavera no sale nadie del valle. Tampoco tú."
-          },
-          {
-            "text": "Llegas a las puertas del castillo de Vane con el cáliz en la mano. Desde la muralla te apuntan dos ballestas."
+            "text": "Mira cómo nieva. Con esta nieve se cierra el paso del sur: hasta la primavera no sale nadie del valle. Tampoco tú."
           },
           {
             "who": "Garret",
             "mood": "neutral",
-            "text": "¡Alto! ¿Quién va? Un momento… ¿Eso es el cáliz del recaudador?",
+            "text": "¡Alto ahí, que te apuntan dos ballestas! ¿Quién va? Un momento… ¿Eso es el cáliz del recaudador?",
             "options": [
               {
                 "id": "para-vane",
@@ -5170,7 +5178,9 @@
             ]
           },
           {
-            "text": "El rastrillo sube con un chirrido. Vas a conocer al señor de este valle."
+            "who": "Garret",
+            "mood": "neutral",
+            "text": "¡Subid el rastrillo! Pasa: vas a conocer al señor de este valle."
           }
         ],
         "opens": {
@@ -5203,7 +5213,9 @@
         "backdrop": "El Camino Viejo",
         "beats": [
           {
-            "text": "Llevas semanas {atrapado|atrapada} por el hielo, y el pan ya sabe a serrín. Una tarde, en el camino del bosque, Karl el Sordo te sale al paso, solo y sin arco."
+            "who": "Karl",
+            "mood": "neutral",
+            "text": "¡Eh, tú! ¡Soy Karl, el de los Lobos! Vengo solo y sin arco, ¿lo ves? Solo quiero hablar."
           },
           {
             "who": "Karl",
@@ -5216,7 +5228,9 @@
             "text": "No te pido que nos ayudes. Te pido que mires hacia otro lado."
           },
           {
-            "text": "Si avisas al alguacil, morirán mujeres y niños en el bosque. Si callas, el pueblo pasará hambre."
+            "who": "Karl",
+            "mood": "triste",
+            "text": "Si avisas al alguacil, en el bosque morirán mujeres y niños. Ya sé que si callas, el pueblo pasará hambre. Así están las cosas."
           },
           {
             "who": "Karl",
@@ -5353,13 +5367,10 @@
         "backdrop": "Castillo de Vane",
         "beats": [
           {
-            "text": "Esa noche te llevan al gran salón del castillo. Arde un fuego pequeño en una chimenea enorme."
-          },
-          {
             "who": "Oswald el Senescal",
             "mood": "neutral",
             "presenta": true,
-            "text": "Soy Oswald, el senescal. Llevo las cuentas de este castillo, y las cuentas no salen. Su señoría te recibe ahora."
+            "text": "Pasa al gran salón y acércate al fuego. Soy Oswald, el senescal. Llevo las cuentas de este castillo, y las cuentas no salen. Su señoría te recibe ahora."
           },
           {
             "who": "Lord Edmund Vane",
@@ -5458,9 +5469,6 @@
         "scene": "Ha pasado lo peor: la nieve no ha frenado a la Casa Keller. Su vanguardia ha cruzado a pie las montañas del norte y ha masacrado a la guardia del peaje. Lord Vane te paga para que dirijas el contraataque. Te esperan en El Peaje Norte: armaduras negras contra la nieve, gente de oficio, y más que vosotros.",
         "beats": [
           {
-            "text": "Al amanecer, alguien aporrea la puerta."
-          },
-          {
             "who": "Garret",
             "mood": "triste",
             "text": "¡Arriba, deprisa! Ha llegado uno del peaje, medio muerto de frío."
@@ -5533,9 +5541,6 @@
         "scene": "Un rastro de sangre que sale del peaje te lleva a un sitio del que casi nadie se acuerda: la vieja mina de hierro. Huele a carbón y a sudor frío. Alguien mete acero de contrabando en el valle para armar a los furtivos y debilitar a Lord Vane. Descubrir quién está detrás cambiará la guerra.",
         "backdrop": "La Mina Abandonada",
         "beats": [
-          {
-            "text": "La vieja mina de hierro huele a carbón y a sudor frío."
-          },
           {
             "who": "Maese Ambrosio",
             "mood": "alegre",
@@ -5611,7 +5616,9 @@
         "backdrop": "La Mina Abandonada",
         "beats": [
           {
-            "text": "En la boca de los túneles hay huellas frescas y un farol aún caliente."
+            "who": "Maese Ambrosio",
+            "mood": "neutral",
+            "text": "Mira: huellas frescas, y este farol aún está caliente. No anda lejos."
           },
           {
             "who": "Maese Ambrosio",
@@ -5672,9 +5679,6 @@
         "scene": "Al salir de la mina ves el cielo rojo hacia el norte: el peaje arde. El ejército de Keller no ha esperado a la primavera y ha traído a sus rompehielos, la infantería pesada. Llueven flechas incendiarias sobre las empalizadas, y la gente de Vane no aguantará mucho. Vuelve al peaje y pelea en las empalizadas, o el norte entrará en el valle esta misma noche.",
         "beats": [
           {
-            "text": "Al salir de la mina, el cielo del norte está rojo."
-          },
-          {
             "who": "Pip",
             "mood": "triste",
             "presenta": true,
@@ -5683,7 +5687,7 @@
           {
             "who": "Pip",
             "mood": "triste",
-            "text": "¡El peaje arde! Los Keller han traído a los rompehielos, los grandes de las mazas."
+            "text": "¿Ves el cielo rojo, al norte? ¡Es el peaje, que arde! Los Keller han traído a los rompehielos, los grandes de las mazas."
           },
           {
             "who": "Pip",
@@ -5756,7 +5760,9 @@
         "backdrop": "El Pueblo de Barro",
         "beats": [
           {
-            "text": "El agua gotea de todos los tejados. Se acaba el invierno."
+            "who": "Giles",
+            "mood": "neutral",
+            "text": "¿Oyes cómo gotean los tejados? Se acaba el invierno."
           },
           {
             "who": "Giles",
@@ -5806,7 +5812,9 @@
         "backdrop": "El Pueblo de Barro",
         "beats": [
           {
-            "text": "Esa noche, en la taberna de Giles, te esperan en tres mesas distintas."
+            "who": "Giles",
+            "mood": "neutral",
+            "text": "Te esperan en tres mesas distintas. No los hagas esperar mucho, que beben a mi cuenta."
           },
           {
             "who": "Nils",
@@ -6003,7 +6011,9 @@
             "text": "Desde entonces llevo la soga puesta. Que la vea todo el que pasa."
           },
           {
-            "text": "Esa misma noche, en el campamento de los Lobos ya saben que le has escuchado."
+            "who": "Darek",
+            "mood": "triste",
+            "text": "Ten cuidado. Esta noche, en el campamento de los Lobos, ya sabrán que me has escuchado."
           }
         ],
         "opens": {
@@ -6030,6 +6040,24 @@
         "title": "El hielo que escucha",
         "hint": "",
         "scene": "El lago cruje bajo las botas, pero aguanta. En el centro, bajo el hielo, hay una cara: un soldado de otra guerra, con los ojos abiertos y el yelmo todavía puesto. En el valle nadie cruza el lago. Ahora {vosotros|vosotras} sí.",
+        "backdrop": "El Lago Helado",
+        "beats": [
+          {
+            "who": "Finn",
+            "mood": "alegre",
+            "text": "Pisa donde piso yo, que ahí el hielo aguanta. Nadie cruza este lago, ¿sabes? Nadie menos yo."
+          },
+          {
+            "who": "Finn",
+            "mood": "neutral",
+            "text": "Mira ahí, en el centro, bajo el hielo. Esa cara. Es un soldado de otra guerra, con los ojos abiertos y el yelmo puesto."
+          },
+          {
+            "who": "Finn",
+            "mood": "triste",
+            "text": "Por él no cruza nadie del valle: dicen que trae mala suerte. Ahora {vosotros|vosotras} también lo habéis visto."
+          }
+        ],
         "opens": {
           "kind": "start"
         },
@@ -6052,6 +6080,24 @@
         "title": "Lo que esconde el hielo",
         "hint": "",
         "scene": "Rascáis la escarcha donde el hielo es más oscuro. A un palmo hay fardos atados y envueltos en grasa: armas que alguien escondió para volver a por ellas. Con paciencia y un hacha sacáis uno. Dentro hay una espada larga de otra guerra, sin una mancha de óxido. Desde la orilla, el pescador de hielo os mira y no dice nada: ya lo sabía.",
+        "backdrop": "El Lago Helado",
+        "beats": [
+          {
+            "who": "Finn",
+            "mood": "neutral",
+            "text": "¿Rascando la escarcha? Ahí, donde el hielo es más oscuro, a un palmo hay fardos atados y envueltos en grasa."
+          },
+          {
+            "who": "Finn",
+            "mood": "alegre",
+            "text": "Son armas. Alguien las hundió para volver a por ellas, y no volvió nunca. Saca uno con el hacha, anda."
+          },
+          {
+            "who": "Finn",
+            "mood": "neutral",
+            "text": "¿Lo ves? Una espada larga de otra guerra, sin una mancha de óxido. Yo ya lo sabía, pero a mí nadie me pregunta."
+          }
+        ],
         "opens": {
           "kind": "start"
         },
@@ -6080,6 +6126,24 @@
         "title": "El mapa del explorador",
         "hint": "",
         "scene": "Entre las cosas del explorador de los Lobos hay un trozo de cuero doblado: la calzada vieja dibujada a carbón y una cruz junto a unas termas del imperio que nadie usa. Ya sabéis dónde se calientan los Lobos cuando aprieta el frío.",
+        "backdrop": "El Camino Viejo",
+        "beats": [
+          {
+            "who": "Furtivo de los Lobos",
+            "mood": "enfadado",
+            "text": "¡Agh! ¡Deja ese cuero, que es mío!"
+          },
+          {
+            "who": "Furtivo de los Lobos",
+            "mood": "triste",
+            "text": "Está bien, quédatelo, pero no me mates. Es la calzada vieja, dibujada a carbón. La cruz son unas termas del imperio que ya no usa nadie."
+          },
+          {
+            "who": "Furtivo de los Lobos",
+            "mood": "triste",
+            "text": "Allí nos calentamos cuando aprieta el frío. Karl me va a colgar por esto."
+          }
+        ],
         "opens": {
           "kind": "start"
         },

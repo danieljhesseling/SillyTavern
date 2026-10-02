@@ -345,21 +345,15 @@ describe('J10.7: el tablón', () => {
     });
 });
 
-describe('D-J54: las escenas de los actos las dice la gente', () => {
+describe('D-J54 y D-J60: las escenas de los actos las dice la gente, sin narrador', () => {
     const data = read('../public/compendio/actos.json');
     const rowsOf = (/** @type {string} */ kind) => data.rows.filter((/** @type {any} */ r) => r.kind === kind);
-    /** El narrador, si habla, en una línea corta: el sitio, cuando no hay nadie que hable. */
-    const SHORT = 100;
 
-    test('en las plantillas, cada línea la dice alguien; el narrador, solo una línea corta en la guarida', () => {
+    test('en las plantillas, cada línea la dice alguien: ninguna del narrador (D-J60)', () => {
         for (const trama of rowsOf('trama')) {
-            for (const part of ['gancho', 'pistas']) {
+            for (const part of ['gancho', 'pistas', 'guarida', 'golpe']) {
+                expect(trama[part].beats.length).toBeGreaterThan(0);
                 expect(trama[part].beats.filter((/** @type {any} */ b) => !b.who)).toEqual([]);
-            }
-            for (const part of ['guarida', 'golpe']) {
-                const narrator = trama[part].beats.filter((/** @type {any} */ b) => !b.who);
-                expect(narrator.length).toBeLessThanOrEqual(1);
-                for (const line of narrator) expect(line.text.length).toBeLessThan(SHORT);
             }
             // «Habla con quien lo vio» no tiene escena: lo que decía ya lo dice en el gancho.
             expect(trama.testigo.scene).toBeUndefined();
@@ -370,6 +364,10 @@ describe('D-J54: las escenas de los actos las dice la gente', () => {
             const speakers = ['guarida', 'golpe'].flatMap(part => trama[part].beats.map((/** @type {any} */ b) => b.who).filter(Boolean));
             expect(speakers.length).toBeGreaterThan(0);
             for (const who of speakers) expect(trama.secuaces).toContain(who);
+        }
+        // Una bestia no habla: en su cubil habla quien tenía allí (D-J60).
+        for (const trama of rowsOf('trama').filter((/** @type {any} */ r) => r.villano === 'bestia')) {
+            for (const part of ['guarida', 'golpe']) expect(trama[part].beats.every((/** @type {any} */ b) => b.who === '{cautivo}')).toBe(true);
         }
         for (const giro of rowsOf('giro')) {
             const beats = giro.encrucijada.beats;
@@ -399,16 +397,12 @@ describe('D-J54: las escenas de los actos las dice la gente', () => {
         ...Array.from({ length: 10 }, (_, i) => seedCampaignPack({ row: { ...COSTA, seed: `dj54-${i}` }, compendium: compendium() }).pack),
     ];
 
-    test('en cada campaña hecha, quien habla es alguien del paquete (sale con su nombre), y el narrador casi no habla', () => {
+    test('en cada campaña hecha, quien habla es alguien del paquete (sale con su nombre), y el narrador no habla nunca', () => {
         for (const pack of packs()) {
             const people = new Set([...pack.npcs, ...(pack.bestiary ?? [])].map((/** @type {any} */ p) => p.name));
             const beats = pack.plot.milestones.flatMap((/** @type {any} */ m) => (m.beats ?? []).map((/** @type {any} */ b) => ({ ...b, milestone: m.id })));
-            const told = beats.filter((/** @type {any} */ b) => !b.who);
-            // Una línea corta como mucho por escena, y dos en toda la campaña.
-            expect(told.length).toBeLessThanOrEqual(2);
-            expect(new Set(told.map((/** @type {any} */ b) => b.milestone)).size).toBe(told.length);
-            // Con los nombres ya puestos («El Bosque Quemado», «la Cosa del Pozo»), algo más larga.
-            for (const line of told) expect(line.text.length).toBeLessThan(SHORT + 20);
+            // D-J60: ninguna línea sin quien la diga.
+            expect(beats.filter((/** @type {any} */ b) => !b.who)).toEqual([]);
             for (const beat of beats.filter((/** @type {any} */ b) => b.who)) expect(people.has(beat.who)).toBe(true);
             expect(beats.length).toBeGreaterThanOrEqual(15);
             // D-J39: si hablara aquí con quien hay que hablar, la escena cumpliría el hito al abrirse.

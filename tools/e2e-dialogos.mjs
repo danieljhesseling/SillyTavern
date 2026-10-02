@@ -114,6 +114,8 @@ function readWindow(page) {
         return {
             plate: q('.dw-dialog .qd-nameplate')?.textContent ?? '',
             lines: [...document.querySelectorAll('.dw-dialog .qd-line')].map(l => ({ cls: l.className, text: l.textContent ?? '' })),
+            // D-J60: lo que no dice nadie (la tirada, lo que cambia), en el aviso de fuera de la caja.
+            aside: [...document.querySelectorAll('.dw-dialog .qd-aside .vn-aside-line')].map(l => (l.textContent ?? '').trim()),
             options: [...document.querySelectorAll('.dw-dialog .dw-option')].map(o => ({
                 id: o.getAttribute('data-option'),
                 text: o.querySelector('.dw-said')?.textContent ?? '',
@@ -190,7 +192,7 @@ try {
     seen = await readWindow(page);
     check('[Soldado]: Brunilda se pone triste, y su retrato cambia de cara', seen.mood === 'triste' && /brunilda--triste/.test(seen.portrait), `${seen.mood} ${seen.portrait}`);
     check('La caja dice lo que dijiste y lo que contesta', seen.lines.some(l => /qd-you/.test(l.cls) && /veterana/.test(l.text)) && seen.lines.some(l => /veinte años/.test(l.text)));
-    check('Y lo que pasó: os mira mejor', seen.lines.some(l => /Brunilda os mira mejor/.test(l.text)), JSON.stringify(seen.lines.map(l => l.text)));
+    check('Y lo que pasó, en el aviso de fuera de la caja (D-J60): os mira mejor', seen.aside.some(l => /Brunilda/.test(l)) && !seen.lines.some(l => /qd-note|dw-note/.test(l.cls)), JSON.stringify(seen));
     await shoot(page, 'Brunilda, triste');
 
     await pick(page, 'veterana-vale');
@@ -208,7 +210,7 @@ try {
     await page.waitForTimeout(250);
     seen = await readWindow(page);
     const gold = await page.evaluate(() => window.world.gold);
-    check('J8.3: la tirada sale en la caja, y bien da el oro', seen.lines.some(l => /dw-roll/.test(l.cls) && /Persuasión/.test(l.text)) && gold === 8 && seen.mood === 'alegre', `${gold} ${JSON.stringify(seen.lines.map(l => l.text))}`);
+    check('J8.3: la tirada sale en el aviso de fuera de la caja (D-J60), y bien da el oro', seen.aside.some(l => /Persuasión/.test(l)) && gold === 8 && seen.mood === 'alegre', `${gold} ${JSON.stringify(seen)}`);
     await shoot(page, 'Brunilda, la tirada');
 
     await pick(page, 'adelanto-si-trato');
@@ -244,7 +246,7 @@ try {
     await page.evaluate(() => { window.nextRoll = 2; });
     await pick(page, 'convencer');
     seen = await readWindow(page);
-    check('J8.3: mal: Giles se enfada y os mira peor', seen.mood === 'enfadado' && seen.lines.some(l => /os mira peor/.test(l.text)), `${seen.mood} ${JSON.stringify(seen.lines.map(l => l.text))}`);
+    check('J8.3: mal: Giles se enfada y os mira peor (en el aviso)', seen.mood === 'enfadado' && seen.aside.some(l => /Giles/.test(l)), `${seen.mood} ${JSON.stringify(seen)}`);
     await page.locator('.dw-dialog .dw-leave').click();
     await page.waitForTimeout(200);
     check('«Despedirse» cierra a medias', !((await readWindow(page)).open) && (await page.evaluate(() => window.talkResult?.ended)) === false);

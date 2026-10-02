@@ -604,8 +604,9 @@ try {
         : line.got.plate === '' && line.text.length < 100);
     const wrong = spoken.filter(line => !line.got || !plateOk(line));
     const narrated = spoken.filter(line => !line.who).length;
-    check(`D-J54: las escenas de los actos las dice la gente (${spoken.length - narrated} líneas con placa, ${narrated} del narrador)`,
-        spoken.length > 0 && wrong.length === 0 && narrated <= 2,
+    // D-J60: ni una del narrador.
+    check(`D-J60: las escenas de los actos las dice la gente (${spoken.length - narrated} líneas con placa, ${narrated} del narrador)`,
+        spoken.length > 0 && wrong.length === 0 && narrated === 0,
         JSON.stringify(wrong.map(line => ({ id: line.id, who: line.who, text: line.text.slice(0, 60), plate: line.got?.plate ?? '(no salió)' }))));
 
     // ------------------------------------------------------------ el final

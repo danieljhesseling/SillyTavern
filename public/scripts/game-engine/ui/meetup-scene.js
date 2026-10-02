@@ -1,8 +1,9 @@
 /**
  * La quedada en pantalla (J14.3 y J14.5): una escena de novela visual con quien quedas. Su
  * retrato grande, con la cara que toca (`alegre`, `enfadado`, `triste`), su nombre en la placa,
- * lo que pasa y lo que dice en la caja de abajo, y tus respuestas como fichas. Detrás, el sitio
- * donde estáis (la posada, el muelle…), de noche si es de noche.
+ * lo que dice en la caja de abajo, y tus respuestas como fichas. Detrás, el sitio donde estáis
+ * (la posada, el muelle…), de noche si es de noche. D-J60: lo que pasa sin que lo diga nadie
+ * (`note`) y lo que se cuenta al acabar no van en la caja: van en un aviso fuera de ella.
  *
  * También enseña una charla corta (`talkScene` de `small-talk.js`: un solo paso) y el selector
  * de con quién y dónde quedar.
@@ -16,6 +17,7 @@
 import { sceneStep, sceneView, startScene } from '../campaign/meetups.js';
 import { firstArt, loadPixelManifest, pixelManifest } from './pixel-art.js';
 import { hearLine, knowsName, meetPerson, shownName, shownText } from './shown-names.js';
+import { asideBox, fillAside, splitLines } from './vn-aside.js';
 
 /** @param {any} value @returns {string} */
 const text = (value) => String(value ?? '').trim();
@@ -214,7 +216,9 @@ export async function openMeetupScene({
     const chips = el('div', 'qd-chips');
     const foot = el('div', 'qd-foot');
     box.append(plate, head, lines, chips, foot);
-    root.append(backdrop, portrait, box);
+    // D-J60: lo que pasa sin que lo diga nadie (`note`) y lo que se cuenta al acabar, fuera de la caja.
+    const aside = asideBox();
+    root.append(backdrop, portrait, aside, box);
     dialog.appendChild(root);
 
     let state = startScene();
@@ -257,7 +261,8 @@ export async function openMeetupScene({
                 plate.hidden = true;
                 step.textContent = '';
                 drawPortrait(portrait, portraitFor({ ...person, name: who, pack, mood: 'alegre' }), who);
-                for (const line of summary ?? []) lines.appendChild(el('p', 'qd-line qd-summary', line));
+                // D-J60: no es nadie quien lo cuenta: en el aviso, y la caja solo con «Cerrar».
+                fillAside(aside, (summary ?? []).map(line => ({ kind: 'summary', text: line })));
                 chip('Cerrar', '↵', 'finish', () => close(true)).focus();
                 return;
             }
@@ -273,12 +278,15 @@ export async function openMeetupScene({
             plate.textContent = knowsName(speaking.name) ? text(speaking.short) || speaking.name : shownName(speaking.name);
             root.dataset.speaker = speaking.name;
             drawPortrait(portrait, portraitFor({ ...speaking, pack, mood: view.face }), speaking.name);
-            for (const line of beatLines(view)) {
+            // D-J60: en la caja, lo que dice quien está en la placa y lo que contestas; lo demás, al aviso.
+            const split = splitLines(beatLines(view));
+            for (const line of split.box) {
                 const p = el('p', `qd-line qd-${line.kind}`);
                 if (line.kind === 'you') p.appendChild(el('span', 'qd-who', 'Tú'));
-                p.appendChild(document.createTextNode(shownText(line.text, { mask: line.kind === 'note' || line.kind === 'then' })));
+                p.appendChild(document.createTextNode(shownText(line.text, { mask: line.kind === 'then' })));
                 lines.appendChild(p);
             }
+            fillAside(aside, split.aside);
             let first = /** @type {HTMLButtonElement|null} */ (null);
             for (const one of beatChips(view)) {
                 const button = one.kind === 'reply'

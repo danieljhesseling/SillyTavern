@@ -23,6 +23,7 @@
  *   node tools/vuelta-campana.mjs mi-campana.json --peleas        # las peleas de verdad (más lenta)
  *   node tools/vuelta-campana.mjs mi-campana.json --estricto      # y un silencio o un atasco cuentan como fallo
  *   node tools/vuelta-campana.mjs mi-campana.json --pasos 400     # cortar antes
+ *   VUELTA_ANIMACIONES=1 node tools/vuelta-campana.mjs …          # con las animaciones del combate (más lenta)
  *
  * Los ganchos de prueba, dichos en el registro con «GANCHO»: las peleas a un golpe (salvo con
  * `--peleas`); si la campaña empieza por encima del nivel 1, el héroe sube a su nivel de entrada;
@@ -36,7 +37,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'no
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { createBot, startOffline, runCampaign, skipTrial, startServer, printFindings } from './vuelta-bot.mjs';
+import { createBot, startOffline, runCampaign, skipTrial, startServer, printFindings, quietMotion } from './vuelta-bot.mjs';
 
 const ROOT = new URL('..', import.meta.url).pathname.replace(/^[/]([A-Za-z]:)/, '$1');
 const FLAGS_WITH_VALUE = ['--port', '--captura', '--pasos', '--campana'];
@@ -110,6 +111,8 @@ try {
     browser = await chromium.launch({ channel: 'msedge', headless: !HEADED });
     const context = await browser.newContext({ viewport: { width: 1400, height: 950 } });
     page = await context.newPage();
+    // Sin animaciones (el ataque, el dado, el daño): se mide el camino. VUELTA_ANIMACIONES=1 las deja.
+    await quietMotion(context, page);
     /** @type {string[]} */
     const problems = [];
     page.on('pageerror', (/** @type {any} */ e) => problems.push(`PAGEERROR ${e.message}`));
@@ -292,7 +295,8 @@ try {
     number('El final', ending.title ? `${ending.title} (${ending.id})` : `ninguno (${played.gaveUp || 'sin final'})`);
     number('Silencios', bot.silences.length);
     number('Atascos (rescatados con un comando)', bot.blocks.length);
-    number('Lo que se ve mal (etiquetas en crudo, ventanas encima, escenas tarde)', bot.oddities.length);
+    // Los turnos con el gancho van aparte (su número, abajo): pueden ser de la vuelta, no del juego.
+    number('Lo que se ve mal (etiquetas en crudo, ventanas encima, escenas tarde)', bot.oddities.filter(o => o.kind !== 'gancho').length);
     number('Tiempo de «Jugar sin conexión» a la primera decisión', bot.firstDecisionAt ? clock(bot.firstDecisionAt - clicked) : 'sin decidir');
     number('Días de campaña', v.day);
     number('Pasos (clics)', bot.steps.length);

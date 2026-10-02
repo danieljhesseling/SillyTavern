@@ -785,10 +785,11 @@ export function tellBoard(boardName) {
  * the player's next turn, so a finished combat still costs nothing by itself.
  *
  * @param {string} text
- * @param {{show?: string, speaker?: string, mood?: string}} [options] `show`: lo que se ve si
+ * @param {{show?: string, speaker?: string, mood?: string, quiet?: boolean}} [options] `show`: lo que se ve si
  *   cuenta el motor (Z1). `speaker`: quien lo dice, si es alguien del mundo (la novela sale con
  *   su cara y su nombre en la placa, no con la del narrador); `mood`: con qué gesto (`alegre`,
- *   `enfadado`, `triste`), para la cara que toca.
+ *   `enfadado`, `triste`), para la cara que toca. `quiet`: lo que ya se ha visto en pantalla (una
+ *   escena jugada): queda en el registro y lo lee el modelo, pero no sale otra vez en la caja.
  * @returns {Promise<void>}
  */
 export async function postForModel(text, options = {}) {
@@ -820,7 +821,10 @@ export async function postForModel(text, options = {}) {
     const told = narratorMode() === 'motor' ? sayGendered(noteProse(seen, { key: String(chat.length) })) : seen;
     // D-J54: sin modelo, y si nadie lo dice ya, lo dice quien está allí (la sacerdotisa al
     // curaros); o no sale en la caja, si es lo mismo otra vez. El modelo sigue leyendo la nota.
-    const voice = !speaker && narratorMode() === 'motor' ? voiceOf(seen, told) : null;
+    // «Las escenas en las que se resume lo ocurrido no hacen falta» (Daniel, 2026-10-02): lo ya
+    // jugado en pantalla no lo dice nadie ni sale en la caja.
+    const quiet = options?.quiet === true;
+    const voice = !quiet && !speaker && narratorMode() === 'motor' ? voiceOf(seen, told) : null;
     if (voice?.mode === 'line') {
         if (voice.before) postBefore(seen, voice.before);
         const who = String(voice.who || '');
@@ -842,7 +846,7 @@ export async function postForModel(text, options = {}) {
         hearLine(speaker ? { who: speaker, text: told } : { who: '', text: told, quotes: true });
         const shown = shownText(told, { mask: true });
         if (shown !== message.mes) /** @type {any} */ (message.extra).display_text = shown;
-        if (voice?.mode === 'quiet') /** @type {any} */ (message.extra).quiet = true;
+        if (quiet || voice?.mode === 'quiet') /** @type {any} */ (message.extra).quiet = true;
     }
 
     chat.push(message);

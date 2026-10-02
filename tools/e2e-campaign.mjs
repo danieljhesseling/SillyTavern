@@ -5897,14 +5897,31 @@ try {
     await page.evaluate(() => { void window.SillyTavern.getContext().executeSlashCommandsWithOptions('/modojuego'); });
     await page.waitForSelector('#game-shell', { timeout: 15000 });
     await page.waitForTimeout(1500);
-    const shell49 = await page.evaluate(() => ({
-        focus: document.querySelector('#game-shell .gs-focus')?.textContent || '',
-        fight: [...document.querySelectorAll('button')].some(b => /iniciar combate/i.test(b.textContent || '')),
-    }));
+    // Tanda 10: ya no hay «Iniciar combate»: Torres os ve y la pelea empieza sola, con su
+    // decisión. J9.1: la partida nueva abre el tablero antes de crear al héroe; la decisión
+    // salía entonces con el grupo vacío y todas las salidas cerradas («No queda nadie en pie»).
+    const shell49 = await page.evaluate(() => {
+        const choice = document.querySelector('dialog[open].ev-avoid');
+        return {
+            focus: document.querySelector('#game-shell .gs-focus')?.textContent || '',
+            fight: Boolean(choice) && /Pelear/.test(choice?.textContent || ''),
+            nobody: /No queda nadie en pie/.test(choice?.textContent || ''),
+            rolls: /Tira Wendel/.test(choice?.textContent || ''),
+        };
+    });
     check('arriba dice qué tienes entre manos', /cáliz/i.test(shell49.focus), shell49.focus);
-    check('y en el cuarto de la posada se puede empezar la pelea', shell49.fight, JSON.stringify(shell49));
+    check('y en el cuarto de la posada la pelea empieza sola: os ven, y se puede pelear o intentar otra salida (tira Wendel)',
+        shell49.fight && !shell49.nobody && shell49.rolls, JSON.stringify(shell49));
 
-    // Los rumores del pueblo, desde su ficha: se cuentan al narrador, uno cada vez.
+    // Los rumores del pueblo, desde su ficha: se cuentan al narrador, uno cada vez. Fuera del
+    // tablero, como en el paso 50: en una sala no se oyen. Antes, la decisión: «1» es Pelear
+    // (lo que hacía sin querer la tecla de Diálogo de antes), y salir del tablero deja la pelea.
+    if (shell49.fight) {
+        await page.keyboard.press('1');
+        await page.waitForTimeout(1200);
+    }
+    await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/leave'));
+    await page.waitForTimeout(1200);
     await page.keyboard.press('1');
     await page.waitForTimeout(800);
     const rumorChip = page.locator('#game-shell .gs-chip-action', { hasText: 'Escuchar rumores' }).first();

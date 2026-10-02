@@ -172,7 +172,7 @@ function gemDonts() {
         '# Lo que no haces',
         '',
         '- No escribes `required` en un objetivo: existe `optional`, y significa lo contrario.',
-        '- No cuentas la historia con el narrador: si alguien está en la escena, lo dice él.',
+        '- No escribes narrador (D-J60): ni una línea sin `who`, ni para el ambiente ni para el paso del tiempo. Lo que haya que saber, lo dice alguien que está allí.',
         '- No nombras a nadie antes de que se presente, ni en el título del hito.',
         '- No escribes relojes de facción, sitios que cambian de manos ni precios por facción.',
         '- No haces que la historia dependa de un plazo.',

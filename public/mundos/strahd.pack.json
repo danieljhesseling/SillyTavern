@@ -5133,18 +5133,14 @@
         "backdrop": "posada",
         "beats": [
           {
-            "text": "La niebla os ha dejado en una aldea gris, de casas cerradas y ventanas tapiadas. La única luz sale de una taberna: Sangre de la Enredadera."
-          },
-          {
-            "text": "Dentro hay poca gente y nadie habla. Junto al fuego, un hombre joven y ancho de hombros bebe solo."
-          },
-          {
             "who": "Ismark Kolyanovich",
             "mood": "triste",
             "text": "{Forasteros|Forasteras}. Hacía tiempo que la niebla no dejaba pasar a nadie. Soy Ismark; aquí me llaman el Menor."
           },
           {
-            "text": "En el rincón, una vieja encorvada no deja de mirar a los clientes. Tiene las uñas negras y sonríe con demasiados dientes."
+            "who": "Bruja Baroviana",
+            "mood": "alegre",
+            "text": "Qué suerte la mía. Hacía mucho que la niebla no me traía a nadie tan fresco."
           },
           {
             "who": "Ismark Kolyanovich",
@@ -5182,7 +5178,9 @@
             ]
           },
           {
-            "text": "La vieja se levanta despacio. Debajo del chal se le mueve algo que no son brazos."
+            "who": "Bruja Baroviana",
+            "mood": "enfadado",
+            "text": "¿No queréis acercaros a la abuela? Pues ya voy yo."
           }
         ],
         "opens": {
@@ -5212,7 +5210,9 @@
         "backdrop": "Aldea de Barovia",
         "beats": [
           {
-            "text": "Ismark os lleva a la casa de su familia, en lo alto de la aldea. La verja está arañada, y en el barro hay huellas de pies descalzos."
+            "who": "Ismark Kolyanovich",
+            "mood": "triste",
+            "text": "Esta es la casa de mi familia. Mirad la verja, toda arañada, y esas huellas de pies descalzos en el barro."
           },
           {
             "who": "Ismark Kolyanovich",
@@ -5220,7 +5220,9 @@
             "text": "Mi padre murió hace tres noches. Desde entonces, los muertos vienen a llamar a la puerta, y mi hermana Ireena no quiere irse de casa."
           },
           {
-            "text": "Abre una mujer joven de pelo castaño, con una espada corta en la mano. Tiene dos marcas rojas en el cuello."
+            "who": "Ismark Kolyanovich",
+            "mood": "neutral",
+            "text": "Esta es mi hermana, Ireena. Desde que murió padre, abre la puerta con la espada en la mano. Y no le miréis el cuello: esas dos marcas rojas son cosa de él."
           },
           {
             "who": "Ireena Kolyana",
@@ -5263,7 +5265,9 @@
             ]
           },
           {
-            "text": "Del cementerio llega un ruido de pies que se arrastran. Muchos pies."
+            "who": "Ireena Kolyana",
+            "mood": "enfadado",
+            "text": "¿Lo oís? Pies que se arrastran, desde el cementerio. Muchos pies. Ya están aquí."
           }
         ],
         "opens": {
@@ -5293,10 +5297,14 @@
         "backdrop": "templo",
         "beats": [
           {
-            "text": "La iglesia de la aldea está helada. Delante del altar, un cura flaco reza sin levantar la cabeza."
+            "who": "Donavich",
+            "mood": "triste",
+            "text": "Señor de la Mañana, líbranos del mal… Líbranos del mal…"
           },
           {
-            "text": "Debajo del suelo, algo grita. No es un grito de dolor: es de hambre."
+            "who": "Donavich",
+            "mood": "triste",
+            "text": "¿Lo oís? Ese grito, debajo del suelo. No es de dolor: es de hambre."
           },
           {
             "who": "Donavich",
@@ -5362,7 +5370,9 @@
             ]
           },
           {
-            "text": "Donavich os da la llave de la trampilla. Le tiemblan las manos."
+            "who": "Donavich",
+            "mood": "triste",
+            "text": "Tomad la llave de la trampilla. Perdonad: me tiemblan las manos."
           }
         ],
         "opens": {
@@ -5390,10 +5400,14 @@
         "backdrop": "Campamento del Estanque Tser",
         "beats": [
           {
-            "text": "Al final del camino, junto a un estanque negro, arden las hogueras de los vistani. Hay carros pintados, caballos y música: la primera que oís en Barovia."
+            "who": "Stanimir",
+            "mood": "alegre",
+            "text": "¡Forasteros en el campamento del estanque! Pasad, que hay fuego y música. Seguro que es la primera que oís en Barovia."
           },
           {
-            "text": "La tienda más grande es la de la adivina del campamento. Dentro huele a humo y a incienso. Una mujer muy vieja baraja cartas sin mirarlas."
+            "who": "Stanimir",
+            "mood": "neutral",
+            "text": "La adivina os espera en la tienda grande. No le preguntéis cómo lo sabía: siempre lo sabe."
           },
           {
             "who": "Madam Eva",
@@ -5436,7 +5450,9 @@
             ]
           },
           {
-            "text": "Da la vuelta a la primera carta. Antes de que diga nada, fuera empiezan a aullar los lobos."
+            "who": "Madam Eva",
+            "mood": "neutral",
+            "text": "La primera carta… Esperad. ¿Oís a los lobos? Aúllan justo ahora."
           },
           {
             "who": "Madam Eva",
@@ -5473,15 +5489,14 @@
         "backdrop": "Ciudad de Vallaki",
         "beats": [
           {
-            "text": "Vallaki está cerrada con una empalizada alta. Dentro, la plaza está llena de guirnaldas y farolillos, y nadie sonríe."
-          },
-          {
             "who": "Barón Vargas Vallakovich",
             "mood": "alegre",
             "text": "¡{Bienvenidos|Bienvenidas} a la fiesta del Sol Ardiente! En Vallaki la gente está contenta, quiera o no. Es una orden."
           },
           {
-            "text": "En medio de la plaza hay un sol de mimbre enorme, empapado en aceite. Llueve, y la mecha no prende."
+            "who": "Izek Strazni",
+            "mood": "enfadado",
+            "text": "Señor, con esta lluvia la mecha no prende. El sol de mimbre está empapado en aceite, y aun así no arde."
           },
           {
             "who": "Barón Vargas Vallakovich",
@@ -5519,7 +5534,9 @@
             ]
           },
           {
-            "text": "Entonces se oyen gritos en la puerta norte. Por encima de la empalizada saltan lobos, y la gente corre hacia la plaza."
+            "who": "Izek Strazni",
+            "mood": "enfadado",
+            "text": "¡Gritos en la puerta norte! ¡Saltan lobos por encima de la empalizada!"
           },
           {
             "who": "Barón Vargas Vallakovich",
@@ -5561,20 +5578,14 @@
         "backdrop": "Viejo Mascahuesos",
         "beats": [
           {
-            "text": "El molino se inclina sobre un barranco, con las aspas rotas. Por la chimenea sale un humo que huele a pan dulce."
-          },
-          {
             "who": "Morgantha",
             "mood": "alegre",
-            "text": "¿Venís a por pasteles? Un oro cada uno. Hacen soñar con sitios donde todavía sale el sol."
-          },
-          {
-            "text": "Arriba, detrás de una puerta con cerrojo, llora un niño. La vieja sube la voz para taparlo."
+            "text": "¿Oléis el pan dulce? ¿Venís a por pasteles? Un oro cada uno. Hacen soñar con sitios donde todavía sale el sol."
           },
           {
             "who": "Morgantha",
             "mood": "enfadado",
-            "text": "Eso son los gatos. Mis hijas los tienen muertos de hambre. ¿Compráis o no?",
+            "text": "¿Ese llanto de arriba? Son los gatos. Mis hijas los tienen muertos de hambre. ¿Compráis o no?",
             "options": [
               {
                 "id": "dejanos-subir",
@@ -5610,7 +5621,9 @@
             ]
           },
           {
-            "text": "Detrás del horno se abren dos puertas. Salen dos mujeres con la misma sonrisa que la vieja."
+            "who": "Morgantha",
+            "mood": "alegre",
+            "text": "Ya están aquí mis hijas. ¿Veis qué sonrisa? La misma que su madre."
           }
         ],
         "opens": {
@@ -5640,10 +5653,14 @@
         "backdrop": "Argynvostholt",
         "beats": [
           {
-            "text": "Argynvostholt es una mansión de piedra partida por la mitad. En el tejado hay un faro apagado, y en el patio, estatuas de dragones sin cabeza."
+            "who": "Sir Godfrey Gwilym",
+            "mood": "triste",
+            "text": "Esto es Argynvostholt, o lo que queda: el faro apagado y los dragones de piedra sin cabeza."
           },
           {
-            "text": "Un caballero con la armadura abollada da vueltas por el patio. No respira, pero la armadura suena a cada paso."
+            "who": "Sir Godfrey Gwilym",
+            "mood": "neutral",
+            "text": "¿Veis a ese caballero de la armadura abollada, que da vueltas por el patio? No respira, pero no para."
           },
           {
             "who": "Sir Godfrey Gwilym",
@@ -5686,7 +5703,9 @@
             ]
           },
           {
-            "text": "El caballero se para en seco y vuelve la cabeza hacia {vosotros|vosotras}. Levanta la espada."
+            "who": "Sir Godfrey Gwilym",
+            "mood": "enfadado",
+            "text": "¡Cuidado! Se ha parado y os mira. Ya levanta la espada."
           }
         ],
         "opens": {
@@ -5716,15 +5735,14 @@
         "backdrop": "Bodega El Mago de los Vinos",
         "beats": [
           {
-            "text": "La bodega El Mago de los Vinos está en un valle de viñas negras. Hay barriles tirados por el suelo y sangre en la puerta del lagar."
-          },
-          {
             "who": "Davian Martikov",
             "mood": "enfadado",
             "text": "¡Quietos ahí! ¿Quién os manda, el conde o la bruja?"
           },
           {
-            "text": "Es un viejo de barba blanca con un cuchillo de podar en la mano. En la casa, detrás de él, se oyen niños."
+            "who": "Davian Martikov",
+            "mood": "neutral",
+            "text": "Soy Davian Martikov, y esta bodega es mía. Detrás de mí, en la casa, están mis nietos, así que medid lo que hacéis."
           },
           {
             "who": "Davian Martikov",
@@ -5762,7 +5780,9 @@
             ]
           },
           {
-            "text": "Entre las cepas se mueven sombras bajas. Un aullido, y luego otro."
+            "who": "Davian Martikov",
+            "mood": "enfadado",
+            "text": "¡Ahí, entre las cepas! ¿Oís los aullidos? Ya vienen."
           }
         ],
         "opens": {
@@ -5797,15 +5817,14 @@
         "backdrop": "Aldea de Krezk",
         "beats": [
           {
-            "text": "Krezk es una aldea pequeña, encerrada en un muro de piedra. Las puertas son de madera gruesa y están cerradas."
-          },
-          {
             "who": "Dmitri Krezkov",
             "mood": "enfadado",
             "text": "¡Aquí no se abre a nadie! Volved por donde habéis venido."
           },
           {
-            "text": "A vuestra espalda, entre los árboles, algo grande anda a cuatro patas. Luego se pone de pie."
+            "who": "Dmitri Krezkov",
+            "mood": "enfadado",
+            "text": "¡Mirad detrás de vosotros, entre los árboles! Eso que anda a cuatro patas… se ha puesto de pie."
           },
           {
             "who": "Dmitri Krezkov",
@@ -5843,7 +5862,9 @@
             ]
           },
           {
-            "text": "El hombre lobo aúlla, y desde el bosque le contestan otros."
+            "who": "Dmitri Krezkov",
+            "mood": "triste",
+            "text": "¿Lo oís? Aúlla, y desde el bosque le contestan otros."
           }
         ],
         "opens": {
@@ -5872,12 +5893,6 @@
         "scene": "Llegáis al imponente Castillo Ravenloft. Las gárgolas de la entrada despiertan para poneros a prueba antes de cruzar el umbral.",
         "backdrop": "Castillo Ravenloft",
         "beats": [
-          {
-            "text": "El camino sube entre la niebla hasta un puente de piedra sobre un barranco sin fondo. Al otro lado está el castillo Ravenloft."
-          },
-          {
-            "text": "Hay luz en las ventanas. Alguien sabe que venís."
-          },
           {
             "who": "Rahadin",
             "mood": "neutral",
@@ -5919,7 +5934,9 @@
             ]
           },
           {
-            "text": "Rahadin se va sin hacer ruido. Encima de la puerta, las gárgolas de piedra abren los ojos. Hay que llegar a la puerta principal."
+            "who": "Rahadin",
+            "mood": "neutral",
+            "text": "Os espero dentro, si llegáis a la puerta principal. A las gárgolas de la entrada no les gustan las visitas."
           }
         ],
         "opens": {
@@ -5948,9 +5965,6 @@
         "scene": "Una ilusión de Strahd os da la bienvenida en el comedor. Cuando desaparece, las puertas se cierran de golpe y sus secuaces atacan. ¡Es la oportunidad de buscar conocimiento antiguo!",
         "backdrop": "Castillo Ravenloft",
         "beats": [
-          {
-            "text": "El comedor es largo y frío. La mesa está puesta para muchos, con comida caliente y velas nuevas. Al fondo, alguien toca un órgano."
-          },
           {
             "who": "Strahd von Zarovich",
             "mood": "neutral",
@@ -5992,10 +6006,14 @@
             ]
           },
           {
-            "text": "El conde se deshace como el humo. Las velas se apagan a la vez, las puertas se cierran de golpe y algo baja por las paredes."
+            "who": "Strahd von Zarovich",
+            "mood": "alegre",
+            "text": "Os dejo con mis criados. Que no se diga que en mi casa se cena sin compañía."
           },
           {
-            "text": "En algún sitio del comedor está su diario, el Tomo de Strahd. Hay que aguantar y encontrarlo."
+            "who": "Strahd von Zarovich",
+            "mood": "alegre",
+            "text": "Ah, y mi diario está en algún sitio de este comedor. Buscadlo, si aguantáis."
           }
         ],
         "opens": {
@@ -6025,15 +6043,9 @@
         "backdrop": "Castillo Ravenloft",
         "beats": [
           {
-            "text": "Las escaleras bajan en espiral hasta las tumbas de la familia del conde. El aire huele a tierra y a flores secas."
-          },
-          {
-            "text": "Al fondo, sobre una tarima, hay un ataúd abierto. Strahd está de pie a su lado, como quien espera una visita."
-          },
-          {
             "who": "Strahd von Zarovich",
             "mood": "neutral",
-            "text": "Habéis llegado más lejos que nadie en mucho tiempo. Eso os lo concedo."
+            "text": "Bajad, bajad. Este es mi ataúd, y estas son las tumbas de mi familia. Habéis llegado más lejos que nadie en mucho tiempo."
           },
           {
             "who": "Strahd von Zarovich",
@@ -6061,7 +6073,9 @@
             ]
           },
           {
-            "text": "Strahd sonríe. En los rincones de la cripta se mueve algo más."
+            "who": "Strahd von Zarovich",
+            "mood": "alegre",
+            "text": "No os esperaba solo, claro. Mirad los rincones de la cripta."
           }
         ],
         "opens": {

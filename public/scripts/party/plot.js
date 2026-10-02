@@ -54,7 +54,8 @@ import {
 import { combatEncounter, currentBoardName, currentLocationName, partyMembers, worldItemCatalogue } from './state.js';
 import { recordFinishedCampaign } from './hub.js';
 import { deliverRelics } from './loot.js';
-import { ensureWorldData, getLocationBoards, lastCompendium, lastDialogues, lastHubHome, lastPack, lastRumors } from './world.js';
+import { ensureWorldData, getLocationBoards, lastCompendium, lastDialogues, lastHubHome, lastLevelPlan, lastPack, lastRumors } from './world.js';
+import { boardBand, boardLevelSaid, partyLevelOf } from '../game-engine/combat/level-adjust.js';
 import { noteSceneChoices, sceneChoices } from './greetings.js';
 import { getCurrentWorldFactions, shiftFactionStanding } from './factions.js';
 import {
@@ -62,7 +63,7 @@ import {
 } from './time.js';
 import { noteDeed, worldWrite, refreshWorldMemoryPrompt } from './world-growth.js';
 import {
-    whoPlays, postCombatNarration, tellMoment, postForModel, showTip, noteRollInWindow, storyWindowsOn,
+    whoPlays, postCombatNarration, tellMoment, postForModel, showTip, noteRollInWindow, storyWindowsOn, narratorMode,
 } from './narration.js';
 import { partyPurse, payFromParty, savePartyState } from './roster.js';
 import { judgeDecision } from './companions.js';
@@ -380,6 +381,22 @@ export function storyWorld(who = '', attitude = undefined) {
 }
 
 /**
+ * D-J59: para qué nivel es un tablero escrito de la campaña y en cuál está el grupo, o vacío si
+ * el tablero no es de los que la campaña reparte por niveles (los de los encargos ya salen a la
+ * medida del grupo).
+ *
+ * @param {string} boardName
+ * @returns {string}
+ */
+export function boardLevelLine(boardName) {
+    const name = String(boardName ?? '').trim().toLowerCase();
+    if (!lastLevelPlan || !name || (!lastLevelPlan.bandOf?.[name] && !lastLevelPlan.actOf[name])) return '';
+    const { level, size } = partyLevelOf(partyMembers);
+    if (size === 0) return '';
+    return boardLevelSaid(boardBand(lastLevelPlan, String(boardName)), level);
+}
+
+/**
  * J11.1: antes de entrar en un tablero cuya victoria no tiene vuelta atrás (el que acaba la
  * campaña, o uno que cierra otros caminos), se pregunta, sin decir qué se pierde. Sin aviso, sí.
  *
@@ -397,6 +414,10 @@ export async function confirmBoardNoReturn(boardName) {
     const body = $('<div class="nr-confirm gs-panel"></div>');
     body.append($('<h3 class="gs-popup-title"></h3>').text(ask.title));
     body.append($('<p></p>').text(ask.text));
+    // D-J59: y para qué nivel es, y en cuál está tu grupo («Este combate es para nivel 6-7; tu
+    // grupo está en 5»). Solo los tableros escritos de la campaña, que son los que lo saben.
+    const levelLine = boardLevelLine(String(boardName));
+    if (levelLine) body.append($('<p class="nr-level"></p>').text(levelLine));
     const answer = await new Popup(body[0], POPUP_TYPE.CONFIRM, '', { okButton: ask.ok, cancelButton: ask.cancel }).show();
     return Boolean(answer);
 }
@@ -537,6 +558,23 @@ export function narratorScene(scene) {
 }
 
 /**
+ * D-J60: un hito que solo trae texto, sin conexión: un aviso fuera de la caja (con su título), y
+ * apuntado como jugado. El texto queda en el registro y en el Diario, no en la caja.
+ *
+ * @param {import('../game-engine/campaign/plot-scenes.js').PlotScene} scene
+ * @returns {Promise<void>}
+ */
+async function noticeTextScene(scene) {
+    const said = String(scene?.text || '').trim();
+    if (!said || !chat_metadata) return;
+    toastr.info(shownText(said, { mask: true }), String(scene.title || 'La historia'), { timeOut: 15000, closeButton: true });
+    chat_metadata[PLOT_SCENES_PLAYED_KEY] = rememberScene(chat_metadata[PLOT_SCENES_PLAYED_KEY], String(scene.id));
+    saveMetadata();
+    await postForModel(`[HILO] ${said}`, { show: `📜 [HILO] ${shownText(said, { mask: true })}`, quiet: true })
+        .catch(error => console.error('[party] scene note failed', error));
+}
+
+/**
  * D-J39: si la escena de un hito de «habla con X» ya es esa charla (como la de Karl, o la de
  * Tomás en el muelle): habla X en ella y ninguna charla escrita cumple el hito por su cuenta.
  * Con una charla que lo cumple (Giles, Brunilda), lo cumple ella, cuando se cuenta lo que importa.
@@ -644,7 +682,15 @@ function queuePlotScenes(entries) {
  * @returns {Promise<void>}
  */
 async function playPlotScene(milestone, scene) {
-    const told = narratorScene(scene);
+    // D-J60: sin conexión no hay narrador. Lo que solo trae texto (un hito sin `beats`) no se abre
+    // como escena: sale en un aviso fuera de la caja, queda jugado y el Diario lo guarda.
+    // Si detrás viene una charla (`sceneDialogue`), esa sí se abre.
+    const textOnly = scene.kind !== 'scene' && narratorMode() === 'motor';
+    if (textOnly) {
+        await noticeTextScene(scene);
+        if (!scene.dialogue) return;
+    }
+    const told = textOnly ? { ...scene, kind: /** @type {'scene'} */ ('scene'), beats: [] } : narratorScene(scene);
     // J13.7: un hito de texto dice en `presenta` a quién se conoce en él; vale para todas sus líneas.
     const shown = scene.kind !== 'scene' && milestone?.presenta != null
         ? { ...told, beats: told.beats.map(beat => ({ ...beat, presenta: milestone.presenta })) } : told;
@@ -714,7 +760,9 @@ async function playPlotScene(milestone, scene) {
     if (transcript.length > 0) {
         await postForModel(`[HILO] Esta escena ya se ha jugado en pantalla («${shown.title}»):\n${transcript.join('\n')}\nNo digas otra vez lo que ya se ha jugado: la escena no se repite, se sigue desde aquí.`,
             // J13.7: lo que se ve, con quien aún no se ha presentado llamado por lo que es.
-            { show: `📜 [HILO] ${shownText(transcript.join('\n'), { mask: true })}` })
+            // «Las escenas en las que se resume lo ocurrido no hacen falta» (Daniel, 2026-10-02): la
+            // escena ya se ha visto, así que queda en el registro y para el modelo, no en la caja.
+            { show: `📜 [HILO] ${shownText(transcript.join('\n'), { mask: true })}`, quiet: true })
             .catch(error => console.error('[party] scene note failed', error));
     }
     // D-J39: la escena que ya es la charla del hito lo cumple; y los hitos que cumplió lo que se eligió.

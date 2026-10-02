@@ -23,6 +23,7 @@ import { loadPixelManifest } from './pixel-art.js';
 import { backdropFor, beatChips, beatLines, portraitFor } from './meetup-scene.js';
 import { sayList } from '../campaign/pastimes.js';
 import { resolveGender } from '../campaign/grammar.js';
+import { asideBox, fillAside, isAsideKind } from './vn-aside.js';
 
 /** @typedef {import('../campaign/card-game.js').CardGame} CardGame */
 /** @typedef {import('../campaign/card-game.js').Card} Card */
@@ -211,7 +212,11 @@ export async function openPastime({
     const chips = el('div', 'qd-chips');
     const foot = el('div', 'qd-foot');
     box.append(plate, head, lines, table, chips, foot);
-    root.append(backdrop, portrait, box);
+    // D-J60: lo que pasa sin que lo diga nadie, las reglas de la mesa y lo que te llevas, fuera de la caja.
+    const aside = asideBox();
+    root.append(backdrop, portrait, aside, box);
+    /** Lo que se ve en el aviso ahora. @type {Array<{kind: string, text: string}>} */
+    let asideNow = [];
     dialog.appendChild(root);
 
     /** @type {'who'|'scene'|'bet'|'table'|'wait'|'end'} */
@@ -245,6 +250,12 @@ export async function openPastime({
         };
         const line = (/** @type {string} */ kind, /** @type {string} */ said) => {
             const p = el('p', `qd-line qd-${kind}`);
+            // D-J60: lo que no dice nadie va al aviso, no a la caja.
+            if (isAsideKind(kind)) {
+                asideNow = [...asideNow, { kind, text: said }];
+                fillAside(aside, asideNow);
+                return p;
+            }
             p.textContent = said;
             lines.appendChild(p);
             return p;
@@ -338,6 +349,10 @@ export async function openPastime({
             step.textContent = view.steps > 1 ? `${view.step} / ${view.steps}` : '';
             face(view.face);
             for (const one of beatLines(view)) {
+                if (isAsideKind(one.kind)) {
+                    line(one.kind, one.text);
+                    continue;
+                }
                 const p = el('p', `qd-line qd-${one.kind}`);
                 if (one.kind === 'you') p.appendChild(el('span', 'qd-who', 'Tú'));
                 p.appendChild(document.createTextNode(one.text));
@@ -447,6 +462,8 @@ export async function openPastime({
 
         const draw = () => {
             lines.textContent = '';
+            asideNow = [];
+            fillAside(aside, asideNow);
             chips.textContent = '';
             foot.textContent = '';
             table.textContent = '';

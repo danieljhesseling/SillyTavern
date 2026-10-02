@@ -192,6 +192,23 @@ export function partyLevelOf(members) {
 }
 
 /**
+ * D-J59: para qué nivel es un tablero y en cuál está el grupo, dicho llano, para el aviso de
+ * antes de entrar en un final: «Este combate es para nivel 6-7; tu grupo está en 5.» Los
+ * finales no se ablandan; quien llega corto lo sabe antes de entrar.
+ *
+ * @param {{low: number, high: number}|null} band El de `boardBand`.
+ * @param {number} partyLevel El de `partyLevelOf`.
+ * @returns {string} Vacío si el tablero no dice para qué nivel es.
+ */
+export function boardLevelSaid(band, partyLevel) {
+    const low = Math.floor(Number(band?.low) || 0);
+    if (low < 1) return '';
+    const high = Math.max(low, Math.floor(Number(band?.high) || 0));
+    const level = Math.max(1, Math.floor(Number(partyLevel) || 1));
+    return `Este combate es para nivel ${high > low ? `${low}-${high}` : low}; tu grupo está en ${level}.`;
+}
+
+/**
  * Cuánto se aparta el grupo del tramo del tablero: nada dentro; fuera, hasta el borde.
  *
  * @param {number} partyLevel

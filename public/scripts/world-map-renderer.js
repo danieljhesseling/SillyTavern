@@ -14,10 +14,15 @@ import { attachBoardKeys } from './game-engine/ui/board-keys.js';
 import { keyboardInUse } from './game-engine/ui/keyboard-nav.js';
 import {
     BUTTON_STEP, RECENT_HAND_MS, cellCenter, centerPoint, centerPointFit, clampPan, clampScale, fitBoard, followDecision, isPointShown,
-    safeRect, toScreen, wheelScale, zoomAt, zoomLabel, zoomLimits,
+    panToShow, safeRect, toScreen, wheelScale, zoomAt, zoomLabel, zoomLimits,
 } from './game-engine/ui/combat-vtt/camera.js';
 import { createMinimap, minimapCells } from './game-engine/ui/combat-vtt/minimap.js';
 import { placeEdgeMarkers, renderEdgeMarkers } from './game-engine/ui/combat-vtt/edge-markers.js';
+import { findPath } from './game-engine/board/pathfinding.js';
+import { motionMs } from './game-engine/ui/motion.js';
+import { planSlide, slideFrames, slideLeft } from './game-engine/ui/combat-vtt/token-slide.js';
+import { tokenLabel } from './game-engine/ui/combat-vtt/token-label.js';
+import { announceTurn, forgetTurn } from './game-engine/ui/combat-vtt/turn-banner.js';
 
 /** Si cada casilla en pixel carga: la que no, se pinta con los colores de antes. */
 const tileLoads = new Map();
@@ -594,6 +599,73 @@ const followMemory = new Map();
 const vttMemory = new Map();
 
 /**
+ * Tanda 17: dónde estaba cada ficha en el último dibujo de cada tablero y las que van andando
+ * (`token-slide.js`): al redibujar, una ficha que ha cambiado de casilla anda hasta ella en vez de
+ * aparecer allí. Por tablero (`derivedViewStateKey`) y por ficha.
+ *
+ * @type {Map<string, {cells: Map<string, {x: number, y: number}>, slides: Map<string, import('./game-engine/ui/combat-vtt/token-slide.js').Slide>}>}
+ */
+const tokenMemory = new Map();
+
+/**
+ * Tanda 17: lo que les queda por andar a las fichas que van andando, en milisegundos (0 si no anda
+ * ninguna). Para quien quiera esperar a que acaben antes de enseñar otra cosa (los dados de un
+ * ataque que viene después de moverse).
+ *
+ * @returns {number}
+ */
+export function boardMotionLeftMs() {
+    const now = performance.now();
+    let most = 0;
+    for (const memo of tokenMemory.values()) {
+        for (const slide of memo.slides.values()) most = Math.max(most, slideLeft(slide, now));
+    }
+    return most;
+}
+
+/**
+ * Tanda 17: una ficha que ya se ha visto llegar a `cell` por otro lado (la secuencia del combate la
+ * hace andar en el tablero sin redibujarlo, `combat-vtt/fx.js`): al redibujar, no vuelve a andar
+ * el mismo camino.
+ *
+ * @param {number|string} tokenId
+ * @param {{x: number, y: number}} cell
+ */
+export function noteTokenShownAt(tokenId, cell) {
+    const id = String(tokenId);
+    for (const memo of tokenMemory.values()) {
+        if (!memo.cells.has(id)) continue;
+        memo.cells.set(id, { x: Number(cell?.x) || 0, y: Number(cell?.y) || 0 });
+        memo.slides.delete(id);
+    }
+}
+
+/**
+ * Tanda 17: con qué se juega ahora, el teclado (`key`) o el ratón y el dedo (`pointer`). Se apunta
+ * en la página (`html[data-gs-input]`): el cuadro amarillo del cursor del teclado (board-keys.js)
+ * solo sale con el teclado; tras un clic o un toque se va (combat-vtt.css, sección 1). Daniel: «¿por
+ * qué sigue ese símbolo amarillo ahí?»: pulsar el tablero con el ratón le daba el foco, y con el
+ * foco salía el cursor en la casilla de antes.
+ */
+let boardInput = '';
+let watchingInput = false;
+
+/** Pone a escuchar con qué se juega, una vez. */
+function watchBoardInput() {
+    if (watchingInput || typeof document === 'undefined') return;
+    watchingInput = true;
+    const mark = (/** @type {string} */ how) => {
+        if (boardInput === how) return;
+        boardInput = how;
+        document.documentElement.dataset.gsInput = how;
+    };
+    document.addEventListener('keydown', (event) => {
+        if (!['Shift', 'Control', 'Alt', 'Meta'].includes(event.key)) mark('key');
+    }, true);
+    document.addEventListener('pointerdown', () => mark('pointer'), true);
+}
+
+/**
  * Tanda 10: el tablero como una mesa virtual (wiki/maquetas/ENCARGO_COMBATE_VTT.md).
  *
  * @typedef {Object} VttOptions
@@ -606,6 +678,9 @@ const vttMemory = new Map();
  *   de borde si no se le ve (los enemigos que el grupo ve), con su distancia en pies.
  * @property {(tokenId: number|string) => HighlightCell[]|null} [reachOf] Hasta dónde llega una ficha
  *   tuya: se enciende en azul al pasar el ratón por encima, sin pulsar.
+ * @property {string} [turnTitle] Tanda 17: lo que dice el cartel al empezar el turno («Tu turno, Laedor»,
+ *   «Turno del ratero del muelle»; `turn-banner.js`). Sin esto, no sale cartel.
+ * @property {'yours'|'ally'|'enemy'} [turnSide] De quién es el turno, para el color del cartel y del aro.
  */
 
 /**
@@ -779,6 +854,16 @@ export function renderLocationView(target, options) {
     const touchy = () => lastPointer === 'touch' || lastPointer === 'pen';
     const justPanned = () => Date.now() - panEndedAt < 400;
     const derivedViewStateKey = String(viewStateKey || `${name}::${imageUrl}::${gridWidth}x${gridHeight}`);
+    // Tanda 17: el cursor del teclado, solo con el teclado (`watchBoardInput`).
+    watchBoardInput();
+    /**
+     * Tanda 17: las fichas que han echado a andar en este dibujo, para que la cámara las acompañe.
+     *
+     * @type {Array<{id: string, slide: import('./game-engine/ui/combat-vtt/token-slide.js').Slide}>}
+     */
+    let freshSlides = [];
+    /** Tanda 17: la vista del dibujo anterior de este tablero: la nueva llega deslizándose desde ella. */
+    const viewBefore = vttOn && locationViewStateMemory.has(derivedViewStateKey) ? { ...locationViewStateMemory.get(derivedViewStateKey) } : null;
 
     /** J20.6: lo que mide la caja del tablero, leído en lo que se está haciendo ahora. @type {{width: number, height: number}|null} */
     let sizeMemo = null;
@@ -1013,16 +1098,27 @@ export function renderLocationView(target, options) {
         return true;
     }
 
+    /** Tanda 17: el aviso que quita el deslizamiento de la cámara al acabar. */
+    let glideTimer = 0;
     /**
      * Tanda 10: el siguiente cambio de la cámara se desliza (los botones, el minimapa, una fila de
      * la iniciativa) en vez de saltar; arrastrar y la rueda van al momento.
      *
      * @param {boolean} on
+     * @param {number} [ms] Tanda 17: lo que dura, si no es lo de siempre (la cámara que acompaña a
+     *   una ficha que anda tarda lo que tarda ella).
      */
-    function glide(on) {
+    function glide(on, ms = 0) {
         if (!vttOn) return;
         content.toggleClass('vtt-glide', on);
-        if (on) window.setTimeout(() => content.removeClass('vtt-glide'), 320);
+        content[0].style.transitionDuration = on && ms > 0 ? `${ms}ms` : '';
+        window.clearTimeout(glideTimer);
+        if (on) {
+            glideTimer = window.setTimeout(() => {
+                content.removeClass('vtt-glide');
+                content[0].style.transitionDuration = '';
+            }, Math.max(320, ms + 60));
+        }
     }
 
     /**
@@ -1432,7 +1528,13 @@ export function renderLocationView(target, options) {
                 // borraba la ruta que el toque acababa de enseñar: con el dedo, la ruta la ponen y
                 // la quitan los toques.
                 if (typeof onCellHover === 'function' && kind === 'move') {
-                    node.on('mouseenter', () => { if (!touchy()) drawTrajectory(cell.gridX, cell.gridY, cellW, cellH); });
+                    // Tanda 17: el cursor del teclado (board-keys.js) enseña la ruta de su casilla
+                    // con un «pasar por encima» de mentira; jugando con el ratón, no: pulsar el
+                    // tablero le daba el foco, y salía la ruta a una casilla de antes.
+                    node.on('mouseenter', (event) => {
+                        if (touchy() || (!event.originalEvent && boardInput !== 'key')) return;
+                        drawTrajectory(cell.gridX, cell.gridY, cellW, cellH);
+                    });
                     node.on('mouseleave', () => { if (!touchy()) clearTrajectory(); });
                 }
             }
@@ -1497,9 +1599,37 @@ export function renderLocationView(target, options) {
 
         tokensLayer.css({ width: imgW + 'px', height: imgH + 'px' });
 
+        // Tanda 17: la ficha que ha cambiado de casilla desde el dibujo anterior anda hasta ella por
+        // el camino (el mismo A* del juego, sin pasar por encima de nadie), en vez de aparecer allí.
+        // Colocándose antes de la pelea, se pone, no se anda; con «reducir movimiento», tampoco.
+        const memo = tokenMemory.get(derivedViewStateKey) ?? { cells: new Map(), slides: new Map() };
+        tokenMemory.set(derivedViewStateKey, memo);
+        const now = performance.now();
+        const pace = motionMs(1000) / 1000;
+        const placing = Array.isArray(highlightedCells) && highlightedCells.some(cell => cell?.kind === 'place');
+        const taken = tokens.map(t => `${Number(t.gridX) || 0},${Number(t.gridY) || 0}`);
+        const route = (/** @type {{x: number, y: number}} */ from, /** @type {{x: number, y: number}} */ to) => (terrain
+            ? findPath(terrain, from.x, from.y, to.x, to.y, gridWidth, gridHeight, {
+                occupied: new Set(taken.filter(key => key !== `${from.x},${from.y}` && key !== `${to.x},${to.y}`)),
+            })
+            : null);
+        /** @type {Map<string, {x: number, y: number}>} */
+        const seenNow = new Map();
+        freshSlides = [];
+        // Tanda 17: el nombre corto debajo de la ficha («Ratero», «Keller»; `token-label.js`).
+        const names = tokens.map(t => String(t.name ?? ''));
+        // Tanda 17: quien tiene el turno lleva un aro que late.
+        const activeId = vtt?.combat && vtt.activeTokenId !== null && vtt.activeTokenId !== undefined ? String(vtt.activeTokenId) : '';
+
         for (const token of tokens) {
             const px = (token.gridX + 0.5) * cellW;
             const py = (token.gridY + 0.5) * cellH;
+            const tokenId = String(token.id);
+            const cellNow = { x: Number(token.gridX) || 0, y: Number(token.gridY) || 0 };
+            seenNow.set(tokenId, cellNow);
+            const slide = placing ? null : planSlide({
+                before: memo.cells.get(tokenId) ?? null, moving: memo.slides.get(tokenId) ?? null, to: cellNow, now, route, scale: pace,
+            });
             const hpPct = (token.maxHp && token.maxHp > 0) ? Math.min(100, ((token.hp || 0) / token.maxHp) * 100) : 100;
 
             const enemyClass = token.isEnemy ? ` wm-token-enemy${token.idle ? ' wm-token-idle' : ''}${token.boss ? ' wm-token-boss' : ''}` : (token.isSummon ? ' wm-token-summon' : token.isNPC ? ' wm-token-npc' : '');
@@ -1536,7 +1666,9 @@ export function renderLocationView(target, options) {
             const said = (Array.isArray(token.statuses) ? token.statuses : []).map(s => String(s?.label || '')).filter(Boolean);
             if (said.length > 0) el.find('.wm-token-tooltip-meta').after($('<div class="wm-token-tooltip-statuses"></div>').text(said.join(' · ')));
 
-            const tokenNameEl = el.find('.wm-token-name').text(token.name ?? '');
+            // Tanda 17: el nombre entero se queda en la página (lo leen el teclado y las pruebas) y en
+            // su tarjeta; en la mesa virtual se ve el corto (`data-label`, combat-vtt.css sección 1).
+            const tokenNameEl = el.find('.wm-token-name').text(token.name ?? '').attr('data-label', tokenLabel(String(token.name ?? ''), names));
             // Sin cara propia, su dibujo en pixel; si no carga, lo de siempre. J1.8: uno del grupo
             // sin cara ni retrato (o con una imagen que ya no está) lleva sus iniciales en su
             // color, como en su ficha y en la tira del grupo; no «???» ni la silueta gris.
@@ -1617,10 +1749,96 @@ export function renderLocationView(target, options) {
                 el.on('mouseleave', () => showReach(null));
             }
 
+            // Tanda 17: el aro de quien tiene el turno, en oro si es tuyo y en rojo si es de un enemigo.
+            if (activeId && tokenId === activeId) {
+                el.addClass('wm-token-active')
+                    .attr('data-turn-side', vtt?.turnSide ?? (token.isEnemy ? 'enemy' : 'yours'))
+                    .prepend('<span class="wm-token-turn-ring" aria-hidden="true"></span>');
+            }
+
             // Drag token
             setupTokenDrag(el, token, cellW, cellH);
             tokensLayer.append(el);
+
+            // Tanda 17: anda casilla a casilla; si ya iba andando (otro dibujo a medio camino),
+            // sigue por donde iba.
+            if (slide && slide.duration > 0 && typeof el[0].animate === 'function') {
+                const walk = el[0].animate(slideFrames(slide.cells, cellW, cellH), { duration: slide.duration, easing: 'linear' });
+                walk.currentTime = Math.max(0, now - slide.start);
+                memo.slides.set(tokenId, slide);
+                if (slide.start === now) freshSlides.push({ id: tokenId, slide });
+                el.addClass('wm-token-walking');
+                walk.addEventListener('finish', () => el.removeClass('wm-token-walking'));
+            } else {
+                memo.slides.delete(tokenId);
+            }
         }
+        memo.cells = seenNow;
+        for (const id of [...memo.slides.keys()]) {
+            if (!seenNow.has(id)) memo.slides.delete(id);
+        }
+    }
+
+    /**
+     * Tanda 17: la ficha que sigue la cámara (quien tiene el turno, o la que sigue la cámara fuera de
+     * combate), si ha echado a andar en este dibujo.
+     *
+     * @returns {{id: string, slide: import('./game-engine/ui/combat-vtt/token-slide.js').Slide}|null}
+     */
+    function walkerNow() {
+        const wanted = [vtt?.activeTokenId, followTokenId].filter(id => id !== null && id !== undefined).map(String);
+        return freshSlides.find(s => wanted.includes(s.id)) ?? null;
+    }
+
+    /**
+     * Tanda 17: la cámara no salta mientras alguien anda. Si este dibujo la deja en otro sitio que el
+     * anterior del mismo tablero (un tablero grande se encuadra solo en quien tiene el turno, y le
+     * sigue), llega deslizándose desde donde estaba, al paso de quien anda. Sin nadie andando, como
+     * siempre: al momento.
+     */
+    function carryCamera() {
+        const walker = walkerNow();
+        if (!walker || !viewBefore || !imgW || !imgH || viewSize().width < 40) return;
+        const from = {
+            scale: Number(viewBefore.scale) || state.scale,
+            offsetX: Number(viewBefore.offsetX) || 0,
+            offsetY: Number(viewBefore.offsetY) || 0,
+        };
+        const moved = Math.abs(from.offsetX - state.offsetX) > 2 || Math.abs(from.offsetY - state.offsetY) > 2
+            || Math.abs(from.scale - state.scale) > 0.005;
+        if (!moved) return;
+        const ms = walker.slide.duration;
+        if (ms <= 0) return;
+        const goal = content[0].style.transform;
+        content.removeClass('vtt-glide');
+        content[0].style.transitionDuration = '';
+        content[0].style.transform = `translate(${from.offsetX}px, ${from.offsetY}px) scale(${from.scale})`;
+        // El navegador apunta dónde estaba antes de mandarle a dónde va: si no, no hay camino.
+        void content[0].offsetWidth;
+        glide(true, ms);
+        content[0].style.transform = goal;
+    }
+
+    /**
+     * Tanda 17: la cámara acompaña a la ficha que echa a andar (la de quien tiene el turno, o la que
+     * sigue la cámara): si su casilla de llegada no se ve con holgura, la vista se desliza lo justo
+     * para verla, al paso de la ficha. No a quien acaba de mover la cámara a mano en el turno de un
+     * enemigo: estará mirando otra cosa.
+     */
+    function followWalkers() {
+        if (!vttOn || !imgW || !imgH || !viewSize().width) return;
+        const walker = walkerNow();
+        if (!walker) return;
+        const memo = vttMemory.get(derivedViewStateKey);
+        if (!vtt?.yours && memo && Date.now() - memo.handAt < RECENT_HAND_MS) return;
+        const end = walker.slide.cells[walker.slide.cells.length - 1];
+        const rect = lookRect();
+        const margin = Math.min(rect.right - rect.left, rect.bottom - rect.top) * 0.18;
+        const point = cellCenter(end, imgW / gridWidth, imgH / gridHeight);
+        if (isPointShown(state, point, rect, margin)) return;
+        Object.assign(state, panToShow(state, point, rect, margin));
+        glide(true, walker.slide.duration);
+        fullUpdate();
     }
 
     /**
@@ -1714,6 +1932,10 @@ export function renderLocationView(target, options) {
 
                 token.gridX = newGX;
                 token.gridY = newGY;
+                // Tanda 17: arrastrada, ya está donde va: al redibujar no anda otra vez hasta allí
+                // (si el juego no la deja, sí: vuelve andando a su casilla).
+                tokenMemory.get(derivedViewStateKey)?.cells.set(String(token.id), { x: newGX, y: newGY });
+                tokenMemory.get(derivedViewStateKey)?.slides.delete(String(token.id));
 
                 // Snap visually
                 el.css({ left: ((newGX + 0.5) * cellW) + 'px', top: ((newGY + 0.5) * cellH) + 'px' });
@@ -1806,6 +2028,9 @@ export function renderLocationView(target, options) {
             Object.assign(state, clampPan(state, { width: imgW, height: imgH }, viewSize()));
         }
         content.css('transform', `translate(${state.offsetX}px, ${state.offsetY}px) scale(${state.scale})`);
+        // Tanda 17: lo acercada que está la cámara, para que el nombre de las fichas se lea también
+        // con el tablero alejado (en el teléfono, a 0,6×, salía de 6 píxeles; combat-vtt.css).
+        if (vttOn) content[0].style.setProperty('--vtt-scale', String(Math.round(state.scale * 100) / 100));
         persistViewState();
         // J20.6: arrastrar con el dedo manda decenas de movimientos por fotograma. Mover el tablero
         // es barato y va al momento; los números de los bordes y dibujar lo que entra en la vista
@@ -2352,6 +2577,32 @@ export function renderLocationView(target, options) {
             focusActiveToken();
         }
         followParty();
+        // Tanda 17: la cámara acompaña a quien anda y no salta al redibujar; y el cartel del turno.
+        if (vttOn) {
+            followWalkers();
+            carryCamera();
+            // De quién es el turno, en la página: la barra de abajo lo dice en su color (combat-vtt.css).
+            if (vtt?.combat && vtt.turnSide) document.documentElement.dataset.gsTurnSide = vtt.turnSide;
+            else delete document.documentElement.dataset.gsTurnSide;
+            if (vtt?.combat && vtt.turnKey) {
+                announceTurn({
+                    key: `${derivedViewStateKey}|${vtt.turnKey}`,
+                    text: String(vtt.turnTitle ?? ''),
+                    side: vtt.turnSide ?? 'yours',
+                    // El tablero de ahora: si se ha redibujado mientras esperaba, el nuevo.
+                    anchor: () => (container[0].isConnected ? container[0] : document.querySelector('.gs-root .wm-vtt .wm-container')),
+                    // A un tercio de lo que se mira (sin el HUD de arriba ni la barra de abajo).
+                    at: () => {
+                        if (!container[0].isConnected) return null;
+                        const box = container[0].getBoundingClientRect();
+                        const look = lookRect();
+                        return { x: box.left + (look.left + look.right) / 2, y: box.top + look.top + (look.bottom - look.top) * 0.3 };
+                    },
+                });
+            } else if (!vtt?.combat) {
+                forgetTurn();
+            }
+        }
         // J15.5: el tablero con el teclado (board-keys.js): un cursor con las flechas; Intro, un clic.
         if (!paintMode) {
             attachBoardKeys(container[0], content[0], {

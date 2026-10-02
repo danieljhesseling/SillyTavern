@@ -179,7 +179,8 @@ try {
         return page.waitForSelector('.hb-root [data-campaign-add]', { timeout: 15000 }).then(() => true).catch(() => false);
     };
     /** Las tarjetas del tablón, en orden: su id (o «añadir») y lo que dicen. D-J35: las tuyas van en su caja, con «Quitar». */
-    const boardTiles = () => page.evaluate(() => [...document.querySelectorAll('.hb-root .hb-grid > .vt-card, .hb-root .hb-grid > .hb-tile > .vt-card')].map(c => ({
+    // J5.9: el taller de campañas va detrás de «Añadir una campaña»; lo mira e2e-taller, aquí no cuenta.
+    const boardTiles = () => page.evaluate(() => [...document.querySelectorAll('.hb-root .hb-grid > .vt-card:not([data-campaign-workshop]), .hb-root .hb-grid > .hb-tile > .vt-card')].map(c => ({
         id: c.getAttribute('data-campaign') || (c.hasAttribute('data-campaign-add') ? 'añadir' : ''),
         text: (c.textContent || '').replace(/\s+/g, ' ').trim(),
     })));

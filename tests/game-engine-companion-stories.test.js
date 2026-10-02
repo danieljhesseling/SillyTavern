@@ -160,7 +160,8 @@ describe('el contrato y lo que se le enseña al Gem', () => {
 
     test('las reglas de cómo se escribe cubren cada decisión, con su ejemplo bueno y malo', () => {
         const why = WRITING_RULES.map(r => r.why);
-        for (const decision of ['D-J54', 'J13.7', 'D-J56', 'D-J58', 'D-J46']) expect(why).toContain(decision);
+        // D-J60 sustituye a D-J54 (que aún dejaba una línea corta del narrador).
+        for (const decision of ['D-J60', 'J13.7', 'D-J56', 'D-J58', 'D-J46']) expect(why).toContain(decision);
         for (const rule of WRITING_RULES) {
             expect(rule.good.length).toBeGreaterThan(10);
             expect(rule.bad.length).toBeGreaterThan(10);
@@ -180,12 +181,9 @@ describe('el contrato y lo que se le enseña al Gem', () => {
     test('la muestra cuenta la historia hablando, con aspecto y presentaciones', () => {
         const pack = buildConversationSamplePack();
         for (const person of [...pack.npcs, ...pack.confidants]) expect(person.aspecto).toBeTruthy();
-        for (const milestone of pack.plot.milestones) {
-            const beats = milestone.beats;
-            const narrator = beats.filter((/** @type {any} */ b) => !b.who);
-            expect(narrator.length).toBeLessThanOrEqual(1);
-            expect(beats.length - narrator.length).toBeGreaterThan(narrator.length);
-        }
+        // D-J60: lo que se le enseña al Gem no trae ni una línea del narrador.
+        for (const milestone of pack.plot.milestones) expect(milestone.beats.filter((/** @type {any} */ b) => !b.who)).toEqual([]);
+        expect(JSON.stringify(lia())).not.toMatch(/"note"/);
         // El farero habla antes de que le presenten, y le presenta otro en voz alta.
         const first = pack.plot.milestones[0].beats;
         const spoke = first.findIndex((/** @type {any} */ b) => b.who === 'Ezequiel Rocamar');

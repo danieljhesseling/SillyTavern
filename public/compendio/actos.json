@@ -115,9 +115,6 @@
         "hint": "Ve a {guarida}.",
         "beats": [
           {
-            "text": "Desde lejos se ve el resplandor de un farol en {guarida}."
-          },
-          {
             "who": "Cultista",
             "mood": "neutral",
             "text": "¿Has oído eso? Hay alguien en el camino."
@@ -264,9 +261,6 @@
         "title": "Los ladrones de {guarida}",
         "hint": "Ve a {guarida}.",
         "beats": [
-          {
-            "text": "Sale humo de {guarida}, y se oyen voces."
-          },
           {
             "who": "Bandido",
             "mood": "alegre",
@@ -415,7 +409,9 @@
         "hint": "Ve a {guarida}.",
         "beats": [
           {
-            "text": "A la entrada de {guarida} hay huesos por todas partes. Huele a carne vieja."
+            "who": "{cautivo}",
+            "mood": "triste",
+            "text": "¿Hay alguien ahí fuera? ¡Cuidado con los huesos de la entrada! Esa cosa siempre vuelve aquí a comer."
           }
         ]
       },
@@ -426,7 +422,9 @@
         "board": "El fondo del cubil",
         "beats": [
           {
-            "text": "Al fondo de {guarida} gruñe lo que come de las sobras de {villano}."
+            "who": "{cautivo}",
+            "mood": "enfadado",
+            "text": "¡Al fondo, eso que gruñe! Comen de las sobras de {villano}. ¡Que no te rodeen!"
           }
         ]
       },
@@ -543,9 +541,6 @@
         "title": "El taller de {guarida}",
         "hint": "Ve a {guarida}.",
         "beats": [
-          {
-            "text": "En {guarida} huele a hierba hervida y a algo podrido."
-          },
           {
             "who": "Cultista",
             "mood": "neutral",
@@ -693,9 +688,6 @@
         "hint": "Ve a {guarida}.",
         "beats": [
           {
-            "text": "Hay luz detrás de los postigos de {guarida}."
-          },
-          {
             "who": "Bandido",
             "mood": "neutral",
             "text": "El de arriba ha pagado bien. Esta noche toca otro."
@@ -841,9 +833,6 @@
         "title": "Los registros de {guarida}",
         "hint": "Ve a {guarida}.",
         "beats": [
-          {
-            "text": "Por las ventanas de {guarida} sale una luz azul que no viene de ningún fuego."
-          },
           {
             "who": "Aprendiz de mago",
             "mood": "neutral",

@@ -200,7 +200,8 @@ try {
             title: (dialog?.querySelector('.qd-title')?.textContent ?? '').trim(),
             lines: [...(dialog?.querySelectorAll('.qd-line') ?? [])].map(l => (l.textContent ?? '').trim()),
             // D-J54: lo del narrador (sin placa, en cursiva) y lo que dice quien está contigo.
-            notes: [...(dialog?.querySelectorAll('.qd-line.qd-note') ?? [])].map(l => (l.textContent ?? '').trim()),
+            // D-J60: ya no en la caja, sino en el aviso de fuera de ella.
+            notes: [...(dialog?.querySelectorAll('.qd-line.qd-note, .qd-aside .vn-aside-note') ?? [])].map(l => (l.textContent ?? '').trim()),
             says: [...(dialog?.querySelectorAll('.qd-line.qd-say, .qd-line.qd-then') ?? [])].map(l => (l.textContent ?? '').trim()),
             // Solo el texto de la respuesta: delante va la tecla («1»).
             love: [...(dialog?.querySelectorAll('.qd-chip-love') ?? [])].map(c => (c.querySelector('.qd-label')?.textContent ?? c.textContent ?? '').trim()),
@@ -232,7 +233,7 @@ try {
                 out.fade = true;
                 if (onFade) await onFade(now);
             }
-            const summary = await page.evaluate(() => [...document.querySelectorAll('.qd-dialog[open] .qd-summary')].map(l => (l.textContent ?? '').trim()));
+            const summary = await page.evaluate(() => [...document.querySelectorAll('.qd-dialog[open] .qd-summary, .qd-dialog[open] .vn-aside-summary')].map(l => (l.textContent ?? '').trim()));
             if (summary.length > 0) out.summary = summary;
             if (heart && await page.locator('.qd-dialog[open] .qd-chip-love').count() > 0) await page.locator('.qd-dialog[open] .qd-chip-love').first().click();
             else if (await page.locator('.qd-dialog[open] .qd-chip-reply:not(.qd-chip-love)').count() > 0) await page.locator('.qd-dialog[open] .qd-chip-reply:not(.qd-chip-love)').first().click();

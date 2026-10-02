@@ -21,7 +21,7 @@ import {
     rescueFocus, returnFocus,
 } from '../public/scripts/game-engine/ui/keyboard-nav.js';
 import {
-    BOARD_HINT, BOARD_KEYS, cellAction, cursorLine, nextToken, stepCell, tokenAt, tokenLine,
+    BOARD_HINT, BOARD_KEYS, cellAction, cursorLine, nextToken, showCursor, stepCell, tokenAt, tokenLine,
 } from '../public/scripts/game-engine/ui/board-keys.js';
 import { withMotionRow } from '../public/scripts/game-engine/ui/game-options.js';
 
@@ -184,6 +184,16 @@ describe('board-keys: el tablero con un cursor', () => {
         expect(cursorLine({ x: 1, y: 1 }, { kind: 'move', token: null }, 'Agua')).toBe('Casilla (2, 2) · Agua · Intro: ir aquí');
     });
 
+    test('el cursor solo con el teclado: se pone y se quita su marca', () => {
+        /** @type {Record<string, boolean>} */
+        const classes = {};
+        const container = /** @type {any} */ ({ classList: { toggle: (/** @type {string} */ name, /** @type {boolean} */ on) => { classes[name] = on; } } });
+        showCursor(container, true);
+        expect(classes['gs-board-typing']).toBe(true);
+        showCursor(container, false);
+        expect(classes['gs-board-typing']).toBe(false);
+    });
+
     test('la pista dice las teclas, y son las que escucha', () => {
         for (const key of ['ArrowUp', 'Home', 'PageDown', 'Enter']) expect(BOARD_KEYS).toContain(key);
         expect(BOARD_HINT).toMatch(/Flechas/);
@@ -217,6 +227,10 @@ describe('la hoja del teclado', () => {
     test('el foco del teclado se ve, solo con el juego abierto y no con el ratón', () => {
         expect(css).toMatch(/body\.game-shell-on [^{]*:focus-visible\s*\{[^}]*outline: 3px solid/);
         expect(css).toContain('.gs-board-cursor');
+    });
+
+    test('el cursor del tablero y su pista no se ven sin el teclado (un clic no los enciende)', () => {
+        expect(css).toMatch(/\.wm-container\.gs-board-keys:not\(\.gs-board-typing\) \.gs-board-cursor\s*\{[^}]*display: none/);
     });
 });
 

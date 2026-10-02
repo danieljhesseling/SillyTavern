@@ -54,9 +54,10 @@ import { applyTimedCondition } from './magic.js';
 import {
     enemyTokenId, getAliveEnemies, getAttackableEnemiesForMember, getCurrentActingMember, getCurrentTurnEntry,
     getCurrentTurnState, getRemainingMovementFeet, getTargetArmorClass, heightFor, occupiedCellsFor, partyCell,
-    partyFlanks, resetCombatTurnState, saveCombatState, speedOf,
+    partyFlanks, resetCombatTurnState, saveCombatState, speedOf, actsOnItsOwn,
 } from './combat-state.js';
 import { floatOnToken, pushCombatLogEntry, showCombatDiceRoll } from './combat-log.js';
+import { stageCall, stageMove } from './combat-fx.js';
 import { chargeOpportunityAttacks, enemyBark, resolveEnemyAttackOn } from './enemy-turn.js';
 import { checkScenarioOutcome, endCombat, judgeCurrentScenario, offerExit, runCombatTurnLoop } from './combat-flow.js';
 import {
@@ -217,6 +218,8 @@ export function resolveFollowUpAttack(actorId, target, how = 'ataca de seguimien
         dc: targetAc,
         natural: attackRoll.natural,
         glyph: 'd20',
+        // Tanda 17: en la secuencia del combate.
+        stage: { by: ally, at: target, hit: isHit, roll: edged, edge: mode, against: 'CA', style: rangeFeet > 5 ? 'ranged' : 'melee' },
     });
 
     const lines = [];
@@ -459,6 +462,9 @@ export function handlePlayerCombatMove(rawValue) {
         targetY = end.y;
         distanceFeet = crawlCost(getPathCost(getActiveBoardContext().terrain, way) * 5, crawling);
     }
+    // Tanda 17: un compañero (o una invocación) que va solo anda en la secuencia del combate, en su
+    // turno y antes de pegar; lo tuyo lo anda el tablero al dibujarse.
+    if (actsOnItsOwn(entry)) stageMove(member, way ?? [leftFrom, { x: targetX, y: targetY }]);
     member.mapPosition = {
         locationName: currentLocationName,
         gridX: targetX,
@@ -568,7 +574,8 @@ export function pushEnemyAway(member, target, cells) {
         target.gridY = path.to.y;
         target.currentHp = 0;
         combatEncounter.conditionTimers = clearTimersFor(combatEncounter.conditionTimers, String(target.instanceId));
-        $(`.wm-token[data-token-id="${enemyTokenId(target)}"]`).addClass('wm-token-falling');
+        const fallingId = enemyTokenId(target);
+        stageCall(() => $(`.wm-token[data-token-id="${fallingId}"]`).addClass('wm-token-falling'));
         return [`🕳️ ${target.name} pierde pie y cae al vacío.`];
     }
     if (path.moved === 0) return [`🧱 ${target.name} no tiene a dónde ir: se queda donde está.`];
@@ -713,6 +720,7 @@ export function throwItem(kind, targetId) {
         dc: ac,
         natural,
         glyph: 'd20',
+        stage: { by: member, at: target, hit, roll: edged, edge: edge.mode, against: 'CA', style: 'throw' },
     });
 
     /** @type {string[]} */
@@ -828,6 +836,7 @@ export function throwScenery(targetId) {
         dc: ac,
         natural,
         glyph: 'd20',
+        stage: { by: member, at: target, hit, roll: edged, edge: edge.mode, against: 'CA', style: 'throw' },
     });
 
     /** @type {string[]} */
@@ -945,6 +954,7 @@ export function performManeuver(kind, targetId = '') {
             dc,
             natural,
             glyph: 'd20',
+            stage: { hit: total >= dc, against: 'CD' },
         });
         lines.push(rollLine({ what: 'Sigilo', who: member.name, total, against: dc, label: 'Percepción', success: total >= dc, natural, modifier }));
         if (total >= dc) {
@@ -968,6 +978,7 @@ export function performManeuver(kind, targetId = '') {
             dc: defenseRoll + theirs + 1,
             natural: attackRoll,
             glyph: 'd20',
+            stage: { by: member, at: target, hit: attackRoll + mine > defenseRoll + theirs, against: 'CD', style: 'melee' },
         });
         lines.push(rollLine({ what: 'Agarrar', who: member.name, at: target.name, total: attackRoll + mine, against: defenseRoll + theirs, label: '', success: attackRoll + mine > defenseRoll + theirs, natural: attackRoll, modifier: mine }));
         if (attackRoll + mine > defenseRoll + theirs) {
@@ -1008,6 +1019,7 @@ export function performManeuver(kind, targetId = '') {
             dc: defenseTotal + 1,
             natural: attackRoll,
             glyph: 'd20',
+            stage: { by: member, at: target, hit: attackTotal > defenseTotal, against: 'CD', style: 'melee' },
         });
         lines.push(rollLine({ what: 'Empujar', who: member.name, at: target.name, total: attackTotal, against: defenseTotal, label: '', success: attackTotal > defenseTotal, natural: attackRoll, modifier: mine }));
         if (!shove.success) {
@@ -1020,8 +1032,9 @@ export function performManeuver(kind, targetId = '') {
             combatEncounter.conditionTimers = clearTimersFor(combatEncounter.conditionTimers, String(target.instanceId));
             lines.push(`✅ ${target.name} pierde pie y cae al vacío.`);
             bark(member, 'kill');
-            // Idea 189: que se vea caer antes de que desaparezca.
-            $(`.wm-token[data-token-id="${enemyTokenId(target)}"]`).addClass('wm-token-falling');
+            // Idea 189: que se vea caer antes de que desaparezca (tanda 17: tras el dado del empujón).
+            const fallingId = enemyTokenId(target);
+            stageCall(() => $(`.wm-token[data-token-id="${fallingId}"]`).addClass('wm-token-falling'));
             fellThisTurn = true;
         } else if (shove.pushedTo) {
             target.gridX = shove.pushedTo.x;
@@ -1200,6 +1213,11 @@ function strikeEnemy(member, target, opts = {}) {
         dc: targetAc,
         natural: attackRoll.natural,
         glyph: 'd20',
+        // Tanda 17: en la secuencia del combate: se lanza (o dispara), rueda el d20 y llega.
+        stage: {
+            by: member, at: target, hit: isHit, roll: edged, edge: edge.mode, against: 'CA',
+            style: isRangedWeapon(weapon) ? 'ranged' : distanceFeet > 5 ? 'throw' : 'melee',
+        },
     });
 
     const lines = [];
@@ -1263,6 +1281,7 @@ function strikeEnemy(member, target, opts = {}) {
             : `${damageRoll.rolls.join(', ')} + mod(${damageMod})`,
         total: totalDamage,
         glyph: 'dmg',
+        stage: { dice: `${damageFormula}${isCrit ? ` + ${damageFormula}` : ''}`, modifier: damageMod, crit: isCrit },
     });
 
     target.currentHp = Math.max(0, (target.currentHp || 0) - totalDamage);

@@ -26,9 +26,9 @@
  * en cada sitio de pista y el tablero de la guarida. El del refugio, y los bichos, los pone
  * `pack-fill.js` como a cualquier campaña de tu Gem.
  *
- * D-J54: las escenas las dice la gente (novela visual): quien lo vio en el acto 1, los de la
- * guarida y quien tenían allí en el acto 2, y el contacto del bando al abrir el acto 3. El
- * narrador solo dice el sitio en una línea corta cuando no hay nadie que hable (una bestia).
+ * D-J54 y D-J60: las escenas las dice la gente (novela visual): quien lo vio en el acto 1, los de
+ * la guarida y quien tenían allí en el acto 2 (en el cubil de una bestia, solo quien tenían allí),
+ * y el contacto del bando al abrir el acto 3. Sin conexión no hay narrador: ninguna línea sin `who`.
  *
  * Todo con la semilla: la misma campaña da siempre la misma historia, y otra semilla, otra.
  *

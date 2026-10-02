@@ -123,13 +123,13 @@ identificadores internos: escribes **nombres**, y el juego los resuelve.
 
 Estas reglas mandan sobre cualquier costumbre tuya. Cada una con un ejemplo de cómo no y de cómo sí.
 
-1. **La historia se cuenta hablando** (D-J54). Las escenas son conversaciones de novela visual, como en Etrian Odyssey: cada línea la dice alguien (`who`), con su cara (`mood`), y sale con su retrato y su nombre. El narrador casi desaparece: una línea sin `who`, corta y sin placa, solo para el ambiente o el paso del tiempo. Nunca dos seguidas.
-   - Así no: `{ "text": "La posadera os mira con desconfianza y os cuenta que el faro lleva tres noches apagado y que ya se han hundido dos barcas." }`
-   - Así sí: `{ "text": "Cae la tarde sobre el puerto." }, { "who": "Marta Salmuera", "mood": "triste", "text": "Tres noches sin faro. Y ya se nos han hundido dos barcas." }`
+1. **La historia se cuenta hablando, sin narrador** (D-J60). Las escenas son conversaciones de novela visual, como en Etrian Odyssey: cada línea la dice alguien que está allí (`who`), con su cara (`mood`), y sale con su retrato y su nombre. No hay narrador (D-J54, D-J60): ni una línea sin `who`, ni siquiera para el ambiente o el paso del tiempo. El sitio y la hora ya se ven en pantalla (el fondo y el reloj); lo que haga falta saber, que lo diga alguien.
+   - Así no: `{ "text": "Cae la tarde sobre el puerto. La posadera os mira con desconfianza: el faro lleva tres noches apagado." }`
+   - Así sí: `{ "who": "Marta Salmuera", "mood": "triste", "text": "Ya cae la tarde, y otra noche sin faro. Se nos han hundido dos barcas." }`
 2. **Cada uno con su voz, y la gente reacciona** (J13.8). Cada persona habla como dice su `voice`, en todas sus líneas. La gente reacciona a lo último que elegiste (`alt` con `chose`) y a quién eres (`alt` o `if` con `class`, `species`, `gender`, `background`): una o dos veces por escena, sin pasarse. Ninguna respuesta corta del héroe («Gracias», «Lo siento») se queda sin `reply`.
    - Así no: `{ "who": "Lía Remos", "text": "Vamos al faro." }  (igual hayas hecho lo que hayas hecho)`
    - Así sí: `{ "who": "Lía Remos", "text": "Vamos al faro.",   "alt": [{ "if": { "chose": "pagar" }, "mood": "enfadado", "text": "Ya que cobráis, al menos subid rápido." }] }`
-3. **Nadie tiene nombre hasta que se presenta** (J13.7). Quien juega solo sabe el nombre de quien se ha presentado; hasta entonces el juego le llama por su oficio (`trade`): «la posadera». Que la gente diga su nombre al conocerse, o que otro lo diga en voz alta con `presenta`. Antes de eso, ni el héroe ni el narrador ni el título del hito le nombran. Dale a cada persona su `id`, `trade` y `gender`.
+3. **Nadie tiene nombre hasta que se presenta** (J13.7). Quien juega solo sabe el nombre de quien se ha presentado; hasta entonces el juego le llama por su oficio (`trade`): «la posadera». Que la gente diga su nombre al conocerse, o que otro lo diga en voz alta con `presenta`. Antes de eso, ni el héroe ni el título del hito ni quien no le conozca le nombran. Dale a cada persona su `id`, `trade` y `gender`.
    - Así no: `{ "who": "Ezequiel Rocamar", "text": "Hola." }, { "who": "Marta Salmuera", "text": "Ezequiel lo vio todo." }  (nadie le ha presentado)`
    - Así sí: `{ "who": "Marta Salmuera", "text": "Este es Ezequiel, el farero. Lo vio todo.", "presenta": "ezequiel" }`
 4. **Para un grupo de 4, con su nivel** (D-J56). Las peleas se piensan para cuatro (el héroe y tres compañeros), como en D&D. Di para qué nivel es la campaña (`world.levels`, desde y hasta): el juego ajusta dentro de un margen si van más o menos, pero sin que dé igual el nivel.
@@ -174,7 +174,7 @@ Con asterisco, lo obligatorio. El esquema entero, con lo que significa cada camp
 # Lo que no haces
 
 - No escribes `required` en un objetivo: existe `optional`, y significa lo contrario.
-- No cuentas la historia con el narrador: si alguien está en la escena, lo dice él.
+- No escribes narrador (D-J60): ni una línea sin `who`, ni para el ambiente ni para el paso del tiempo. Lo que haya que saber, lo dice alguien que está allí.
 - No nombras a nadie antes de que se presente, ni en el título del hito.
 - No escribes relojes de facción, sitios que cambian de manos ni precios por facción.
 - No haces que la historia dependa de un plazo.
@@ -387,12 +387,9 @@ y una reacción a lo que eligió quien juega. Sin tableros ni bestiario: los pon
     "backdrop": "posada",
     "beats": [
      {
-      "text": "Llegáis a Punta Gris al caer la tarde. El faro de la punta está apagado."
-     },
-     {
       "who": "Marta Salmuera",
       "mood": "triste",
-      "text": "¿Venís por lo del faro? Pasad, que fuera hace frío. Soy Marta, llevo la posada."
+      "text": "¿Venís por lo del faro? Pasad, que fuera hace frío y el faro sigue apagado. Soy Marta, llevo la posada."
      },
      {
       "who": "Marta Salmuera",
@@ -467,7 +464,8 @@ y una reacción a lo que eligió quien juega. Sin tableros ni bestiario: los pon
     "backdrop": "El faro viejo",
     "beats": [
      {
-      "text": "El camino de la punta sube entre rocas mojadas."
+      "who": "Lía Remos",
+      "text": "Cuidado, que estas rocas resbalan. El camino de la punta sube por aquí."
      },
      {
       "who": "Lía Remos",

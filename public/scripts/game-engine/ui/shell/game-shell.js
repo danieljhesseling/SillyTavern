@@ -30,6 +30,7 @@ import { faceElement } from '../hero-face.js';
 import { buildTown, closeTownPlace, countTownPlaces, renderTownScene, renderTownSelector } from './town-scene.js';
 import { deadlineBadge } from '../story-book.js';
 import { shownName, shownText } from '../shown-names.js';
+import { asideBox, fillAside } from '../vn-aside.js';
 // H10 de las vueltas: sin portada mientras se pasa del gremio a una campaña (y de vuelta).
 import { isChatSwitching, onChatSwitchEnd } from './chat-switch.js';
 // J15.5: el juego con el teclado solo (flechas, Tab en círculo, el foco que vuelve) y J20.6: las
@@ -38,6 +39,8 @@ import { captureFocus, closeTopOverlay, focusList, holdFocus, installKeyboard, n
 import { applyMotion, watchMotion } from '../motion.js';
 // Tanda 10: la barra de acciones de D&D 2024, flotando sobre el tablero.
 import { renderCombatActionBar, releaseCombatActionBar } from '../combat-vtt/action-bar.js';
+// Tanda 17: la secuencia de un golpe (el dado, el daño): mientras se enseña, la pantalla espera.
+import { holdRedraw } from '../combat-vtt/fx.js';
 
 /**
  * @typedef {import('./scene-director.js').SceneName} SceneName
@@ -1254,12 +1257,29 @@ function engineNoteCopy(node) {
 }
 
 /**
+ * D-J54: si un mensaje es el saludo de la ficha del narrador: el primero del chat, dicho por quien
+ * narra y no por el juego («Esto va para largo, así que empecemos por el principio.»). Sin conexión
+ * no sale en la caja: la historia empieza con la escena, dicha por la gente que está allí.
+ *
+ * @param {Element} node El `.mes` del chat.
+ * @param {any} message Su mensaje.
+ * @returns {boolean}
+ */
+function isNarratorGreeting(node, message) {
+    if (node.getAttribute('mesid') !== '0' || !message || message.is_user || message.is_system) return false;
+    if (message.extra?.voiced || message.extra?.display_text) return false;
+    const narrator = String(options?.narratorName?.() || '').trim();
+    return Boolean(narrator) && String(message.name || '').trim() === narrator;
+}
+
+/**
  * La novela visual (J18.3, J18.4): quien habla en grande, su nombre en la placa y lo último
  * que se ha dicho en la caja. Se lee del chat, que sigue siendo el registro: aquí no se
  * escribe nada que el chat no tenga.
  *
- * Una persona sale con su retrato; si no tiene imagen, con una silueta. Lo que cuenta el
- * juego sale sin retrato, y las notas (la mascota, el combate) sin placa.
+ * Una persona sale con su retrato; si no tiene imagen, con una silueta. Con conexión, lo que
+ * cuenta el juego sale sin retrato, y las notas (la mascota, el combate) sin placa. D-J60: sin
+ * conexión no hay narrador: en la caja solo habla alguien, y lo demás va en el aviso de fuera.
  *
  * La gente del paquete (y los mercenarios) sale con su retrato en pixel, y detrás, apagado,
  * el escenario del sitio donde se está.
@@ -1292,6 +1312,8 @@ function renderNovel(scene, view, place = '') {
         const body = node.querySelector('.mes_text');
         if (!body || !(body.textContent || '').trim()) return false;
         if (messageOf(node)?.extra?.quiet) return false;
+        // D-J54: sin conexión, el saludo de la ficha del narrador («Esto va para largo…») no sale.
+        if (offline && isNarratorGreeting(node, messageOf(node))) return false;
         // J13.1: sin conexión, una nota del motor guardada sin su versión contada (de una partida
         // de antes) se cuenta aquí.
         const copy = (offline && engineNoteCopy(node)) || /** @type {Element} */ (body.cloneNode(true));
@@ -1326,17 +1348,27 @@ function renderNovel(scene, view, place = '') {
     const people = lines.filter(m => !systemLine(m) && !isNarrator((m.getAttribute('ch_name') || '').trim()));
     const last = people[people.length - 1] ?? null;
     const speakerName = (last?.getAttribute('ch_name') || '').trim();
+    // D-J60: sin conexión no hay narrador. En la caja solo sale lo que dice alguien (la gente, los
+    // tuyos); lo que no dice nadie (un aviso del juego, una línea del narrador de una partida de
+    // antes) sale en el aviso pequeño de fuera de la caja (`vn-aside.js`).
+    const boxed = offline ? people : lines;
+    const aside = /** @type {HTMLElement|null} */ (scene.querySelector('.gs-vn-aside'));
+    fillAside(aside, offline
+        ? lines.filter(l => !people.includes(l)).map(l => ({ kind: 'note', text: (copies.get(l)?.textContent || '').replace(/\s+/g, ' ').trim() })).slice(-3)
+        : []);
     // D-J54: las voces de la caja (el narrador cuenta como una): si hay más de una, cada frase de
     // una persona dice de quién es, también la de la placa; si no, una línea corta del narrador
     // detrás de alguien se leería como suya.
-    const voices = new Set(lines.filter(l => !systemLine(l)).map(l => {
+    const voices = new Set(boxed.filter(l => !systemLine(l)).map(l => {
         const name = (l.getAttribute('ch_name') || '').trim();
         return isNarrator(name) ? '' : name;
     }));
-    for (const line of lines) {
+    for (const line of boxed) {
         const system = systemLine(line);
         const who = (line.getAttribute('ch_name') || '').trim();
         const block = el('div', `gs-vn-line${system ? ' gs-vn-note' : ''}`);
+        // Quién lo dice, para las pruebas (D-J60: sin conexión, siempre alguien).
+        if (!system && who && !isNarrator(who)) block.dataset.who = who;
         // Cuando en la caja habla más de uno, cada frase dice de quién es (menos el narrador).
         if (!system && who && (who !== speakerName || voices.size > 1) && !isNarrator(who)) block.appendChild(el('span', 'gs-vn-who', shownName(who)));
         const body = copies.get(line);
@@ -1349,7 +1381,9 @@ function renderNovel(scene, view, place = '') {
         }
         text.appendChild(block);
     }
-    novelShown = new Set(lines.map(keyOf));
+    novelShown = new Set(boxed.map(keyOf));
+    // D-J60: sin nadie que hable, la caja se queda en sus fichas (sin el hueco de un texto vacío).
+    scene.querySelector('.gs-vn-box')?.classList.toggle('gs-vn-quiet', offline && boxed.length === 0);
     // J20.6: hasta lo último, justo antes de pintar. Medir `scrollHeight` aquí obligaba a colocar
     // la página entera a mitad de cada redibujo, y una acción redibuja varias veces.
     novelScrollTarget = text;
@@ -1957,6 +1991,9 @@ onChatSwitchEnd(() => { if (isShellOpen()) refreshGameShell(); });
  */
 export function refreshGameShell() {
     if (!isShellOpen() || !root || !options) return;
+    // Tanda 17: mientras se enseña la secuencia de un golpe, la pantalla se queda como estaba (la
+    // pelea no se acaba antes de ver la última tirada); se redibuja al acabar (`combat-vtt/fx.js`).
+    if (holdRedraw(refreshGameShell)) return;
     // J15.5: dónde está el foco antes de redibujar: los botones se hacen de nuevo cada vez, y el
     // que se acaba de pulsar con Intro desaparecía con el foco dentro.
     const kept = captureFocus(root);
@@ -2263,6 +2300,8 @@ export function openGameShell(shellOptions) {
     dialogue.appendChild(el('div', 'gs-vn-portrait'));
     dialogue.appendChild(el('div', 'gs-speaker'));
     dialogue.appendChild(el('div', 'gs-chat-slot'));
+    // D-J60: lo que no dice nadie, en un aviso pequeño encima de la caja (sin conexión).
+    dialogue.appendChild(asideBox('gs-vn-aside'));
     const box = el('div', 'gs-vn-box');
     box.appendChild(el('div', 'gs-vn-nameplate'));
     box.appendChild(el('div', 'gs-vn-text'));

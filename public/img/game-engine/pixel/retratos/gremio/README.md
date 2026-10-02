@@ -28,3 +28,4 @@ El mismo retrato con otro gesto; cara, ropa y pose no cambian. Nombre: `<id>--al
 - `elvira--enfadado.png`: Madre Elvira severa, ceño fruncido y boca apretada.
 - `elvira--triste.png`: Madre Elvira triste, con lágrimas en las mejillas.
 - `un-guardia.png`: «Un guardia», el de la guardia de Puerto Alba sin nombre (el calabozo, D-J47). Casco de hierro abollado, casaca azul acolchada con una placa de latón lisa y barba gris corta. Sin gestos: no es gente del paquete. Retoque a mano: la placa traía una letra y se pintó lisa.
+- `ratero-del-muelle.png`: el «Ratero del muelle» del bestiario, que amenaza en la escena del muelle (D-J54: la escena es una conversación). Chico flaco con gorra gris, chaqueta verde azulada y bufanda morada, enseñando los dientes con el cuchillo en alto. Sin gestos: siempre amenaza.

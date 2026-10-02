@@ -509,12 +509,15 @@ try {
             }
             return test(await fight());
         };
-        const stats = { lost: 0, noRing: 0, dice: 0, stuckDice: 0, board: false, boardAttack: false, card: 0, ended: 0, checked: false };
+        const stats = { lost: 0, noRing: 0, dice: 0, stuckDice: 0, board: false, boardAttack: false, card: 0, ended: 0, endReached: false, checked: false };
         let lastDice = '';
         /** @type {any} */
         let menuKeys = null;
         /** Lo que pasa en la pelea, para el informe. */
         const steps = [];
+        /** Lo que se decide en cada turno (dónde está el cursor, qué se enciende), por si falla. */
+        const trace = [];
+        const note = (/** @type {string} */ what, /** @type {any} */ s) => trace.push(`${what} ${s ? `[${s.cls.split(' ').slice(-1)[0]}「${s.text.slice(0, 16)}」 ${s.hint.slice(0, 70)} · ${s.lit.length} enc.]` : ''}`);
         for (let i = 0; i < 260; i++) {
             const s = await fight();
             if (!s.active && !s.dice && !s.dialog) break;
@@ -564,10 +567,14 @@ try {
                 await key('Escape', 600);
                 const closed = await fight();
                 menuKeys = { open: open.menu, inside: open.menuFocus, closed: !closed.menu, before, back: closed.text };
+                // Y «Fin de turno» se alcanza con Tab (sin pulsarlo): si el primer golpe gana la
+                // pelea, no hará falta, pero tiene que estar.
+                stats.endReached = await tabToFight(x => /gs-btn-end/.test(x.cls));
                 continue;
             }
             // La acción gastada: «Fin de turno», con Tab.
             if (!s.actionReady) {
+                note('acción gastada: fin de turno', s);
                 await tabToFight(x => /gs-btn-end/.test(x.cls));
                 stats.ended++;
                 await key('Enter', 1200);
@@ -582,6 +589,7 @@ try {
                 const h = (await fight()).hint;
                 if (/enemigo/.test(h)) foeHint = h;
             }
+            note(`enemigo: ${foeHint.slice(0, 60)}`, await fight());
             if (/Intro: atacar/.test(foeHint)) {
                 // Al lado: Intro en su casilla abre su tarjeta, con el foco en «Atacar».
                 stats.boardAttack = true;
@@ -592,9 +600,11 @@ try {
             // las casillas a las que llega, y la del enemigo si está al lado.
             await key('Home', 200);
             let here = await fight();
+            note('inicio', here);
             if (here.lit.length === 0 && /Intro: elegir/.test(here.hint)) {
                 await key('Enter', 700);
                 here = await fight();
+                note('elegida', here);
                 if (here.onBoard) {
                     let again = '';
                     for (let t = 0; t < 6 && !again; t++) {
@@ -615,6 +625,7 @@ try {
             const foe = cellOf(foeHint);
             const at = cellOf(here.hint);
             if (!foe || !at || here.lit.length === 0) {
+                note(`sin pasos: fin de turno (${JSON.stringify({ foe, at })})`, here);
                 await tabToFight(x => /gs-btn-end/.test(x.cls));
                 stats.ended++;
                 await key('Enter', 1200);
@@ -626,6 +637,7 @@ try {
             const dy = goal.y - at.y;
             for (let k = 0; k < Math.abs(dx); k++) await key(dx > 0 ? 'ArrowRight' : 'ArrowLeft', 60);
             for (let k = 0; k < Math.abs(dy); k++) await key(dy > 0 ? 'ArrowDown' : 'ArrowUp', 60);
+            note(`andar a (${goal.x + 1}, ${goal.y + 1})`, await fight());
             await key('Enter', 1200);
         }
         await wait(1500);
@@ -635,7 +647,9 @@ try {
         check('los dados se pasan con Intro (ninguna tirada se queda atascada)', stats.dice > 0 && stats.stuckDice <= 6, JSON.stringify({ dice: stats.dice, stuck: stats.stuckDice }));
         check('el tablero se usa con el teclado: su cursor (flechas, Av Pág, Inicio) y atacar desde él, con la tarjeta del enemigo', stats.board && stats.boardAttack && stats.card > 0, JSON.stringify(stats));
         check('la barra: 1 abre «Atacar» con el foco dentro, y Esc lo cierra con el foco donde estaba', Boolean(menuKeys?.open && menuKeys.inside && menuKeys.closed && menuKeys.back === menuKeys.before), JSON.stringify(menuKeys));
-        check('«Fin de turno» se alcanza con Tab y pasa el turno', stats.ended > 0, JSON.stringify({ ended: stats.ended }));
+        check('«Fin de turno» se alcanza con Tab (y pasa el turno cuando hace falta)', stats.endReached, JSON.stringify({ reached: stats.endReached, ended: stats.ended }));
+        // Lo que se decidió en cada turno, si la pelea no fue como debía.
+        if (after.active || !stats.boardAttack) console.log(`        (la pelea, turno a turno:)\n          ${trace.slice(-30).join('\n          ')}`);
         check('en la pelea, lo que tiene el foco siempre se ve', stats.noRing === 0, `${stats.noRing} sin anillo`);
         f = await focus();
         check('tras la pelea, el foco en lo principal («Continuar»)', /gs-chip-continue/.test(f.cls) && f.ring, JSON.stringify(f));
@@ -799,7 +813,9 @@ try {
     const HEAD = [['Diario', 'gs-journal'], ['Mesa', 'gs-table'], ['Mapa', 'gs-map'], ['Grupo', 'gs-glance'], ['Avisos', 'gs-tray'], ['Historial de dados', 'gs-dice'], ['¿Qué hago?', 'gs-help']];
     /** Lo de encima ahora: una ventana o algo que hace de ventana. */
     const onTop = () => page.evaluate(() => {
-        const dialogs = [...document.querySelectorAll('dialog[open]:not([closing]), [role="dialog"]:not(.gs-pause)')].filter(n => n.getClientRects().length > 0);
+        // Los dados escondidos se quedan en la página (transparentes, `inert`): no cuentan.
+        const dialogs = [...document.querySelectorAll('dialog[open]:not([closing]), [role="dialog"]:not(.gs-pause)')]
+            .filter(n => n.getClientRects().length > 0 && !n.closest('[inert]') && !n.matches('.wm-dice-overlay:not(.active)'));
         const top = dialogs[dialogs.length - 1];
         return top ? (top.className || top.tagName).toString().slice(0, 60) : '';
     });

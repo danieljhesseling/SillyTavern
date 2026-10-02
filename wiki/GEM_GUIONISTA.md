@@ -65,11 +65,11 @@ Por ejemplo:
 
 ## Las reglas
 
-### 1. La historia se cuenta hablando (D-J54)
+### 1. La historia se cuenta hablando, sin narrador (D-J54, D-J60)
 
-- **Casi todas las líneas las dice alguien** (`who`), con su cara (`mood`). Sale su retrato, y su nombre en la placa.
-- **El narrador casi desaparece.** Una línea sin `who` no lleva retrato ni placa. Úsala solo para el ambiente o el paso del tiempo, y en una frase: «Cae la noche sobre el puerto.» Como mucho una por escena, y nunca dos seguidas.
-- **Lo que antes contaba el narrador, lo dice alguien que está allí.**
+- **Todas las líneas las dice alguien** (`who`), con su cara (`mood`). Sale su retrato, y su nombre en la placa.
+- **No hay narrador.** Ni una línea sin `who`: ni para el ambiente, ni para el paso del tiempo, ni para resumir. El sitio y la hora ya se ven en pantalla (el fondo y el reloj).
+- **Lo que antes contaba el narrador, lo dice alguien que está allí:** la gente del sitio, un compañero o el héroe, en sus respuestas.
 
 | Así no | Así sí |
 | :--- | :--- |
@@ -101,7 +101,7 @@ Por ejemplo:
 - **Hay dos formas de presentarse:**
   - **quien habla dice su nombre** («Soy Marta, llevo la posada»): el juego lo ve solo;
   - **otro lo dice en voz alta**, y esa línea lleva `presenta` con el id de quien se da a conocer: `"presenta": "ezequiel"`.
-- **Antes de eso, nadie le nombra:** ni una opción del héroe, ni el narrador, ni el título del hito. En los textos, `{npc:ezequiel}` sale como su nombre si ya se sabe y como «el farero» si no.
+- **Antes de eso, nadie le nombra:** ni una opción del héroe, ni quien no le conozca, ni el título del hito. En los textos, `{npc:ezequiel}` sale como su nombre si ya se sabe y como «el farero» si no.
 - **Nadie dice tu nombre sin conocerte.** Una frase de primera vez no lleva `{nombre}`.
 
 ```json
@@ -224,14 +224,15 @@ Lo que se ve si sale bien (`found`) puede decirlo **alguien de allí**, por su o
 
 Van en `confidants` → el compañero → `scenes`. Hay una cada dos rangos (2, 4, 6, 8 y 10) y salen al quedar con él. Escríbelas como conversación (`beats`):
 
-- `note`: lo que se ve, en una línea corta y sin nombre;
-- `say`: lo que dice;
-- `replies`: dos o tres respuestas, cada una con `bond` (+1, 0 o -1), lo que contesta (`then`) y su cara.
+- `say`: lo que dice (todo lo dice él: no hay narrador, D-J60);
+- `replies`: dos o tres respuestas, cada una con `bond` (+1, 0 o -1), lo que contesta (`then`, solo lo que dice, sin narrar) y su cara.
+
+No escribas `note`: es de antes, y sale en un aviso pequeño fuera de la conversación. Lo que se ve, que lo diga él.
 
 ```json
 { "rank": 2, "title": "Las rocas de la punta", "where": "muelle",
   "beats": [
-    { "note": "Lía lanza piedras al agua desde el muelle.", "say": "Mi tío decía que cada roca de la punta tiene nombre. Me los sé todos.", "mood": "triste" },
+    { "say": "Mi tío decía que cada roca de la punta tiene nombre. Me los sé todos.", "mood": "triste" },
     { "say": "¿Tú tienes algún sitio así?",
       "replies": [
         { "text": "Le hablas del sitio donde creciste.", "bond": 1, "then": "Pues algún día me llevas.", "mood": "alegre" },
@@ -320,14 +321,14 @@ Va en `confidants` → el compañero → `misionPersonal`. Es lo suyo: te lo pid
 - la pantalla emociona por la gente;
 - Strahd oprime: nadie en Barovia espera ya que nada cambie.
 
-**Las líneas sin `who`** (el ambiente) suenan a la voz de cada campaña:
+**El ambiente lo dice la gente** (D-J60: no hay líneas sin `who`). Quien está allí lo nota con la voz de su campaña:
 
-| Campaña | Voz |
+| Campaña | Cómo se nota el ambiente |
 | :--- | :--- |
-| 1387 | La del posadero: cálido y directo |
-| La costa y Strahd | Algo que mira: frío y paciente |
-| El ocaso | El cronista: seco y preciso |
-| La pantalla | El juglar: con ritmo |
+| 1387 | Lo dice el posadero o quien te cobra: cálido y directo |
+| La costa y Strahd | Lo dice quien tiene miedo: frío y paciente |
+| El ocaso | Lo dice quien lleva las cuentas: seco y preciso |
+| La pantalla | Lo dice quien canta o cuenta historias: con ritmo |
 
 ---
 
@@ -361,7 +362,7 @@ Una respuesta no da para una campaña entera. Trabajas en rondas, **una por mens
 | Ronda | Qué entregas | Comprueba al final |
 | :--- | :--- | :--- |
 | **1. La gente** | `npcs` y `confidants` con su `voice`, `trade`, `id`, `gender` y `aspecto`, y una línea de ejemplo de cada uno | ¿Cada uno suena distinto con los nombres tapados? ¿Todos tienen aspecto? |
-| **2. El hilo, hablado** | Los `beats` de los hitos importantes (la mecha, el giro de cada acto y los finales) | ¿Como mucho una línea sin `who` por escena? ¿Se presenta cada uno antes de que le nombren? ¿Hay una o dos decisiones que cambian algo? |
+| **2. El hilo, hablado** | Los `beats` de los hitos importantes (la mecha, el giro de cada acto y los finales) | ¿Ninguna línea sin `who` (D-J60)? ¿Se presenta cada uno antes de que le nombren? ¿Hay una o dos decisiones que cambian algo? |
 | **3. Las charlas** | `dialogues` para las 4 a 6 personas que importan | ¿Cada respuesta corta tiene `reply`? ¿`again` y `more`? ¿Una opción por clase o especie donde encaje? |
 | **4. Fuera del hilo** | `avoid` y `parley` de los tableros con pelea; `sights` de cada localización | ¿Cada pelea tiene otra salida que encaja con quién espera? |
 | **5. Los compañeros** | Sus `scenes` (rangos 2, 4, 6, 8 y 10) como conversación, y sus `arrivals` | ¿Cada rango cuenta algo nuevo? |
@@ -385,7 +386,7 @@ Con eso, Daniel le pide el paquete al Gem de campaña.
 - Meter razas, clases o magia que la campaña excluye.
 - Nombrar a alguien o algo que no está en el paquete, o un `id` que no existe.
 - Cambiar la historia: qué abre cada hito, qué pide y qué cambia es del Gem de campaña.
-- Resolver algo con el narrador: si tiene que pasar, lo dice alguien o es un hito.
+- Escribir narrador (D-J60): ni una línea sin `who`. Si algo tiene que pasar, lo dice alguien o es un hito.
 - Copiar frases del libro del que sale la campaña.
 
 ---
@@ -394,7 +395,7 @@ Con eso, Daniel le pide el paquete al Gem de campaña.
 
 Jugando sin modelo, lo que delata a la máquina es la gente: la misma frase seis veces, un saludo por tu nombre de quien no te conoce, una escena que no se acuerda de lo que acabas de hacer. Antes de entregar, repasa:
 
-- [ ] **La historia la cuentan ellos.** Como mucho una línea sin `who` por escena, y corta.
+- [ ] **La historia la cuentan ellos.** Ninguna línea sin `who`: no hay narrador (D-J60).
 - [ ] **Nadie dice tu nombre sin conocerte**, ni el suyo antes de presentarse. Quien presenta a otro lleva `presenta`.
 - [ ] **Primera vez y de siempre suenan distinto.** La primera vez te mide o te pregunta quién eres; luego ya te conoce (`again`).
 - [ ] **Cada uno habla con su `voice`** en todas sus líneas: si Madre Elvira llama «{hijo|hija}», lo hace siempre.

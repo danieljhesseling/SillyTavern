@@ -178,7 +178,8 @@ try {
             id: scene ? root.getAttribute('data-scene') || '' : root.getAttribute('data-dialogue') || '',
             plate: (root.querySelector('.qd-nameplate')?.textContent || '').trim(),
             text: (root.querySelector('.qd-text')?.textContent || '').replace(/\s+/g, ' ').trim(),
-            notes: [...root.querySelectorAll('.qd-text .dw-note')].map(n => (n.textContent || '').trim()),
+            // D-J60: lo que ha cambiado sale en el aviso de fuera de la caja.
+            notes: [...root.querySelectorAll('.qd-text .dw-note, .qd-aside .vn-aside-line')].map(n => (n.textContent || '').trim()),
             options: [...root.querySelectorAll('.dw-option')].map(o => ({
                 id: o.getAttribute('data-option') || '',
                 locked: o.classList.contains('dw-locked'),
@@ -643,7 +644,8 @@ try {
     const hall = await placeScene();
     await shoot('brunilda-recuerda');
     check('J11.4: en el gremio, Brunilda os saluda sabiendo cómo acabó Strahd, con su cara',
-        hall.remembered && /^Brunilda deja lo que estaba haciendo al verte/.test(hall.line) && /brunilda/.test(hall.face),
+        // D-J60: en la caja, solo lo que dice ella (sin «Brunilda deja lo que estaba haciendo…»).
+        hall.remembered && hall.line.length > 10 && !/deja lo que estaba haciendo/.test(hall.line) && /brunilda/.test(hall.face),
         JSON.stringify(hall));
 
     // En la taberna se cuenta, y días después alguien viene a buscaros por ello.

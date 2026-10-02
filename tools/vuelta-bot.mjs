@@ -153,7 +153,7 @@ export function observe(page) {
                 who: String(turn?.name || ''),
                 foes: (enc.enemies || []).filter((/** @type {any} */ e) => (Number(e.currentHp) || 0) > 0).map((/** @type {any} */ e) => String(e.name)),
             } : null,
-            hero: hero ? { name: String(hero.name), hp: Number(hero.hp) || 0, maxHp: Number(hero.maxHp) || 0, level: Number(hero.level) || 1, xp: Number(hero.xp) || 0, gold: Number(hero.gold) || 0, dead: Boolean(hero.dead) } : null,
+            hero: hero ? { name: String(hero.name), hp: Number(hero.hp) || 0, maxHp: Number(hero.maxHp) || 0, level: Number(hero.level) || 1, xp: Number(hero.xp) || 0, gold: Number(hero.gold) || 0, dead: Boolean(hero.dead), at: `${hero.mapPosition?.gridX ?? ''},${hero.mapPosition?.gridY ?? ''}` } : null,
             party: members.map((/** @type {any} */ m) => String(m.name)),
             // El agotamiento (hambre, sed, sueño) del peor del grupo: lo que avisa el «Agotamiento
             // N de 6» y lo que se ve en su ficha. Quien juega con cabeza come y duerme antes del 6.
@@ -169,7 +169,7 @@ export function observe(page) {
         /** @type {any} */ (view).print = JSON.stringify([
             view.scene, view.dice, view.diceText, layer?.kind, layer?.id, layer?.text, layer?.options?.length, view.dialogs, view.vn, view.focus, view.chips,
             view.town.inside, view.town.places.length, view.town.acts.map(a => a.text), view.location, view.board, view.done.length, view.fight,
-            view.hero?.hp, view.hero?.gold, view.chat, view.last, view.toasts, view.menu, view.day, view.start,
+            view.hero?.hp, view.hero?.gold, view.hero?.at, view.chat, view.last, view.toasts, view.menu, view.day, view.start,
             document.querySelector('#game-shell .gs-targets') ? said(document.querySelector('#game-shell .gs-targets')).slice(0, 80) : '',
             document.querySelector('.hc-root') ? 'hc' : '',
             // El tablón: lo que dice al añadir una campaña (va debajo de las tarjetas) y si está comprobando.
@@ -238,7 +238,7 @@ export function createBot(page, { fast = true, log = console.log, prefer = [] } 
      * Lo que se ve mal sin ser un silencio ni un atasco: una etiqueta del motor en lo que se lee
      * («[HILO] …»), una ventana encima de otra a medias, la escena de un hito ya cumplido.
      *
-     * @type {Array<{kind: 'crudo'|'encima'|'tarde'|'descanso'|'portada'|'anda'|'cierre'|'turno', n: number, where: string, text: string}>}
+     * @type {Array<{kind: 'crudo'|'encima'|'tarde'|'descanso'|'portada'|'anda'|'cierre'|'turno'|'gancho'|'barra', n: number, where: string, text: string}>}
      */
     const oddities = [];
     const oddSeen = new Set();
@@ -262,6 +262,9 @@ export function createBot(page, { fast = true, log = console.log, prefer = [] } 
     /** Lo pulsado en la barra de combate que no hizo nada, seguido; con dos, el turno va con el gancho. */
     let fightFails = 0;
     let hookSaid = false;
+    /** Lo que no respondió en esta pelea, dicho (para explicar por qué un turno va con el gancho). */
+    /** @type {string[]} */
+    let fightMissed = [];
     /** El turno («ronda:quién») en el que ya se atacó: una acción por turno. */
     let lastAttack = '';
     /**
@@ -285,8 +288,8 @@ export function createBot(page, { fast = true, log = console.log, prefer = [] } 
     /** La barra de combate, dicha: cada botón, y si está apagado. */
     const barSaid = (/** @type {any} */ seen) => (seen.bar ?? []).map((/** @type {any} */ b) => `${b.text}${b.off ? ' (apagado)' : ''}`).join(' | ') || 'ninguna';
     /**
-     * Las peleas («tablero|ronda») sin enemigos en pie: desde cuándo se espera a que se cierren, o
-     * -1 si ya se midió.
+     * Las peleas («tablero|hitos hechos|pelea») sin enemigos en pie: desde cuándo se espera a que se
+     * cierren, o -1 si ya se midió.
      *
      * @type {Map<string, number>}
      */
@@ -364,6 +367,11 @@ export function createBot(page, { fast = true, log = console.log, prefer = [] } 
             return after.print !== before.print;
         }, how.wait ?? 2500);
         await page.waitForTimeout(120);
+        // En el registro detallado, los avisos nuevos («La cerradura aguanta.»): lo que lee quien juega.
+        if (process.env.VUELTA_VER) {
+            const fresh = (after.toasts ?? []).filter((/** @type {string} */ t) => !(before.toasts ?? []).includes(t));
+            if (fresh.length > 0) log(`  aviso: ${fresh.join(' / ').slice(0, 200)}`);
+        }
         const silent = did && !changed && !how.quiet;
         const entry = { n: steps.length + 1, what, silent, ms: Date.now() - t0, where: where(before) };
         steps.push(entry);
@@ -557,6 +565,24 @@ export function createBot(page, { fast = true, log = console.log, prefer = [] } 
      * @param {any} v
      * @param {{type: string, cell?: {x: number, y: number}}|null} [goal] Lo que pide el tablero.
      */
+    /**
+     * Lo que hay en la pelea, dicho en una línea: los enemigos (con su vida, también los caídos), el
+     * orden de turnos, el grupo (vida, muerto, salvaciones) y la misión del tablero. Para explicar
+     * una pelea que no se cierra.
+     *
+     * @returns {Promise<string>}
+     */
+    const fightSaid = () => page.evaluate(async () => {
+        const party = await import('/scripts/party.js');
+        const enc = /** @type {any} */ (party.getCombatEncounter());
+        const ctx = /** @type {any} */ ((await import('/scripts/party/board.js')).getActiveBoardContext());
+        const foes = (enc?.enemies || []).map((/** @type {any} */ e) => `${e.name} ${e.currentHp}/${e.maxHp}${e.fled ? ' huido' : ''}${e.surrendered ? ' rendido' : ''}`).join(', ');
+        const order = (enc?.turnOrder || []).map((/** @type {any} */ t) => `${t.name}${t.isEnemy ? '*' : ''}`).join(' > ');
+        const crew = party.getPartyMembersSnapshot().map((/** @type {any} */ m) => `${m.name} ${m.hp}/${m.maxHp}${m.dead ? ' muerto' : ''}${m.deathSaves ? ` salv ${JSON.stringify(m.deathSaves)}` : ''}`).join(', ');
+        const goals = (ctx?.board?.objectives || ctx?.objectives || []).map((/** @type {any} */ o) => `${o.type}${o.label ? ` «${o.label}»` : ''}`).join(', ');
+        return `enemigos [${foes || 'ninguno'}]; turnos [${order}]; grupo [${crew}]${goals ? `; misión [${goals}]` : ''}; ronda ${enc?.round}`;
+    }).catch((/** @type {any} */ e) => `(no se pudo leer: ${String(e).slice(0, 80)})`);
+
     const fightTurn = async (v, goal = null) => {
         // Cada enemigo nuevo se marca al verlo: así una pelea que se repite con los mismos
         // nombres (tras una derrota, o el mismo tablero otra vez) también cuenta y se acorta.
@@ -594,6 +620,8 @@ export function createBot(page, { fast = true, log = console.log, prefer = [] } 
             // Una pelea nueva: lo que no respondió en la anterior no cuenta para el gancho.
             counts.fights++;
             fightFails = 0;
+            fightMissed = [];
+            hookSaid = false;
         }
         // Recién puestos al lado, la barra aún no los tiene a su alcance: se mira otra vez (si no,
         // el primer turno se iba en «Fin de turno»).
@@ -605,7 +633,7 @@ export function createBot(page, { fast = true, log = console.log, prefer = [] } 
         // Sin enemigos en pie la pelea se cierra sola (la victoria): quien juega espera, sin pulsar.
         // Se mide cuánto tarda (si salen dados o una ventana, se atienden y se sigue esperando);
         // si pasan 20 s y sigue abierta, se apunta y se sigue como siempre.
-        const closeKey = `${v.board}|${v.fight.round}`;
+        const closeKey = `${v.board}|${v.done.length}|${counts.fights}`;
         const killAll = !goal || /^eliminate/.test(String(goal.type));
         if (killAll && v.fight.foes.length === 0 && closing.get(closeKey) !== -1) {
             if (!closing.has(closeKey)) closing.set(closeKey, Date.now());
@@ -622,7 +650,7 @@ export function createBot(page, { fast = true, log = console.log, prefer = [] } 
             if (now.fight || ms > 3000) {
                 const text = !now.fight
                     ? `sin enemigos en pie, la pelea tarda ${(ms / 1000).toFixed(1)} s en cerrarse (sin barra ni «Fin de turno» mientras tanto)`
-                    : `sin enemigos en pie, la pelea sigue abierta a los 20 s, en el turno de ${now.fight.who} (barra: ${barSaid(now)})`;
+                    : `sin enemigos en pie, la pelea sigue abierta a los 20 s, en el turno de ${now.fight.who} (barra: ${barSaid(now)}); en la pelea: ${await fightSaid()}`;
                 oddities.push({ kind: 'cierre', n: steps.length, where: where(v), text });
                 log(`RARO  cierre #${steps.length} ${text} (${where(v)})`);
             }
@@ -641,6 +669,12 @@ export function createBot(page, { fast = true, log = console.log, prefer = [] } 
             if (fast && !hookSaid) {
                 hookSaid = true;
                 log(`GANCHO #${steps.length} la barra de combate no responde a lo que pulsa la vuelta${process.env.VUELTA_PELEAS === 'gancho' ? ' (o VUELTA_PELEAS=gancho)' : ''}: los turnos del grupo van con playCurrentTurnAlone (${where(v)})`);
+                // Por qué, una vez por pelea: lo que no respondió y lo que enseñaba la barra.
+                if (fightMissed.length > 0) {
+                    const text = `turno de ${v.fight.who} (ronda ${v.fight.round}, ${v.fight.foes.length} enemigos en pie) con el gancho: no respondió ${fightMissed.slice(-3).join(' / ')}; la barra dice «${v.turnLabel || '—'}» (${barSaid(v)})`;
+                    oddities.push({ kind: 'gancho', n: steps.length, where: where(v), text });
+                    log(`RARO  gancho #${steps.length} ${text}`);
+                }
             }
             markDecision();
             if (fast) counts.hooked++;
@@ -650,12 +684,59 @@ export function createBot(page, { fast = true, log = console.log, prefer = [] } 
         }
         // Lo que se pulsó en la barra y no hizo nada (no se pudo pulsar, o fue un silencio) cuenta
         // para pasar al gancho.
-        const tally = (/** @type {boolean} */ did) => { fightFails = did && !steps[steps.length - 1]?.silent ? 0 : fightFails + 1; };
+        const tally = (/** @type {boolean} */ did) => {
+            const last = steps[steps.length - 1];
+            if (did && !last?.silent) {
+                fightFails = 0;
+                fightMissed = [];
+                return;
+            }
+            fightFails++;
+            fightMissed.push(`«${String(last?.what || '').slice(0, 320)}»${last?.silent ? ' (no cambia nada)' : ''}`);
+        };
         // La barra se repinta a menudo (cada tirada, cada aviso): un botón puede no estar justo en el
         // momento de mirar. Se le da un momento antes de darlo por ausente.
         const settle = async (/** @type {any} */ locator) => {
             if (await locator.count() === 0) await locator.first().waitFor({ state: 'visible', timeout: 700 }).catch(() => {});
             return locator;
+        };
+        /**
+         * Pulsar un botón de la barra que va y viene: se mira y se pulsa varias veces en 2,5 s. Si
+         * hacen falta más de dos intentos, la barra se está repintando sin parar (se apunta una vez
+         * por tablero: es lo que hacía pasar turnos al gancho en el Comedor del Conde).
+         *
+         * @param {any} locator
+         * @param {string} what
+         */
+        const pressFlicker = async (locator, what) => {
+            const until2 = Date.now() + 2500;
+            let tries = 0;
+            // Por qué no entró el último clic (lo que tapa el botón, sobre todo).
+            let clickError = '';
+            while (Date.now() < until2) {
+                tries++;
+                if (await locator.count() > 0 && await locator.first().click({ timeout: 800 }).then(() => true).catch((/** @type {any} */ e) => {
+                    const text = String(e?.message || e);
+                    clickError = (/<[^>]+> from <[^>]+> subtree intercepts pointer events|<[^>]+> intercepts pointer events|element is not (visible|enabled|stable)|element is outside of the viewport|element was detached/.exec(text)?.[0] ?? text.split('\n')[0]).slice(0, 160);
+                    return false;
+                })) {
+                    if (tries > 2 && !oddSeen.has(`barra:${v.board}:${what}`)) {
+                        oddSeen.add(`barra:${v.board}:${what}`);
+                        const text = `«${what}» aparece y desaparece: hicieron falta ${tries} intentos en ${2500 - Math.max(0, until2 - Date.now())} ms para pulsarlo (ronda ${v.fight.round}, ${v.fight.foes.length} enemigos en pie)`;
+                        oddities.push({ kind: 'barra', n: steps.length, where: where(v), text });
+                        log(`RARO  barra #${steps.length} ${text} (${where(v)})`);
+                    }
+                    return true;
+                }
+                await page.waitForTimeout(120);
+            }
+            const seen = await page.evaluate((/** @type {string} */ words) => {
+                const all = [...document.querySelectorAll('button, .menu_button, .gs-btn, .gs-target')].filter(b => (b.textContent || '').includes(words));
+                const shown = all.filter(b => { const r = b.getBoundingClientRect(); return r.width > 1 && r.height > 1 && window.getComputedStyle(b).visibility !== 'hidden'; });
+                return `en la página: ${all.length}, a la vista: ${shown.length}, apagados: ${all.filter(b => /** @type {HTMLButtonElement} */ (b).disabled || b.getAttribute('aria-disabled') === 'true').length}`;
+            }, what === 'Fin de turno' ? 'Fin de turno' : '').catch(() => '');
+            pressError = `no está (${tries} intentos en 2,5 s${what === 'Fin de turno' && seen ? `; «Fin de turno» ${seen}` : ''}${clickError ? `; el clic: ${clickError}` : ''})`;
+            return false;
         };
         const attack = page.locator('#game-shell .gs-actions .gs-btn-attack:not([disabled])');
         // Una acción por turno: tras atacar, la barra tarda en apagar «Atacar», y pulsarlo otra vez
@@ -663,7 +744,7 @@ export function createBot(page, { fast = true, log = console.log, prefer = [] } 
         const turnKey = `${v.fight.round}:${v.fight.who}`;
         const barAttack = v.bar.find((/** @type {any} */ b) => /^Atacar$/.test(b.text));
         const retry = walkedOn === turnKey && retriedOn !== turnKey;
-        if ((lastAttack !== turnKey || retry) && !barAttack?.off && await attack.count() > 0) {
+        if (v.fight.foes.length > 0 && (lastAttack !== turnKey || retry) && !barAttack?.off && await attack.count() > 0) {
             markDecision();
             lastAttack = turnKey;
             if (retry) retriedOn = turnKey;
@@ -675,7 +756,13 @@ export function createBot(page, { fast = true, log = console.log, prefer = [] } 
                 await press(attack);
                 await page.waitForTimeout(200);
             }
-            tally(await act(v, `atacar (${v.fight.who})`, async () => press(await settle(targets)), { module: 'combat' }));
+            const anyTarget = await page.locator('#game-shell .gs-targets .gs-target').count();
+            if (anyTarget > 0 && await targets.count() === 0) {
+                // Nadie a su alcance (las tarjetas, apagadas): se anda; no cuenta para el gancho.
+                steps.push({ n: steps.length + 1, what: `atacar (${v.fight.who}): nadie a su alcance`, silent: false, ms: 0, where: where(v) });
+            } else {
+                tally(await act(v, `atacar (${v.fight.who})`, () => pressFlicker(targets, 'el enemigo en «Atacar»'), { module: 'combat' }));
+            }
             // Sin nadie a su alcance, el menú se queda abierto: se cierra para andar.
             await press(page.locator('#game-shell .gs-targets-close:visible'), 500);
             return;
@@ -687,24 +774,7 @@ export function createBot(page, { fast = true, log = console.log, prefer = [] } 
         }
         // Andar: hacia la casilla que pide el tablero («Salir por la ventana»), o hacia el
         // enemigo más cercano. Se pulsa la casilla encendida que más acerca, como quien juega.
-        const pickStep = () => page.evaluate(async (/** @type {any} */ want) => {
-            const party = await import('/scripts/party.js');
-            const enc = /** @type {any} */ (party.getCombatEncounter());
-            const entry = enc?.turnOrder?.[enc?.currentTurnIndex];
-            const me = party.getPartyMembersSnapshot().find((/** @type {any} */ m) => String(m.name) === String(entry?.name)) ?? party.getPartyMembersSnapshot()[0];
-            const from = { x: Number(me?.mapPosition?.gridX) || 0, y: Number(me?.mapPosition?.gridY) || 0 };
-            const foes = (enc?.enemies || []).filter((/** @type {any} */ e) => (Number(e.currentHp) || 0) > 0).map((/** @type {any} */ e) => ({ x: Number(e.gridX) || 0, y: Number(e.gridY) || 0 }));
-            const far = (/** @type {any} */ a, /** @type {any} */ b) => Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
-            const goal = want ?? foes.sort((a, b) => far(from, a) - far(from, b))[0] ?? null;
-            if (!goal || far(from, goal) === 0) return null;
-            const token = String(me?.id ?? '');
-            const cells = [...document.querySelectorAll('.wm-highlight-clickable.wm-highlight-move')]
-                .map(n => ({ x: Number(n.getAttribute('data-x')), y: Number(n.getAttribute('data-y')) }))
-                .filter(c => Number.isFinite(c.x) && Number.isFinite(c.y));
-            const best = cells.sort((a, b) => far(a, goal) - far(b, goal))[0];
-            if (cells.length === 0) return { token, goal, from };
-            return best && far(best, goal) < far(from, goal) ? { ...best, token, goal, from } : null;
-        }, goal?.cell ?? null).catch(() => null);
+        const pickStep = () => stepToward(goal?.cell ?? null);
         let step = await pickStep();
         // Las casillas a las que se anda se encienden al pulsar tu ficha: primero, tu ficha.
         if (step && step.x === undefined && step.token) {
@@ -735,12 +805,125 @@ export function createBot(page, { fast = true, log = console.log, prefer = [] } 
             log(`RARO  turno #${steps.length} ${text} (${where(v)})`);
         }
         tally(await act(v, `fin de turno (${v.fight.who})`, async () => {
-            const ok = await press(end);
+            const ok = await pressFlicker(end, 'Fin de turno');
+            const why = pressError;
             // Fin de turno con acción sin gastar pregunta antes.
             await page.waitForTimeout(200);
             await press(page.locator('dialog[open] .popup-button-ok'), 800);
+            pressError = why;
             return ok;
         }, { module: 'combat' }));
+    };
+
+    /**
+     * La casilla encendida que más acerca a `want` (o, sin `want`, al enemigo en pie más cercano),
+     * para quien tiene el turno o, fuera de combate, para el héroe. Sin casillas encendidas, su
+     * ficha (`token`), para pulsarla y que se enciendan; null si no hay adónde ir.
+     *
+     * @param {{x: number, y: number}|null} want
+     * @returns {Promise<any>}
+     */
+    const stepToward = (want) => page.evaluate(async (/** @type {any} */ wanted) => {
+        const party = await import('/scripts/party.js');
+        const enc = /** @type {any} */ (party.getCombatEncounter());
+        const entry = enc?.active ? enc?.turnOrder?.[enc?.currentTurnIndex] : null;
+        const me = party.getPartyMembersSnapshot().find((/** @type {any} */ m) => String(m.name) === String(entry?.name)) ?? party.getPartyMembersSnapshot()[0];
+        const from = { x: Number(me?.mapPosition?.gridX) || 0, y: Number(me?.mapPosition?.gridY) || 0 };
+        const foes = (enc?.active ? enc?.enemies || [] : []).filter((/** @type {any} */ e) => (Number(e.currentHp) || 0) > 0).map((/** @type {any} */ e) => ({ x: Number(e.gridX) || 0, y: Number(e.gridY) || 0 }));
+        const far = (/** @type {any} */ a, /** @type {any} */ b) => Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
+        const goal = wanted ?? foes.sort((a, b) => far(from, a) - far(from, b))[0] ?? null;
+        if (!goal || far(from, goal) === 0) return null;
+        const token = String(me?.id ?? '');
+        const cells = [...document.querySelectorAll('.wm-highlight-clickable.wm-highlight-move')]
+            .map(n => ({ x: Number(n.getAttribute('data-x')), y: Number(n.getAttribute('data-y')) }))
+            .filter(c => Number.isFinite(c.x) && Number.isFinite(c.y));
+        const best = cells.sort((a, b) => far(a, goal) - far(b, goal))[0];
+        if (cells.length === 0) return { token, goal, from };
+        return best && far(best, goal) < far(from, goal) ? { ...best, token, goal, from } : null;
+    }, want).catch(() => null);
+
+    /** Las veces que se ha andado fuera de combate en cada tablero, para no dar vueltas sin fin. */
+    /** @type {Map<string, number>} */
+    const boardWalks = new Map();
+
+    /**
+     * Fuera de combate, en el tablero: andar hasta la casilla que pide su misión («Llegar a la
+     * puerta principal»). Acabada la pelea sin nadie en pie, lo que queda se hace andando (Tanda
+     * 16, combat-flow.js `checkObjectiveLeft`): quien juega pulsa su ficha y luego la casilla.
+     * Devuelve false si no hay adónde ir o ya se ha probado muchas veces.
+     *
+     * @param {any} v
+     * @param {{x: number, y: number}} cell
+     */
+    const walkBoard = async (v, cell) => {
+        const key = `${v.board}|${v.done.length}`;
+        const tries = boardWalks.get(key) ?? 0;
+        if (tries >= 12) return false;
+        boardWalks.set(key, tries + 1);
+        let step = await stepToward(cell);
+        if (step && step.x === undefined && step.token) {
+            await press(page.locator(`#game-shell .wm-token[data-token-id="${step.token}"]`));
+            await page.waitForTimeout(250);
+            step = await stepToward(cell);
+        }
+        if (!step || step.x === undefined) return false;
+        markDecision();
+        return act(v, `andar (fuera de combate) a (${step.x + 1}, ${step.y + 1}), lo que pide el tablero: (${cell.x + 1}, ${cell.y + 1})`,
+            () => press(page.locator(`.wm-highlight-clickable.wm-highlight-move[data-x="${step.x}"][data-y="${step.y}"]`)), { module: 'board-view.js (andar fuera de combate)', wait: 4000 });
+    };
+
+    /**
+     * Fuera de combate, en un tablero cuya misión pide un tesoro («Encontrar la reliquia: está en
+     * un cofre del tablero; id a su lado y pulsadlo»): andar al lado del cofre cerrado más cercano
+     * y pulsarlo, como quien juega. Devuelve false si no queda cofre o ya se ha probado mucho.
+     *
+     * @param {any} v
+     */
+    const lootChest = async (v) => {
+        const key = `cofre|${v.board}|${v.done.length}`;
+        const tries = boardWalks.get(key) ?? 0;
+        if (tries >= 12) return false;
+        boardWalks.set(key, tries + 1);
+        // Los cofres que siguen cerrados (abierto, pasa a ser suelo) y dónde está el héroe.
+        const seen = await page.evaluate(async () => {
+            const board = await import('/scripts/party/board.js');
+            const party = await import('/scripts/party.js');
+            const cells = /** @type {any} */ (board.getActiveBoardTerrain())?.cells ?? {};
+            const chests = Object.entries(cells).filter(([, c]) => /** @type {any} */ (c)?.type === 'chest')
+                .map(([at]) => ({ x: Number(at.split(',')[0]), y: Number(at.split(',')[1]) }));
+            const me = /** @type {any} */ (party.getPartyMembersSnapshot()[0]);
+            return { chests, from: { x: Number(me?.mapPosition?.gridX) || 0, y: Number(me?.mapPosition?.gridY) || 0 } };
+        }).catch(() => ({ chests: [], from: { x: 0, y: 0 } }));
+        const far = (/** @type {any} */ a, /** @type {any} */ b) => Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
+        const chest = [...seen.chests].sort((a, b) => far(seen.from, a) - far(seen.from, b))[0];
+        if (!chest) return false;
+        if (far(seen.from, chest) > 1) {
+            let step = await stepToward(chest);
+            if (step && step.x === undefined && step.token) {
+                await press(page.locator(`#game-shell .wm-token[data-token-id="${step.token}"]`));
+                await page.waitForTimeout(250);
+                step = await stepToward(chest);
+            }
+            if (!step || step.x === undefined) return false;
+            markDecision();
+            return act(v, `andar (fuera de combate) a (${step.x + 1}, ${step.y + 1}), hacia el cofre de (${chest.x + 1}, ${chest.y + 1})`,
+                () => press(page.locator(`.wm-highlight-clickable.wm-highlight-move[data-x="${step.x}"][data-y="${step.y}"]`)), { module: 'board-view.js (andar fuera de combate)', wait: 4000 });
+        }
+        // Al lado: el cofre del dibujo (no lleva su casilla; van en el mismo orden que en el mapa).
+        const marked = await page.evaluate((/** @type {any} */ want) => {
+            document.querySelectorAll('[data-vuelta-chest]').forEach(n => n.removeAttribute('data-vuelta-chest'));
+            const nodes = [...document.querySelectorAll('#game-shell .wm-terrain-chest.wm-terrain-door-actionable')]
+                .map(n => ({ n, left: parseFloat(/** @type {HTMLElement} */ (n).style.left) || 0, top: parseFloat(/** @type {HTMLElement} */ (n).style.top) || 0 }))
+                .sort((a, b) => a.top - b.top || a.left - b.left);
+            const cells = [...want.all].sort((a, b) => a.y - b.y || a.x - b.x);
+            if (nodes.length !== cells.length) return false;
+            const at = cells.findIndex(c => c.x === want.chest.x && c.y === want.chest.y);
+            nodes[at]?.n.setAttribute('data-vuelta-chest', '');
+            return at >= 0;
+        }, { all: seen.chests, chest }).catch(() => false);
+        if (!marked) return false;
+        markDecision();
+        return act(v, `abrir el cofre de (${chest.x + 1}, ${chest.y + 1}), lo que pide el tablero`, () => press(page.locator('[data-vuelta-chest]')), { module: 'loot.js (openChest)', wait: 4000 });
     };
 
     /** Una ficha de la fila (o de la caja de la novela) cuyo texto casa. */
@@ -919,8 +1102,9 @@ export function createBot(page, { fast = true, log = console.log, prefer = [] } 
      *
      * @param {any} v
      * @param {Target} t
+     * @param {{type: string, cell?: {x: number, y: number}, loot?: boolean}|null} [goal] Lo que pide el tablero del hito.
      */
-    const pursue = async (v, t) => {
+    const pursue = async (v, t, goal = null) => {
         if (t.place && plain(v.location) !== plain(t.place)) return travelTo(v, t.place);
         if ((t.kind === 'win' || t.kind === 'defeat') && t.board) {
             if (plain(v.board) === plain(t.board)) {
@@ -931,13 +1115,25 @@ export function createBot(page, { fast = true, log = console.log, prefer = [] } 
                 }
                 if (await tapChip(v, /^Iniciar combate/, 'iniciar el combate', 'action-chips.js')) return true;
                 if (await tapChip(v, /^(¡?A pelear!?|Pelear)$/, 'pelear', 'action-chips.js')) return true;
+                // Al llegar, como quien mira el tablero un momento: la pelea con lo que está a la vista
+                // empieza sola. Abrir antes una puerta despierta solo esa sala, y la pelea empieza sin
+                // quien está a la vista (Strahd, la taberna: sin la bruja, la pelea no se acaba; H17).
+                // A veces la pelea tarda más de 3 s en abrirse: se espera dos veces.
+                const waitKey = `${v.board}|${v.done.length}`;
+                const waited = startWaits.get(waitKey) ?? 0;
+                if (waited < 2) {
+                    startWaits.set(waitKey, waited + 1);
+                    return act(v, `esperar a que empiece la pelea (${t.board})`, async () => true, { quiet: true, wait: 3000 });
+                }
                 // Sin nadie a la vista, lo que duerme tras una puerta se despierta abriéndola.
                 if (await tapChip(v, /^Abrir la puerta/, 'abrir una puerta del tablero', 'action-chips.js')) return true;
                 const button = page.locator('#game-shell .wm-start-combat:visible, #game-shell .wm-fight-btn:visible');
                 if (await button.count() > 0) return act(v, 'iniciar el combate (botón del tablero)', () => press(button), { module: 'board-view.js' });
+                // Sin pelea y con lo que queda por hacer andando (la pelea ya acabó): el cofre que
+                // pide la misión, y la casilla a la que hay que llegar.
+                if (goal?.loot && await lootChest(v)) return true;
+                if (goal?.cell && await walkBoard(v, goal.cell)) return true;
                 // El combate nuevo empieza solo al entrar: se espera un poco antes de darlo por atascado.
-                const waitKey = `${v.board}|${v.done.length}`;
-                const waited = startWaits.get(waitKey) ?? 0;
                 if (waited < 3) {
                     startWaits.set(waitKey, waited + 1);
                     return act(v, `esperar a que empiece la pelea (${t.board})`, async () => true, { quiet: true, wait: 3000 });
@@ -1164,7 +1360,7 @@ export async function runCampaign(bot, { pack, stop, maxSteps = 900, log = conso
             }
             return { reached: false, gaveUp: 'no queda ningún hito abierto que seguir', view: v };
         }
-        const moved = await bot.pursue(v, target);
+        const moved = await bot.pursue(v, target, target.board ? goals.get(target.board) ?? null : null);
         misses = moved ? 0 : misses + 1;
     }
     return { reached: false, gaveUp: `más de ${maxSteps} pasos`, view: v };
@@ -1236,6 +1432,41 @@ export async function skipTrial(bot, { guildPack, tries = 120 }) {
         else await bot.page.waitForTimeout(300);
     }
     return v.done.includes('la-prueba');
+}
+
+/**
+ * Lo que la vuelta deja guardado para jugar sin animaciones: «Animaciones: ninguna» en las
+ * opciones del juego (`MOTION_KEY` de game-engine/ui/motion.js).
+ */
+export const QUIET_MOTION = Object.freeze({ key: 'sillytavern_gameMotion', value: 'ninguna' });
+
+/**
+ * El ritmo del combate (`PACE_KEY` de game-engine/ui/combat-vtt/fx.js): `instant`, cada paso de la
+ * secuencia del golpe (el ataque, el d20, el daño, la vida) deja su resultado al momento y en orden.
+ */
+export const COMBAT_PACE = Object.freeze({ key: 'sillytavern_gameCombatPace', value: 'instant' });
+
+/**
+ * Las vueltas miden el camino, no las animaciones. El ataque se juega en orden (el golpe, el
+ * dado que rueda, el daño): con «Animaciones: ninguna», «reducir movimiento» y el combate al
+ * momento sale todo de una vez y en el mismo orden. Con VUELTA_ANIMACIONES=1 se dejan como las ve
+ * quien juega (el combate a su ritmo de verdad; más lento, para mirar cómo se ven).
+ *
+ * @param {any} context El contexto del navegador, antes de abrir la portada.
+ * @param {any} page
+ * @returns {Promise<boolean>} Si se han quitado.
+ */
+export async function quietMotion(context, page) {
+    const keep = Boolean(process.env.VUELTA_ANIMACIONES);
+    const saved = keep ? [{ key: COMBAT_PACE.key, value: 'normal' }] : [{ ...QUIET_MOTION }, { ...COMBAT_PACE }];
+    await context.addInitScript((/** @type {Array<{key: string, value: string}>} */ pairs) => {
+        try {
+            for (const pair of pairs) window.localStorage.setItem(pair.key, pair.value);
+        } catch { /* sin almacenamiento, queda «reducir movimiento» */ }
+    }, saved);
+    if (keep) return false;
+    await page.emulateMedia({ reducedMotion: 'reduce' }).catch(() => {});
+    return true;
 }
 
 /**
@@ -1354,7 +1585,7 @@ export function proseNotes(root) {
  * acabar con alguien, aguantar…
  *
  * @param {any} pack
- * @returns {Map<string, {type: string, cell?: {x: number, y: number}}>}
+ * @returns {Map<string, {type: string, cell?: {x: number, y: number}, loot?: boolean}>}
  */
 export function boardGoalsFromPack(pack) {
     const quests = new Map((pack.quests ?? []).map((/** @type {any} */ q) => [String(q.id), q]));
@@ -1363,7 +1594,9 @@ export function boardGoalsFromPack(pack) {
         // Strahd nombra el tablero de cada misión por su id (`boardId`).
         const quest = quests.get(`q-${board.id}`) ?? (pack.quests ?? []).find((/** @type {any} */ q) => q.board === board.name || q.boardName === board.name || (q.boardId && String(q.boardId) === String(board.id)));
         const first = (quest?.objectives ?? []).find((/** @type {any} */ o) => o.type === 'reach_cell') ?? quest?.objectives?.[0];
-        if (first) goals.set(String(board.name), { type: String(first.type), ...(first.cell ? { cell: { x: Number(first.cell.x), y: Number(first.cell.y) } } : {}) });
+        // «Encontrar la reliquia»: está en un cofre del tablero (se abre estando al lado).
+        const loot = (quest?.objectives ?? []).some((/** @type {any} */ o) => o.type === 'loot');
+        if (first) goals.set(String(board.name), { type: String(first.type), ...(first.cell ? { cell: { x: Number(first.cell.x), y: Number(first.cell.y) } } : {}), ...(loot ? { loot: true } : {}) });
     }
     return goals;
 }

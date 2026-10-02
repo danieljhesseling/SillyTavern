@@ -4,9 +4,10 @@
  * (entregarse, sobornar, convencer o engañar), como una escena de novela visual.
  *
  * Quien manda de los que esperan sale grande, con su cara si está dibujada, y su nombre en la
- * placa; en la caja, lo que pasa y lo que se puede hacer, cada cosa con su tirada, quién tira,
- * lo que cuesta y lo que se gana. Lo que no se puede sale apagado, con el porqué. Al elegir, la
- * misma caja dice lo que has hecho, la tirada y lo que ha pasado, y una sola ficha sigue.
+ * placa; en la caja, lo que se puede hacer, cada cosa con su tirada, quién tira, lo que cuesta y
+ * lo que se gana. Lo que no se puede sale apagado, con el porqué. Al elegir, la caja dice lo que
+ * has dicho, y una sola ficha sigue. D-J60: lo que pasa, la tirada y lo que cambia no lo dice
+ * nadie: van en un aviso fuera de la caja (`vn-aside.js`).
  *
  * El mismo marco que las escenas del hilo (`plot-scene.js`: clases `qd-*`, `dw-*` y `ps-*`); lo
  * propio va en peleas.css, colgado de `.ev-dialog`.
@@ -18,6 +19,7 @@
 import { loadPixelManifest, firstArt } from './pixel-art.js';
 import { portraitFor, backdropFor } from './meetup-scene.js';
 import { shownName } from './shown-names.js';
+import { asideBox, fillAside } from './vn-aside.js';
 
 /** @param {any} value @returns {string} */
 const text = (value) => String(value ?? '').trim();
@@ -118,7 +120,11 @@ export async function openExitScene({
     const chips = el('div', 'qd-chips dw-options ps-chips ev-chips');
     const foot = el('div', 'qd-foot dw-foot');
     box.append(plate, head, lines, chips, foot);
-    root.append(backdrop, portrait, box);
+    // D-J60: lo que pasa, las tiradas y lo que cambia no lo dice nadie: en el aviso de fuera de la caja.
+    const aside = asideBox();
+    root.append(backdrop, portrait, aside, box);
+    /** Lo que se ve en el aviso ahora. @type {Array<{kind: string, text: string}>} */
+    let asideNow = [];
     dialog.appendChild(root);
 
     // La cara de quien manda: la de su paquete, o su dibujo de criatura; si no, la silueta.
@@ -156,9 +162,11 @@ export async function openExitScene({
             resolve({ picked, outcome: result });
         };
 
-        const line = (/** @type {string} */ className, /** @type {string} */ said) => {
+        /** Una línea al aviso de fuera de la caja (D-J60). */
+        const note = (/** @type {string} */ kind, /** @type {string} */ said) => {
             if (!text(said)) return;
-            lines.appendChild(el('p', `qd-line ${className}`, text(said)));
+            asideNow = [...asideNow, { kind, text: text(said) }];
+            fillAside(aside, asideNow);
         };
 
         const chip = (/** @type {string} */ className, /** @type {() => void} */ onClick) => {
@@ -174,7 +182,9 @@ export async function openExitScene({
         const drawChoice = () => {
             root.classList.add('ps-asking');
             lines.textContent = '';
-            for (const said of intro ?? []) line('qd-note ps-narration', said);
+            asideNow = [];
+            fillAside(aside, asideNow);
+            for (const said of intro ?? []) note('note', said);
             chips.textContent = '';
             for (const option of shown) {
                 const button = chip(`qd-chip dw-option ps-option ev-option${option.locked ? ' dw-locked' : ''}${option.check ? ' dw-has-check' : ''}`, () => {
@@ -230,9 +240,10 @@ export async function openExitScene({
                 p.appendChild(document.createTextNode(text(outcome.said)));
                 lines.appendChild(p);
             }
-            for (const roll of outcome.rolls ?? []) line('dw-roll ev-roll', roll);
-            for (const said of outcome.lines ?? []) line('qd-note ps-narration ev-outcome', said);
-            for (const note of outcome.notes ?? []) line('qd-note dw-note ev-change', note);
+            asideNow = [];
+            for (const roll of outcome.rolls ?? []) note('roll', roll);
+            for (const said of outcome.lines ?? []) note('note', said);
+            for (const change of outcome.notes ?? []) note('note', change);
             lines.scrollTop = lines.scrollHeight;
             chips.textContent = '';
             foot.textContent = '';
@@ -257,7 +268,7 @@ export async function openExitScene({
             } catch (error) {
                 console.error('[salidas] no se pudo resolver la salida', error);
                 picked = '';
-                line('qd-note ps-refused', 'No ha salido: inténtalo otra vez.');
+                note('refused', 'No ha salido: inténtalo otra vez.');
             } finally {
                 busy = false;
             }

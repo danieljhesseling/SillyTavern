@@ -4,7 +4,7 @@
  * wiki/ROADMAP_SIN_CONEXION.md), sin modelo, contra un servidor propio con un `--dataRoot`
  * temporal, como las otras vueltas:
  *
- *   la partida empieza con la escena del cáliz en su ventana (el narrador sin cara, Torres
+ *   la partida empieza con la escena del cáliz en su ventana (D-J60: sin narrador, Torres
  *   enfadado, una decisión) → ganar en el cuarto de la posada → la escena siguiente espera a que
  *   se cierre el panel de victoria → la escena de la huida acaba en la charla de Giles, que
  *   cumple su hito cuando lo cuenta → lo que se ve al examinar algo del pueblo, si la tirada
@@ -252,8 +252,8 @@ try {
     // --- J9.2: la mecha se juega en su ventana ----------------------------------------------
     const opening = await until(async () => (await story())?.id === 'el-caliz-ensangrentado', 90000);
     const first = await story();
-    check('J9.2: la partida empieza con la escena del cáliz en su ventana, y la cuenta el narrador: sin cara ni placa',
-        opening && Boolean(first?.narrator) && !first?.plateShown && /cuarto más barato de la posada/.test(String(first?.text)), JSON.stringify(first));
+    check('J9.2 y D-J60: la partida empieza con la escena del cáliz en su ventana, y la primera línea la dice Torres, con su placa (sin narrador)',
+        opening && !first?.narrator && Boolean(first?.plateShown) && /Abrid en nombre de Lord Vane/.test(String(first?.text)), JSON.stringify(first));
     await shoot('caliz');
     const calizFrames = await playScene(['gritar']);
     const torres = calizFrames.find(f => f.plate === 'Torres');
@@ -268,9 +268,10 @@ try {
         && Number(now.attitudes.Giles) >= 1 && /📜 \[HILO\][\s\S]*Torres: «¡Abrid en nombre de Lord Vane/.test(told),
         JSON.stringify({ played: now.played, decisions: now.decisions, attitudes: now.attitudes }));
     // Lo que queda es el registro de la escena (con Torres); su texto no sale otra vez como nota suelta.
-    const openingNotes = (await chatTexts()).filter(t => /\[HILO\][\s\S]*Viernes por la mañana/.test(t));
+    const openingNotes = (await chatTexts()).filter(t => /\[HILO\][\s\S]*Torres: «¡Abrid en nombre de Lord Vane/.test(t));
+    const sceneRetold = (await chatTexts()).filter(t => /\[HILO\][\s\S]*Viernes por la mañana/.test(t));
     check('J9.2: el texto de la escena ya jugada no se vuelve a contar como nota del hilo',
-        openingNotes.length === 1 && /Torres: «/.test(openingNotes[0]), JSON.stringify(openingNotes.map(t => t.slice(0, 80))));
+        openingNotes.length === 1 && sceneRetold.length === 0, JSON.stringify({ notes: openingNotes.map(t => t.slice(0, 80)), retold: sceneRetold.map(t => t.slice(0, 80)) }));
 
     // --- Ganar en el cuarto de la posada: la escena siguiente espera al panel de victoria ----
     await dropToasts();
@@ -465,17 +466,17 @@ try {
     check('D-J39: la escena de Karl ya es la charla: cumple su propio hito sin tener que hablar con él',
         [...karlPlates, ...karlFrames.map(f => f.plate)].includes('Karl') && now.done.includes('el-hambre-de-los-lobos'),
         JSON.stringify({ done: now.done, plates: [...karlPlates, ...karlFrames.map(f => f.plate)] }));
-    // D-J54: el hito siguiente ya no es un párrafo del narrador: es una conversación en el gran
-    // salón. El senescal se presenta y habla Lord Vane, cada uno con su placa; el narrador solo pone
-    // el sitio, en una línea corta. Se elige pensarlo (la tirada de la otra opción cumpliría el hito).
+    // D-J54 y D-J60: el hito siguiente ya no es un párrafo del narrador: es una conversación en el
+    // gran salón. El senescal se presenta y habla Lord Vane, cada uno con su placa; el narrador no dice
+    // nada. Se elige pensarlo (la tirada de la otra opción cumpliría el hito).
     const offerOpen = await until(async () => (await story())?.id === 'la-oferta-del-castillo', 15000);
     await shoot('oferta');
     const offerFrames = await playScene(['pensarlo']);
     const offerPlates = offerFrames.filter(f => !f.narrator && f.plateShown).map(f => f.plate);
     const offerNarrator = offerFrames.filter(f => f.narrator);
-    check('D-J54: la oferta del castillo es una conversación: se presenta el senescal y habla Lord Vane, con una sola línea corta del narrador',
+    check('D-J60: la oferta del castillo es una conversación: se presenta el senescal y habla Lord Vane, sin ninguna línea del narrador',
         offerOpen && offerPlates.includes('Lord Edmund Vane') && offerPlates.some(p => /Oswald/.test(p))
-        && offerNarrator.length <= 1 && offerNarrator.every(f => String(f.text).length < 120),
+        && offerNarrator.length === 0,
         JSON.stringify({ plates: offerPlates, narrator: offerNarrator.map(f => f.text) }));
     await page.waitForTimeout(800);
 
@@ -564,10 +565,12 @@ try {
     check('D-J52: la cara elegida al crearse (🐺) se guarda en Tessa y sale en la tira del grupo',
         tessaFace.stored?.kind === 'emoji' && tessaFace.stored?.emoji === '🐺' && tessaFace.strip === '🐺', JSON.stringify(tessaFace));
     const pierFirst = await story();
-    check('Gremio: el prólogo empieza con la escena del muelle en su ventana, contada por el narrador, en femenino',
-        pier && Boolean(pierFirst?.narrator) && /cansada del viaje/.test(String(pierFirst?.text)), JSON.stringify(pierFirst));
+    check('Gremio y D-J60: el prólogo empieza con la escena del muelle en su ventana, y la primera línea la dice Tomás (sin narrador)',
+        pier && !pierFirst?.narrator && /^(Tomás|Posadero)$/.test(String(pierFirst?.plate)) && /Al ladrón/.test(String(pierFirst?.text)), JSON.stringify(pierFirst));
     await shoot('gremio-muelle');
     const pierFrames = await playScene(['yo-me-encargo']);
+    check('Gremio: Tomás le habla a Tessa en femenino («la de la barca del correo»)', pierFrames.some(f => /la de la barca del correo/.test(String(f.text))),
+        JSON.stringify(pierFrames.map(f => f.text)));
     await page.waitForTimeout(1000);
     now = await meta();
     check('Gremio: Tomás grita con su cara; «Yo me encargo» hace que os mire mejor, y la escena queda jugada',

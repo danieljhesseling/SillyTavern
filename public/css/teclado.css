@@ -89,8 +89,16 @@ body.game-shell-on .wm-container.gs-board-keys:focus-visible {
 }
 
 .wm-container.gs-board-keys:not(:focus-within) .gs-board-hint,
-.wm-container.gs-board-keys:not(:focus-within) .gs-board-cursor {
+.wm-container.gs-board-keys:not(:focus-within) .gs-board-cursor,
+.wm-container.gs-board-keys:not(.gs-board-typing) .gs-board-hint,
+.wm-container.gs-board-keys:not(.gs-board-typing) .gs-board-cursor {
     display: none;
+}
+
+/* Con el ratón (`board-keys.js` quita `.gs-board-typing` al pulsar), el tablero con el foco no
+   lleva el marco del teclado. */
+body.game-shell-on .wm-container.gs-board-keys:not(.gs-board-typing):focus-visible {
+    outline: none;
 }
 
 /* El contraste del texto (J15.5), medido con la regla de la WCAG (4,5 a 1 en texto normal): la

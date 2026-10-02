@@ -247,6 +247,24 @@ function addCampaignTile(onClick) {
         .on('click', onClick);
 }
 
+/**
+ * J5.9: la tarjeta del taller de campañas (`campaign-workshop.js`): el guion de tu Gem
+ * guionista, convertido, comprobado y probado aquí, sin consola ni chat.
+ *
+ * @param {() => void} onClick
+ * @returns {JQuery}
+ */
+function workshopTile(onClick) {
+    return $('<button type="button" class="vt-card vt-new hb-card hb-workshop"></button>')
+        .attr('data-campaign-workshop', 'true')
+        .attr('aria-label', 'Taller de campañas: sube el guion de tu Gem guionista (las rondas en Markdown o el JSON) y el juego lo convierte, lo comprueba, rellena lo que falta y prueba sus peleas.')
+        .append(div('vt-face').append('<i class="fa-solid fa-scroll"></i>'))
+        .append(div('vt-name').text('Taller de campañas'))
+        .append(div('vt-about').text('Sube el guion de tu Gem guionista, las rondas tal cual. El juego lo convierte, te dice lo que falta, rellena los huecos, prueba sus peleas y lo pone en el tablón.'))
+        .append(div('vt-go').append('<i class="fa-solid fa-hammer"></i>').append($('<span></span>').text('Abrir el taller')))
+        .on('click', onClick);
+}
+
 /** J5.6: cuántas cosas se enseñan de cada parte del informe; las demás, contadas. */
 const CHECK_SHOWN = 12;
 
@@ -548,6 +566,20 @@ export async function openHubBoard({ Popup, POPUP_TYPE, cards, heroes = [], onIm
             : onImport(await file.text())), `«${file.name}»`);
     });
     grid.append(addTile);
+    // J5.9: el taller, al lado. Lo que añade pasa por lo mismo que «Añadir una campaña»: su
+    // tarjeta sale en este tablón y lo comprobado, debajo.
+    grid.append(workshopTile(async () => {
+        const { openCampaignWorkshop } = await import('./campaign-workshop.js');
+        await openCampaignWorkshop({
+            Popup, POPUP_TYPE,
+            onAdd: async (content, source) => {
+                /** @type {ImportResult|null} */
+                let result = null;
+                await add(async () => (result = await onImport(content)), source);
+                return result;
+            },
+        });
+    }));
 
     // D-J35: pegar el texto, para quien lo tiene copiado del chat de su Gem.
     const pasteText = $('<textarea class="text_pole hb-paste-text" rows="7"></textarea>')

@@ -19,6 +19,7 @@ import { combatLogPanel, combatLogFilter } from './board-view.js';
 import { showTip } from './narration.js';
 import { focusLost, holdFocus } from '../game-engine/ui/keyboard-nav.js';
 import { motionMs } from '../game-engine/ui/motion.js';
+import { holdRedraw, stageFloat, stageRoll } from './combat-fx.js';
 
 /** @type {HTMLElement|null} */
 let combatDiceOverlayElement = null;
@@ -53,6 +54,8 @@ function paintSoon() {
     const later = typeof requestAnimationFrame === 'function' ? requestAnimationFrame : (/** @type {() => void} */ fn) => setTimeout(fn, 0);
     later(() => {
         paintPending = false;
+        // Tanda 17: mientras se ve un golpe, el resumen espera a que llegue (`combat-fx.js`).
+        if (holdRedraw(paintCombatLog)) return;
         paintCombatLog();
     });
 }
@@ -250,9 +253,13 @@ function queueCombatDiceRoll(payload) {
 }
 
 /**
- * @param {{ title: string, subtitle: string, formula: string, detail: string, total: number, dc?: number|null, natural?: number|null, glyph?: string }} param0
+ * Tanda 17: con `stage` (quién pega a quién y lo que ha decidido el motor), en el Modo Juego la
+ * tirada no sale en su ventana: va a la secuencia del combate (`combat-fx.js`), con el dado que
+ * rueda en el tablero.
+ *
+ * @param {{ title: string, subtitle: string, formula: string, detail: string, total: number, dc?: number|null, natural?: number|null, glyph?: string, stage?: import('./combat-fx.js').RollStage|null }} param0
  */
-export function showCombatDiceRoll({ title, subtitle, formula, detail, total, dc = null, natural = null, glyph = 'd20' }) {
+export function showCombatDiceRoll({ title, subtitle, formula, detail, total, dc = null, natural = null, glyph = 'd20', stage = null }) {
     // Idea 168: cada d20, apuntado, para poder contestar a «este dado me odia».
     if (glyph === 'd20' && chat_metadata && Number(natural) >= 1) {
         chat_metadata[DICE_LOG_KEY] = addRoll(chat_metadata[DICE_LOG_KEY], { title: String(title), natural: Number(natural), total: Number(total) || 0, dc });
@@ -271,7 +278,7 @@ export function showCombatDiceRoll({ title, subtitle, formula, detail, total, dc
         String(subtitle || ''),
     ));
 
-    queueCombatDiceRoll({
+    const shown = {
         title,
         subtitle,
         dc: dc == null ? '--' : String(dc),
@@ -280,7 +287,10 @@ export function showCombatDiceRoll({ title, subtitle, formula, detail, total, dc
         classification,
         detail,
         glyph,
-    });
+    };
+    // Tanda 17: en la secuencia del combate, o su ventana de siempre en su sitio de la secuencia.
+    if (stageRoll({ title, subtitle, formula, total, dc, natural, glyph, stage }, () => queueCombatDiceRoll(shown))) return classification;
+    queueCombatDiceRoll(shown);
     return classification;
 }
 
@@ -293,6 +303,8 @@ export function showCombatDiceRoll({ title, subtitle, formula, detail, total, dc
  * @param {'damage'|'crit'|'heal'|'bark'} kind
  */
 export function floatOnToken(tokenId, text, kind) {
+    // Tanda 17: en pelea, el golpe llega en su sitio de la secuencia (`combat-fx.js`).
+    if (stageFloat(tokenId, text, kind)) return;
     setTimeout(() => {
         const token = [...document.querySelectorAll('.wm-token')]
             .find(t => t instanceof HTMLElement && t.dataset.tokenId === String(tokenId) && t.offsetParent);

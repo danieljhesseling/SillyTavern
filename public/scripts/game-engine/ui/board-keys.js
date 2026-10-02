@@ -203,6 +203,17 @@ function setBoardFocused(on) {
 }
 
 /**
+ * Si se ven el cursor y su pista (`.gs-board-typing`, en `teclado.css`): solo mientras se juega
+ * con el teclado, nunca por un clic.
+ *
+ * @param {HTMLElement} container
+ * @param {boolean} on
+ */
+export function showCursor(container, on) {
+    container.classList.toggle('gs-board-typing', on);
+}
+
+/**
  * Las casillas encendidas del tablero, como están en la página.
  *
  * @param {HTMLElement} content
@@ -334,6 +345,7 @@ export function attachBoardKeys(container, content, input) {
         // Las flechas son del tablero: ni la lista de al lado ni los mensajes de SillyTavern.
         event.preventDefault();
         event.stopPropagation();
+        showCursor(container, true);
         if (event.key === 'Enter' || event.key === ' ') {
             act();
             return;
@@ -350,8 +362,13 @@ export function attachBoardKeys(container, content, input) {
     });
     container.addEventListener('focus', () => {
         setBoardFocused(true);
+        // El cursor, solo con el teclado: un clic en el tablero también le da el foco, y con el
+        // ratón el marco dorado se quedaba en una casilla que nadie había elegido.
+        showCursor(container, keyboardInUse());
         draw(true);
     });
+    // El ratón o el dedo en el tablero: el cursor se esconde hasta la próxima tecla.
+    container.addEventListener('pointerdown', () => showCursor(container, false));
     container.addEventListener('blur', () => {
         if (shown) hover(shown, 'mouseleave');
         shown = null;

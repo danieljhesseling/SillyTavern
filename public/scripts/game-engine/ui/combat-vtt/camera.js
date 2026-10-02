@@ -257,6 +257,35 @@ export function isPointShown(view, point, rect, margin = 0) {
 }
 
 /**
+ * Tanda 17: lo poco que hay que mover la vista para que un punto del tablero se vea con holgura
+ * dentro de `rect` (`margin` por cada lado). Si ya se ve, la misma vista. Es lo que hace la cámara
+ * al seguir a una ficha que anda: no la centra a cada paso, la acompaña cuando se acerca al borde.
+ *
+ * @param {CameraView} view
+ * @param {{x: number, y: number}} point
+ * @param {ScreenRect} rect
+ * @param {number} [margin]
+ * @returns {CameraView}
+ */
+export function panToShow(view, point, rect, margin = 0) {
+    const scale = num(view?.scale, 1);
+    const at = toScreen(view, point);
+    const m = Math.max(0, num(margin));
+    const axis = (/** @type {number} */ pos, /** @type {number} */ lo, /** @type {number} */ hi) => {
+        // Sin sitio para el margen (una vista diminuta), al centro.
+        if (hi - lo < 2 * m) return (lo + hi) / 2 - pos;
+        if (pos < lo + m) return lo + m - pos;
+        if (pos > hi - m) return hi - m - pos;
+        return 0;
+    };
+    return {
+        scale,
+        offsetX: num(view?.offsetX) + axis(at.x, num(rect?.left), num(rect?.right)),
+        offsetY: num(view?.offsetY) + axis(at.y, num(rect?.top), num(rect?.bottom)),
+    };
+}
+
+/**
  * Que el tablero no se pierda: al arrastrarlo, como poco `keep` píxeles suyos se quedan en la
  * pantalla por cada lado (o el tablero entero, si es más pequeño).
  *

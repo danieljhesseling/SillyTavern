@@ -1305,12 +1305,10 @@
         "scene": "La barca del correo te deja en el muelle de Puerto Alba al caer la tarde, {cansado|cansada} del viaje. Huele a sal y a pescado frito. De pronto, un grito: «¡Al ladrón!». Un ratero le ha quitado la bolsa a un hombre con delantal de posadero, y se ha metido en el embarcadero. No tiene por dónde salir, y saca un cuchillo.",
         "backdrop": "muelle",
         "beats": [
-          { "text": "La barca del correo te deja en el muelle de Puerto Alba al caer la tarde, {cansado|cansada} del viaje. Huele a sal y a pescado frito. En la puerta de una taberna, un hombre con delantal se pone a gritar." },
           { "who": "Tomás", "mood": "enfadado", "text": "¡Al ladrón! ¡Ese desgraciado me ha quitado la bolsa!" },
-          { "text": "Un chico flaco corre por las tablas con una bolsa de cuero en la mano. Se mete en el embarcadero, pero allí no hay salida: solo agua." },
-          { "text": "Se da la vuelta, te ve y saca un cuchillo." },
+          { "who": "Ratero del muelle", "mood": "enfadado", "text": "¡Atrás todos! ¡Al primero que se acerque le meto el cuchillo!" },
           {
-            "who": "Tomás", "mood": "triste", "text": "¡Ahí dentro va la paga de toda la semana! ¡Sin ella no pago ni al panadero!",
+            "who": "Tomás", "mood": "triste", "text": "¡Eh, tú, {el|la} de la barca del correo! ¡Ahí dentro va la paga de toda la semana! ¡Sin ella no pago ni al panadero!",
             "options": [
               { "id": "yo-me-encargo", "text": "Quédate atrás. Yo me encargo.", "effects": [{ "attitude": 1 }],
                 "reply": { "who": "Tomás", "mood": "alegre", "text": "¡Que los dioses te lo paguen! Cuidado con ese cuchillo." },
@@ -1336,7 +1334,7 @@
                 } }
             ]
           },
-          { "text": "El ratero mira el agua, te mira a ti y aprieta el cuchillo. No va a soltar la bolsa por las buenas." }
+          { "who": "Ratero del muelle", "mood": "enfadado", "text": "¿Tú? ¡Ven a por ella, si te atreves!" }
         ],
         "opens": { "kind": "start" },
         "asks": { "kind": "win", "board": "El muelle de Puerto Alba" },
@@ -1351,8 +1349,7 @@
         "scene": "El ratero suelta la bolsa, y dos pescadores se lo llevan a rastras hacia la guardia. El posadero, un hombre redondo con el delantal lleno de manchas, recoge sus monedas del suelo. «¡Gracias! Soy Tomás, el de la posada del gremio. Te debo una. Pregúntame lo que quieras: por mi barra pasa todo el puerto.»",
         "backdrop": "muelle",
         "beats": [
-          { "text": "El ratero suelta la bolsa. Dos pescadores lo agarran de los brazos y se lo llevan a rastras hacia la guardia." },
-          { "text": "El posadero es un hombre redondo, con el delantal lleno de manchas. Recoge sus monedas del suelo una a una, sin prisa." },
+          { "who": "Ratero del muelle", "mood": "enfadado", "text": "¡Soltadme, que me hacéis daño! ¡Si la bolsa ni siquiera estaba llena!" },
           { "who": "Tomás", "mood": "alegre", "text": "¡Gracias! Soy Tomás, el de la posada del gremio. Te debo una, y yo pago lo que debo.",
             "alt": [{ "if": { "chose": "cuanto-pagas" }, "mood": "neutral", "text": "Gracias, aunque me hayas cobrado. Soy Tomás, el de la posada del gremio. La bolsa está entera, y eso vale más que tres monedas." }] },
           {
@@ -1382,12 +1379,11 @@
         "scene": "Mientras habláis, llega una mujer de pelo gris y corto, con una cicatriz en la barbilla. «Soy Brunilda, la maestra del gremio. Así que tú has parado al ratero. Ven conmigo.» Te lleva a la plaza, a la Casa del Gremio: una posada grande con un tablón en el salón. Ahí se apuntan las compañías y se reparten las campañas. Se vuelve con oro, aunque no siempre vuelven todos.",
         "backdrop": "gremio",
         "beats": [
-          { "text": "Mientras habláis, se acerca una mujer de pelo gris y corto, con una cicatriz en la barbilla. En el muelle todos le abren paso." },
           { "who": "Tomás", "mood": "alegre", "text": "¡Brunilda! Mira, {este es el que|esta es la que} ha parado al ratero.",
             "alt": [{ "if": { "chose": "cuanto-pagas" }, "text": "¡Brunilda! Mira, {este es el que|esta es la que} ha parado al ratero. Cobrando, eso sí, pero lo ha parado." }] },
           { "who": "Brunilda", "mood": "neutral", "text": "Ya lo he visto. Soy Brunilda, la maestra del gremio. Ven conmigo.",
             "alt": [{ "if": { "chose": "cuanto-pagas" }, "text": "Ya lo he visto. Y lo de las tres monedas, también. Soy Brunilda, la maestra del gremio. Ven conmigo." }] },
-          { "text": "Te lleva a la plaza, a la Casa del Gremio: una posada grande con un tablón en el salón. Ahí se apuntan las compañías y se reparten las campañas." },
+          { "who": "Brunilda", "mood": "neutral", "text": "Esta es la Casa del Gremio. En el tablón del salón se apuntan las compañías y se reparten las campañas." },
           {
             "who": "Brunilda", "mood": "neutral", "text": "Aquí se vuelve con oro, aunque no siempre vuelven todos. ¿Qué te trae a Puerto Alba?",
             "alt": [
@@ -1418,7 +1414,7 @@
         "scene": "Brunilda te mira de arriba abajo, como quien calcula lo que aguanta una cuerda. «Parar a un ratero lo hace cualquiera. ¿Quieres ser de los nuestros? Baja a la bodega: hay ratas entre los barriles. Si subes {entero|entera}, te apunto en el libro.»",
         "backdrop": "gremio",
         "beats": [
-          { "text": "Brunilda te lleva detrás de la barra, hasta una trampilla. Del agujero sube olor a vino agrio y a algo muerto." },
+          { "who": "Brunilda", "mood": "neutral", "text": "Ven, detrás de la barra. Esa trampilla da a la bodega. ¿Hueles el vino agrio?" },
           { "who": "Brunilda", "mood": "neutral", "text": "Parar a un ratero lo hace cualquiera. Ahí abajo llevan una semana comiéndose el vino, y el vino no es barato.",
             "alt": [{ "if": { "chose": "cuanto-pagas" }, "text": "Parar a un ratero lo hace cualquiera. Ahí abajo llevan una semana comiéndose el vino. Y esta vez nadie te paga por adelantado." }] },
           {
@@ -1436,7 +1432,7 @@
               }
             ]
           },
-          { "text": "La trampilla cruje al abrirse. Abajo, algo chilla y se esconde entre los barriles." }
+          { "who": "Brunilda", "mood": "neutral", "text": "¿Oyes cómo chillan? Baja, y si subes {entero|entera}, te apunto en el libro." }
         ],
         "opens": { "kind": "after", "milestone": "el-gremio" },
         "asks": { "kind": "win", "board": "La bodega del gremio" },
@@ -1448,6 +1444,11 @@
         "title": "El tablón de campañas",
         "hint": "Habla con Brunilda. Luego mira el «Tablón de campañas» y elige una.",
         "scene": "Subes de la bodega con la última rata colgando de la mano. En el salón, Brunilda te ve llegar, aparta el libro y moja la pluma: te está esperando.",
+        "backdrop": "gremio",
+        "beats": [
+          { "who": "Brunilda", "mood": "alegre", "text": "¡Ya subes! ¿Y esa rata que traes colgando? Tírala fuera, anda. Lo que cuenta es que vuelves {entero|entera}." },
+          { "who": "Brunilda", "mood": "neutral", "text": "Ven al salón, que tengo el libro abierto. Allí hablamos." }
+        ],
         "opens": { "kind": "after", "milestone": "la-prueba" },
         "asks": { "kind": "talk", "npc": "Brunilda" },
         "changes": { "reveal": [], "open": [], "standing": {}, "ending": "", "endingBy": {} }

@@ -25,6 +25,7 @@
  *   node tools/vuelta-strahd.mjs --perder                # perder la pelea de la taberna: ¿hay por dónde seguir?
  *   node tools/vuelta-strahd.mjs --secreto               # el hito escondido: la puerta sin pomo de la torre
  *   node tools/vuelta-strahd.mjs --encargos              # un encargo del tablón de Barovia, cogido y hecho
+ *   VUELTA_ANIMACIONES=1 node tools/vuelta-strahd.mjs    # con las animaciones (el ataque, el dado), como las ve quien juega
  */
 
 /* global window, document, HTMLElement, MouseEvent */
@@ -34,7 +35,7 @@ import { createRequire } from 'node:module';
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { createBot, startOffline, runCampaign, fixedNumbers, proseNotes, printFindings } from './vuelta-bot.mjs';
+import { createBot, startOffline, runCampaign, fixedNumbers, proseNotes, printFindings, quietMotion } from './vuelta-bot.mjs';
 
 const ROOT = new URL('..', import.meta.url).pathname.replace(/^[/]([A-Za-z]:)/, '$1');
 const argAfter = (/** @type {string} */ flag) => (process.argv.includes(flag) ? process.argv[process.argv.indexOf(flag) + 1] : '');
@@ -114,6 +115,8 @@ try {
     browser = await chromium.launch({ channel: 'msedge', headless: !HEADED });
     const context = await browser.newContext({ viewport: { width: 1400, height: 950 } });
     page = await context.newPage();
+    // Sin animaciones (el ataque, el dado, el daño): se mide el camino. VUELTA_ANIMACIONES=1 las deja.
+    await quietMotion(context, page);
     /** @type {string[]} */
     const problems = [];
     page.on('pageerror', (/** @type {any} */ e) => problems.push(`PAGEERROR ${e.message}`));

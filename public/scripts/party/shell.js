@@ -802,7 +802,10 @@ function buildShellOptions() {
         onSceneTime: (scene) => {
             keepSessionLog(enterScene(currentSessionLog(), scene, Date.now()));
             // Tanda 10: al llegar al tablero, si los que esperan os ven, la pelea empieza sola.
-            if (scene === 'combat') noticeBoardFight();
+            // J9.1: en cualquier escena, para que lo que se colocaba en un tablero del que se ha
+            // salido se olvide (su barra «Colocad al grupo» se quedaba encima de la exploración).
+            // Fuera del tablero no abre nada: `openFightIfNoticed` mira que se vea.
+            noticeBoardFight();
         },
         onSession: () => { void openSessionLog(); },
         onHowToPlay: () => { void openHowToPlay(); },

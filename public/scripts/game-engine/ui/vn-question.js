@@ -14,6 +14,7 @@ import { loadPixelManifest } from './pixel-art.js';
 import { portraitFor, backdropFor } from './meetup-scene.js';
 import { faceElement } from './hero-face.js';
 import { shownName } from './shown-names.js';
+import { asideBox, fillAside } from './vn-aside.js';
 
 /** @param {any} value @returns {string} */
 const text = (value) => String(value ?? '').trim();
@@ -37,7 +38,7 @@ function el(tag, className = '', content = '') {
  * @param {Object} input
  * @param {string} input.title Lo que dice arriba («Al llegar»).
  * @param {any} [input.who] Quien pregunta (una ficha del grupo: nombre, clase, cara…), para su
- *   cara y su nombre en la placa. Sin él, la pregunta es del narrador.
+ *   cara y su nombre en la placa. D-J60: siempre hay alguien que pregunta (sin él, sin placa).
  * @param {string[]} [input.notes] Lo que pasa, antes de la pregunta.
  * @param {string} input.question
  * @param {string} [input.yes]
@@ -74,11 +75,13 @@ export async function askInScene({
     head.appendChild(el('span', 'qd-title', text(title)));
     const lines = el('div', 'qd-text vq-text');
     lines.setAttribute('aria-live', 'polite');
-    for (const note of notes.map(text).filter(Boolean)) lines.appendChild(el('p', 'qd-line qd-note', note));
     lines.appendChild(el('p', 'qd-line qd-say vq-question', text(question)));
     const chips = el('div', 'qd-chips vq-chips');
     box.append(plate, head, lines, chips);
-    root.append(backdrop, portrait, box);
+    // D-J60: lo que pasa antes de la pregunta no lo dice nadie: en el aviso de fuera de la caja.
+    const aside = asideBox();
+    fillAside(aside, notes.map(note => ({ kind: 'note', text: text(note) })));
+    root.append(backdrop, portrait, aside, box);
     dialog.appendChild(root);
 
     // La cara de quien pregunta: su retrato del paquete o, si es de los tuyos, la de la tira (la

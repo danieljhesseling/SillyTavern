@@ -148,6 +148,19 @@ describe('los nombres en un texto', () => {
         expect(maskNames('Dices «vale» a Tomás.', { people: PEOPLE })).toBe('Dices «vale» al posadero.');
     });
 
+    test('J9.1: si lo que es ya va delante del nombre, se quita el nombre y no se repite', () => {
+        const torres = [...PEOPLE, { id: 'torres', name: 'Torres', trade: 'Alguacil' }];
+        expect(maskNames('Abajo hay gritos. El alguacil Torres y sus guardias revientan la puerta.', { people: torres }))
+            .toBe('Abajo hay gritos. El alguacil y sus guardias revientan la puerta.');
+        expect(maskNames('La llave solo la tiene el alguacil Torres.', { people: torres })).toBe('La llave solo la tiene el alguacil.');
+        expect(maskNames('Habla con la maestra del gremio Brunilda.', { people: PEOPLE })).toBe('Habla con la maestra del gremio.');
+        // Sin el oficio delante, como siempre; y quien ya se presentó sale con su nombre.
+        expect(maskNames('Torres grita.', { people: torres })).toBe('El alguacil grita.');
+        expect(maskNames('Un vigilante Torres.', { people: torres })).toBe('Un vigilante el alguacil.');
+        const state = meetPerson(null, 'Torres', 'presentado', { people: torres });
+        expect(maskNames('El alguacil Torres grita.', { people: torres, state })).toBe('El alguacil Torres grita.');
+    });
+
     test('la línea con que se presenta: su nombre y lo que es, siempre igual para la misma persona', () => {
         const line = introLine('Tomás', PEOPLE);
         expect(line).toMatch(/Tomás/);

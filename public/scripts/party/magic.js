@@ -29,7 +29,8 @@ import { WATCH, readWanted, magicIsCrime } from '../game-engine/campaign/crime.j
 import { noteDealt } from '../game-engine/combat/tally.js';
 import { hasAction, useAction } from '../game-engine/combat/turn-machine.js';
 import { getActiveRuleset } from '../game-engine/rules/ruleset.js';
-import { normalizeAbilities, canUseAbility, planAbilityUse, spendAbilityUse, knownAbilities } from '../game-engine/rules/abilities.js';
+import { normalizeAbilities, canUseAbility, planAbilityUse, spendAbilityUse, knownAbilities, conditionSaid } from '../game-engine/rules/abilities.js';
+import { listNames } from '../game-engine/campaign/engine-narrator.js';
 import { addConditionTimer, expireConditions, clearTimersFor } from '../game-engine/combat/condition-timers.js';
 import { clearDeathSaves } from '../game-engine/rules/death-saves.js';
 import {
@@ -1403,7 +1404,8 @@ export function expireTimedConditions() {
 
         creature.activeConditions = (Array.isArray(creature.activeConditions) ? creature.activeConditions : [])
             .filter((/** @type {string} */ c) => c !== gone.condition);
-        lines.push(`✨ [COMBAT] A ${creature.name} se le pasa: ${gone.condition}.`);
+        // Tanda 16: en castellano y con su género («Mara ya no está derribada», no «se le pasa: Prone»).
+        lines.push(`✨ [COMBAT] ${creature.name} ya no está ${conditionSaid(gone.condition, creature)}.`);
     }
     return lines;
 }
@@ -1947,7 +1949,8 @@ function spellAfterEffects({ actor, side, spell, ability, victim, plan }) {
         if (gone.length > 0) {
             target.activeConditions = had.filter((/** @type {string} */ c) => !gone.includes(c));
             combatEncounter.conditionTimers = (combatEncounter.conditionTimers ?? []).filter((/** @type {any} */ t) => !(String(t.who) === combatIdOf(target) && gone.includes(String(t.condition))));
-            lines.push(`✨ A ${target.name} se le pasa: ${gone.join(', ')}.`);
+            // Tanda 16: en castellano («ya no está envenenada», no «se le pasa: Poisoned»).
+            lines.push(`✨ ${target.name} ya no está ${listNames(gone.map((/** @type {string} */ c) => conditionSaid(c, target)))}.`);
         }
     }
     if (spell.stabilizes && victim.kind === 'party' && (Number(target.hp) || 0) <= 0 && !target.dead) {

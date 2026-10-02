@@ -189,3 +189,4 @@ Ahora todos los PNJ tienen sus tres gestos, con el mismo nombre `<id>--alegre|en
 - `dragomir-nido--enfadado.png`: Dragomir enfadado, con mirada dura.
 - `dragomir-nido--triste.png`: Dragomir triste, con una lágrima.
 - `un-guardia.png`: «Un guardia», el de la guardia sin nombre de los pueblos de Barovia (el calabozo, D-J47). Casco de hierro, cota de malla bajo un tabardo rojo oscuro y una lanza al hombro; cara pálida y desconfiada. Sin gestos: no es gente del paquete.
+- `bruja-baroviana.png`: la «Bruja Baroviana» del bestiario, la vieja de la taberna en la primera escena (D-J54: habla ella, no el narrador). Vieja con capucha negra, cara pálida, sonrisa de dientes afilados y uñas negras como garras. Sin gestos.

@@ -13,7 +13,9 @@
 import { describe, test, expect } from '@jest/globals';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { targetsFromPack, boardGoalsFromPack, fixedNumbers, proseNotes, plain, restNeed, exitPick } from '../tools/vuelta-bot.mjs';
+import { targetsFromPack, boardGoalsFromPack, fixedNumbers, proseNotes, plain, restNeed, exitPick, QUIET_MOTION, COMBAT_PACE } from '../tools/vuelta-bot.mjs';
+import { MOTION_KEY, readMotionChoice, motionLevel, motionMs } from '../public/scripts/game-engine/ui/motion.js';
+import { PACE_KEY } from '../public/scripts/game-engine/ui/combat-vtt/fx.js';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const readJson = (/** @type {string} */ path) => JSON.parse(readFileSync(fileURLToPath(new URL(`../${path}`, import.meta.url)), 'utf8'));
@@ -62,6 +64,14 @@ describe('J16: lo que pide cada hito, para el jugador automático', () => {
         const goals = boardGoalsFromPack(pack);
         expect(goals.get('El cuarto')).toEqual({ type: 'reach_cell', cell: { x: 7, y: 9 } });
         expect(goals.get('La mina')).toEqual({ type: 'eliminate_all' });
+    });
+
+    test('un tablero que pide un tesoro lo dice (la vuelta va al cofre al acabar la pelea)', () => {
+        // Strahd, el Comedor del Conde: aguantar seis rondas y «Encontrar la reliquia» en un cofre.
+        const goals = boardGoalsFromPack(readJson('public/mundos/strahd.pack.json'));
+        expect(goals.get('Comedor del Conde')).toEqual({ type: 'survive_rounds', loot: true });
+        expect(goals.get('Entrada a Ravenloft')?.cell).toBeDefined();
+        expect(goals.get('Entrada a Ravenloft')?.loot).toBeUndefined();
     });
 
     test('se para a descansar con «Agotamiento 2 de 6» o con menos de media vida, no antes', () => {
@@ -188,5 +198,22 @@ describe('J16.4: los números fijos de la sección 6', () => {
         expect(notes.total).toBeGreaterThan(20);
         expect(notes.prose).toBeGreaterThan(0);
         expect(notes.prose).toBeLessThanOrEqual(notes.total);
+    });
+});
+
+describe('J16: las vueltas, sin animaciones', () => {
+    test('lo que deja guardado es «Animaciones: ninguna» de las opciones del juego', () => {
+        // Si motion.js cambia la clave o el nombre de la opción, la vuelta jugaría con animaciones.
+        expect(QUIET_MOTION.key).toBe(MOTION_KEY);
+        expect(readMotionChoice(QUIET_MOTION.value).id).toBe(QUIET_MOTION.value);
+        expect(motionLevel({ stored: QUIET_MOTION.value, reduced: false, touch: false })).toBe('none');
+        // Y así lo que dura algo (el dado que rueda) es 0: sale de una vez.
+        expect(motionMs(820, motionLevel({ stored: QUIET_MOTION.value }))).toBe(0);
+    });
+
+    test('y el combate al momento: la misma clave que el ritmo de la secuencia del golpe', () => {
+        // Si fx.js cambia la clave, la vuelta esperaría cada golpe, cada d20 y cada daño.
+        expect(COMBAT_PACE.key).toBe(PACE_KEY);
+        expect(COMBAT_PACE.value).toBe('instant');
     });
 });

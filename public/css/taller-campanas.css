@@ -1,0 +1,312 @@
+/* ================================================================
+   J5.9 · El taller de campañas del gremio (public/scripts/game-engine/ui/campaign-workshop.js).
+   La ventana es la de siempre (`vt-*` y `hb-*`, campaigns.css): cabecera arriba y, debajo, los
+   pasos en orden, cada uno en su caja con su número. Aquí va lo de dentro de cada paso.
+   ================================================================ */
+
+.tc-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 18px 26px 6px;
+}
+
+.tc-step {
+    padding: 14px 16px;
+    border: 1px solid var(--SmartThemeBorderColor, #444);
+    border-radius: 10px;
+    background: rgba(0, 0, 0, 0.25);
+}
+
+.tc-step-head {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    column-gap: 10px;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.tc-step-n {
+    grid-row: span 2;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border: 1px solid var(--gs-accent-gold, #e2c27a);
+    border-radius: 50%;
+    color: var(--gs-accent-gold, #e2c27a);
+    font-weight: bold;
+}
+
+.tc-step-title {
+    color: var(--gs-accent-gold, #e2c27a);
+    font-size: 1.1rem;
+    font-weight: bold;
+}
+
+.tc-step-hint,
+.tc-note {
+    font-size: 0.85rem;
+    opacity: 0.75;
+}
+
+.tc-note {
+    margin: 6px 0;
+}
+
+/* Paso 1: donde se sueltan los archivos. */
+.tc-drop {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+    padding: 14px;
+    border: 2px dashed rgba(214, 180, 106, 0.45);
+    border-radius: 10px;
+}
+
+.tc-drop.is-over {
+    border-color: var(--gs-accent-gold, #e2c27a);
+    background: rgba(226, 194, 122, 0.08);
+}
+
+.tc-drop-icon {
+    color: var(--gs-accent-gold, #e2c27a);
+    font-size: 1.8rem;
+}
+
+.tc-drop-text {
+    flex: 1 1 260px;
+    font-size: 0.9rem;
+}
+
+/* Los botones del taller, en una línea: sin esto, el texto se partía palabra a palabra. */
+.tc-root .menu_button {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 6px;
+    width: max-content;
+    max-width: 100%;
+    min-height: 36px;
+    white-space: nowrap;
+}
+
+.tc-status:empty {
+    display: none;
+}
+
+.tc-status {
+    margin-top: 10px;
+}
+
+.tc-said,
+.tc-files,
+.tc-headline {
+    margin: 4px 0;
+    font-size: 0.9rem;
+}
+
+.tc-counts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 6px 0;
+}
+
+.tc-chip {
+    padding: 2px 8px;
+    border: 1px solid rgba(214, 180, 106, 0.35);
+    border-radius: 999px;
+    font-size: 0.78rem;
+}
+
+.tc-good {
+    margin: 6px 0;
+    color: var(--gs-accent-gold, #e2c27a);
+    font-weight: bold;
+}
+
+.tc-bad {
+    margin: 6px 0;
+    color: #e6a15a;
+}
+
+.tc-big {
+    font-weight: bold;
+}
+
+.tc-errors {
+    margin: 6px 0;
+    padding-left: 20px;
+}
+
+.tc-errors li {
+    margin-bottom: 8px;
+}
+
+.tc-where {
+    font-size: 0.82rem;
+    color: var(--gs-accent-gold, #e2c27a);
+    word-break: break-all;
+}
+
+.tc-line {
+    margin: 2px 0;
+    padding: 2px 6px;
+    border-left: 3px solid #e6a15a;
+    background: rgba(0, 0, 0, 0.3);
+    font-family: var(--monoFontFamily, monospace);
+    font-size: 0.8rem;
+    word-break: break-word;
+}
+
+.tc-fix {
+    font-size: 0.82rem;
+    opacity: 0.85;
+}
+
+/* Paso 2: el informe es el del tablón (`hb-check`), sin su raya de arriba. */
+.tc-report {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: none;
+}
+
+.tc-density li {
+    list-style: none;
+    margin-left: -18px;
+}
+
+/* Paso 4: la simulación. */
+.tc-progress {
+    position: relative;
+    height: 22px;
+    margin: 8px 0;
+    border: 1px solid var(--SmartThemeBorderColor, #444);
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.tc-progress-bar {
+    width: 0;
+    height: 100%;
+    background: rgba(226, 194, 122, 0.35);
+    transition: width 0.15s;
+}
+
+.tc-progress-text {
+    position: absolute;
+    inset: 0;
+    padding: 0 8px;
+    font-size: 0.8rem;
+    line-height: 20px;
+}
+
+.tc-sim-summary {
+    margin: 10px 0 6px;
+    font-weight: bold;
+}
+
+.tc-sims {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 8px;
+}
+
+.tc-sim-summary {
+    grid-column: 1 / -1;
+}
+
+.tc-sim {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 2px 8px;
+    padding: 8px 10px;
+    border: 1px solid var(--SmartThemeBorderColor, #444);
+    border-left-width: 4px;
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.tc-sim-name {
+    font-weight: bold;
+}
+
+.tc-sim-chip {
+    align-self: start;
+    padding: 1px 8px;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    white-space: nowrap;
+}
+
+.tc-sim-foes,
+.tc-sim-said {
+    grid-column: 1 / -1;
+    font-size: 0.82rem;
+    opacity: 0.85;
+}
+
+.tc-sim[data-verdict="muy-facil"] { border-left-color: #8fb3d9; }
+.tc-sim[data-verdict="muy-facil"] .tc-sim-chip { background: rgba(143, 179, 217, 0.25); }
+.tc-sim[data-verdict="justa"] { border-left-color: #7fbf7f; }
+.tc-sim[data-verdict="justa"] .tc-sim-chip { background: rgba(127, 191, 127, 0.25); }
+.tc-sim[data-verdict="dificil"] { border-left-color: #e6a15a; }
+.tc-sim[data-verdict="dificil"] .tc-sim-chip { background: rgba(230, 161, 90, 0.25); }
+.tc-sim[data-verdict="muy-dificil"] { border-left-color: #d9534f; }
+.tc-sim[data-verdict="muy-dificil"] .tc-sim-chip { background: rgba(217, 83, 79, 0.3); }
+
+/* Pasos 5 y 7: una fila con su control y su botón. */
+.tc-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 10px;
+}
+
+.tc-map-board {
+    flex: 1 1 240px;
+    min-width: 0;
+    min-height: 36px;
+}
+
+.tc-name-label {
+    display: flex;
+    flex: 1 1 260px;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 0.85rem;
+}
+
+.tc-name {
+    min-height: 36px;
+}
+
+.tc-add-said {
+    margin-top: 8px;
+}
+
+.tc-add-said .tc-back {
+    margin-top: 6px;
+}
+
+/* La tarjeta del taller en el tablón, al lado de «Añadir una campaña». */
+.hb-workshop .vt-face {
+    color: var(--gs-accent-gold, #e2c27a);
+}
+
+@media (max-width: 700px) {
+    .tc-steps {
+        padding: 12px 10px 4px;
+    }
+
+    .tc-step {
+        padding: 10px;
+    }
+
+    .tc-sims {
+        grid-template-columns: 1fr;
+    }
+}

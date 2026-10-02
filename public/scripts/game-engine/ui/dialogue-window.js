@@ -27,6 +27,7 @@ import { noReturnBadge, noReturnGuard } from './decision-warning.js';
 import { findOption } from '../campaign/companion-opinions.js';
 import { hearLine, introFor, knowsName, meetPerson, shownName, shownText } from './shown-names.js';
 import { humanNote } from '../campaign/human-lines.js';
+import { asideBox, fillAside, splitLines } from './vn-aside.js';
 
 /** @param {any} value @returns {string} */
 const text = (value) => String(value ?? '').trim();
@@ -209,8 +210,12 @@ export async function openDialogueWindow({
     const chips = el('div', 'qd-chips dw-options');
     const foot = el('div', 'qd-foot dw-foot');
     box.append(plate, head, lines, chips, foot);
-    root.append(backdrop, portrait, box);
+    // D-J60: lo que ha cambiado, la tirada y el porqué de lo que no se puede, fuera de la caja.
+    const aside = asideBox();
+    root.append(backdrop, portrait, aside, box);
     dialog.appendChild(root);
+    /** Lo último que se ha enseñado, para añadirle un «no se puede» sin borrar lo dicho. @type {Array<{kind: string, text: string}>} */
+    let shownLines = [];
 
     let state = startDialogue(dialogue, { memory, hero, world: getWorld() });
     let remembered = rememberDialogue(memory, state);
@@ -299,13 +304,17 @@ export async function openDialogueWindow({
             const attitude = Number(world.attitude);
             mood.textContent = Number.isFinite(attitude) && world.attitude !== undefined ? `Os mira de forma ${describeAttitude(attitude)}` : '';
             lines.textContent = '';
-            for (const line of said) {
-                const p = el('p', `qd-line qd-${line.kind === 'you' ? 'you' : line.kind === 'note' ? 'note' : 'say'} dw-${line.kind}`);
-                // La línea de la tirada ya trae su dado (`rollLine`): no se pone otro.
+            shownLines = said;
+            // D-J60: en la caja, lo que dice quien está en la placa y lo que dices tú; la tirada y lo
+            // que ha cambiado, en el aviso de fuera.
+            const split = splitLines(said);
+            for (const line of split.box) {
+                const p = el('p', `qd-line qd-${line.kind === 'you' ? 'you' : 'say'} dw-${line.kind}`);
                 if (line.kind === 'you') p.appendChild(el('span', 'qd-who', 'Tú'));
-                p.appendChild(document.createTextNode(shownText(line.text, { mask: line.kind === 'note' })));
+                p.appendChild(document.createTextNode(shownText(line.text)));
                 lines.appendChild(p);
             }
+            fillAside(aside, split.aside);
             lines.scrollTop = lines.scrollHeight;
             chips.textContent = '';
             foot.textContent = '';
@@ -381,7 +390,7 @@ export async function openDialogueWindow({
                 const written = writtenOption(id);
                 const result = choose(state, id, { hero, world: getWorld(), rollD20, memory: remembered });
                 if (!result.ok) {
-                    draw([{ kind: 'note', text: result.reason }]);
+                    draw([...shownLines.filter(line => line.kind !== 'refused'), { kind: 'refused', text: result.reason }]);
                     return;
                 }
                 state = result.state;

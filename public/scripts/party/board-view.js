@@ -47,6 +47,8 @@ import { findOpportunityAttacks } from '../game-engine/combat/opportunity.js';
 import { isShellOpen, refreshGameShell } from '../game-engine/ui/shell/game-shell.js';
 import { buildInitiative } from '../game-engine/ui/combat-vtt/initiative.js';
 import { buildSummary } from '../game-engine/ui/combat-vtt/summary.js';
+import { turnBannerText } from '../game-engine/ui/combat-vtt/turn-banner.js';
+import { holdRedraw } from './combat-fx.js';
 import { LOCATION_MAPS_MANUAL_HIDDEN_KEY } from './keys.js';
 import {
     combatBoardSelection, combatEncounter, combatLogEntries, currentBoardName, currentLocationName, partyMembers,
@@ -1016,6 +1018,13 @@ function vttOptionsNow(visible, gridWidth, gridHeight) {
                 feet: from ? getDistanceInFeet(fromX, fromY, Number(enemy.gridX) || 0, Number(enemy.gridY) || 0) : undefined,
             }))
         : [];
+    // Tanda 17: el cartel del turno. «Tu turno» si lo mueves tú (el héroe, o un compañero o una
+    // invocación que llevas tú); si lo juega el juego, de quién es.
+    const mine = Boolean(acting) && (String(acting?.id) === String(partyMembers[0]?.id)
+        || underYourHand([Number(acting?.id)]).length > 0
+        || controlChoices().some(choice => String(choice.id) === String(acting?.id) && choice.control === 'player'));
+    /** @type {'yours'|'ally'|'enemy'} */
+    const turnSide = entry?.isEnemy ? 'enemy' : mine ? 'yours' : 'ally';
     return {
         combat: fighting,
         activeTokenId: entry ? tokenIdOfEntry(entry) : null,
@@ -1023,6 +1032,8 @@ function vttOptionsNow(visible, gridWidth, gridHeight) {
         yours: Boolean(acting),
         edgeTargets,
         reachOf: (tokenId) => reachOfToken(tokenId, gridWidth, gridHeight),
+        turnTitle: entry ? turnBannerText({ name: String(entry.name ?? ''), side: turnSide }) : '',
+        turnSide,
     };
 }
 
@@ -1091,6 +1102,9 @@ export function refreshBoardView() {
 }
 
 export function renderLocationMapsPreview() {
+    // Tanda 17: mientras se enseña la secuencia de un golpe, el tablero se queda como estaba y la
+    // secuencia lo va cambiando; se dibuja de verdad al acabar (`combat-fx.js`).
+    if (holdRedraw(renderLocationMapsPreview)) return;
     drawLocationMapsPreview();
     // La caja de escribir dice lo del juego mientras no hay pelea (la pelea pone la suya). Al
     // cambiar de chat el mundo aún no está atado a una partida nueva: aquí ya lo está.

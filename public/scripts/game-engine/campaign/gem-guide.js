@@ -2,7 +2,7 @@
  * Cómo se escribe una campaña hoy, para los Gems (los Gems al día, 2026-10-02).
  *
  * `campaign-pack-schema.js` dice **qué** campos hay; esto dice **cómo** se escriben, con las
- * decisiones de Daniel que un esquema no puede contar: la historia se cuenta hablando (D-J54),
+ * decisiones de Daniel que un esquema no puede contar: la historia se cuenta hablando, sin narrador (D-J54, D-J60),
  * nadie dice su nombre antes de presentarse (J13.7), el grupo de referencia es de 4 (D-J56), las
  * facciones son reputación y nada más (D-J58), los plazos están apagados (D-J46) y cada persona
  * trae su aspecto, para su retrato.
@@ -30,14 +30,14 @@ import { CAMPAIGN_PACK_VERSION } from './campaign-pack-schema.js';
 export const WRITING_RULES = [
     {
         id: 'conversaciones',
-        why: 'D-J54',
-        title: 'La historia se cuenta hablando',
-        rule: 'Las escenas son conversaciones de novela visual, como en Etrian Odyssey: cada línea la dice alguien (`who`), '
-            + 'con su cara (`mood`), y sale con su retrato y su nombre. El narrador casi desaparece: una línea sin `who`, '
-            + 'corta y sin placa, solo para el ambiente o el paso del tiempo. Nunca dos seguidas.',
-        bad: '{ "text": "La posadera os mira con desconfianza y os cuenta que el faro lleva tres noches apagado y que ya se han hundido dos barcas." }',
-        good: '{ "text": "Cae la tarde sobre el puerto." },\n'
-            + '{ "who": "Marta Salmuera", "mood": "triste", "text": "Tres noches sin faro. Y ya se nos han hundido dos barcas." }',
+        why: 'D-J60',
+        title: 'La historia se cuenta hablando, sin narrador',
+        rule: 'Las escenas son conversaciones de novela visual, como en Etrian Odyssey: cada línea la dice alguien que está allí (`who`), '
+            + 'con su cara (`mood`), y sale con su retrato y su nombre. No hay narrador (D-J54, D-J60): ni una línea sin `who`, '
+            + 'ni siquiera para el ambiente o el paso del tiempo. El sitio y la hora ya se ven en pantalla (el fondo y el reloj); '
+            + 'lo que haga falta saber, que lo diga alguien.',
+        bad: '{ "text": "Cae la tarde sobre el puerto. La posadera os mira con desconfianza: el faro lleva tres noches apagado." }',
+        good: '{ "who": "Marta Salmuera", "mood": "triste", "text": "Ya cae la tarde, y otra noche sin faro. Se nos han hundido dos barcas." }',
     },
     {
         id: 'voces',
@@ -56,7 +56,7 @@ export const WRITING_RULES = [
         title: 'Nadie tiene nombre hasta que se presenta',
         rule: 'Quien juega solo sabe el nombre de quien se ha presentado; hasta entonces el juego le llama por su oficio (`trade`): '
             + '«la posadera». Que la gente diga su nombre al conocerse, o que otro lo diga en voz alta con `presenta`. '
-            + 'Antes de eso, ni el héroe ni el narrador ni el título del hito le nombran. Dale a cada persona su `id`, `trade` y `gender`.',
+            + 'Antes de eso, ni el héroe ni el título del hito ni quien no le conozca le nombran. Dale a cada persona su `id`, `trade` y `gender`.',
         bad: '{ "who": "Ezequiel Rocamar", "text": "Hola." },\n{ "who": "Marta Salmuera", "text": "Ezequiel lo vio todo." }  (nadie le ha presentado)',
         good: '{ "who": "Marta Salmuera", "text": "Este es Ezequiel, el farero. Lo vio todo.", "presenta": "ezequiel" }',
     },
@@ -250,8 +250,7 @@ export function buildConversationSamplePack() {
                     asks: { kind: 'none' },
                     backdrop: 'posada',
                     beats: [
-                        { text: 'Llegáis a Punta Gris al caer la tarde. El faro de la punta está apagado.' },
-                        { who: 'Marta Salmuera', mood: 'triste', text: '¿Venís por lo del faro? Pasad, que fuera hace frío. Soy Marta, llevo la posada.' },
+                        { who: 'Marta Salmuera', mood: 'triste', text: '¿Venís por lo del faro? Pasad, que fuera hace frío y el faro sigue apagado. Soy Marta, llevo la posada.' },
                         {
                             who: 'Marta Salmuera',
                             text: 'Tres noches sin luz, y ya se nos han hundido dos barcas.',
@@ -282,7 +281,7 @@ export function buildConversationSamplePack() {
                     quest: 'faro',
                     backdrop: 'El faro viejo',
                     beats: [
-                        { text: 'El camino de la punta sube entre rocas mojadas.' },
+                        { who: 'Lía Remos', text: 'Cuidado, que estas rocas resbalan. El camino de la punta sube por aquí.' },
                         {
                             who: 'Lía Remos',
                             text: 'Arriba hay luz, pero no es la del faro: es un farol, y se mueve.',
@@ -329,7 +328,7 @@ export function buildCompanionSample() {
             title: 'Las rocas de la punta',
             where: 'muelle',
             beats: [
-                { note: 'Lía lanza piedras al agua desde el muelle, una detrás de otra.', say: 'Mi tío decía que cada roca de la punta tiene nombre. Me los sé todos.', mood: 'triste' },
+                { say: 'Mi tío decía que cada roca de la punta tiene nombre. Me los sé todos.', mood: 'triste' },
                 {
                     say: '¿Tú tienes algún sitio así? ¿Uno que te sepas de memoria?',
                     replies: [
@@ -341,11 +340,10 @@ export function buildCompanionSample() {
         }],
         romance: {
             with: 'todos',
-            no: 'Lía se ríe, pero con cariño. «Tú y yo somos de las que se cubren las espaldas. Con eso me basta.»',
+            no: 'Tú y yo somos de las que se cubren las espaldas. Con eso me basta.',
             escenas: [
                 date(1, 'Las redes', 'muelle', [{
-                    note: 'Lía remienda una red sentada en el muelle, con los pies colgando sobre el agua.',
-                    say: 'Si me ayudas con esto, te enseño el mejor sitio para ver entrar las barcas.',
+                    say: 'Estoy remendando esta red. Si me ayudas, te enseño el mejor sitio para ver entrar las barcas.',
                     mood: 'alegre',
                     replies: [
                         { text: 'Te sientas a su lado y coges la aguja.', bond: 1, romance: 'avanza', then: 'Lo haces fatal. Me encanta.', mood: 'alegre' },
@@ -353,19 +351,17 @@ export function buildCompanionSample() {
                     ],
                 }]),
                 date(2, 'La tormenta', 'posada', [{
-                    note: 'Llueve sobre Punta Gris. Lía te espera junto al fuego de la posada, con dos tazas.',
-                    say: 'Mi tío decía que con tormenta solo salen los tontos y los enamorados. Él era de los tontos.',
+                    say: 'Con esta lluvia, mejor junto al fuego: te he guardado una taza. Mi tío decía que con tormenta solo salen los tontos y los enamorados.',
                     replies: [
                         { text: 'Le preguntas de qué eres tú.', bond: 1, romance: 'avanza', then: 'Eso lo tendrás que averiguar.', mood: 'alegre' },
                         { text: 'Le hablas del tiempo.', bond: 0, then: 'Ya. El tiempo.' },
                     ],
                 }]),
                 date(3, 'La punta', 'muelle', [{
-                    note: 'Al atardecer, Lía te lleva a la roca más alta de la punta.',
-                    say: 'Aquí no sube nadie más. Quería que lo vieras conmigo.',
+                    say: 'Esta es la roca más alta de la punta. Aquí no sube nadie más. Quería que la vieras conmigo.',
                     mood: 'alegre',
                     replies: [
-                        { text: 'Le coges la mano.', bond: 1, romance: 'avanza', then: 'Lía no te la suelta en todo el atardecer.', mood: 'alegre' },
+                        { text: 'Le coges la mano.', bond: 1, romance: 'avanza', then: 'No pienso soltártela en todo el atardecer.', mood: 'alegre' },
                         { text: 'Le dices que la quieres como amiga.', bond: 0, romance: 'amigos', then: 'Me lo imaginaba. Amigas, entonces. De las buenas.', mood: 'triste' },
                     ],
                 }]),
@@ -374,16 +370,15 @@ export function buildCompanionSample() {
                     title: 'La noche del faro',
                     where: 'posada',
                     beats: [{
-                        note: 'Ya es de noche. Desde la ventana se ve girar la luz del faro.',
-                        say: 'Quédate esta noche.',
+                        say: 'Mira por la ventana: ya gira la luz del faro. Quédate esta noche.',
                         mood: 'alegre',
                         replies: [
-                            { text: 'Te quedas.', bond: 1, romance: 'avanza', then: 'Lía apaga la vela.', fade: true },
+                            { text: 'Te quedas.', bond: 1, romance: 'avanza', then: 'Ven. Apaga tú la vela.', fade: true },
                             { text: 'Le das un beso en la frente y te vas a dormir.', bond: 0, then: 'Otra noche, entonces.' },
                         ],
                     }],
                 },
-                { kind: 'pareja', lines: ['Lía te ha guardado el mejor sitio junto al fuego.', 'Lía lleva tu pañuelo atado a la muñeca.'] },
+                { kind: 'pareja', lines: ['Te he guardado el mejor sitio junto al fuego.', 'Mira: llevo tu pañuelo atado a la muñeca.'] },
                 {
                     kind: 'epilogo',
                     home: 'Lía vuelve contigo al gremio después de «{ending}». Dice que el mar de Puerto Alba es más feo, pero que se acostumbra.',
@@ -409,8 +404,7 @@ export function buildCompanionSample() {
                     title: 'Cala Negra',
                     backdrop: 'muelle',
                     beats: [
-                        { text: 'En la cala hay una barca recién pintada.' },
-                        { who: 'Lía Remos', mood: 'enfadado', text: 'Es la de mi tío. Le han tapado el nombre, pero la proa es la misma.' },
+                        { who: 'Lía Remos', mood: 'enfadado', text: '¿Ves esa barca recién pintada? Es la de mi tío. Le han tapado el nombre, pero la proa es la misma.' },
                         {
                             who: 'Lía Remos',
                             mood: 'triste',

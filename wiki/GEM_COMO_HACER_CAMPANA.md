@@ -138,7 +138,32 @@ La añade al tablón con «Añadir una campaña», como harías tú, y la juega 
 - los hitos que no se cumplieron;
 - y, en una frase, si se juega de principio a fin.
 
-Con `--headed` la ves jugar; con `--peleas`, las peleas van de verdad (más lenta). La comprobación de que una campaña pegada se juega como conversación es `node tools/e2e-gem-conversacion.mjs`.
+Con `--headed` la ves jugar; con `--peleas`, las peleas van de verdad (más lenta). Juega sin animaciones (el golpe, el dado y el daño salen de una vez); para verlas como las ves tú, ponle delante `VUELTA_ANIMACIONES=1`. La comprobación de que una campaña pegada se juega como conversación es `node tools/e2e-gem-conversacion.mjs`.
+
+### 8. El guion en Word (opcional: leerla y corregirla con calma)
+
+Todo lo que se dice en una campaña, en un Word que se lee como un guion: capítulos, hitos y escenas en el orden en que se juegan, y cada línea con quién la dice y su cara, como «**Tomás (el posadero)** *(enfadado)*: ¡Al ladrón!». Debajo de cada línea, tus opciones en viñetas con lo que contestan. Salen también las charlas, las peleas con sus salidas habladas, lo que se mira en cada sitio, los rumores, los saludos, los compañeros (vínculo, romance y misión) y los finales. Las líneas que no dice nadie salen como «Narrador», en rojo: así se ven las que quedan por pasar a conversación.
+
+1. **Exportar.** Pídele a Claude *«Sácame el guion de Strahd en Word»*, o:
+   ```
+   node tools/guion-word.mjs export strahd
+   ```
+   Vale `gremio`, `1387`, `strahd` o la ruta de tu JSON (`mi-campana.json`). Se guarda en `Documentos\Guiones`. Con `--md`, también en texto, para pegárselo a un Gem.
+2. **Corregir.** En Word, cambia solo lo que va detrás de los dos puntos. No toques la marca gris del final de cada línea (`[#E:el-muelle/2~7c1f]`): es como el juego sabe qué línea es. Deja las marcas de género (`{el nuevo|la nueva}`) y los huecos (`{hola}`, `{npc:tomas}`). También puedes pasarle el Word al Gem guionista para que repase voces o tono: que devuelva las líneas con sus marcas.
+3. **Importar.** Pídele a Claude *«Importa mi guion de Strahd»*, o:
+   ```
+   node tools/guion-word.mjs import strahd-guion.docx strahd
+   ```
+   (Sin ruta, lo busca en `Documentos\Guiones`.)
+   Te dice, sin tocar nada:
+   - las líneas cambiadas, con el antes y el después;
+   - las que no se guardan, y por qué (una marca de género rota, un hueco nuevo que el juego no sabría rellenar);
+   - las que el juego cambió después de exportar (se queda lo del juego);
+   - las marcas que ya no encuentra;
+   - y el texto nuevo sin marca: no entra solo; son notas para el Gem guionista, y se guardan al lado del Word.
+4. **Aplicar.** Si te parece bien, lo mismo con `--aplicar`. Cada texto va a su sitio: el paquete en El Gremio y 1387; en Strahd, `mejoras.json` o `libro.json` (lo que venía de `original.json` va encima, en `mejoras.json`, marcado «propio:») y se vuelve a hacer el paquete. Después pasan el validador y la densidad; si algo empeora, no se guarda nada.
+
+Por ahora el Word sirve para **corregir textos**, no para cambiar la estructura: una escena, una rama o una opción nueva se le piden al Gem guionista.
 
 ---
 
@@ -153,6 +178,7 @@ Con `--headed` la ves jugar; con `--peleas`, las peleas van de verdad (más lent
 | Los mapas en imagen | 10 minutos por mapa |
 | Los retratos | Unos minutos por persona, con Claude |
 | La vuelta del bot | 10 a 40 minutos, sin ti |
+| El guion en Word | Exportar e importar, un minuto; corregir, lo que tardes en leer |
 
 Una campaña corta, jugable y con voz: **una tarde**. Una como Strahd, con mapas y todos sus retratos: varios días de rondas.
 
@@ -162,7 +188,7 @@ Una campaña corta, jugable y con voz: **una tarde**. Una como Strahd, con mapas
 
 Los dos Gems lo saben. Si algo sale raro, esto es lo que hay que recordarles:
 
-- **La historia se cuenta hablando** (D-J54): conversaciones con retrato. El narrador solo dice una línea corta de ambiente.
+- **La historia se cuenta hablando, sin narrador** (D-J54, D-J60): conversaciones con retrato. Ni una línea sin quien la diga, tampoco de ambiente.
 - **Nadie tiene nombre hasta que se presenta** (J13.7).
 - **Las peleas, para un grupo de 4** (D-J56), con el nivel de la campaña.
 - **Las facciones son reputación** (D-J58): caminos, peajes y finales, sin relojes.

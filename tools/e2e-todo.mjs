@@ -77,6 +77,9 @@ const jobs = [
         // con la muestra del Gem añadida desde su archivo y jugada hasta su final (puerto 8249).
         { name: 'vuelta Strahd a clics', kind: 'e2e', args: ['tools/vuelta-strahd.mjs'] },
         { name: 'vuelta de una campaña del Gem', kind: 'e2e', args: ['tools/vuelta-campana.mjs', '--ejemplo'] },
+        // Tanda 17: que el combate se sienta: el golpe, el d20 que rueda, el daño y después la vida,
+        // a su ritmo de verdad y mirado con una línea de tiempo (puerto 8510).
+        { name: 'que el combate se sienta', kind: 'e2e', args: ['tools/e2e-sensacion.mjs'] },
         // La vuelta larga antigua (`e2e-campaign.mjs`, el modo de campaña de un solo mundo) ya no
         // va en la batería: Daniel está centrado en el juego sin conexión (2026-10-02) y lo que
         // mira lo cubren las vueltas de arriba. Se puede seguir pasando a mano, en sus dos mitades.

@@ -5,8 +5,8 @@
  * «Añadir una campaña» y su primera escena se juega como una conversación de novela visual:
  *
  *   título → Jugar sin conexión → tu personaje → saltar la prueba → el tablón → pegar la muestra →
- *   «Añadida al tablón», lista para jugar → empezarla → la primera escena: una línea corta del
- *   narrador, sin placa, y luego la gente hablando, cada uno con su placa y su retrato (o la
+ *   «Añadida al tablón», lista para jugar → empezarla → la primera escena, sin narrador (D-J60):
+ *   la gente hablando, cada uno con su placa y su retrato (o la
  *   silueta, si aún no está dibujado), con su cara. El farero sale como «El farero» hasta que la
  *   posadera le presenta (J13.7), y la decisión de la escena se elige.
  *
@@ -219,9 +219,9 @@ try {
     check('la primera escena se abre al empezar', opened, JSON.stringify(seen.slice(0, 2)));
     const narrator = seen.filter(s => s.narrator);
     const scenes = [...new Set(seen.map(s => s.id))];
-    check('el narrador dice como mucho una línea corta por escena, sin placa ni retrato (D-J54)',
-        narrator.length >= 1 && scenes.every(id => narrator.filter(s => s.id === id).length <= 1)
-        && narrator.every(s => !s.portrait && !s.plateShown && s.text.length < 120), JSON.stringify(narrator));
+    // D-J60: la muestra ya no trae ni una línea del narrador.
+    check('el narrador no dice nada: cada pantalla la dice alguien (D-J60)',
+        scenes.length >= 1 && narrator.length === 0, JSON.stringify(narrator));
     check('Lía, que dice «Me llamo Lía», sale con su nombre desde esa línea (J13.7)',
         seen.some(s => /Me llamo Lía/.test(s.text) && /Lía Remos/.test(s.plate)) && seen.filter(s => s.id === 'faro' && !s.narrator).every(s => /Lía Remos/.test(s.plate)),
         JSON.stringify(seen.map(s => s.plate)));

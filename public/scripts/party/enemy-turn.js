@@ -57,6 +57,7 @@ import {
     heightFor, heldInPlace, partyCell, saveCombatState, speedOf,
 } from './combat-state.js';
 import { floatOnToken, showCombatDiceRoll } from './combat-log.js';
+import { fxMark, stageAttack, stageMove } from './combat-fx.js';
 import { CONDITION_WORDS, judgeCurrentScenario, checkScenarioOutcome, endCombat, offerTruce } from './combat-flow.js';
 import { resolveFollowUpAttack, attackLine, shoveGround } from './player-actions.js';
 import { persistBoardTerrain, getActiveBoardContext, attackHindrance, boardVisibility, fireHazardsOnEnter } from './board.js';
@@ -212,6 +213,11 @@ function enemyStrike(enemy, target, { weapon = null, noModifier = false } = {}) 
         dc: targetAc,
         natural: attackRoll.natural,
         glyph: 'd20',
+        // Tanda 17: en la secuencia del combate, como los golpes del grupo.
+        stage: {
+            by: enemy, at: target, hit: isHit, roll: edged, edge: edge.mode, against: 'CA',
+            style: weapon?.ranged || enemyFeet > 10 ? 'ranged' : 'melee',
+        },
     });
 
     lines.push(`👹 ${enemy.name} ataca a ${target.name}${weapon ? ` con ${weaponWords(weapon.name)}` : ''}.`);
@@ -254,6 +260,7 @@ function enemyStrike(enemy, target, { weapon = null, noModifier = false } = {}) 
             : `${baseDamageRoll.rolls.join(', ')} + mod(${strMod})`,
         total: totalDamage,
         glyph: 'dmg',
+        stage: { dice: `${dmgFormula}${isCrit ? ` + ${dmgFormula}` : ''}`, modifier: strMod, crit: isCrit },
     });
 
     lines.push(`✅ Resultado: impacto${isCrit ? ' critico' : ''}.`);
@@ -350,8 +357,8 @@ export function damagePartyMember(target, totalDamage, isCrit = false) {
         } else {
             target.deathSaves = clearDeathSaves();
             recordFeat(target, 'downed');
-            lines.push(`🩸 ${target.name} cae a 0 PG y empieza a jugarsela: `
-                + 'tres exitos para estabilizarse, tres fallos y se acabo.');
+            lines.push(`🩸 ${target.name} cae a 0 PG y empieza a jugársela: `
+                + 'tres éxitos para estabilizarse, tres fallos y se acabó.');
             // C7: alguien de pie lo grita.
             const witness = partyMembers.find(m => String(m.id) !== String(target.id)
                 && String(m.id) !== String(partyMembers[0]?.id) && (Number(m.hp) || 0) > 0);
@@ -417,6 +424,8 @@ function resolveEnemyAbility(enemy, choice) {
             return [...counter.lines, `🪄 ${enemy.name} lanza ${ability.name} sobre ${target.name}.`, ...shield.lines].join('\n');
         }
     }
+    // Tanda 17: lo que lanza sale hacia quien lo recibe, en la secuencia del combate.
+    if (target !== enemy) stageAttack(enemy, target, 'spell');
     // R3: el mismo camino que el grupo: con área, alcanza también a los suyos si están ahí.
     const lines = [
         ...counter.lines,
@@ -982,6 +991,8 @@ function insteadOfStrike2024(enemy, canAttack) {
         dc,
         natural,
         glyph: 'd20',
+        // Tanda 17: se lanza a por él y tira quien se resiste.
+        stage: { by: enemy, at: target, hit: !fails, against: 'CD', style: 'melee', save: true, side: 'you' },
     });
     /** @type {string[]} */
     const lines = [
@@ -1211,8 +1222,11 @@ export function resolveEnemyTurnAction(turnEntry) {
         const leftFrom = { x: Number(enemy.gridX) || 0, y: Number(enemy.gridY) || 0 };
         // J19.6: las zonas que cruza le hacen lo suyo, y donde queda atrapado, se queda.
         const steps = (Array.isArray(plan.path) ? plan.path : []).slice(1);
+        // Tanda 17: lo que le pase por el camino (una zona que quema) se ve después de andar.
+        const beforeWalk = fxMark();
         const walk = enemyWalksZones(enemy, steps.length > 0 ? steps : [plan.destination]);
         const stop = (steps.length > 0 ? steps[walk.stopAt] : null) ?? plan.destination;
+        stageMove(enemy, steps.length > 0 ? [leftFrom, ...steps.slice(0, walk.stopAt + 1)] : [leftFrom, stop], beforeWalk);
         enemy.gridX = stop.x;
         enemy.gridY = stop.y;
         const cut = stop.x !== plan.destination.x || stop.y !== plan.destination.y;

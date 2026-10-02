@@ -17,27 +17,29 @@ const CAUSES = [
         fix: 'Pon ese texto entre comillas: nombre: "Arthur: el Doc".',
     },
     {
-        test: /bad indentation|end of the stream or a document separator/i,
+        // J5.9: con la librería `yaml` del navegador (la de `lib.js`), los mismos fallos se llaman
+        // de otra forma; van detrás de las de `js-yaml`, en cada causa.
+        test: /bad indentation|end of the stream or a document separator|Nested mappings are not allowed|All mapping items must start|BAD_INDENT|BLOCK_AS_IMPLICIT_KEY/i,
         why: 'La sangría no cuadra: esta línea no está alineada con las de su nivel.',
         fix: 'Alinea la línea con sus hermanas (mismos espacios; nunca tabuladores).',
     },
     {
-        test: /tab characters must not be used|\\t/i,
+        test: /tab characters must not be used|\\t|Tabs are not allowed|TAB_AS_INDENT/i,
         why: 'Hay un tabulador.',
         fix: 'Cambia el tabulador por espacios.',
     },
     {
-        test: /duplicated mapping key/i,
+        test: /duplicated mapping key|Map keys must be unique|DUPLICATE_KEY/i,
         why: 'La misma clave aparece dos veces en el mismo bloque.',
         fix: 'Deja una sola, o junta lo que dicen las dos.',
     },
     {
-        test: /unexpected end of the stream|missed comma|flow collection/i,
+        test: /unexpected end of the stream|missed comma|flow collection|end with an? [\]}]|Missing closing|MISSING_CHAR/i,
         why: 'Una lista o un texto entre corchetes o comillas no se cierra.',
         fix: 'Busca el [ o la " que falta cerrar.',
     },
     {
-        test: /incomplete explicit mapping pair|can not read a block mapping entry/i,
+        test: /incomplete explicit mapping pair|can not read a block mapping entry|Implicit keys need to be on a single line|Implicit map keys need to be followed|MULTILINE_IMPLICIT_KEY/i,
         why: 'Una línea suelta de prosa se ha colado dentro del bloque.',
         fix: 'Sácala del bloque (sin sangría) o conviértela en un campo: nota: "…".',
     },
@@ -46,20 +48,25 @@ const CAUSES = [
 /**
  * Un error de YAML, con su linea de verdad.
  *
- * @param {any} error El de `js-yaml` (trae `mark.line`, desde 0, relativo al bloque).
+ * @param {any} error El de `js-yaml` (trae `mark.line`, desde 0, relativo al bloque) o, J5.9, el
+ *   de la librería `yaml` del navegador (trae `linePos[0].line`, desde 1, y su `code`).
  * @param {number} blockLine La linea del archivo donde empieza el bloque, desde 1.
  * @param {string[]} lines Las lineas del archivo.
  * @returns {{line: number, text: string, why: string, fix: string}}
  */
 export function explainYamlError(error, blockLine, lines) {
-    const relative = Number.isFinite(Number(error?.mark?.line)) ? Number(error.mark.line) : 0;
+    const fromYaml = Number(error?.linePos?.[0]?.line);
+    const relative = Number.isFinite(Number(error?.mark?.line)) ? Number(error.mark.line)
+        : Number.isFinite(fromYaml) && fromYaml >= 1 ? fromYaml - 1 : 0;
     const line = Math.max(1, Math.floor(Number(blockLine) || 1) + relative);
-    const message = String(error?.reason ?? error?.message ?? '');
+    // La de `yaml` dice «at line 3, column 11» contando desde el bloque: esa línea no es la del archivo.
+    const message = String(error?.reason ?? error?.message ?? '').replace(/ at line \d+, column \d+:?/, '');
     const said = String(lines?.[line - 1] ?? '');
     // Lo mas comun con diferencia: un valor sin comillas que lleva «: » dentro. La libreria
     // lo llama de varias formas (sangria, mapping values...), asi que se mira la linea.
     const colon = /^\s*-?\s*[^\s:"'][^:"']*:\s+[^"'\s].*:\s/.test(said);
-    const cause = colon ? CAUSES[0] : CAUSES.find(c => c.test.test(message));
+    const tested = `${message} ${String(error?.code ?? '')}`;
+    const cause = colon ? CAUSES[0] : CAUSES.find(c => c.test.test(tested));
     return {
         line,
         text: String(lines?.[line - 1] ?? '').trim().slice(0, 120),

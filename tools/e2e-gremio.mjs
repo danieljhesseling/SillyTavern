@@ -729,7 +729,7 @@ try {
     let inPlace = await placeScene();
     await until(async () => /ramiro\.png$/.test((inPlace = await placeScene()).face), 8000);
     check('en la herrería, Ramiro con su retrato, su saludo y lo que se hace allí (J3.11)',
-        inPlace.place === 'herreria' && inPlace.plate === 'Ramiro' && /retratos\/gremio\/ramiro\.png$/.test(inPlace.face) && /^Ramiro .*«Buen/.test(inPlace.line)
+        inPlace.place === 'herreria' && inPlace.plate === 'Ramiro' && /retratos\/gremio\/ramiro\.png$/.test(inPlace.face) && /^Buen/.test(inPlace.line)
         && inPlace.acts.some(a => /Hablar con Ramiro/.test(a)) && inPlace.acts.some(a => /capa/i.test(a)), JSON.stringify(inPlace));
     if (SHOT) await page.screenshot({ path: `${SHOT}.herreria.png` });
     await page.locator('#game-shell .gs-town-back').click({ timeout: 5000 }).catch(() => {});

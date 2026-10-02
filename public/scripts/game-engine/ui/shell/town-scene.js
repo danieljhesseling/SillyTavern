@@ -690,8 +690,10 @@ export function renderTownScene(panel, town, ctx) {
     heading.appendChild(el('i', `fa-solid ${place.icon}`));
     heading.appendChild(el('span', '', place.keeper ? `${place.name} · ${place.keeper.trade || 'quien atiende'}` : place.name));
     box.appendChild(heading);
-    // J13.7: el saludo no nombra a quien aún no se ha presentado.
-    const hello = el('p', 'gs-town-line', shownText(greeting, { mask: true }));
+    // J13.7: el saludo no nombra a quien aún no se ha presentado. D-J60: sin narrador, de un saludo
+    // contado («Tomás seca un vaso: «Buenas.»») solo sale lo que dice quien atiende, que ya está en
+    // la placa y en el retrato.
+    const hello = el('p', 'gs-town-line', shownText(place.keeper?.name && spoken ? spoken : greeting, { mask: true }));
     // J13.8: el saludo de siempre, aunque venga con frase propia, no lleva la marca de «se acuerda».
     if (recalled && remembered?.remembered !== false) hello.classList.add('gs-town-line-remembered');
     box.appendChild(hello);

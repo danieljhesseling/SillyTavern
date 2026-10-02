@@ -732,11 +732,15 @@ export function maskNames(said, { state = null, people = [], always = [], skip =
     const owner = new Map(hidden.map(row => [row.variant, row.person]));
     const names = [...owner.keys()].map(escape).join('|');
     const pattern = new RegExp(`(?<![\\p{L}\\p{N}])(?:(a|de|A|De)(\\s+))?(${names})(?![\\p{L}\\p{N}])`, 'gu');
-    return source.replace(pattern, (all, prep, space, name, offset) => {
+    // J9.1: «El alguacil Torres» salía «El alguacil el alguacil». Si lo que es ya va delante del
+    // nombre, se quita solo el nombre (con su espacio): queda «El alguacil y sus guardias».
+    const DROP = '\u0000';
+    const masked = source.replace(pattern, (all, prep, space, name, offset) => {
         const at = Number(offset) + (prep ? prep.length + space.length : 0);
         if (kept.some(([a, b]) => at >= a && at < b)) return all;
         const person = owner.get(name);
         if (!person) return all;
+        if (!prep && roleWritten(source.slice(0, Number(offset)), roleOf(person, 'el'))) return DROP;
         let out = roleOf(person, 'el');
         if (prep) {
             const contracted = /^el\s/.test(out);
@@ -747,6 +751,24 @@ export function maskNames(said, { state = null, people = [], always = [], skip =
         const before = source.slice(0, Number(offset)).replace(/\s+$/, '');
         return startsSentence(before) ? capital(out) : out;
     });
+    return masked.includes(DROP) ? masked.replace(/[^\S\n]*\u0000/g, '') : masked;
+}
+
+/**
+ * Si lo que es alguien ya está escrito justo delante de su nombre: «el alguacil » antes de
+ * «Torres», «la maestra del gremio » antes de «Brunilda».
+ *
+ * @param {string} before El texto hasta el nombre.
+ * @param {string} role «el alguacil».
+ * @returns {boolean}
+ */
+function roleWritten(before, role) {
+    const noun = fold(role).replace(/^(el|la|los|las|un|una)\s+/, '');
+    if (!noun || !/\s$/.test(before)) return false;
+    const tail = fold(before).replace(/\s+$/, '');
+    if (!tail.endsWith(noun)) return false;
+    const edge = tail.slice(0, tail.length - noun.length);
+    return edge === '' || /[^\p{L}\p{N}]$/u.test(edge);
 }
 
 // ---------------------------------------------------------------------------------------------

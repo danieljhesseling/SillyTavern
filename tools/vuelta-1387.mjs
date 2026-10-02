@@ -18,6 +18,7 @@
  *   node tools/vuelta-1387.mjs --peleas                # las peleas de verdad (más lenta)
  *   node tools/vuelta-1387.mjs --estricto              # y un silencio o un atasco cuentan como fallo
  *   VUELTA_PELEAS=gancho node tools/vuelta-1387.mjs    # los turnos del grupo, con el gancho (sin la barra)
+ *   VUELTA_ANIMACIONES=1 node tools/vuelta-1387.mjs    # con las animaciones (el ataque, el dado), como las ve quien juega
  *
  * Las peleas: si la barra de combate no responde a lo que pulsa la vuelta (se está rehaciendo,
  * wiki/maquetas/ENCARGO_COMBATE_VTT.md), los turnos del grupo pasan solos al gancho
@@ -31,7 +32,7 @@ import { createRequire } from 'node:module';
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { createBot, startOffline, runCampaign, fixedNumbers, proseNotes, boardGoalsFromPack } from './vuelta-bot.mjs';
+import { createBot, startOffline, runCampaign, fixedNumbers, proseNotes, boardGoalsFromPack, quietMotion } from './vuelta-bot.mjs';
 
 const ROOT = new URL('..', import.meta.url).pathname.replace(/^[/]([A-Za-z]:)/, '$1');
 const argAfter = (/** @type {string} */ flag) => (process.argv.includes(flag) ? process.argv[process.argv.indexOf(flag) + 1] : '');
@@ -95,6 +96,8 @@ try {
     browser = await chromium.launch({ channel: 'msedge', headless: !HEADED });
     const context = await browser.newContext({ viewport: { width: 1400, height: 950 } });
     page = await context.newPage();
+    // Sin animaciones (el ataque, el dado, el daño): se mide el camino. VUELTA_ANIMACIONES=1 las deja.
+    await quietMotion(context, page);
     /** @type {string[]} */
     const problems = [];
     page.on('pageerror', (/** @type {any} */ e) => problems.push(`PAGEERROR ${e.message}`));

@@ -5,8 +5,8 @@
  * `milestoneScene` y se juegan con `openPlotScene` como jugaría alguien, con el ratón, el dedo
  * y el teclado. Lo que cambian las decisiones se aplica con `applySceneEffects`.
  *
- *   Puerto Alba, a una guerrera: el muelle empieza con el narrador (sin retrato ni placa), Tomás
- *   grita con su cara de enfadado, la decisión sale como opciones, elegir «Yo me encargo» hace
+ *   Puerto Alba, a una guerrera: D-J60, sin narrador: el muelle empieza con Tomás, que grita con
+ *   su cara de enfadado; lo que cambia y la tirada salen en el aviso de fuera de la caja; la decisión sale como opciones, elegir «Yo me encargo» hace
  *   que os mire mejor y Tomás se alegra. En la prueba, la tirada de pedir paga da oro.
  *   1387: Garret pide oro que no tienes (sale cerrado), «Saltar» se para en la decisión, y en el
  *   precio del escape decides cómo entras y la escena sigue con la charla de Giles.
@@ -126,6 +126,8 @@ function readScene(page) {
             loaded: Boolean(image && image.complete && image.naturalWidth > 0),
             mood: holder?.dataset.mood ?? '',
             lines: [...document.querySelectorAll('.ps-dialog .qd-line')].map(l => ({ cls: l.className, text: l.textContent ?? '' })),
+            // D-J60: lo que no dice nadie, en el aviso de fuera de la caja.
+            aside: [...document.querySelectorAll('.ps-dialog .qd-aside .vn-aside-line')].map(l => (l.textContent ?? '').trim()),
             options: [...document.querySelectorAll('.ps-dialog .ps-option')].map(o => ({
                 id: o.getAttribute('data-option'),
                 text: o.querySelector('.dw-said')?.textContent ?? '',
@@ -194,22 +196,24 @@ try {
     // --- Puerto Alba: el muelle.
     await openScene(page, { pack: 'gremio', milestone: 'el-muelle', hero: ada, game: { gold: 0, items: [] } });
     let seen = await readScene(page);
-    check('El muelle empieza con el narrador: sin placa ni retrato', seen.plate === '' && !seen.portraitShown && seen.lines.some(l => /ps-narration/.test(l.cls)), JSON.stringify(seen));
-    check('Con el género de la heroína: «cansada»', seen.lines.some(l => /cansada del viaje/.test(l.text)), JSON.stringify(seen.lines));
-    check('Dice por qué línea va', seen.step === '1 / 6', seen.step);
+    check('D-J60: el muelle empieza con Tomás, con su placa y su cara: sin narrador', seen.plate === 'Tomás' && seen.portraitShown
+        && seen.lines.some(l => /Al ladrón/.test(l.text)) && !seen.lines.some(l => /ps-narration|qd-note/.test(l.cls)), JSON.stringify(seen));
+    check('Su retrato enfadado carga', seen.loaded && /retratos\/gremio\/tomas--enfadado/.test(seen.portrait), seen.portrait);
+    check('Dice por qué línea va', seen.step === '1 / 4', seen.step);
     check('Hay fondo: el muelle', await page.evaluate(() => /sitios\/muelle/.test(window.getComputedStyle(document.querySelector('.ps-dialog .qd-backdrop') ?? document.body).getPropertyValue('--qd-backdrop'))));
-    await shoot(page, 'el narrador, en el muelle');
+    await shoot(page, 'Tomás, enfadado, en el muelle');
 
     await tapScene(page);
     seen = await readScene(page);
-    check('Un toque en el texto sigue: Tomás grita, con su placa', seen.beat === '1' && seen.plate === 'Tomás' && seen.lines.some(l => /Al ladrón/.test(l.text)), JSON.stringify(seen));
-    check('Su retrato enfadado carga', seen.portraitShown && seen.loaded && /retratos\/gremio\/tomas--enfadado/.test(seen.portrait), seen.portrait);
-    await shoot(page, 'Tomás, enfadado');
+    check('Un toque en el texto sigue: el ratero amenaza, con su placa y su retrato', seen.beat === '1' && seen.plate === 'Ratero del muelle'
+        && seen.loaded && /retratos\/gremio\/ratero-del-muelle/.test(seen.portrait), JSON.stringify(seen));
+    await shoot(page, 'el ratero');
 
     await toDecision(page);
     seen = await readScene(page);
     check('La decisión: dos opciones numeradas, y sin «Seguir» hasta decidir', seen.options.length === 2 && seen.options[0].key === '1' && seen.next === '' && !seen.skip, JSON.stringify(seen));
     check('Tomás, triste, en la línea de la decisión', seen.mood === 'triste' && /tomas--triste/.test(seen.portrait), `${seen.mood} ${seen.portrait}`);
+    check('Con el género de la heroína: «la de la barca del correo»', seen.lines.some(l => /la de la barca del correo/.test(l.text)), JSON.stringify(seen.lines));
     await tapScene(page);
     check('Tocar la escena no se salta la decisión', (await readScene(page)).options.length === 2);
     await shoot(page, 'la decisión del muelle');
@@ -218,8 +222,9 @@ try {
     await page.waitForTimeout(250);
     seen = await readScene(page);
     const game = await page.evaluate(() => window.game);
-    check('Elegir con el 1: lo que dijiste, y Tomás os mira mejor', seen.lines.some(l => /qd-you/.test(l.cls) && /Yo me encargo/.test(l.text))
-        && seen.lines.some(l => /Tomás (os mira mejor|le ha gustado eso|te mira con otros ojos|le ha caído bien)/.test(l.text)) && game.attitudes?.values?.['Tomás'] === 1, `${JSON.stringify(seen.lines)} ${JSON.stringify(game.attitudes)}`);
+    check('Elegir con el 1: lo que dijiste en la caja, y «Tomás os mira mejor» en el aviso de fuera (D-J60)', seen.lines.some(l => /qd-you/.test(l.cls) && /Yo me encargo/.test(l.text))
+        && seen.aside.some(l => /Tomás (os mira mejor|le ha gustado eso|te mira con otros ojos|le ha caído bien)/.test(l)) && !seen.lines.some(l => /qd-note/.test(l.cls))
+        && game.attitudes?.values?.['Tomás'] === 1, `${JSON.stringify(seen)} ${JSON.stringify(game.attitudes)}`);
     check('Y contesta alegre, con otra cara', seen.mood === 'alegre' && /tomas--alegre/.test(seen.portrait) && seen.lines.some(l => /dioses te lo paguen/.test(l.text)), seen.portrait);
     await shoot(page, 'Tomás, alegre');
 
@@ -239,9 +244,21 @@ try {
     await page.waitForTimeout(250);
     seen = await readScene(page);
     const gold = await page.evaluate(() => window.game.gold);
-    check('Sale bien: la tirada en la caja, +3 de oro y Brunilda alegre', seen.lines.some(l => /dw-roll/.test(l.cls) && /Persuasión/.test(l.text)) && gold === 4
-        && seen.mood === 'alegre' && /brunilda--alegre/.test(seen.portrait), `${gold} ${JSON.stringify(seen.lines.map(l => l.text))}`);
+    check('Sale bien: la tirada en el aviso de fuera de la caja (D-J60), +3 de oro y Brunilda alegre', seen.aside.some(l => /Persuasión/.test(l)) && gold === 4
+        && !seen.lines.some(l => /dw-roll/.test(l.cls)) && seen.mood === 'alegre' && /brunilda--alegre/.test(seen.portrait), `${gold} ${JSON.stringify(seen)}`);
     await shoot(page, 'la prueba, la tirada');
+    await toEnd(page);
+
+    // --- 1387: la primera escena. D-J60: sin narrador, empieza Torres.
+    await openScene(page, { pack: '1387', milestone: 'el-caliz-ensangrentado', hero: ada, game: { gold: 0, items: [] } });
+    const torresSeen = await readScene(page);
+    check('1387: empieza Torres, enfadado y con su cara (sin narrador)',
+        torresSeen.plate === 'Torres' && torresSeen.loaded && /alguacil-torres--enfadado/.test(torresSeen.portrait) && /Abrid en nombre de Lord Vane/.test(torresSeen.lines.map(l => l.text).join(' ')),
+        JSON.stringify(torresSeen));
+    await shoot(page, 'Torres en la puerta');
+    await toDecision(page);
+    await page.locator('.ps-dialog .ps-option[data-option="gritar"]').click();
+    await page.waitForTimeout(200);
     await toEnd(page);
 
     // --- 1387: Garret, sin blanca.
@@ -264,13 +281,20 @@ try {
     await openScene(page, { pack: '1387', milestone: 'el-precio-del-escape', hero: nel, game: { gold: 0, items: [] }, done: ['el-caliz-ensangrentado'] });
     await toDecision(page);
     seen = await readScene(page);
-    check('Decide el narrador: sin retrato, y las opciones de cómo entrar', !seen.portraitShown && seen.plate === '' && seen.options.some(o => o.id === 'llamar') && seen.options.some(o => /Sigilo/.test(o.check)), JSON.stringify(seen));
+    check('D-J60: la decisión de cómo entrar llega tras lo que grita Torres, no del narrador', seen.plate === 'Torres' && seen.portraitShown
+        && seen.options.some(o => o.id === 'llamar') && seen.options.some(o => /Sigilo/.test(o.check)), JSON.stringify(seen));
     await page.locator('.ps-dialog .ps-option[data-option="llamar"]').click();
     await page.waitForTimeout(250);
     seen = await readScene(page);
-    check('Llamar: Giles os mira mejor y contesta, en masculino', seen.plate === 'Giles' && seen.loaded && /el-tabernero-giles/.test(seen.portrait)
-        && seen.lines.some(l => /Un asesino con modales/.test(l.text)) && seen.lines.some(l => /Giles (os mira mejor|le ha gustado eso|te mira con otros ojos|le ha caído bien)/.test(l.text)), JSON.stringify(seen.lines));
-    check('La última ficha lleva a la charla', /Hablar con Giles/.test(seen.next), seen.next);
+    check('Llamar: Giles os mira mejor (en el aviso) y contesta, en masculino', seen.plate === 'Giles' && seen.loaded && /el-tabernero-giles/.test(seen.portrait)
+        && seen.lines.some(l => /Un asesino con modales/.test(l.text)) && seen.aside.some(l => /Giles (os mira mejor|le ha gustado eso|te mira con otros ojos|le ha caído bien)/.test(l)), JSON.stringify(seen));
+    // Y Giles cierra la escena: «Siéntate, anda…».
+    for (let i = 0; i < 4 && !/Hablar con Giles/.test(seen.next); i++) {
+        await page.locator('.ps-dialog .ps-next').click({ timeout: 2000 }).catch(() => {});
+        await page.waitForTimeout(150);
+        seen = await readScene(page);
+    }
+    check('La última ficha lleva a la charla, tras lo que dice Giles', /Hablar con Giles/.test(seen.next) && seen.plate === 'Giles', JSON.stringify({ next: seen.next, plate: seen.plate }));
     await shoot(page, 'Giles, antes de la charla');
     await page.locator('.ps-dialog .ps-finish').click();
     await page.waitForSelector('dialog.dw-dialog[open]:not(.ps-dialog)', { timeout: 8000 });
@@ -290,19 +314,24 @@ try {
     // --- Strahd: Ismark.
     const aerin = { name: 'Aerin', race: 'Elfo', class: 'Clérigo', gender: 'Hombre', background: 'acolito', ...stats };
     await openScene(page, { pack: 'strahd', milestone: 'sangrienta-bienvenida', hero: aerin, game: { gold: 10, items: [] } });
-    await page.locator('.ps-dialog .ps-next').click();
-    await page.locator('.ps-dialog .ps-next').click();
-    await page.waitForTimeout(150);
+    // D-J60: sin narrador, empieza Ismark.
     seen = await readScene(page);
     check('Strahd: Ismark se presenta, con su cara triste', seen.plate === 'Ismark Kolyanovich' && seen.loaded && /ismark-kolyanovich--triste/.test(seen.portrait), seen.portrait);
     check('Lo marcado «propio:» no llega a la pantalla', !JSON.stringify(seen).includes('propio:'));
     await shoot(page, 'Ismark');
+    // D-J54: la vieja del rincón no la describe el narrador: habla ella, con su retrato.
+    await page.locator('.ps-dialog .ps-next').click();
+    await page.waitForTimeout(150);
+    seen = await readScene(page);
+    check('Strahd: la vieja habla ella, con su retrato (no la describe el narrador)',
+        seen.plate === 'Bruja Baroviana' && seen.loaded && /retratos\/strahd\/bruja-baroviana/.test(seen.portrait), JSON.stringify(seen));
+    await shoot(page, 'la bruja');
     await toDecision(page);
     await page.keyboard.press('2');
     await page.waitForTimeout(250);
     seen = await readScene(page);
     const heard = await page.evaluate(() => window.game.rumorsHeard);
-    check('Preguntar por la vieja: un rumor al Diario', heard.includes('r-no-invitar') && seen.lines.some(l => /Apuntado en el Diario/.test(l.text)), `${JSON.stringify(heard)} ${JSON.stringify(seen.lines.map(l => l.text))}`);
+    check('Preguntar por la vieja: un rumor al Diario (dicho en el aviso de fuera de la caja)', heard.includes('r-no-invitar') && seen.aside.some(l => /Apuntado en el Diario/.test(l)), `${JSON.stringify(heard)} ${JSON.stringify(seen)}`);
     await toEnd(page);
 
     // --- En un móvil: se sigue con el dedo.
@@ -324,7 +353,8 @@ try {
     await page.locator('.ps-dialog .ps-option[data-option="que-se-cuenta"]').click();
     await page.waitForTimeout(250);
     seen = await readScene(page);
-    check('Móvil: el rumor de Barovia, apuntado', seen.lines.some(l => /Salieron cinco y volvieron dos/.test(l.text)), JSON.stringify(seen.lines.map(l => l.text)));
+    // D-J60: «Apuntado en el Diario…» no lo dice nadie: va en el aviso de fuera de la caja.
+    check('Móvil: el rumor de Barovia, apuntado (en el aviso)', seen.aside.some(l => /Salieron cinco y volvieron dos/.test(l)), JSON.stringify(seen));
     await shoot(page, 'móvil, el rumor');
     await toEnd(page);
 

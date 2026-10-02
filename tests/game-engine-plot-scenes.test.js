@@ -282,7 +282,7 @@ describe('lo que está mal escrito en las escenas', () => {
     const paths = (/** @type {any[]} */ issues) => issues.map(i => i.path);
 
     test('una escena bien escrita no dice nada, y un hito sin escena tampoco', () => {
-        const good = plot({ backdrop: 'Puerto Alba', sceneDialogue: 'charla', beats: [{ text: 'Llegas.' }, { who: 'Tomás', text: '¿Me ayudas?', options: [{ text: 'Sí.', effects: [{ attitude: 1 }, { rumor: 'r1' }, { give: 'Farol' }, { milestone: 'b' }] }] }] });
+        const good = plot({ backdrop: 'Puerto Alba', sceneDialogue: 'charla', beats: [{ who: 'Brunilda', text: 'Ya llegas.' }, { who: 'Tomás', text: '¿Me ayudas?', options: [{ text: 'Sí.', effects: [{ attitude: 1 }, { rumor: 'r1' }, { give: 'Farol' }, { milestone: 'b' }] }] }] });
         expect(checkPlotScenes(good, refs)).toEqual({ errors: [], warnings: [] });
         expect(checkPlotScenes({ milestones: [{ id: 'a' }] }, refs)).toEqual({ errors: [], warnings: [] });
         expect(checkPlotScenes(null, refs)).toEqual({ errors: [], warnings: [] });
@@ -339,15 +339,18 @@ describe('lo que está mal escrito en las escenas', () => {
             'plot.milestones[0].beats[0].who',
             'plot.milestones[0].beats[0].mood',
             ...[1, 2, 3].flatMap(b => [`plot.milestones[0].beats[${b}].options[0].reply[0].who`, `plot.milestones[0].beats[${b}].options[0].reply[0].mood`, `plot.milestones[0].beats[${b}].options[0].reply[0].options`]),
+            // D-J60: cada línea que no dice nadie, avisada.
+            ...Array.from({ length: SCENE_LIMITS.beats }, (_, i) => `plot.milestones[0].beats[${4 + i}]`),
         ]);
     });
 
     test('validatePack las comprueba con lo que trae el paquete', () => {
         const p = pack('gremio');
         p.plot.milestones[0].beats[1].who = 'Tomasa';
-        p.plot.milestones[0].beats[4].options[0].effects = [{ rumor: 'r-no-existe' }];
+        // La decisión del muelle es la tercera línea (D-J60: sin narrador, empieza Tomás).
+        p.plot.milestones[0].beats[2].options[0].effects = [{ rumor: 'r-no-existe' }];
         const report = validatePack(p);
-        expect(report.errors.map(e => e.path)).toEqual(['plot.milestones[0].beats[4].options[0].effects[0]']);
+        expect(report.errors.map(e => e.path)).toEqual(['plot.milestones[0].beats[2].options[0].effects[0]']);
         expect(report.warnings.map(w => w.path)).toContain('plot.milestones[0].beats[1].who');
     });
 });
@@ -409,8 +412,29 @@ describe('las escenas escritas: el prólogo, 1387 y Strahd', () => {
         const p = pack('gremio');
         const text = JSON.stringify(p.plot.milestones.map((/** @type {any} */ m) => m.beats ?? []));
         expect(text).not.toMatch(/"milestone"/);
-        expect(text).toMatch(/\{cansado\|cansada\}/);
+        // D-J60: el «{cansado|cansada}» era del narrador; ahora Tomás te llama por la barca.
+        expect(text).toMatch(/\{el\|la\} de la barca del correo/);
         expect(p.plot.milestones.find((/** @type {any} */ m) => m.id === 'la-prueba').scene).toMatch(/Baja a la bodega/);
+    });
+
+    test('D-J60: las escenas de apertura son conversaciones, sin ninguna línea del narrador', () => {
+        // «Ya te comenté que este tipo de escenas en las que se resume lo ocurrido no hacen falta»
+        // (Daniel, 2026-10-02): el prólogo y la primera escena de 1387 y de Strahd las dice la gente.
+        const openings = { gremio: ['el-muelle', 'la-charla', 'el-gremio', 'la-prueba'], 1387: ['el-caliz-ensangrentado'], strahd: ['sangrienta-bienvenida'] };
+        for (const [id, ids] of Object.entries(openings)) {
+            const p = pack(id);
+            for (const wanted of ids) {
+                const beats = p.plot.milestones.find((/** @type {any} */ m) => m.id === wanted).beats;
+                const told = beats.filter((/** @type {any} */ b) => !b.who);
+                expect([id, wanted, told.length]).toEqual([id, wanted, 0]);
+                expect([id, wanted, beats.filter((/** @type {any} */ b) => b.who).length >= 3]).toEqual([id, wanted, true]);
+            }
+        }
+        // En el muelle: el posadero grita enfadado, el ratero amenaza y lo del héroe se elige.
+        const dock = pack('gremio').plot.milestones.find((/** @type {any} */ m) => m.id === 'el-muelle').beats;
+        expect(dock[0]).toMatchObject({ who: 'Tomás', mood: 'enfadado', text: expect.stringMatching(/^¡Al ladrón!/) });
+        expect(dock.filter((/** @type {any} */ b) => b.who === 'Ratero del muelle').length).toBeGreaterThanOrEqual(1);
+        expect(dock.find((/** @type {any} */ b) => b.options)?.options.map((/** @type {any} */ o) => o.id)).toEqual(['yo-me-encargo', 'cuanto-pagas']);
     });
 
     test('en 1387, al precio del escape le sigue la charla de Giles, que cumple el hito', () => {

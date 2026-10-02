@@ -249,19 +249,21 @@ describe('J13.8: las escenas se acuerdan de lo que hiciste', () => {
     test('si le cobraste a Tomás, Tomás y Brunilda lo dicen', () => {
         const paid = readSceneBeats(charla().beats, { id: 'la-charla', hero: hero(), chose: ['cuanto-pagas'] });
         const kind = readSceneBeats(charla().beats, { id: 'la-charla', hero: hero(), chose: ['yo-me-encargo'] });
-        expect(paid[2].text).toMatch(/aunque me hayas cobrado/);
-        expect(paid[2].mood).toBe('neutral');
-        expect(kind[2].text).toMatch(/Te debo una/);
-        expect(paid[3].text).toMatch(/tres monedas/);
+        // D-J60: empieza el ratero mientras se lo llevan; Tomás habla en la segunda.
+        expect(paid[1].text).toMatch(/aunque me hayas cobrado/);
+        expect(paid[1].mood).toBe('neutral');
+        expect(kind[1].text).toMatch(/Te debo una/);
+        expect(paid[2].text).toMatch(/tres monedas/);
         // La decisión sigue en su sitio, con sus opciones.
-        expect(paid[3].decision?.dialogue.nodes[0].options.map(o => o.id)).toEqual(['una-cerveza', 'unas-monedas', 'que-se-cuenta']);
+        expect(paid[2].decision?.dialogue.nodes[0].options.map(o => o.id)).toEqual(['una-cerveza', 'unas-monedas', 'que-se-cuenta']);
+        // D-J60: en la Casa del Gremio ya no hay línea del narrador: empieza Tomás.
         const told = readSceneBeats(gremio().beats, { id: 'el-gremio', hero: hero(), chose: ['cuanto-pagas'] });
-        expect(told[1].text).toMatch(/Cobrando, eso sí/);
-        expect(told[2].text).toMatch(/lo de las tres monedas/);
+        expect(told[0].text).toMatch(/Cobrando, eso sí/);
+        expect(told[1].text).toMatch(/lo de las tres monedas/);
     });
 
     test('Brunilda se fija en tu clase al preguntarte qué te trae', () => {
-        const ask = (/** @type {any} */ who) => readSceneBeats(gremio().beats, { id: 'el-gremio', hero: who })[4].text;
+        const ask = (/** @type {any} */ who) => readSceneBeats(gremio().beats, { id: 'el-gremio', hero: who })[3].text;
         expect(ask(hero({ class: 'Pícaro' }))).toMatch(/no se roba/);
         expect(ask(hero({ class: 'Maga' }))).toMatch(/chispas/);
         expect(ask(hero({ class: 'Soldado' }))).toMatch(/primera pelea/);

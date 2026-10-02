@@ -97,6 +97,7 @@ import {
     CONTROL_LABELS,
 } from './spell-turn.js';
 import { showCombatDiceRoll } from './combat-log.js';
+import { afterFx, stageTurn } from './combat-fx.js';
 import { resolveEnemyAttackOn, resolveEnemyTurnAction } from './enemy-turn.js';
 import { allyBeforeTurn2024, allyInstead2024, allyAfterAttack2024, allyRescue2024 } from './ally-turn-2024.js';
 import {
@@ -191,6 +192,8 @@ function buildCombatSummary(reason, said = '') {
  */
 function announceTurnInChat(entry) {
     if (!entry) return;
+    // Tanda 17: en la secuencia del combate, de quién es el turno en su sitio (tras lo de antes).
+    stageTurn(entry, entry.isEnemy ? 'enemy' : actsOnItsOwn(entry) ? 'ally' : 'you');
     const actorType = entry.isEnemy ? 'Enemigo' : 'Jugador';
     const actorIcon = entry.isEnemy ? '⚔️' : '🛡️';
     postCombatNarration(`${actorIcon} [COMBAT] Turno de ${entry.name} (${actorType})`);
@@ -304,6 +307,8 @@ function resolveDeathSave(member) {
         dc: 10,
         natural: result.natural,
         glyph: 'd20',
+        // Tanda 17: el dado en la secuencia del combate, tras lo que le tumbó.
+        stage: { hit: Number(result.natural) >= 10, against: 'CD', side: 'you' },
     });
 
     postCombatNarration(`☠️ [COMBAT] ${result.line}`);
@@ -1359,6 +1364,9 @@ function beginEncounterWith(newEnemies, { enemiesFirst = false, brawl = null } =
     showTip('combat');
     const firstTurn = getCurrentTurnEntry();
     resetCombatTurnState(firstTurn);
+    // Tanda 17: el tablero ya de pelea (la iniciativa, sus fichas) antes de que jueguen los primeros:
+    // si son ellos, la secuencia de sus golpes (combat-fx.js) se ve encima de este dibujo.
+    renderLocationMapsPreview();
     runCombatTurnLoop(true);
 
     return summary;
@@ -1798,7 +1806,8 @@ export function endCombat(reason = 'ended', { said = '', told = '' } = {}) {
         });
         // Idea 63: lo nuevo, frente a lo que ya lleva quien mas lo aprovecha.
         report.upgrades = (loot?.items ?? []).map(item => bestFor(item, partyMembers)).filter(Boolean);
-        showVictoryScreen(report);
+        // Tanda 17: después de ver el último golpe y su tirada (la secuencia del combate).
+        afterFx(() => showVictoryScreen(report));
         // Idea 34: lo que se recuerda de este combate.
         const where = currentBoardName || currentLocationName;
         for (const row of report.rows.filter(r => r.downed)) {

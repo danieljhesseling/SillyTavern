@@ -71,6 +71,7 @@ import { savePartyState } from './roster.js';
 import { renderLocationMapsPreview } from './board-view.js';
 import { canParleyNow, openParleyChoice } from './avoid.js';
 import { recordFeat } from './companions.js';
+import { fxMark, stageAttack } from './combat-fx.js';
 
 /** @typedef {import('../game-engine/ui/combat-vtt/action-menus.js').BarSnapshot} BarSnapshot */
 /** @typedef {import('../game-engine/ui/combat-vtt/action-menus.js').TargetView} TargetView */
@@ -612,6 +613,8 @@ export function unarmedStrike(mode, targetId) {
         showCombatDiceRoll({
             title: `${member.name} golpea sin armas`, subtitle: `Objetivo: ${target.name}`, formula: `1d20${attackMod >= 0 ? '+' : ''}${attackMod}`,
             detail: `d20(${natural}) ${attackMod >= 0 ? '+' : ''}${attackMod} = ${total}`, total, dc: ac, natural, glyph: 'd20',
+            // Tanda 17: en la secuencia del combate.
+            stage: { by: member, at: target, hit, roll: edged, edge: edge.mode, against: 'CA', style: 'melee' },
         });
         lines.push(`👊 ${member.name} le suelta un golpe a ${target.name}.`);
         lines.push(attackLine({ who: member.name, at: target.name, total, ac, hit, natural, modifier: attackMod, cover, edge: describeEdge(edged, edge.mode, edge.reasons) }));
@@ -639,6 +642,7 @@ export function unarmedStrike(mode, targetId) {
             title: `${target.name} se resiste`, subtitle: `${member.name} intenta ${verb}`, formula: `1d20${save.modifier >= 0 ? '+' : ''}${save.modifier}`,
             detail: `d20(${natural}) ${save.modifier >= 0 ? '+' : ''}${save.modifier} = ${natural + save.modifier} contra CD ${dc}`,
             total: natural + save.modifier, dc, natural, glyph: 'd20',
+            stage: { by: member, at: target, hit: !fails, against: 'CD', style: 'melee', save: true, side: 'enemy' },
         });
         lines.push(`🤼 ${member.name} intenta ${verb} a ${target.name}.`);
         lines.push(saveLine({ who: target.name, label: save.label, natural, modifier: save.modifier, dc }));
@@ -709,6 +713,7 @@ export function hide2024() {
     showCombatDiceRoll({
         title: `${member.name} se oculta`, subtitle: 'Sigilo contra 15', formula: `1d20${modifier >= 0 ? '+' : ''}${modifier}`,
         detail: `d20(${natural}) ${modifier >= 0 ? '+' : ''}${modifier} = ${total} contra 15`, total, dc: HIDE_DC, natural, glyph: 'd20',
+        stage: { hit: success, against: 'CD' },
     });
     /** @type {string[]} */
     const lines = [rollLine({ what: 'Sigilo', who: member.name, total, against: HIDE_DC, label: 'CD', success, natural, modifier })];
@@ -754,6 +759,7 @@ export function studyEnemy(targetId) {
     showCombatDiceRoll({
         title: `${member.name} estudia a ${target.name}`, subtitle: 'Inteligencia (Investigación)', formula: `1d20${modifier >= 0 ? '+' : ''}${modifier}`,
         detail: `d20(${natural}) ${modifier >= 0 ? '+' : ''}${modifier} = ${total} contra CD ${dc}`, total, dc, natural, glyph: 'd20',
+        stage: { hit: success, against: 'CD' },
     });
     /** @type {string[]} */
     const lines = [`📖 ${member.name} se fija bien en ${target.name}.`, rollLine({ what: 'Estudiar', who: member.name, at: target.name, total, against: dc, label: 'CD', success, natural, modifier })];
@@ -904,6 +910,7 @@ export function stabilizeAlly(allyId) {
     showCombatDiceRoll({
         title: `${member.name} atiende a ${ally.name}`, subtitle: `Medicina contra ${STABILIZE_DC}`, formula: `1d20${modifier >= 0 ? '+' : ''}${modifier}`,
         detail: `d20(${natural}) ${modifier >= 0 ? '+' : ''}${modifier} = ${check.total} contra ${STABILIZE_DC}`, total: check.total, dc: STABILIZE_DC, natural, glyph: 'd20',
+        stage: { hit: check.success, against: 'CD' },
     });
     if (check.success) ally.deathSaves = stableSaves();
     soundCue(check.success ? 'heal' : 'miss');
@@ -1020,7 +1027,11 @@ function castFromBar(abilityId, targetId, slotLevel = 0) {
         toastr.warning('Hace falta elegir a quién.');
         return '';
     }
-    return useAbility(member, ability, target, slotLevel);
+    // Tanda 17: si sale, el conjuro va hacia quien lo recibe antes de lo que le hace (la secuencia).
+    const mark = fxMark();
+    const said = useAbility(member, ability, target, slotLevel);
+    if (said && target && target !== member) stageAttack(member, target, 'spell', mark);
+    return said;
 }
 
 /**

@@ -1,8 +1,9 @@
 /* ================================================================
    J9.2 · Las escenas del hilo, jugadas (public/scripts/game-engine/ui/plot-scene.js).
    El marco es el de la quedada (`qd-*`, quedadas.css) y las opciones, las de una charla
-   (`dw-*`, dialogos.css): aquí solo lo propio de una escena con varias voces. Lo que cuenta
-   el narrador, sin retrato y en cursiva; la escena se sigue tocando en cualquier sitio.
+   (`dw-*`, dialogos.css): aquí solo lo propio de una escena con varias voces. D-J60: en la
+   caja solo habla alguien; lo que no dice nadie va en el aviso de fuera (`.qd-aside`,
+   quedadas.css). La escena se sigue tocando en cualquier sitio.
    Los colores son los del juego (`--gs-*`, game-shell.css). Todo cuelga de .ps-dialog.
    ================================================================ */
 
@@ -15,16 +16,12 @@
     cursor: default;
 }
 
-/* El narrador no tiene cara: el sitio queda a la vista. */
+/* Una decisión sin nadie que hable (un paquete de antes): sin cara, el sitio queda a la vista. */
 .ps-dialog .qd-portrait[hidden] {
     display: none;
 }
 
-.ps-dialog .ps-narration {
-    font-size: calc(1.1rem * var(--gs-text-scale, 1));
-}
-
-/* Lo que dice la gente, recto; lo del narrador ya va en cursiva (`qd-note`). */
+/* Lo que dice la gente, recto. */
 .ps-dialog .ps-say {
     font-style: normal;
 }

@@ -678,10 +678,17 @@ export function checkPlotScenes(plot, { people = [], rumors = [], items = [], di
         if (bad.length > 0) errors.push({ path, message: `Marca de género mal escrita: ${bad[0]}. Se escribe {forma|forma}.` });
     };
 
+    /** D-J60: una línea que no dice nadie. */
+    const nobody = (/** @type {string} */ path) => warnings.push({
+        path,
+        message: 'Esta línea no la dice nadie (sin `who`). En el juego sin conexión no hay narrador (D-J60): que la diga alguien que esté allí (de `npcs` o `confidants`), o quítala. Si se queda, sale en un aviso pequeño fuera de la caja.',
+    });
+
     /** Una línea: su texto, quién y su gesto. @param {any} raw @param {string} path @param {boolean} [reply] */
     const checkLine = (raw, path, reply = false) => {
         if (typeof raw === 'string') {
             if (!text(raw)) errors.push({ path, message: 'Una línea sin texto no dice nada.' });
+            else nobody(path);
             markers(raw, path);
             return;
         }
@@ -692,6 +699,8 @@ export function checkPlotScenes(plot, { people = [], rumors = [], items = [], di
         if (!text(raw.text)) errors.push({ path: `${path}.text`, message: 'Falta lo que se dice o se cuenta (`text`).' });
         markers(raw.text, `${path}.text`);
         const who = text(raw.who);
+        // D-J60: una decisión sin quien hable vale (las opciones las dices tú), pero su línea no.
+        if (!who && text(raw.text)) nobody(`${path}.who`);
         if (who && !known.has(fold(who))) {
             warnings.push({ path: `${path}.who`, message: `"${who}" no está entre la gente (\`npcs\`), los compañeros (\`confidants\`) ni el bestiario: saldrá sin retrato.` });
         }

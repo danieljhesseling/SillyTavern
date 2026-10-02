@@ -37,6 +37,29 @@ export function partyHasFallen(party) {
     return list.length > 0 && list.every(m => Boolean(m.dead));
 }
 
+/** Cada cuánto se mira otra vez si ya hay grupo, en ms. */
+export const PARTY_WAIT_MS = 900;
+/** El respiro tras entrar el primero, en ms: lo que tarda en ponerse en cola la escena que empieza la partida. */
+export const PARTY_SETTLE_MS = 2000;
+
+/**
+ * Si la pelea que empieza sola (party/fight-entry.js) tiene que esperar a que haya grupo.
+ *
+ * Una partida nueva abre su tablero antes de crear al héroe: con el grupo vacío, la decisión de
+ * pelear salía con todas las salidas cerradas y antes que la escena del hilo. Sin nadie, se
+ * espera; al entrar el primero, un respiro más (la escena que empieza la partida se pone en
+ * cola justo después de crear al héroe, y la pelea espera a las escenas).
+ *
+ * @param {number} partySize Cuántos hay en el grupo.
+ * @param {boolean} waited Si ya se estaba esperando a que hubiera alguien.
+ * @returns {{delay: number, waited: boolean}} `delay` 0: se puede abrir ya.
+ */
+export function fightWait(partySize, waited) {
+    if (!(Number(partySize) > 0)) return { delay: PARTY_WAIT_MS, waited: true };
+    if (waited) return { delay: PARTY_SETTLE_MS, waited: false };
+    return { delay: 0, waited: false };
+}
+
 /**
  * El punto guardado al que tiene sentido volver: el más nuevo en el que alguien seguía vivo.
  * Los puntos vienen del más nuevo al más viejo, como los guarda `addCheckpoint`.

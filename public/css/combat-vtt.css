@@ -1044,6 +1044,237 @@
     }
 }
 
+/* ---- Tanda 17: el tablero se mueve y se lee (Daniel, 2026-10-02) ---- */
+
+/* El cuadro amarillo del cursor del teclado (teclado.css) y su pista, solo jugando con el teclado:
+   tras un clic o un toque se van (`html[data-gs-input]`, world-map-renderer.js). Pulsar el tablero
+   con el ratón le daba el foco, y con el foco salía el cursor en una casilla de antes. */
+:root:not([data-gs-input="key"]) .wm-container.gs-board-keys .gs-board-cursor,
+:root:not([data-gs-input="key"]) .wm-container.gs-board-keys .gs-board-hint {
+    display: none;
+}
+
+/* El nombre de cada ficha, corto («Ratero», «Keller»; `token-label.js`) y en su placa, montado en
+   el borde de abajo del aro: no se sale de su casilla ni tapa la de al lado. El nombre entero sigue
+   en la página (lo leen el teclado y las pruebas) y sale en su tarjeta al pasar el ratón o al tocarla. */
+.vtt-board .wm-token-name {
+    position: absolute;
+    top: calc(100% - 9px);
+    left: 50%;
+    z-index: 2;
+    max-width: none;
+    margin: 0;
+    overflow: visible;
+    transform: translateX(-50%);
+    font-size: 0;
+    line-height: 0;
+    pointer-events: none;
+}
+
+/* Con la cámara alejada (el teléfono, a 0,6×) la letra crece un poco en el tablero, para que en la
+   pantalla no baje de unos 7 px; acercada, no crece de más (`--vtt-scale`, world-map-renderer.js). */
+.vtt-board .wm-token-name::after {
+    content: attr(data-label);
+    display: block;
+    max-width: 6.4em;
+    padding: 1px 0.45em;
+    overflow: hidden;
+    border: 1px solid rgba(214, 180, 106, 0.35);
+    border-radius: 5px;
+    background: rgba(12, 10, 8, 0.86);
+    font-size: calc(0.6rem / clamp(0.72, var(--vtt-scale, 1), 1.4));
+    line-height: 1.3;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.vtt-board .wm-token-enemy .wm-token-name::after {
+    border-color: rgba(224, 96, 90, 0.45);
+}
+
+/* Quien anda pasa por encima de las demás fichas; quien tiene el turno, también. */
+.vtt-board .wm-token.wm-token-active {
+    z-index: 17;
+}
+
+.vtt-board .wm-token.wm-token-walking {
+    z-index: 18;
+}
+
+/* El aro de quien tiene el turno, que late: oro si es tuyo, rojo si es de un enemigo y azul si es
+   de un compañero que juega el juego. */
+.vtt-board .wm-token-turn-ring {
+    position: absolute;
+    inset: -6px;
+    border: 3px solid var(--vtt-gold, #e2c27a);
+    border-radius: 50%;
+    box-shadow: 0 0 12px 2px rgba(226, 194, 122, 0.7);
+    pointer-events: none;
+    animation: vtt-turn-pulse 1.4s ease-in-out infinite;
+}
+
+.vtt-board .wm-token-active[data-turn-side="enemy"] .wm-token-turn-ring {
+    border-color: #e0605a;
+    box-shadow: 0 0 12px 2px rgba(224, 96, 90, 0.75);
+}
+
+.vtt-board .wm-token-active[data-turn-side="ally"] .wm-token-turn-ring {
+    border-color: #8fb8dc;
+    box-shadow: 0 0 12px 2px rgba(143, 184, 220, 0.65);
+}
+
+.vtt-board .wm-token-active .wm-token-name::after {
+    border-color: var(--vtt-gold, #e2c27a);
+    color: #fff3d6;
+}
+
+.vtt-board .wm-token-active[data-turn-side="enemy"] .wm-token-name::after {
+    border-color: #e0605a;
+    color: #ffd9d4;
+}
+
+@keyframes vtt-turn-pulse {
+    0%,
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+
+    50% {
+        transform: scale(1.14);
+        opacity: 0.55;
+    }
+}
+
+:root[data-gs-motion="none"] .vtt-board .wm-token-turn-ring {
+    animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    :root:not([data-gs-motion]) .vtt-board .wm-token-turn-ring {
+        animation: none;
+    }
+}
+
+/* El cartel del turno («Tu turno, Laedor», «Turno del ratero del muelle»; `turn-banner.js`): en la
+   raíz del juego, fijo encima del tablero, y se desvanece solo. No recibe clics. */
+.vtt-turn-banner {
+    position: fixed;
+    z-index: 900;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    max-width: calc(100vw - 32px);
+    box-sizing: border-box;
+    padding: 12px 26px;
+    overflow: hidden;
+    border: 2px solid var(--vtt-gold, #e2c27a);
+    border-radius: 12px;
+    background: rgba(18, 15, 12, 0.93);
+    box-shadow: 0 10px 34px rgba(0, 0, 0, 0.65), 0 0 26px rgba(226, 194, 122, 0.35);
+    color: #f8e9c4;
+    font-size: 1.6rem;
+    font-weight: bold;
+    letter-spacing: 0.01em;
+    white-space: nowrap;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+}
+
+.vtt-turn-banner i {
+    color: var(--vtt-gold, #e2c27a);
+    font-size: 0.85em;
+}
+
+.vtt-turn-banner-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.vtt-turn-banner[data-side="enemy"] {
+    border-color: #c8564f;
+    box-shadow: 0 10px 34px rgba(0, 0, 0, 0.65), 0 0 26px rgba(200, 86, 79, 0.45);
+    color: #ffdcd7;
+}
+
+.vtt-turn-banner[data-side="enemy"] i {
+    color: #e0605a;
+}
+
+.vtt-turn-banner[data-side="ally"] {
+    border-color: #8fb8dc;
+    color: #e6f0f9;
+}
+
+.vtt-turn-banner[data-side="ally"] i {
+    color: #8fb8dc;
+}
+
+@media (max-width: 600px) {
+    .vtt-turn-banner {
+        gap: 8px;
+        padding: 10px 16px;
+        font-size: 1.15rem;
+    }
+}
+
+/* La fila de la iniciativa de quien tiene el turno, encendida (en rojo, la de un enemigo). */
+.vtt-init .wm-init-row.current {
+    background: rgba(214, 180, 106, 0.24);
+    box-shadow: inset 0 0 0 1px rgba(226, 194, 122, 0.6), 0 0 12px rgba(226, 194, 122, 0.22);
+}
+
+.vtt-init .wm-init-row.current .wm-init-face {
+    border-color: var(--vtt-gold);
+    box-shadow: 0 0 0 2px var(--vtt-gold);
+}
+
+.vtt-init .wm-init-row.current.enemy {
+    border-left-color: var(--vtt-danger);
+    background: rgba(208, 138, 134, 0.2);
+    box-shadow: inset 0 0 0 1px rgba(224, 96, 90, 0.6), 0 0 12px rgba(224, 96, 90, 0.22);
+}
+
+.vtt-init .wm-init-row.current.enemy .wm-init-face {
+    border-color: #e0605a;
+    box-shadow: 0 0 0 2px #e0605a;
+}
+
+@media (max-width: 600px), (orientation: landscape) and (max-height: 500px) and (max-width: 1000px) {
+    .vtt-init .wm-init-row.current.enemy {
+        border-bottom-color: var(--vtt-danger);
+    }
+
+    /* En la fila de caras, el nombre corto («Ratero» y no «Ratero …»); el entero sigue en la página. */
+    .vtt-init .wm-init-name[data-label] {
+        font-size: 0;
+    }
+
+    .vtt-init .wm-init-name[data-label]::after {
+        content: attr(data-label);
+        font-size: 0.66rem;
+    }
+}
+
+/* La barra de abajo: encendida en oro cuando te toca; cuando no, apagada, y lo que dice de quién es
+   el turno va en el color de quien juega (`html[data-gs-turn-side]`, world-map-renderer.js). */
+.gs-root .gs-actions .gs-vtt-bar:not(.gs-vtt-waiting) {
+    border-color: rgba(226, 194, 122, 0.85);
+    box-shadow: 0 0 0 1px rgba(226, 194, 122, 0.4), 0 0 24px rgba(226, 194, 122, 0.3), 0 10px 35px rgba(0, 0, 0, 0.7);
+}
+
+.gs-root .gs-actions .gs-vtt-bar.gs-vtt-waiting .gs-actions-buttons {
+    opacity: 0.6;
+}
+
+:root[data-gs-turn-side="enemy"] .gs-root .gs-actions .gs-vtt-bar.gs-vtt-waiting .gs-turn-label {
+    color: #f0948d;
+}
+
+:root[data-gs-turn-side="ally"] .gs-root .gs-actions .gs-vtt-bar.gs-vtt-waiting .gs-turn-label {
+    color: #a9cbe8;
+}
+
 /* ============================ fin de 1. EL LIENZO Y LA CÁMARA ============================ */
 
 /* ================================================================================
@@ -2355,3 +2586,602 @@ body.game-colorblind .vtt-board .wm-token-enemy img.wm-token-avatar {
 }
 
 /* ============================ fin de 5. EL ARTE DEL TABLERO ============================ */
+
+/* ================================================================================
+   6. LA SECUENCIA DEL COMBATE (tanda 17, «que el combate se sienta»)
+   game-engine/ui/combat-vtt/fx.js y dice.js. Cada golpe, en orden: quien ataca se lanza (o
+   dispara), rueda el d20 en una tarjeta encima de la barra, el golpe llega (un destello, una
+   sacudida, el daño que sube) y luego baja la vida. La capa (`.vfx-stage`) va en la raíz del
+   juego, del tamaño del tablero; no recibe clics, la tarjeta sí («Pasar»).
+   ================================================================================ */
+
+.vfx-stage {
+    position: fixed;
+    z-index: 45;
+    pointer-events: none;
+}
+
+/* ---- La tarjeta del dado: encima de la barra de acciones, centrada en el tablero ---- */
+.vfx-card {
+    position: absolute;
+    left: calc((100% - var(--vtt-right-reserve, 0px)) / 2);
+    bottom: 132px;
+    box-sizing: border-box;
+    min-width: 270px;
+    max-width: min(440px, calc(100% - 24px));
+    padding: 12px 18px 12px;
+    border: 1px solid rgba(226, 194, 122, 0.55);
+    border-radius: 14px;
+    background: linear-gradient(180deg, rgba(30, 24, 17, 0.97), rgba(14, 11, 8, 0.97));
+    box-shadow: 0 14px 40px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 236, 190, 0.08);
+    color: var(--vtt-text, #eee4d2);
+    text-align: center;
+    pointer-events: auto;
+    opacity: 0;
+    transform: translateX(-50%);
+}
+
+.vfx-card.vfx-card-enemy {
+    border-color: rgba(208, 138, 134, 0.6);
+}
+
+.vfx-card.vfx-in {
+    animation: vfx-card-in 0.22s ease-out forwards;
+}
+
+.vfx-card.vfx-out {
+    animation: vfx-card-out 0.2s ease-in forwards;
+}
+
+@keyframes vfx-card-in {
+    from { opacity: 0; transform: translate(-50%, 14px) scale(0.96); }
+    to { opacity: 1; transform: translate(-50%, 0) scale(1); }
+}
+
+@keyframes vfx-card-out {
+    from { opacity: 1; transform: translate(-50%, 0); }
+    to { opacity: 0; transform: translate(-50%, 8px); }
+}
+
+.vfx-card.vfx-crit {
+    border-color: rgba(255, 214, 110, 0.95);
+    box-shadow: 0 0 0 1px rgba(255, 214, 110, 0.5), 0 0 34px rgba(255, 196, 70, 0.45), 0 14px 40px rgba(0, 0, 0, 0.65);
+}
+
+.vfx-card.vfx-fumble {
+    border-color: rgba(255, 90, 75, 0.85);
+}
+
+.vfx-card-head {
+    padding-right: 44px;
+    padding-left: 44px;
+}
+
+.vfx-card-title {
+    font-weight: 700;
+    font-size: 15px;
+    color: var(--vtt-gold, #e2c27a);
+}
+
+.vfx-card-enemy .vfx-card-title {
+    color: #f0b0a8;
+}
+
+.vfx-card-sub {
+    margin-top: 1px;
+    font-size: 12.5px;
+    opacity: 0.85;
+}
+
+.vfx-dice {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    margin: 8px 0 4px;
+}
+
+.vfx-edge-line {
+    font-size: 12px;
+    opacity: 0.8;
+}
+
+.vfx-edge-line:empty,
+.vfx-dmg-line:empty {
+    display: none;
+}
+
+.vfx-roll-line {
+    min-height: 1.35em;
+    margin-top: 4px;
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+}
+
+.vfx-card.vfx-good .vfx-roll-line {
+    color: #b9e39a;
+}
+
+.vfx-card.vfx-bad .vfx-roll-line {
+    color: #f0948d;
+}
+
+.vfx-card.vfx-crit .vfx-roll-line {
+    color: #ffd76a;
+    text-shadow: 0 0 10px rgba(255, 200, 80, 0.6);
+}
+
+.vfx-card.vfx-fumble .vfx-roll-line {
+    color: #ff7a6e;
+}
+
+.vfx-dmg-line {
+    margin-top: 3px;
+    font-size: 15px;
+    font-weight: 700;
+    color: #ffb4a8;
+}
+
+.vfx-dmg-line.vfx-in {
+    animation: vfx-pop 0.25s ease-out;
+}
+
+@keyframes vfx-pop {
+    from { opacity: 0; transform: scale(0.9); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+.vfx-skip {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    padding: 2px 9px;
+    border: 1px solid rgba(226, 194, 122, 0.35);
+    border-radius: 999px;
+    background: transparent;
+    color: #d8c8a6;
+    font-size: 11px;
+    cursor: pointer;
+}
+
+.vfx-skip:hover,
+.vfx-skip:focus-visible {
+    border-color: rgba(226, 194, 122, 0.85);
+    color: #fff3d6;
+}
+
+/* ---- El d20: una cara de icosaedro en SVG (dice.js) ---- */
+.vfx-die {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 84px;
+    height: 84px;
+    filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.55));
+}
+
+.vfx-die-svg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+}
+
+.vfx-die-body {
+    fill: #241d47;
+    stroke: #c9a96a;
+    stroke-width: 2;
+    stroke-linejoin: round;
+}
+
+.vfx-die-face-tri {
+    fill: #3a2f72;
+}
+
+.vfx-die-edges line {
+    stroke: rgba(201, 169, 106, 0.75);
+    stroke-width: 1.4;
+}
+
+.vfx-die-enemy .vfx-die-body {
+    fill: #45120f;
+    stroke: #e09a8c;
+}
+
+.vfx-die-enemy .vfx-die-face-tri {
+    fill: #6a1d18;
+}
+
+.vfx-die-enemy .vfx-die-edges line {
+    stroke: rgba(224, 154, 140, 0.7);
+}
+
+.vfx-die-face {
+    position: relative;
+    transform: translateY(5px);
+    color: #f6e6bb;
+    font-weight: 800;
+    font-size: 25px;
+    line-height: 1;
+    text-shadow: 0 1px 2px #000, 0 0 6px rgba(0, 0, 0, 0.7);
+    font-variant-numeric: tabular-nums;
+}
+
+.vfx-die-enemy .vfx-die-face {
+    color: #ffe6de;
+}
+
+.vfx-die-crack {
+    fill: none;
+    stroke: #ff3b2f;
+    stroke-width: 3.2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-dasharray: 120;
+    stroke-dashoffset: 120;
+    opacity: 0;
+}
+
+/* Rodando: entra de lado dando vueltas y bota antes de pararse. */
+.vfx-die-rolling {
+    animation: vfx-die-tumble var(--vfx-tumble-ms, 850ms) cubic-bezier(0.2, 0.7, 0.3, 1) both;
+}
+
+.vfx-die-rolling .vfx-die-face {
+    opacity: 0.8;
+    filter: blur(0.5px);
+}
+
+@keyframes vfx-die-tumble {
+    0% { opacity: 0; transform: translate(-70px, -40px) rotate(-300deg) scale(0.5); }
+    15% { opacity: 1; }
+    55% { transform: translate(8px, 5px) rotate(28deg) scale(1.08); }
+    75% { transform: translate(-3px, -7px) rotate(-12deg) scale(0.97); }
+    90% { transform: translate(0, 0) rotate(4deg) scale(1.01); }
+    100% { opacity: 1; transform: none; }
+}
+
+.vfx-die-landed {
+    animation: vfx-die-land 0.28s ease-out;
+}
+
+@keyframes vfx-die-land {
+    from { transform: scale(1.16); }
+    to { transform: scale(1); }
+}
+
+/* Un 20 natural: el dado en oro, con su brillo. */
+.vfx-die-nat20 .vfx-die-body {
+    fill: #5c420e;
+    stroke: #ffe08a;
+}
+
+.vfx-die-nat20 .vfx-die-face-tri {
+    fill: #a2761a;
+}
+
+.vfx-die-nat20 .vfx-die-edges line {
+    stroke: #ffe9a8;
+}
+
+.vfx-die-nat20 .vfx-die-face {
+    color: #fff8dc;
+    text-shadow: 0 0 6px #ffd257, 0 0 14px #ffb020;
+}
+
+.vfx-die-nat20.vfx-die-landed {
+    animation: vfx-die-land 0.28s ease-out, vfx-die-gold 1s ease-in-out 0.28s infinite alternate;
+}
+
+.vfx-die-nat20::after {
+    content: '';
+    position: absolute;
+    inset: -18px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255, 226, 140, 0.55), rgba(255, 200, 80, 0) 66%);
+    pointer-events: none;
+    animation: vfx-burst 0.7s ease-out both;
+}
+
+@keyframes vfx-die-gold {
+    from { filter: drop-shadow(0 0 6px rgba(255, 210, 90, 0.8)) drop-shadow(0 6px 10px rgba(0, 0, 0, 0.55)); }
+    to { filter: drop-shadow(0 0 16px rgba(255, 214, 96, 1)) drop-shadow(0 0 28px rgba(255, 170, 40, 0.75)); }
+}
+
+@keyframes vfx-burst {
+    from { opacity: 0; transform: scale(0.4); }
+    40% { opacity: 1; }
+    to { opacity: 0.7; transform: scale(1); }
+}
+
+/* Un 1 natural: el dado apagado y una grieta roja que lo cruza. */
+.vfx-die-nat1 .vfx-die-body {
+    fill: #1e0d0b;
+    stroke: #a33a30;
+}
+
+.vfx-die-nat1 .vfx-die-face-tri {
+    fill: #2e1210;
+}
+
+.vfx-die-nat1 .vfx-die-face {
+    color: #ff8a80;
+}
+
+.vfx-die-nat1 .vfx-die-crack {
+    opacity: 1;
+    filter: drop-shadow(0 0 3px #ff2a1a);
+    animation: vfx-crack 0.45s ease-out forwards;
+}
+
+.vfx-die-nat1.vfx-die-landed {
+    animation: vfx-die-land 0.28s ease-out, vfx-die-shudder 0.35s linear 0.28s;
+}
+
+@keyframes vfx-crack {
+    to { stroke-dashoffset: 0; }
+}
+
+@keyframes vfx-die-shudder {
+    0%, 100% { translate: 0 0; }
+    25% { translate: -3px 0; }
+    75% { translate: 3px 0; }
+}
+
+/* Con ventaja o desventaja, el dado que no se queda, apagado. */
+.vfx-die.vfx-die-dropped {
+    opacity: 0.42;
+    filter: grayscale(0.75);
+    scale: 0.84;
+    transition: opacity 0.25s, scale 0.25s;
+}
+
+/* ---- El rótulo del turno de aquí, si no está el del tablero (`turn-banner.js`) ---- */
+.vfx-banner {
+    position: absolute;
+    top: 34%;
+    left: calc((100% - var(--vtt-right-reserve, 0px)) / 2);
+    padding: 10px 24px;
+    border: 2px solid #c0392b;
+    border-radius: 10px;
+    background: rgba(25, 10, 10, 0.92);
+    color: #fbe9e7;
+    font-weight: 700;
+    font-size: 20px;
+    transform: translate(-50%, -50%);
+    white-space: nowrap;
+}
+
+.vfx-banner.vfx-banner-ally {
+    border-color: #5b8fc0;
+    background: rgba(10, 18, 28, 0.92);
+}
+
+.vfx-banner.vfx-out {
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+/* ---- En el tablero: quien ataca, quien recibe, lo que vuela ---- */
+.wm-token.vfx-acting {
+    z-index: 24;
+}
+
+.wm-token.vfx-hit img.wm-token-avatar,
+.wm-token.vfx-hit .wm-token-unknown {
+    animation: vfx-hit-flash 0.45s ease-out;
+}
+
+.wm-token.vfx-hit-crit img.wm-token-avatar,
+.wm-token.vfx-hit-crit .wm-token-unknown {
+    animation: vfx-hit-crit 0.6s ease-out;
+}
+
+.wm-token.vfx-heal img.wm-token-avatar,
+.wm-token.vfx-heal .wm-token-unknown {
+    animation: vfx-heal-glow 0.6s ease-out;
+}
+
+@keyframes vfx-hit-flash {
+    0% { filter: brightness(2.8) saturate(0.2); box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.9), 0 0 22px 8px rgba(255, 80, 60, 0.85); }
+    55% { filter: brightness(1.1) sepia(0.7) hue-rotate(-35deg) saturate(3.5); box-shadow: 0 0 14px 4px rgba(255, 60, 40, 0.6); }
+    100% { filter: none; box-shadow: none; }
+}
+
+@keyframes vfx-hit-crit {
+    0% { filter: brightness(3) saturate(0); box-shadow: 0 0 0 4px #fff6c8, 0 0 30px 12px rgba(255, 200, 70, 0.9); }
+    45% { filter: brightness(1.3) sepia(0.8) hue-rotate(-30deg) saturate(4); box-shadow: 0 0 20px 8px rgba(255, 90, 40, 0.75); }
+    100% { filter: none; box-shadow: none; }
+}
+
+@keyframes vfx-heal-glow {
+    0% { box-shadow: 0 0 0 3px rgba(150, 255, 170, 0.9), 0 0 22px 8px rgba(80, 220, 120, 0.8); }
+    100% { box-shadow: none; }
+}
+
+/* Quien cae: se tumba y se apaga (hasta que el tablero se dibuja de verdad). */
+.wm-token.vfx-down {
+    opacity: 0.6;
+    filter: grayscale(0.85);
+    rotate: -14deg;
+    transition: opacity 0.45s, filter 0.45s, rotate 0.45s;
+}
+
+/* El número que sube, más grande que el de siempre y entero a la vista casi todo el rato; «Falla»,
+   en gris. */
+.wm-float.vfx-float {
+    top: -10px;
+    z-index: 32;
+    color: #ff7466;
+    font-size: 24px;
+    font-weight: 900;
+    text-shadow: 0 0 2px #000, 0 2px 0 #000, 0 0 8px rgba(0, 0, 0, 0.9);
+    animation: vfx-float-up 1.6s ease-out forwards;
+}
+
+.wm-float.vfx-float.wm-float-crit {
+    color: #ffd24a;
+    font-size: 30px;
+    text-shadow: 0 0 2px #000, 0 2px 0 #000, 0 0 14px rgba(255, 170, 40, 0.9);
+}
+
+.wm-float.vfx-float.wm-float-heal {
+    color: #8ff0a2;
+}
+
+.wm-float.vfx-float-miss {
+    color: #e4ddd0;
+    font-size: 18px;
+    font-style: italic;
+}
+
+@keyframes vfx-float-up {
+    0% { opacity: 0; transform: translate(-50%, 6px) scale(0.6); }
+    12% { opacity: 1; transform: translate(-50%, -6px) scale(1.25); }
+    28% { opacity: 1; transform: translate(-50%, -12px) scale(1); }
+    78% { opacity: 1; transform: translate(-50%, -30px) scale(1); }
+    100% { opacity: 0; transform: translate(-50%, -40px) scale(0.95); }
+}
+
+/* Mientras se ve un golpe, los avisos de arriba esperan: «Fama», «Lo que tienes entre manos»…
+   salían antes de ver la tirada que los traía. */
+:root[data-vfx-busy="true"] #toast-container {
+    visibility: hidden;
+}
+
+/* La flecha, el conjuro y lo que se tira, de quien ataca a su objetivo. */
+.vfx-bolt {
+    position: absolute;
+    z-index: 26;
+    pointer-events: none;
+    transform: translate(-50%, -50%) rotate(var(--vfx-angle, 0rad));
+}
+
+.vfx-bolt-ranged {
+    width: 28px;
+    height: 3px;
+    border-radius: 2px;
+    background: linear-gradient(90deg, rgba(255, 255, 255, 0), #e8d9b0 45%, #fffbe8 100%);
+    box-shadow: 0 0 6px rgba(255, 240, 200, 0.8);
+}
+
+.vfx-bolt-spell {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: radial-gradient(circle, #fff 0%, #c9b4ff 35%, rgba(120, 80, 255, 0) 72%);
+    box-shadow: 0 0 16px 6px rgba(150, 110, 255, 0.75);
+}
+
+.vfx-bolt-throw {
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+    background: #c9a36a;
+    box-shadow: 0 0 4px rgba(0, 0, 0, 0.7);
+    animation: vfx-spin 0.3s linear infinite;
+}
+
+@keyframes vfx-spin {
+    to { rotate: 360deg; }
+}
+
+/* La vida que baja en la iniciativa: deslizándose, y el número parpadea. */
+.vtt-init .wm-init-row.vfx-hp-changed .wm-init-hp-fill {
+    transition: width 0.45s ease-out;
+}
+
+.vtt-init .wm-init-row.vfx-hp-changed .wm-init-hp-text {
+    animation: vfx-hp-blink 0.6s ease-out;
+}
+
+@keyframes vfx-hp-blink {
+    0% { color: #fff; text-shadow: 0 0 8px rgba(255, 120, 100, 0.9); }
+    100% { text-shadow: none; }
+}
+
+/* ---- El teléfono: el tablero es una franja; la tarjeta, apretada (el dado a la izquierda y lo
+   que dice a la derecha), justo debajo de las islas de arriba o encima de las de abajo (fx.js la
+   coloca donde no tapa a quien ataca ni a quien recibe) ---- */
+@media (max-width: 600px) {
+    .vfx-card {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        grid-template-areas: "dice head" "dice edge" "dice line" "dice dmg";
+        align-items: center;
+        column-gap: 10px;
+        bottom: 168px;
+        min-width: 0;
+        width: calc(100% - 16px);
+        padding: 8px 10px;
+        text-align: left;
+    }
+
+    .vfx-card-head {
+        grid-area: head;
+        padding: 0 58px 0 0;
+    }
+
+    .vfx-card-title {
+        font-size: 14px;
+    }
+
+    .vfx-card-sub {
+        font-size: 12px;
+    }
+
+    .vfx-dice {
+        grid-area: dice;
+        gap: 6px;
+        margin: 0;
+    }
+
+    .vfx-edge-line {
+        grid-area: edge;
+    }
+
+    .vfx-roll-line {
+        grid-area: line;
+        min-height: 1.2em;
+        margin-top: 2px;
+        font-size: 15px;
+    }
+
+    .vfx-dmg-line {
+        grid-area: dmg;
+        margin-top: 1px;
+        font-size: 13.5px;
+    }
+
+    .vfx-die {
+        width: 58px;
+        height: 58px;
+    }
+
+    .vfx-die-face {
+        transform: translateY(4px);
+        font-size: 18px;
+    }
+
+    .vfx-skip {
+        top: 6px;
+        right: 6px;
+    }
+}
+
+/* Tumbado y bajito: la tarjeta, a un lado, para que se vea el tablero. */
+@media (orientation: landscape) and (max-height: 500px) {
+    .vfx-card {
+        bottom: auto;
+        top: 10px;
+        min-width: 230px;
+    }
+
+    .vfx-die {
+        width: 56px;
+        height: 56px;
+    }
+}
+
+/* ============================ fin de 6. LA SECUENCIA DEL COMBATE ============================ */

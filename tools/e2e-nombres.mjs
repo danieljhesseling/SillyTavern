@@ -342,7 +342,8 @@ try {
     const talkAct = smithyView.acts.find(a => /^talk-local:/.test(a.id));
     await shoot('herreria');
     // El saludo de la primera vez puede ser el suyo («Ramiro. Herrero. ¿Qué se te ha roto?»): eso es presentarse.
-    const saidHisName = /«[^»]*Ramiro[^»]*»/.test(smithyView.line);
+    // D-J60: la caja ya solo trae lo que dice él, sin comillas.
+    const saidHisName = /\bRamiro\b/.test(smithyView.line);
     check('J13.7: el saludo nunca dice «El herrero. Herrero.» (quien dice su nombre al saludar, se presenta)',
         !/herrero\.\s*Herrero/i.test(smithyView.line), smithyView.line);
     if (saidHisName) {

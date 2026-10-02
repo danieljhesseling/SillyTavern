@@ -1,5 +1,22 @@
 import { describe, test, expect } from '@jest/globals';
-import { partyHasFallen, checkpointToReturn, fallenCard } from '../public/scripts/game-engine/combat/party-fallen.js';
+import { partyHasFallen, checkpointToReturn, fallenCard, fightWait, PARTY_WAIT_MS, PARTY_SETTLE_MS } from '../public/scripts/game-engine/combat/party-fallen.js';
+
+describe('fightWait (J9.1: the fight that opens itself waits for a party)', () => {
+    test('with nobody yet it waits, and remembers it waited', () => {
+        expect(fightWait(0, false)).toEqual({ delay: PARTY_WAIT_MS, waited: true });
+        expect(fightWait(0, true)).toEqual({ delay: PARTY_WAIT_MS, waited: true });
+    });
+
+    test('when the first one joins after waiting, one longer pause for the opening scene, then it opens', () => {
+        const settle = fightWait(1, true);
+        expect(settle).toEqual({ delay: PARTY_SETTLE_MS, waited: false });
+        expect(fightWait(1, settle.waited)).toEqual({ delay: 0, waited: false });
+    });
+
+    test('a party that was already there opens at once', () => {
+        expect(fightWait(3, false)).toEqual({ delay: 0, waited: false });
+    });
+});
 
 const tessa = { name: 'Tessa', dead: true, hp: 1 };
 const gerd = { name: 'Gerd', dead: true, hp: 0 };

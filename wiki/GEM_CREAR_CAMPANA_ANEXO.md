@@ -372,7 +372,7 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
       "properties": {
         "who": {
           "type": "string",
-          "description": "Quién lo dice: alguien de npcs o de confidants, con su nombre exacto (sale su retrato y su placa). Casi todas las líneas llevan who: la historia se cuenta hablando (D-J54). Sin who, el narrador, sin retrato ni placa: solo una línea corta de ambiente o de paso del tiempo («Cae la noche sobre el puerto.»)."
+          "description": "Quién lo dice: alguien de npcs o de confidants, con su nombre exacto (sale su retrato y su placa). Todas las líneas llevan who: la historia se cuenta hablando, y en el juego sin conexión no hay narrador (D-J54, D-J60). Una línea sin who no la dice nadie: sale en un aviso pequeño fuera de la caja. No la escribas: el sitio y la hora ya se ven en pantalla."
         },
         "mood": {
           "type": "string",
@@ -1684,7 +1684,7 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
           },
           "scenes": {
             "type": "array",
-            "description": "Sus escenas de vínculo, una cada dos rangos (2, 4, 6, 8 y 10): salen al quedar con él. Mejor con beats (la conversación: note, say, mood y dos o tres replies, como en el romance); con solo scene, el juego la pasa a escena solo.",
+            "description": "Sus escenas de vínculo, una cada dos rangos (2, 4, 6, 8 y 10): salen al quedar con él. Mejor con beats (la conversación: say, mood y dos o tres replies, como en el romance; todo lo dice él, D-J60); con solo scene, el juego la pasa a escena solo.",
             "items": {
               "type": "object",
               "required": [
@@ -1709,7 +1709,7 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
                 },
                 "beats": {
                   "type": "array",
-                  "description": "De una a tres partes. note: lo que se ve, en una línea corta y sin nombre; say: lo que dice; replies: dos o tres respuestas.",
+                  "description": "De una a tres partes. say: lo que dice (todo lo dice alguien: no hay narrador, D-J60); replies: dos o tres respuestas. note es de antes: no la escribas (sale en un aviso pequeño, fuera de la conversación).",
                   "items": {
                     "type": "object",
                     "properties": {
@@ -1855,7 +1855,7 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
                     },
                     "beats": {
                       "type": "array",
-                      "description": "De una a tres partes. note: lo que se ve, en una línea corta y sin nombre; say: lo que dice; replies: dos o tres respuestas.",
+                      "description": "De una a tres partes. say: lo que dice (todo lo dice alguien: no hay narrador, D-J60); replies: dos o tres respuestas. note es de antes: no la escribas (sale en un aviso pequeño, fuera de la conversación).",
                       "items": {
                         "type": "object",
                         "properties": {
@@ -2691,7 +2691,7 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
               },
               "scene": {
                 "type": "string",
-                "description": "Lo que pasa al abrirse, en dos a cuatro frases. Hace falta aunque traiga beats: es lo que lee el narrador."
+                "description": "Lo que pasa al abrirse, en dos a cuatro frases. Hace falta aunque traiga beats: es el resumen para el Diario y para el modelo, cuando se juega con conexión."
               },
               "beats": {
                 "type": "array",
@@ -2703,7 +2703,7 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
                   "properties": {
                     "who": {
                       "type": "string",
-                      "description": "Quién lo dice: alguien de npcs o de confidants, con su nombre exacto (sale su retrato y su placa). Casi todas las líneas llevan who: la historia se cuenta hablando (D-J54). Sin who, el narrador, sin retrato ni placa: solo una línea corta de ambiente o de paso del tiempo («Cae la noche sobre el puerto.»)."
+                      "description": "Quién lo dice: alguien de npcs o de confidants, con su nombre exacto (sale su retrato y su placa). Todas las líneas llevan who: la historia se cuenta hablando, y en el juego sin conexión no hay narrador (D-J54, D-J60). Una línea sin who no la dice nadie: sale en un aviso pequeño fuera de la caja. No la escribas: el sitio y la hora ya se ven en pantalla."
                     },
                     "mood": {
                       "type": "string",
@@ -2831,7 +2831,7 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
                     },
                     "options": {
                       "type": "array",
-                      "description": "Una decisión, tras esta línea: lo que puede decir o hacer quien juega. Como las opciones de una charla, pero sin next: la escena sigue. Los efectos sin who son con quien dice la línea; si la dice el narrador, attitude y bond llevan who.",
+                      "description": "Una decisión, tras esta línea: lo que puede decir o hacer quien juega. Como las opciones de una charla, pero sin next: la escena sigue. Los efectos sin who son con quien dice la línea; si la línea no tiene who, attitude y bond llevan who.",
                       "items": {
                         "type": "object",
                         "required": [
@@ -2970,7 +2970,7 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
               },
               "pov": {
                 "type": "string",
-                "description": "Punto de vista: quién cuenta esta escena, alguien de npcs o de confidants con su nombre exacto. Si el hito no trae beats, su scene sale en boca de esa persona, con su retrato; escríbela entonces como la diría ella. Sin pov, la cuenta el narrador (o el del capítulo, si lo tiene)."
+                "description": "Punto de vista: quién cuenta esta escena, alguien de npcs o de confidants con su nombre exacto. Si el hito no trae beats, su scene sale en boca de esa persona, con su retrato; escríbela entonces como la diría ella. Sin pov ni beats, en el juego sin conexión no la dice nadie (D-J60): sale en un aviso pequeño, fuera de la caja."
               },
               "backdrop": {
                 "type": "string",
@@ -3344,11 +3344,11 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
 20. En `dialogues`, el `speaker` de cada charla es alguien de `npcs` o de `confidants`, cada `next` lleva a un nudo que existe, y a todos los nudos se llega desde el de inicio. Un hito, un rumor o un objeto de una condición o de un efecto se nombra como está en el paquete (el hito y el rumor, por su id).
 21. En una charla, lo que depende de quién eres (`species`, `class`, `background`, `gender`) solo le sale a quien encaja, con su etiqueta delante: «[Enano] …». Cada tirada lleva `success` y `failure`; `partial` es opcional. Las líneas son de una a tres frases llanas, sin acertijos, con `{forma|forma}` donde se habla a quien juega.
 22. En `plot`, cada `opens.milestone`, `changes.open` y `changes.close` nombra un hito del hilo por su id, cada `asks.board` un tablero por su `name`, y cada `changes.ending` un final de `endings`. El primer hito se abre con `start`: es la mecha de la campaña.
-23. Los hitos importantes traen su escena en `beats`: de 3 a 8 líneas, cada una de alguien de `npcs` o `confidants` (sin `who`, del narrador), y una o dos decisiones que cambien algo: cómo os mira alguien, un rumor, un objeto o un hito. `scene` sigue haciendo falta: es lo que lee el narrador. `sceneDialogue` nombra una charla de `dialogues` por su id.
-24. Quien juega solo sabe el nombre de quien se ha presentado: hasta entonces, el juego le llama por su oficio («el posadero»). Que la gente diga su nombre al conocerse («Tomás. Llevo la posada.»), o que otro lo diga en voz alta. Antes de eso, ni una opción de quien juega ni el narrador le nombran: el narrador dice «el posadero». En las líneas, las opciones y las respuestas de las escenas y las charlas, `{npc:id}` sale como su nombre si ya se sabe y como «el posadero» si no. El título de un hito sale antes de su escena: no nombres en él a quien se presenta en ella.
+23. Los hitos importantes traen su escena en `beats`: de 3 a 8 líneas, cada una de alguien de `npcs` o `confidants` (siempre con `who`: no hay narrador, D-J60), y una o dos decisiones que cambien algo: cómo os mira alguien, un rumor, un objeto o un hito. `scene` sigue haciendo falta: es el resumen para el Diario y para el modelo, cuando se juega con conexión. `sceneDialogue` nombra una charla de `dialogues` por su id.
+24. Quien juega solo sabe el nombre de quien se ha presentado: hasta entonces, el juego le llama por su oficio («el posadero»). Que la gente diga su nombre al conocerse («Tomás. Llevo la posada.»), o que otro lo diga en voz alta. Antes de eso, ni una opción de quien juega ni nadie que no le conozca le nombran: se dice «el posadero». En las líneas, las opciones y las respuestas de las escenas y las charlas, `{npc:id}` sale como su nombre si ya se sabe y como «el posadero» si no. El título de un hito sale antes de su escena: no nombres en él a quien se presenta en ella.
 25. Cada final de `plot.endings` trae sus `epilogues`: qué fue de 3 a 5 personas o facciones que pesaron en la historia, una línea cada una. El `who` de cada uno es un nombre de `npcs`, `confidants` o `world.factions`, letra por letra.
 26. Donde se le habla a quien juega —la sinopsis, la `description` de un compañero y sus escenas, las del hilo y sus finales, los epílogos, las charlas, los rumores, las misiones y el `twist` de un encargo—, lo que concuerda con su género lleva sus dos formas entre llaves: «Eres {un mercenario|una mercenaria}»; al grupo, en plural: «estáis {hechos|hechas}». Solo dos formas: quien es no binario elige si el texto le habla en masculino o en femenino. En los demás campos (la gente, los objetos, el resto de un encargo), escribe sin nada que concuerde con quien juega. Nunca «cansado/a».
-27. La historia se cuenta con conversaciones (D-J54): en `beats`, en las charlas y en las escenas de un compañero, casi todas las líneas llevan `who` (alguien de `npcs` o `confidants`, que sale con su retrato y su placa) y su `mood`. Una línea sin `who` es del narrador, sin retrato: solo para una frase corta de ambiente o de paso del tiempo, y nunca dos seguidas.
+27. La historia se cuenta con conversaciones (D-J54, D-J60): en `beats`, en las charlas y en las escenas de un compañero, todas las líneas llevan `who` (alguien de `npcs` o `confidants`, que sale con su retrato y su placa) y su `mood`. En el juego sin conexión no hay narrador: ni saludo, ni resúmenes, ni líneas de ambiente. El sitio y la hora ya se ven en pantalla (el fondo y el reloj); lo que haga falta saber, que lo diga alguien que esté allí.
 28. Cada persona de `npcs` y de `confidants` trae su `aspecto`: edad, complexión, ropa y un rasgo que se vea, en una o dos frases. Con él se dibujan su retrato y sus tres caras (alegre, enfadado, triste).
 29. El `romance` y la `misionPersonal` de un compañero son opcionales. Un romance sale solo si trae sus tres citas (`cita` con `step` 1, 2 y 3) y la noche (`final`, con una respuesta `fade`). Una misión personal trae sus dos `endings`, y cada paso `final` nombra uno de ellos; desde `start` se llega a los dos.
 
@@ -3740,7 +3740,6 @@ que existe y desde `start` se llega a los dos finales.
       "where": "muelle",
       "beats": [
         {
-          "note": "Lía lanza piedras al agua desde el muelle, una detrás de otra.",
           "say": "Mi tío decía que cada roca de la punta tiene nombre. Me los sé todos.",
           "mood": "triste"
         },
@@ -3765,7 +3764,7 @@ que existe y desde `start` se llega a los dos finales.
   ],
   "romance": {
     "with": "todos",
-    "no": "Lía se ríe, pero con cariño. «Tú y yo somos de las que se cubren las espaldas. Con eso me basta.»",
+    "no": "Tú y yo somos de las que se cubren las espaldas. Con eso me basta.",
     "escenas": [
       {
         "kind": "cita",
@@ -3774,8 +3773,7 @@ que existe y desde `start` se llega a los dos finales.
         "where": "muelle",
         "beats": [
           {
-            "note": "Lía remienda una red sentada en el muelle, con los pies colgando sobre el agua.",
-            "say": "Si me ayudas con esto, te enseño el mejor sitio para ver entrar las barcas.",
+            "say": "Estoy remendando esta red. Si me ayudas, te enseño el mejor sitio para ver entrar las barcas.",
             "mood": "alegre",
             "replies": [
               {
@@ -3801,8 +3799,7 @@ que existe y desde `start` se llega a los dos finales.
         "where": "posada",
         "beats": [
           {
-            "note": "Llueve sobre Punta Gris. Lía te espera junto al fuego de la posada, con dos tazas.",
-            "say": "Mi tío decía que con tormenta solo salen los tontos y los enamorados. Él era de los tontos.",
+            "say": "Con esta lluvia, mejor junto al fuego: te he guardado una taza. Mi tío decía que con tormenta solo salen los tontos y los enamorados.",
             "replies": [
               {
                 "text": "Le preguntas de qué eres tú.",
@@ -3827,15 +3824,14 @@ que existe y desde `start` se llega a los dos finales.
         "where": "muelle",
         "beats": [
           {
-            "note": "Al atardecer, Lía te lleva a la roca más alta de la punta.",
-            "say": "Aquí no sube nadie más. Quería que lo vieras conmigo.",
+            "say": "Esta es la roca más alta de la punta. Aquí no sube nadie más. Quería que la vieras conmigo.",
             "mood": "alegre",
             "replies": [
               {
                 "text": "Le coges la mano.",
                 "bond": 1,
                 "romance": "avanza",
-                "then": "Lía no te la suelta en todo el atardecer.",
+                "then": "No pienso soltártela en todo el atardecer.",
                 "mood": "alegre"
               },
               {
@@ -3855,15 +3851,14 @@ que existe y desde `start` se llega a los dos finales.
         "where": "posada",
         "beats": [
           {
-            "note": "Ya es de noche. Desde la ventana se ve girar la luz del faro.",
-            "say": "Quédate esta noche.",
+            "say": "Mira por la ventana: ya gira la luz del faro. Quédate esta noche.",
             "mood": "alegre",
             "replies": [
               {
                 "text": "Te quedas.",
                 "bond": 1,
                 "romance": "avanza",
-                "then": "Lía apaga la vela.",
+                "then": "Ven. Apaga tú la vela.",
                 "fade": true
               },
               {
@@ -3878,8 +3873,8 @@ que existe y desde `start` se llega a los dos finales.
       {
         "kind": "pareja",
         "lines": [
-          "Lía te ha guardado el mejor sitio junto al fuego.",
-          "Lía lleva tu pañuelo atado a la muñeca."
+          "Te he guardado el mejor sitio junto al fuego.",
+          "Mira: llevo tu pañuelo atado a la muñeca."
         ]
       },
       {
@@ -3923,12 +3918,9 @@ que existe y desde `start` se llega a los dos finales.
         "backdrop": "muelle",
         "beats": [
           {
-            "text": "En la cala hay una barca recién pintada."
-          },
-          {
             "who": "Lía Remos",
             "mood": "enfadado",
-            "text": "Es la de mi tío. Le han tapado el nombre, pero la proa es la misma."
+            "text": "¿Ves esa barca recién pintada? Es la de mi tío. Le han tapado el nombre, pero la proa es la misma."
           },
           {
             "who": "Lía Remos",

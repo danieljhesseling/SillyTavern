@@ -11,6 +11,8 @@
  * Solo dibuja: lo que se pinta viene ya decidido en `buildTracker` (initiative-tracker.js).
  */
 
+import { tokenLabel } from './token-label.js';
+
 /**
  * @typedef {import('../../combat/initiative-tracker.js').TrackerEntry} TrackerEntry
  */
@@ -92,6 +94,8 @@ export function buildInitiative({
 
     const list = el('div', 'wm-init-list');
     const byId = new Map((Array.isArray(controls) ? controls : []).map(choice => [String(choice.id), choice]));
+    // Tanda 17: en el teléfono, la fila de caras lleva el nombre corto («Ratero»; `token-label.js`).
+    const names = (tracker?.entries ?? []).map(entry => String(entry.name ?? ''));
     for (const entry of tracker?.entries ?? []) {
         const row = el('div', 'wm-init-row');
         row.classList.toggle('current', Boolean(entry.isCurrent));
@@ -128,7 +132,9 @@ export function buildInitiative({
 
         const body = el('div', 'wm-init-body');
         const nameLine = el('div', 'wm-init-name-line');
-        nameLine.appendChild(el('span', 'wm-init-name', entry.name));
+        const nameNode = el('span', 'wm-init-name', entry.name);
+        nameNode.dataset.label = tokenLabel(String(entry.name ?? ''), names);
+        nameLine.appendChild(nameNode);
         if (youId && String(entry.id) === String(youId)) nameLine.appendChild(el('span', 'vtt-init-you', '(tú)'));
         for (const status of entry.statuses ?? []) {
             const mark = el('i', `wm-init-status fa-solid ${String(status.icon || 'fa-circle-exclamation')}`);
@@ -176,6 +182,9 @@ export function buildInitiative({
         list.appendChild(row);
     }
     panel.appendChild(list);
+    // Tanda 17: la fila de quien tiene el turno, a la vista dentro de la lista. En el teléfono la
+    // lista es una fila de caras que se desliza, y con muchos la de ahora se quedaba fuera.
+    if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => revealCurrent(list));
 
     // Quien no tiene fila (todavía no ha entrado en la iniciativa) lleva su botón debajo.
     if (byId.size > 0) {
@@ -200,6 +209,22 @@ export function buildInitiative({
         panel.appendChild(box);
     }
     return panel;
+}
+
+/**
+ * Tanda 17: desliza la lista (no la página) lo justo para que se vea la fila de quien tiene el turno.
+ *
+ * @param {HTMLElement} list
+ */
+export function revealCurrent(list) {
+    const row = list?.isConnected ? list.querySelector('.wm-init-row.current') : null;
+    if (!row) return;
+    const box = list.getBoundingClientRect();
+    const at = row.getBoundingClientRect();
+    if (at.left < box.left) list.scrollLeft -= box.left - at.left + 6;
+    else if (at.right > box.right) list.scrollLeft += at.right - box.right + 6;
+    if (at.top < box.top) list.scrollTop -= box.top - at.top + 4;
+    else if (at.bottom > box.bottom) list.scrollTop += at.bottom - box.bottom + 4;
 }
 
 /**

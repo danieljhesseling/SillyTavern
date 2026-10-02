@@ -23,6 +23,7 @@
 import { getCurrentWorldEnemies } from '../world-info.js';
 import { tokenArt } from '../world-map-renderer.js';
 import { avoidFor } from '../game-engine/combat/avoid-fight.js';
+import { fightWait } from '../game-engine/combat/party-fallen.js';
 import { fightOpening, startCells, defaultPlacement, placeMember, placementHint } from '../game-engine/combat/placement.js';
 import { mountPlacementBar } from '../game-engine/ui/combat-vtt/placement-bar.js';
 import { isPlainFace } from '../game-engine/ui/pixel-art.js';
@@ -69,6 +70,12 @@ let scheduled = false;
 
 /** Para las pruebas: cuántas veces se ha abierto la pelea sola. */
 let opened = 0;
+
+/**
+ * Si se ha esperado a que alguien entre en el grupo (la partida recién creada): entonces se da
+ * un respiro antes de abrir la pelea, para que salga antes la escena que la empieza.
+ */
+let waitedForParty = false;
 
 /**
  * Si el tablero se ve ahora: en el Modo Juego, su escena; fuera, su panel.
@@ -123,6 +130,16 @@ async function openFightIfNoticed() {
     if (!boardInSight()) return;
     if (somethingInFront()) {
         setTimeout(() => noticeBoardFight(), 900);
+        return;
+    }
+    // J9.1: una partida nueva desde el menú abre su tablero de salida antes de crear al héroe
+    // (1387: el cuarto de la posada, con Torres a la vista). Con el grupo aún vacío, la decisión
+    // salía ya, con todas las salidas cerradas («No queda nadie en pie para intentarlo») y antes
+    // que la escena del cáliz. Se espera a que haya alguien, y luego un respiro para su escena.
+    const wait = fightWait(partyMembers.length, waitedForParty);
+    waitedForParty = wait.waited;
+    if (wait.delay > 0) {
+        setTimeout(() => noticeBoardFight(), wait.delay);
         return;
     }
     const board = getActiveBoardContext().board;
@@ -388,6 +405,12 @@ function moveTo(id, x, y) {
  */
 export function confirmPlacement() {
     if (!pending) return;
+    // J9.1: lo colocado en un tablero del que ya se ha salido no empieza una pelea aquí fuera.
+    if (pending.board !== currentBoardName || pending.location !== currentLocationName) {
+        dropPlacement();
+        if (isShellOpen()) refreshGameShell();
+        return;
+    }
     const done = pending;
     dropPlacement({ started: true });
     savePartyState();

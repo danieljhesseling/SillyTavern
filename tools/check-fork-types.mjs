@@ -77,6 +77,8 @@ const FORK_FILES = [
     'public/scripts/game-engine/campaign/face-choice.js',
     'public/scripts/game-engine/ui/face-picker.js',
     'public/scripts/game-engine/ui/vn-question.js',
+    // D-J60: lo que no dice nadie, en un aviso fuera de la caja de la novela.
+    'public/scripts/game-engine/ui/vn-aside.js',
     'public/scripts/game-engine/rules/field-magic.js',
     'public/scripts/game-engine/ui/field-magic-panel.js',
     'public/scripts/game-engine/rules/injuries.js',
@@ -107,6 +109,11 @@ const FORK_FILES = [
     'public/scripts/game-engine/campaign/check-requests.js',
     'public/scripts/game-engine/campaign/backgrounds.js',
     'public/scripts/game-engine/campaign/guion-errors.js',
+    // J5.9: el taller de campañas (el conversor de guiones en el motor, la simulación rápida y la ventana).
+    'public/scripts/game-engine/campaign/guion-pack.js',
+    'public/scripts/game-engine/campaign/guion-workshop.js',
+    'public/scripts/game-engine/combat/quick-sim.js',
+    'public/scripts/game-engine/ui/campaign-workshop.js',
     'public/scripts/game-engine/ui/shell/notices.js',
     'public/scripts/game-engine/ui/shell/chat-switch.js',
     'public/scripts/game-engine/combat/crits.js',
@@ -256,6 +263,13 @@ const FORK_FILES = [
     'public/scripts/game-engine/ui/combat-vtt/edge-markers.js',
     'public/scripts/game-engine/ui/combat-vtt/initiative.js',
     'public/scripts/game-engine/ui/combat-vtt/summary.js',
+    // Tanda 17: el tablero se mueve y se lee.
+    'public/scripts/game-engine/ui/combat-vtt/token-slide.js',
+    'public/scripts/game-engine/ui/combat-vtt/token-label.js',
+    'public/scripts/game-engine/ui/combat-vtt/turn-banner.js',
+    // Tanda 17: que el combate se sienta: la secuencia de cada golpe y el d20 que rueda.
+    'public/scripts/game-engine/ui/combat-vtt/fx.js',
+    'public/scripts/game-engine/ui/combat-vtt/dice.js',
     // J12.7: las peleas de taberna y los duelos, sin muertes, y su cartel.
     'public/scripts/game-engine/combat/brawl.js',
     'public/scripts/game-engine/campaign/tavern-brawl.js',
@@ -410,6 +424,9 @@ const FORK_FILES = [
     // Tanda 8: el calabozo (D-J47) y lo que le queda a un tablero (D-J45 afinado).
     'public/scripts/game-engine/campaign/jail.js',
     'public/scripts/game-engine/board/leftovers.js',
+    // J5.7 y J5.8: el guion de una campaña en Word, de ida y vuelta.
+    'public/scripts/game-engine/campaign/script-doc.js',
+    'public/scripts/game-engine/campaign/script-docx.js',
     // J15.1: party.js es una fachada; lo suyo vive en party/, un módulo por cosa.
     ...readdirSync(PARTY_DIR).filter(f => f.endsWith('.js')).sort().map(f => `public/scripts/party/${f}`),
     'public/scripts/dnd-system.js',
