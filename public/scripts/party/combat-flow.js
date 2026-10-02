@@ -1535,7 +1535,7 @@ function tendTheFallen() {
     const fallen = partyMembers.filter(m => needsStabilizing(m)
         && (!m.mapPosition?.locationName || m.mapPosition.locationName === currentLocationName));
     for (const target of fallen) {
-        const helper = bestTender(partyMembers.filter(m => m !== target && !m.summon), m => skillModifier(m, 'medicine').modifier);
+        const helper = bestTender(partyMembers.filter(m => m !== target && !(/** @type {any} */ (m)).summon), m => skillModifier(m, 'medicine').modifier);
         if (helper) {
             const tended = tendFallen({
                 helper: String(helper.name), target: String(target.name),
@@ -1560,8 +1560,8 @@ function tendTheFallen() {
         }
     }
     // Estable y sin nadie más en pie: al rato vuelve en sí, con 1 PG.
-    if (!partyMembers.some(m => !m.dead && !m.summon && (Number(m.hp) || 0) > 0)) {
-        for (const member of partyMembers.filter(m => !m.dead && !m.summon && (Number(m.hp) || 0) <= 0 && m.deathSaves?.stable)) {
+    if (!partyMembers.some(m => !m.dead && !(/** @type {any} */ (m)).summon && (Number(m.hp) || 0) > 0)) {
+        for (const member of partyMembers.filter(m => !m.dead && !(/** @type {any} */ (m)).summon && (Number(m.hp) || 0) <= 0 && m.deathSaves?.stable)) {
             member.hp = 1;
             member.deathSaves = clearDeathSaves();
             member.activeConditions = (Array.isArray(member.activeConditions) ? member.activeConditions : [])
