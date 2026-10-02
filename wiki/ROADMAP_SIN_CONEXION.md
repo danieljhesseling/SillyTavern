@@ -89,6 +89,22 @@ Todo lo contado está en commits (el último, 4f973fa88).
 - **Strahd de punta a punta (M4):** 27 de 33 pasos.
 - **Historias en tres actos (J10.7):** se termina y se guarda para el modo mundo semiabierto (D-J55).
 
+**Cómo se quedó (2026-10-02, 11:35, cerca del límite de uso).** El código nuevo está en el árbol, sin commit (el último commit de código es 4f973fa88). Cada frente apunta su avance en su `progreso.md`.
+- **Terminados, por guardar en un commit:**
+  - Strahd de punta a punta: se juega entero; solo queda decidir la cripta, abajo;
+  - el arte del tablero: agua honda y somera, el muelle, la playa, muros, puertas, fuego, trampas, marcos de ficha, casillas de salida y los enemigos que salían con ☠; faltan los puentes y los acantilados.
+- **A punto:**
+  - la barra de acciones de 2024, con lanzar a más nivel (J19.3);
+  - el lienzo y la cámara, en su última batería de pruebas.
+- **El revisor del tablero:** 126 criterios bien y 5 mal, en `vtt-criterios.md`, en la carpeta de trabajo. Al volver, una pasada corta arregla esos 5.
+- **Empezados:**
+  - la IA con las reglas de 2024;
+  - historias en tres actos (15 de 21), que van al modo mundo semiabierto.
+- **Decisión pendiente, la cripta de Strahd:** con dados de verdad, un grupo de nivel 5 con dos mercenarios la pierde en 8 rondas. Opciones:
+  - (a) dejarla así de dura, para usar las estacas, el agua bendita y la Espada del Sol;
+  - (b) bajar a Strahd a unos 70 PG o quitar el engendro;
+  - (c) marcar la cripta para nivel 6-7, y el motor la afloja sola a nivel 5. Es la que recomiendo.
+
 **En pausa, con su avance guardado en su `progreso.md`**, para retomarlos en grupos pequeños:
 La prioridad es que el prólogo, el gremio, 1387 y Strahd se jueguen enteros y bien (D-J55):
 1. **1387 de punta a punta y las vueltas automáticas** que lo comprueban (J9.1, J16).
