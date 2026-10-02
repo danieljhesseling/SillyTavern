@@ -7,7 +7,7 @@ created: 2026-10-02
 # 🎲 Lo que el juego podría hacer solo
 
 > **Qué es esto:** lo que hoy hay que escribir a mano en el juego (diálogos, misiones, romances, escenas), o que el jugador hace a mano y le aburre, y que el motor podría hacer solo con código y tablas, sin IA.
-> **Cuándo:** al terminar el [[ROADMAP_SIN_CONEXION]], cuando allí solo quede lo aparcado.
+> **Cuándo:** con el **modo mundo semiabierto**, más adelante. La beta sin conexión se centra antes en que las campañas que ya existen (el prólogo y el gremio, 1387 y Strahd) se jueguen bien (D-J55 de [[ROADMAP_SIN_CONEXION]]). La fase G5, la que hace lo aburrido por el jugador, también sirve para esas campañas y se puede adelantar.
 > **Por qué:** cada campaña escrita a mano tiene un final. Un motor que genera gente que habla, misiones con sentido y un mundo que se mueve solo da partidas que no se acaban, y tu Gem solo tiene que escribir lo importante.
 > **Regla:** todo lo que se genere se cuenta como conversaciones de novela visual entre la gente, con sus retratos, como en *Etrian Odyssey* (D-J54). El narrador casi no habla.
 

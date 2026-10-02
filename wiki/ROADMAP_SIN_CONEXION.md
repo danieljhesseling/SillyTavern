@@ -43,9 +43,9 @@ author: DanielJHesseling / Claude Opus 5.5
 
 ## 📍 Cómo va (2026-10-02)
 
-**Avance, sobre 149 filas activas** (sin lo aparcado ni las decisiones):
+**Avance, sobre 148 filas activas** (sin lo aparcado ni las decisiones; J10.7 queda aparcada por D-J55):
 - **87 % jugable** (129 filas).
-- **91 % construido** (136 filas).
+- **92 % construido** (136 filas).
 
 Esto cuenta como hecho lo que está terminado y probado aunque aún no tenga commit: la partida es el gremio (J4.2), trabajos y ratos libres (J14.11) y las campañas del Gem (J5.2 a J5.6 y J12.5). Contando solo lo que tiene commit, es un 82 %.
 
@@ -55,7 +55,7 @@ Esto cuenta como hecho lo que está terminado y probado aunque aún no tenga com
 | M2 · El gremio y la primera campaña | 100 % | 100 % |
 | M3 · El pueblo y su gente | 100 % | 100 % |
 | M4 · Strahd con mapas y magia | 96 % | 100 % |
-| M5 · Una campaña bien contada | 81 % | 91 % |
+| M5 · Una campaña bien contada | 84 % | 94 % |
 | M6 · Los compañeros a fondo | 80 % | 100 % |
 | M7 · En el móvil | 78 % | 100 % |
 
@@ -63,7 +63,7 @@ Esto cuenta como hecho lo que está terminado y probado aunque aún no tenga com
 - solo sabes el nombre de quien se ha presentado, y el narrador sin placa (J13.7);
 - textos y reacciones más humanos (J13.8), que además arregla las dos pruebas del prólogo;
 - Strahd de punta a punta (M4);
-- historias en tres actos para las campañas sin hilo escrito (J10.7);
+- historias en tres actos para las campañas sin hilo escrito (J10.7): ya casi estaba; se termina y se guarda para el modo mundo semiabierto (D-J55);
 - el contenido que falta: salidas habladas, cosas que mirar y trampas;
 - el calabozo (D-J47), con «Continuar» de vuelta al sitio cuando el tablero está vacío;
 - la pelea que empieza sola y el movimiento (J12.16, J12.17): el mar no se cruza, el camino va recto y las diagonales cuestan 5, 10, 5.
@@ -71,21 +71,23 @@ Esto cuenta como hecho lo que está terminado y probado aunque aún no tenga com
 Después: revisar que lo escrito vaya en conversaciones y no en el narrador (D-J54), hacer el commit y recontar.
 
 **En pausa, con su avance guardado en su `progreso.md`**, para retomarlos en grupos pequeños:
+La prioridad es que el prólogo, el gremio, 1387 y Strahd se jueguen enteros y bien (D-J55):
 1. **El tablero nuevo:**
    - el lienzo y la cámara (J12.14);
    - la barra de acciones de 2024 (J12.15), que llevaba 5 de 14 pasos.
-2. **El romance (J14.10):** 24 de 36.
-3. **El teclado (J15.5):** 21 de 37.
-4. **Las notas del juego (J13.1, J18.10):** con D-J54 las dirá la gente en vez del narrador.
-5. **Peleas de taberna y duelos (J12.7).**
-6. **1387 de punta a punta y las vueltas automáticas (J9.1, J16).**
-7. **El arte nuevo.**
-8. **Más adelante:**
+2. **1387 de punta a punta y las vueltas automáticas** que lo comprueban (J9.1, J16).
+3. **Las notas del juego (J13.1, J18.10):** con D-J54 las dirá la gente en vez del narrador.
+4. **El teclado (J15.5):** 21 de 37.
+5. **Lo que da forma a la vida en el pueblo y el gremio:**
+   - el romance (J14.10), con 24 de 36;
+   - peleas de taberna y duelos (J12.7).
+6. **El arte que falta** en las dos campañas.
+7. **Más adelante:**
    - el móvil ligero y su guía (J20.6, J20.8), que esperan al tablero nuevo;
    - lanzar a más nivel (J19.3);
    - el APK.
 
-**Cuando esto termine:** [[ROADMAP_AUTOMATIZAR]] reúne lo que el juego podría hacer solo, sin IA:
+**Para el modo mundo semiabierto, más adelante (D-J55):** [[ROADMAP_AUTOMATIZAR]] reúne lo que el juego podría hacer solo, sin IA:
 - la gente habla sola con conversaciones de novela visual;
 - misiones personales y romances para cualquier compañero;
 - un mundo que se mueve y te llega como noticias;
@@ -303,6 +305,7 @@ Tus respuestas a D-J11…D-J38. «⏳» significa que está por hacer.
 | **D-J52** | Tu cara sin arte | Se puede elegir: iniciales con un color, un icono o un emoji | ⏳ |
 | **D-J53** | Curar con magia al llegar de un viaje | El viaje pregunta si curas a quien está herido | ⏳ |
 | **D-J54** | ¿Cuánto habla el narrador? | Casi nada. La historia se cuenta con conversaciones de novela visual entre la gente, con sus retratos, como en *Etrian Odyssey*. El narrador queda para una línea corta de ambiente o de paso del tiempo, y sin placa. Vale para las escenas, los sucesos, el calabozo y los hilos de las campañas sin historia escrita (J10.7) | ⏳ |
+| **D-J55** | ¿En qué se centra la beta sin conexión? | En que se jueguen bien las campañas que ya existen (el prólogo y el gremio, 1387 y Strahd) y en dar forma a lo que hay. Las semillas, las campañas generadas y lo que el juego podría hacer solo quedan para el modo mundo semiabierto, más adelante | ✅ |
 
 ---
 
@@ -567,7 +570,7 @@ Así no hay que reescribir el motor para el servidor. El riesgo: si el anfitrió
 | J10.4 | **Secretos**: sitios y cosas escondidas que se descubren por un rumor, un mapa, una tirada o una persona | A | M | Tres secretos en 1387 |
 | J10.5 | **El mapa de la campaña, dibujado**: sitios y caminos con CSS (sin arte), con lo visitado y tus notas | A | M | Captura para el Gem de UX |
 | J10.6 | **Gente con horario** (T9): cada persona, en un sitio según la hora | A | M | Pruebas |
-| J10.7 | **Hilos con fondo para campañas sin escribir** (Z5): una gramática de actos para las campañas que generes con la semilla | A | L | Una campaña generada tiene tres actos que se juegan |
+| J10.7 | **Hilos con fondo para campañas sin escribir** ⏸️ *Aparcada para el modo mundo semiabierto (D-J55).* (Z5): una gramática de actos para las campañas que generes con la semilla | A | L | Una campaña generada tiene tres actos que se juegan |
 
 **Hecho cuando** dentro de 1387 hay al menos tres razones distintas para ir a cada sitio.
 
