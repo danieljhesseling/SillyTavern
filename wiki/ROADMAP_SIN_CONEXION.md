@@ -89,7 +89,7 @@ Todo lo contado está en commits (el último, 62b4e7ec4).
   - las reglas D-J54 (conversaciones), D-J56, D-J58, D-J46 y J13.7, con ejemplos;
   - instrucciones compactas para el Gem, más un anexo de consulta;
   - el guionista, reescrito;
-  - una guía nueva, , con el proceso paso a paso.
+  - una guía nueva, `GEM_COMO_HACER_CAMPANA.md`, con el proceso paso a paso.
 
 **En pausa, con su avance guardado en su `progreso.md`**, para retomarlos en grupos pequeños:
 La prioridad es que el prólogo, el gremio, 1387 y Strahd se jueguen enteros y bien (D-J55):
