@@ -81,6 +81,19 @@ Todo lo contado está en commits (el último, 2407cc696).
 - **La cabecera:** «Otoño · faltan 56 días para el invierno».
 - **Las pruebas** ya no abren pestañas, y la batería no pasa la vuelta larga antigua.
 
+**Cómo iba a las 16:00, cerca del límite de uso** (aproximado; todo en el árbol, sin commit, y cada frente con su `progreso.md`):
+- **Terminados:** el romance (J14.10), el móvil ligero y su guía (J20.6, J20.8).
+- **A punto:**
+  - los arreglos del combate, ~80 %;
+  - el arte de puentes y acantilados, ~85 %.
+- **A medias:**
+  - las peleas de taberna y duelos, ~70 %;
+  - las notas dichas por la gente, ~60 %;
+  - el teclado, ~55 %;
+  - las vueltas automáticas, ~50 %;
+  - los arreglos del tablero, ~40 %;
+  - 1387 de punta a punta, ~35 %.
+
 **En marcha ahora (2026-10-02, tarde): diez agentes.** Es todo lo que queda del roadmap:
 - 1387 de punta a punta y las vueltas automáticas, con un bot para cualquier campaña (J9.1, J16);
 - las notas del juego dichas por la gente (J13.1, J18.10, D-J54);
