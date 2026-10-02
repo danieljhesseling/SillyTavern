@@ -43,7 +43,7 @@ author: DanielJHesseling / Claude Opus 5.5
 
 ## 📍 Cómo va (2026-10-02)
 
-**Avance, sobre 155 filas activas** (sin lo aparcado ni las decisiones):
+**Avance, sobre 158 filas activas** (sin lo aparcado ni las decisiones):
 - **93 % jugable** (143 filas).
 - **97 % construido** (148 filas).
 
@@ -511,6 +511,8 @@ Tus respuestas a D-J11…D-J38. «⏳» significa que está por hacer.
 | J5.7 | **Exportar el guion a Word** (lo pediste el 2026-10-02): todo el texto de una campaña como un guion de lectura, ordenado por capítulos, hitos y escenas. Cada línea lleva quién la dice, su gesto y el texto («**Posadero** *(enfadado)*: ¡Al ladrón!»), con las opciones, los diálogos, las salidas habladas, lo que se mira y los romances. Cada línea lleva una marca pequeña en gris para poder volver | A | M | El guion de 1387 en Word, leído de un tirón |
 | J5.8 | **Importar el guion corregido**: el motor cambia solo los textos tocados (en Strahd, en sus fuentes) y avisa de lo que no encuentra y de las marcas de género rotas. Las líneas nuevas quedan como notas para el Gem guionista. Más adelante, botones en el gremio | A | M | Cambiar tres líneas en Word, importarlo y verlas en el juego |
 | J5.9 | **El taller de campañas, dentro del juego y sin IA** (lo pediste el 2026-10-02). En el gremio, junto a «Añadir una campaña»:<br>• subir el guion tal cual (las rondas en Markdown del Gem guionista, el Word o el JSON), que se convierte en el navegador con el mismo código de `guion-a-paquete`, con los errores en castellano y su línea;<br>• el informe, con «Copiar la lista para tu Gem»;<br>• rellenar los huecos;<br>• una simulación rápida de cada pelea que dice si es fácil o difícil;<br>• exportar e importar el guion en Word con dos botones;<br>• el editor de mapas en imagen.<br>Escribir el contenido a partir de un libro sigue siendo cosa del Gem o tuya; lo demás lo hace el juego | A | L | Subir las rondas de 1387 desde el gremio y jugarla, sin consola ni chat |
+| J5.10 | **El taller guarda tus correcciones como una ronda del guion**: lo que corriges en Word desde el taller sale también como una ronda `.md`, para guardarla con las del Gem guionista, que siguen siendo la fuente completa | A | S | Corregir tres líneas en el taller y ver la ronda nueva |
+| J5.11 | **El aspecto de la gente de 1387, del gremio y de Strahd**, escrito mirando sus retratos de ahora, sin gastar créditos. Sirve para que el Gem describa bien a quien se añada y para la lista de arte de `PIXELLAB_PENDIENTE.md` | A | S | `retratos-pendientes.mjs` sin nadie «sin aspecto» en las tres |
 
 **Hecho cuando** me pasas un JSON, lo conviertes con un comando (o lo subes al gremio) y la campaña aparece en el tablón y se juega.
 
@@ -715,6 +717,7 @@ Así no hay que reescribir el motor para el servidor. El riesgo: si el anfitrió
 | J13.6 | **Guía de estilo**: texto que se entiende a la primera, sin acertijos y sin adornos que no dicen nada. Para el Gem y para mí | A | S | La guía, en [[GEM_GUIONISTA]] |
 | J13.7 | **Solo sabes el nombre de quien se ha presentado** (lo pediste el 2026-09-30: al principio le contestabas al posadero por su nombre sin que se hubiera presentado). Hasta que alguien dice su nombre, o te lo dice otro, sale por su oficio: «el posadero», «la maestra del gremio». Eso vale en la placa de la novela, en las fichas, en el pueblo y en el Diario. Las opciones escritas no nombran a quien aún no conoces | A | M | e2e en el prólogo: antes de presentarse, la placa dice «Posadero» y ninguna opción le nombra; después, «Tomás» |
 | J13.8 | **Textos y reacciones más humanos** (lo pediste el 2026-09-30). Cada persona suena a sí misma, según su «voz» del paquete. Reacciona a lo que acabas de decir o hacer, y a quién eres. Te saluda distinto si es la primera vez o si ya te conoce. Nada de frases de formulario. Los criterios quedan en [[GEM_GUIONISTA]] para las campañas nuevas | A | M | Una vuelta por el prólogo y una quedada, con diez ejemplos de antes y después |
+| J13.9 | **Lo que se cuenta, dicho por la gente** (D-J60, 2026-10-02). Lo hace un compañero, la persona con la que estás o tú, o si no, se quita:<br>• las ~200 líneas que aún cuentan lo que pasa en las quedadas (152), las noches (33) y los romances (11);<br>• las escenas de solo texto de los confidentes de 1387 y Strahd.<br>Sin conexión también se quitan los avisos del narrador del motor (el viaje, la llegada, el descanso), porque el aviso del viaje y el reloj ya lo dicen. La tarjeta «Anteriormente» al volver a una campaña pasa a ser una frase de un compañero | A | M | El guion en Word de cada campaña sin ninguna línea «Narrador» en rojo |
 
 **Hecho cuando** una hora de juego sin conexión no enseña ni una línea en crudo, ni una frase repetida, ni una orden al narrador.
 
