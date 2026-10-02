@@ -71,12 +71,15 @@ export function variant(options, key) {
     return options[hash % options.length];
 }
 
-/** «Irene, Gerd y Nella». */
+/** «Irene, Gerd y Nella»; delante de «i» o «hi», «e»: «Gerd e Irene». */
 /** @param {string[]} names @returns {string} */
 export function listWords(names) {
     const list = (names ?? []).map(text).filter(Boolean);
     if (list.length <= 1) return list[0] ?? '';
-    return `${list.slice(0, -1).join(', ')} y ${list[list.length - 1]}`;
+    const last = list[list.length - 1];
+    // «y hielo» se queda: la «hi» de delante de vocal suena a «y».
+    const and = /^h?[iíIÍ](?![aeouáéóú])/u.test(last) ? 'e' : 'y';
+    return `${list.slice(0, -1).join(', ')} ${and} ${last}`;
 }
 
 /** @param {string} line @returns {string} */
@@ -298,7 +301,8 @@ export function mealProse(cost, key = '') {
     return variant([
         `Os sirven un guiso caliente y pan del día${paid ? `, por ${paid}` : ''}. Se os pasan el hambre y la sed.`,
         `Comida caliente para todos${paid ? ` por ${paid}` : ''}: sopa, pan y algo de beber.`,
-        `Coméis y bebéis sentados a una mesa de verdad${paid ? `. Cuesta ${paid}` : ''}.`,
+        // Sin «sentados»: la nota se cuenta después de poner el género, y no sabe quién come.
+        `Coméis y bebéis a una mesa de verdad, con mantel y todo${paid ? `. Cuesta ${paid}` : ''}.`,
     ], `${key}:${cost}`);
 }
 
@@ -460,7 +464,8 @@ export function duelProse({ who = '', npc, what = '', outcome }) {
  * @returns {string}
  */
 export function hintProse(hint, key = '') {
-    const said = sentence(hint);
+    // Entre comillas: es lo que dice esa persona, con su mayúscula y su punto.
+    const said = `«${sentence(hint).replace(/^«|»$/gu, '')}»`;
     return variant([
         `Alguien del lugar os lo comenta de pasada: ${said}`,
         `Una mujer que pasa a vuestro lado os lo dice sin que preguntéis: ${said}`,

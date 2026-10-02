@@ -27,6 +27,7 @@ import {
 import { autostartGameShell } from './shell.js';
 import { registerPartyCommands } from './commands.js';
 import { registerChatEvents, registerModelTools } from './events.js';
+import { registerKnownPeople } from './known-people.js';
 
 /**
  * La función que cambia de pestaña en el panel de la derecha, una vez montado el panel.
@@ -79,6 +80,8 @@ export function setPartyTab(tab) {
 export function initPartyPanel() {
     // Desde aquí el panel existe: `partyTabSetter` ya puede cambiar de pestaña.
     partyTabSetter = setPartyTab;
+    // J13.7: las ventanas preguntan aquí cómo se llama a cada uno (solo a quien se ha presentado).
+    registerKnownPeople();
 
     // The campaign tab is created from here, not from index.html: that file is
     // upstream's, and every line the fork adds to it is paid for at every merge.

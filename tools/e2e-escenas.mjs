@@ -219,7 +219,7 @@ try {
     seen = await readScene(page);
     const game = await page.evaluate(() => window.game);
     check('Elegir con el 1: lo que dijiste, y Tomás os mira mejor', seen.lines.some(l => /qd-you/.test(l.cls) && /Yo me encargo/.test(l.text))
-        && seen.lines.some(l => /Tomás os mira mejor/.test(l.text)) && game.attitudes?.values?.['Tomás'] === 1, `${JSON.stringify(seen.lines)} ${JSON.stringify(game.attitudes)}`);
+        && seen.lines.some(l => /Tomás (os mira mejor|le ha gustado eso|te mira con otros ojos|le ha caído bien)/.test(l.text)) && game.attitudes?.values?.['Tomás'] === 1, `${JSON.stringify(seen.lines)} ${JSON.stringify(game.attitudes)}`);
     check('Y contesta alegre, con otra cara', seen.mood === 'alegre' && /tomas--alegre/.test(seen.portrait) && seen.lines.some(l => /dioses te lo paguen/.test(l.text)), seen.portrait);
     await shoot(page, 'Tomás, alegre');
 
@@ -269,7 +269,7 @@ try {
     await page.waitForTimeout(250);
     seen = await readScene(page);
     check('Llamar: Giles os mira mejor y contesta, en masculino', seen.plate === 'Giles' && seen.loaded && /el-tabernero-giles/.test(seen.portrait)
-        && seen.lines.some(l => /Un asesino con modales/.test(l.text)) && seen.lines.some(l => /Giles os mira mejor/.test(l.text)), JSON.stringify(seen.lines));
+        && seen.lines.some(l => /Un asesino con modales/.test(l.text)) && seen.lines.some(l => /Giles (os mira mejor|le ha gustado eso|te mira con otros ojos|le ha caído bien)/.test(l.text)), JSON.stringify(seen.lines));
     check('La última ficha lleva a la charla', /Hablar con Giles/.test(seen.next), seen.next);
     await shoot(page, 'Giles, antes de la charla');
     await page.locator('.ps-dialog .ps-finish').click();

@@ -1,7 +1,20 @@
 import { describe, test, expect } from '@jest/globals';
 import {
-    parseHitDie, getHitDice, planShortRest, planLongRest, describeRest, DEFAULT_HIT_DIE,
+    parseHitDie, getHitDice, planShortRest, planLongRest, describeRest, DEFAULT_HIT_DIE, conditionsAfterRest,
 } from '../public/scripts/game-engine/rules/rest.js';
+
+describe('M4: quien cayó y se levanta al descansar', () => {
+    test('ya no está inconsciente: en la revancha juega sus turnos', () => {
+        const fallen = { id: 1, name: 'Tessa', hp: 0, maxHp: 34, activeConditions: ['Unconscious', 'Poisoned'] };
+        const [entry] = planLongRest({ party: [fallen] }).entries;
+        expect(conditionsAfterRest({ ...fallen, hp: entry.hpAfter })).toEqual(['Poisoned']);
+    });
+
+    test('a 0 PG sigue como estaba, y sin estados no pasa nada', () => {
+        expect(conditionsAfterRest({ hp: 0, activeConditions: ['Unconscious'] })).toEqual(['Unconscious']);
+        expect(conditionsAfterRest({ hp: 5 })).toEqual([]);
+    });
+});
 
 const hurt = (over = {}) => ({
     id: 1, name: 'Lyra', hp: 4, maxHp: 20, level: 3, constitution: 14, class: 'guerrero', ...over,

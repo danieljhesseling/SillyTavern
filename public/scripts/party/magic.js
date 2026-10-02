@@ -75,6 +75,7 @@ import { noteDeed, worldWrite } from './world-growth.js';
 import { postCombatNarration, postForModel, showTip, narratorMode } from './narration.js';
 import { savePartyState, renderPartyMembers } from './roster.js';
 import { judgeDecision, recordFeat } from './companions.js';
+import { brawlRefused } from './brawl.js';
 
 /**
  * R4: usar un pergamino o una varita: el conjuro sale del objeto, sin gastar cargas del
@@ -100,6 +101,8 @@ export function useMagicItem(itemId, targetId) {
             attackBonus: spec.attackBonus || 5,
         })])[0] : null;
     if (!item || !ability || !hasAction(combatEncounter, 'action')) return '';
+    // J12.7: en una pelea sin muertes, la magia que hiere no vale.
+    if (brawlRefused(ability)) return '';
     if (!itemWorks(item)) {
         toastr.warning(`${item.name} pide sintonía: sintonízate en la ficha, fuera de combate.`, 'Sintonía');
         return '';
@@ -1403,6 +1406,8 @@ export function useAbility(member, ability, target) {
     // aunque el botón lo haya buscado en el catálogo de serie.
     // Y un id que el grimorio también tiene (Curar heridas) es el suyo de 5e, no el de círculos.
     if (castsLikeFifth(member)) ability = knownAbilitiesOf(member).find(a => a.id === ability.id) ?? ability;
+    // J12.7: en una pelea sin muertes, la magia que hiere no vale.
+    if (brawlRefused(ability)) return '';
 
     const isSelf = ability.target === 'self';
     const subject = isSelf ? member : target;

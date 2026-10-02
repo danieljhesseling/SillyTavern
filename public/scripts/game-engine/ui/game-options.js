@@ -9,6 +9,9 @@
  * Aquí se dibuja y se guarda el texto; lo demás lo decide quien abre la ventana.
  */
 
+import { cycleMotion, motionOptionRow } from './motion.js';
+import { toggleRomance, withRomanceRow } from './romance-option.js';
+
 export const TEXT_SIZE_KEY = 'sillytavern_gameTextSize';
 export const TEXT_SPEED_KEY = 'sillytavern_gameTextSpeed';
 
@@ -120,6 +123,20 @@ export function cycleTextOption(which) {
  */
 
 /**
+ * J15.5: «Animaciones» (`motion.js`) va con el texto: es de este navegador, como su tamaño y su
+ * velocidad, y se pone justo detrás. Si quien abre la ventana ya la trae, se deja.
+ *
+ * @param {OptionRow[]} list
+ * @param {OptionRow} [row]
+ * @returns {OptionRow[]}
+ */
+export function withMotionRow(list, row = motionOptionRow()) {
+    if (list.some(r => r.id === row.id)) return list;
+    const at = list.findIndex(r => r.id === 'speed');
+    return at >= 0 ? [...list.slice(0, at + 1), row, ...list.slice(at + 1)] : [...list, row];
+}
+
+/**
  * La ventana. Cada fila se pulsa para cambiarla; la fila dice cómo queda.
  *
  * @param {Object} input
@@ -138,7 +155,8 @@ export async function openGameOptions({ Popup, POPUP_TYPE, rows, onPick, onAdvan
 
     const draw = () => {
         list.empty();
-        for (const row of rows()) {
+        // J14.10: «Romance» va detrás de los sucesos; es de este navegador y se guarda aquí.
+        for (const row of withRomanceRow(withMotionRow(rows()))) {
             const button = $('<button type="button" class="go-row"></button>').attr('data-option', row.id);
             button.append($('<i></i>').addClass(`fa-solid fa-fw ${row.icon || 'fa-sliders'}`));
             const body = $('<span class="go-body"></span>');
@@ -153,11 +171,16 @@ export async function openGameOptions({ Popup, POPUP_TYPE, rows, onPick, onAdvan
     list.on('click', '.go-row', async function () {
         if (busy) return;
         busy = true;
+        const id = String($(this).attr('data-option'));
         try {
-            await onPick(String($(this).attr('data-option')));
+            if (id === 'motion') cycleMotion();
+            else if (id === 'romance') toggleRomance();
+            else await onPick(id);
         } finally {
             busy = false;
             draw();
+            // J15.5: la lista se hace de nuevo; el foco sigue en la fila que se pulsó.
+            /** @type {HTMLElement|undefined} */ (list.find(`.go-row[data-option="${CSS.escape(id)}"]`)[0])?.focus();
         }
     });
     draw();

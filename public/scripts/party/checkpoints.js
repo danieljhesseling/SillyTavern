@@ -30,6 +30,7 @@ import {
 import { worldWrite, refreshWorldMemoryPrompt } from './world-growth.js';
 import { postCombatNarration } from './narration.js';
 import { savePartyState, renderPartyMembers } from './roster.js';
+import { syncGameState } from './game-state.js';
 
 /**
  * Todo lo que el juego da por cierto, listo para guardarlo o devolverlo a su sitio.
@@ -206,6 +207,10 @@ export async function restoreCheckpoint(id) {
             world = await restoreWorldFrom(String(checkpoint.worldFile));
         });
     }
+    // J4.2: el gremio es de toda la partida. Un punto de este mismo tramo lo devuelve (aunque se
+    // haya guardado entre medias); uno de antes del último viaje, no: lo hecho en el gremio o en
+    // otra campaña desde entonces se queda.
+    await syncGameState({ restore: true });
     saveMetadata();
     refreshWorldMemoryPrompt();
 

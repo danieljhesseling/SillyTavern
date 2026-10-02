@@ -94,6 +94,7 @@ const FORK_FILES = [
     'public/scripts/game-engine/combat/forecast.js',
     'public/scripts/game-engine/combat/tally.js',
     'public/scripts/game-engine/combat/after-fight.js',
+    'public/scripts/game-engine/combat/party-fallen.js',
     'public/scripts/game-engine/combat/retreat.js',
     'public/scripts/game-engine/campaign/recruit.js',
     'public/scripts/game-engine/campaign/memories.js',
@@ -105,6 +106,7 @@ const FORK_FILES = [
     'public/scripts/game-engine/campaign/backgrounds.js',
     'public/scripts/game-engine/campaign/guion-errors.js',
     'public/scripts/game-engine/ui/shell/notices.js',
+    'public/scripts/game-engine/ui/shell/chat-switch.js',
     'public/scripts/game-engine/combat/crits.js',
     'public/scripts/game-engine/campaign/feats.js',
     'public/scripts/game-engine/campaign/forage.js',
@@ -120,6 +122,8 @@ const FORK_FILES = [
     'public/scripts/game-engine/campaign/intents.js',
     'public/scripts/game-engine/ui/shell/tips.js',
     'public/scripts/game-engine/campaign/narration.js',
+    'public/scripts/game-engine/campaign/narration-notes.js',
+    'public/scripts/game-engine/campaign/narration-prose.js',
     'public/scripts/game-engine/combat/throwables.js',
     'public/scripts/game-engine/campaign/legacy.js',
     'public/scripts/game-engine/campaign/fame.js',
@@ -188,6 +192,7 @@ const FORK_FILES = [
     'public/scripts/game-engine/campaign/director.js',
     'public/scripts/game-engine/campaign/session-log.js',
     'public/scripts/game-engine/campaign/state-registry.js',
+    'public/scripts/game-engine/campaign/game-state.js',
     'public/scripts/game-engine/campaign/time-stages.js',
     'public/scripts/game-engine/campaign/upcoming.js',
     'public/scripts/game-engine/campaign/chronicle.js',
@@ -229,6 +234,8 @@ const FORK_FILES = [
     'public/scripts/game-engine/campaign/talk.js',
     // J8.1 a J8.6: las charlas con ramas, y su ventana.
     'public/scripts/game-engine/campaign/dialogues.js',
+    // J13.8: que la gente suene a gente (seguir una charla, cómo te mira, el saludo, las versiones).
+    'public/scripts/game-engine/campaign/human-lines.js',
     'public/scripts/game-engine/ui/dialogue-window.js',
     // J9.2: las escenas del hilo, jugadas, y su ventana.
     'public/scripts/game-engine/campaign/plot-scenes.js',
@@ -237,6 +244,19 @@ const FORK_FILES = [
     'public/scripts/game-engine/combat/avoid-fight.js',
     'public/scripts/game-engine/combat/parley.js',
     'public/scripts/game-engine/ui/avoid-scene.js',
+    // Tanda 10: la pelea empieza sola, y el grupo se coloca antes de la iniciativa.
+    'public/scripts/game-engine/combat/placement.js',
+    'public/scripts/game-engine/ui/combat-vtt/placement-bar.js',
+    // Tanda 10, el lienzo y la cámara: el tablero como una mesa virtual.
+    'public/scripts/game-engine/ui/combat-vtt/camera.js',
+    'public/scripts/game-engine/ui/combat-vtt/minimap.js',
+    'public/scripts/game-engine/ui/combat-vtt/edge-markers.js',
+    'public/scripts/game-engine/ui/combat-vtt/initiative.js',
+    'public/scripts/game-engine/ui/combat-vtt/summary.js',
+    // J12.7: las peleas de taberna y los duelos, sin muertes, y su cartel.
+    'public/scripts/game-engine/combat/brawl.js',
+    'public/scripts/game-engine/campaign/tavern-brawl.js',
+    'public/scripts/game-engine/ui/brawl-banner.js',
     // J9.3, J9.5, J9.6 y J11.5: la historia como un libro, y su ventana.
     'public/scripts/game-engine/campaign/story-book.js',
     'public/scripts/game-engine/ui/story-book.js',
@@ -254,6 +274,9 @@ const FORK_FILES = [
     'public/scripts/game-engine/campaign/campaign-check.js',
     'public/scripts/game-engine/campaign/chests.js',
     'public/scripts/game-engine/campaign/pack-maps.js',
+    // J10.7: las historias en tres actos de las campañas sin hilo, y las campañas de semilla.
+    'public/scripts/game-engine/campaign/act-grammar.js',
+    'public/scripts/game-engine/campaign/seed-pack.js',
     'public/scripts/game-engine/campaign/campaign-end.js',
     'public/scripts/game-engine/ui/hub-panel.js',
     'public/scripts/game-engine/campaign/starting-kit.js',
@@ -353,16 +376,32 @@ const FORK_FILES = [
     'public/scripts/game-engine/campaign/meetups.js',
     'public/scripts/game-engine/campaign/whereabouts.js',
     'public/scripts/game-engine/ui/meetup-scene.js',
+    // J13.7: solo sabes el nombre de quien se ha presentado (lo sabido y cómo se ve).
+    'public/scripts/game-engine/campaign/known-people.js',
+    'public/scripts/game-engine/ui/shown-names.js',
+    // J14.10: el romance, opcional (las reglas y la opción).
+    'public/scripts/game-engine/campaign/romance.js',
+    'public/scripts/game-engine/ui/romance-option.js',
+    // J14.11: trabajos y ratos libres (servir mesas, la forja, las cartas, leer y pescar).
+    'public/scripts/game-engine/campaign/card-game.js',
+    'public/scripts/game-engine/campaign/pastimes.js',
+    'public/scripts/game-engine/ui/pastime-scene.js',
     // J20.6 y J20.7: el móvil como una app (el manifiesto, las animaciones y el tablero ligero).
     'public/scripts/game-engine/ui/app-mode.js',
     'public/scripts/game-engine/ui/motion.js',
     'public/scripts/game-engine/board/draw-light.js',
+    // J15.5: el juego con el teclado solo (listas, ventanas, foco) y el tablero con un cursor.
+    'public/scripts/game-engine/ui/keyboard-nav.js',
+    'public/scripts/game-engine/ui/board-keys.js',
     // J10 y J11.3: el mundo vivo (caminos con puerta, el mapa dibujado, sucesos por facción y huellas).
     'public/scripts/game-engine/world/route-gates.js',
     'public/scripts/game-engine/world/map-layout.js',
     'public/scripts/game-engine/ui/campaign-map.js',
     'public/scripts/game-engine/campaign/suceso-triggers.js',
     'public/scripts/game-engine/campaign/world-marks.js',
+    // Tanda 8: el calabozo (D-J47) y lo que le queda a un tablero (D-J45 afinado).
+    'public/scripts/game-engine/campaign/jail.js',
+    'public/scripts/game-engine/board/leftovers.js',
     // J15.1: party.js es una fachada; lo suyo vive en party/, un módulo por cosa.
     ...readdirSync(PARTY_DIR).filter(f => f.endsWith('.js')).sort().map(f => `public/scripts/party/${f}`),
     'public/scripts/dnd-system.js',

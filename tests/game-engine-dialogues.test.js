@@ -238,7 +238,10 @@ describe('lo que ya os contó no se repite, y queda en el Diario (J8.6)', () => 
     test('quien ya os lo dijo lo resume', () => {
         const once = choose(startDialogue(d), 'hola', { hero: hero() });
         const back = choose(once.state, 'volver', { hero: hero() });
-        expect(back.view?.line).toBe('Tú otra vez.');
+        // J13.8: volver al principio sin haberse ido no es volver otro día: ni «Tú otra vez» ni la
+        // frase del principio, sino algo corto para seguir.
+        expect(back.view?.line).not.toBe('Tú otra vez.');
+        expect(back.view?.line).not.toBe(dialogueView(startDialogue(d), hero()).line);
         const memory = rememberDialogue(null, back.state);
         expect(dialogueView(startDialogue(d, { memory }), hero()).line).toBe('Tú otra vez.');
     });
@@ -514,7 +517,7 @@ describe('las charlas escritas: Brunilda, Giles e Ismark', () => {
         const dwarf = hero({ race: 'Enano', class: 'Clérigo', gender: 'Hombre' });
         const world = { open: ['el-gremio'], done: [] };
         const view = dialogueView(startDialogue(d, { hero: dwarf, world }), dwarf, world);
-        expect(view.line).toMatch(/eres el nuevo/);
+        expect(view.line).toMatch(/Bueno, el nuevo\./);
         expect(ids(view.options)).toEqual(expect.arrayContaining(['quiero-entrar', 'enano', 'clerigo']));
         const result = choose(startDialogue(d, { hero: dwarf, world }), 'quiero-entrar', { hero: dwarf, world });
         expect(result.effects).toEqual([{ kind: 'milestone', id: 'el-gremio' }]);

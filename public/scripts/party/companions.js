@@ -85,6 +85,7 @@ import { enterBoard } from './board.js';
 import { lastWaiting, renderLocationMapsPreview } from './board-view.js';
 import { getGuild } from './contracts.js';
 import { rollDiceDetailed } from './combat-rules.js';
+import { romanceLabelFor } from './romance.js';
 
 /**
  * R8: los favores de la gente de aquí que os aprecia (actitud +2 o más).
@@ -1106,6 +1107,9 @@ export function openCompanionCard(memberId) {
     const who = $('<div></div>');
     who.append($('<div class="cc-name"></div>').text(card.name));
     who.append($('<div class="cc-rank"></div>').text(card.rankLabel));
+    // J14.10: junto al vínculo, cómo va el romance («♥ Pareja»), si hay y está encendido.
+    const love = romanceLabelFor(String(member.name ?? ''));
+    if (love) who.append($('<div class="cc-romance"></div>').text(`♥ ${love}`));
     head.append(who);
     root.append(head);
 

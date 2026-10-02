@@ -107,3 +107,44 @@ Criaturas en pixel art para las fichas del tablero y las cartas de enemigo. Est�
 | `plantilla-enano.png` | Enano: un bicho diminuto que se cuela por una grieta entre piedras |
 | `plantilla-sagrado.png` | Marcado: una marca dorada con forma de llama, grabada en un escudo de cuero oscuro |
 - `ratero-del-muelle.png` — Ratero del muelle (gremio): un ratero flaco del puerto, con chaqueta de pescador remendada y gorro de lana, un cuchillo curvo y una bolsa robada.
+- `bandido-contrabandista.png` — Bandido contrabandista (gremio): jersey rojo de lana, gorro de punto y un garfio de estibador, con una cuerda al hombro.
+- `arquero-contrabandista.png` — Arquero contrabandista (gremio): agachado en las rocas con capa encerada de pescador, tensando un arco corto.
+- `arana-del-faro.png` — Araña del faro (gremio): una araña negra y gris grande como un perro, de patas largas.
+- `bandido-del-camino.png` — Bandido del camino (gremio y la misión de Osric): salteador con capucha y capa parda, la cara tapada y una espada corta mellada.
+- `arquero-del-camino.png` — Arquero del camino (gremio): agachado entre la maleza con capucha verde y la cara tapada, con el arco tenso.
+- `zombi-ahogado.png` — Zombi ahogado (gremio): un marinero muerto, gris y empapado, con la camisa rota y algas colgando.
+- `lobo-de-las-salinas.png` — Lobo de las salinas (gremio): un lobo flaco y oscuro, de patas claras, enseñando los colmillos.
+- `cunado-de-lope.png` — Cuñado de Lope (misión personal de Gerd, `compendio/personales.json`): un mozo del molino con camisa de lino, mandil de cuero y un garrote enorme.
+- `guarda-del-baron.png` — Guarda del barón (misión personal de Nella, `compendio/personales.json`): casco de hierro, jubón de cuero sobre tabardo verde y lanza corta.
+
+## Los villanos de las historias en tres actos (`compendio/actos.json`, `villanos` de cada trama)
+
+El juego los pone de jefe en el tablero del final (`pack-fill.js`) y, si hablan en una escena, sale este dibujo a falta de retrato. Uno por nombre: `<slug del nombre>.png`.
+
+- `el-hombre-del-farol.png` — El Hombre del Farol (gente que desaparece): un hombre alto y flaco con abrigo negro raído y sombrero de ala ancha, una luz en alto.
+- `la-dama-gris.png` — La Dama Gris: una mujer pálida con capucha y vestido de luto grises, un aro de llaves de hierro entre las manos.
+- `el-barquero.png` — El Barquero: encorvado, con capucha y harapos mojados, ojos que brillan y un remo largo.
+- `la-hilandera.png` — La Hilandera: una vieja con túnica oscura, el huso en la mano e hilo gris colgando de los dedos.
+- `el-zorro-de-ceniza.png` — El Zorro de Ceniza (lo que robaron del pueblo): un ladrón con capa gris ceniza, media máscara de zorro, bufanda roja y dos dagas. Es una persona: antes salía con el zorro del bestiario.
+- `mano-negra.png` — Mano Negra: un jefe de ladrones calvo y fornido, abrigo largo de cuero, guantes negros y una maza.
+- `la-urraca.png` — La Urraca: una ladrona con capa de plumas blancas y negras, joyas robadas al cinto y un cuchillo curvo.
+- `siete-llaves.png` — Siete Llaves: un viejo cerrajero de barba blanca, abrigo oscuro y una cadena de llaves de hierro al cuello.
+- `la-bestia-blanca.png` — La Bestia Blanca (la bestia que baja de noche): un oso lobo enorme de pelo blanco, ojos rojos y garras negras.
+- `la-cosa-del-pozo.png` — La Cosa del Pozo: una criatura verde pálida que asoma de un pozo de piedra, pelo negro mojado y dientes finos.
+- `el-devorador-de-rebanos.png` — El Devorador de Rebaños: una bestia jabalí enorme, de colmillos curvos y pelo pardo, con huesos de oveja a los pies.
+- `la-boticaria.png` — La Boticaria (el agua envenenada): una boticaria con mandil de cuero manchado que alza un frasco de veneno verde.
+- `el-hombre-de-la-sal.png` — El Hombre de la Sal: un hombre flaco con túnica gris, la piel cuarteada y un saco de sal al hombro.
+- `el-fraile-verde.png` — El Fraile Verde: un fraile con hábito verde musgo y cordón, un incensario que suelta humo verde.
+- `hiel.png` — Hiel: un envenenador encapuchado, de cara azulada, con una daga que gotea veneno verde.
+- `el-sin-cara.png` — El Sin Cara (un muerto con muchos enemigos): un asesino de negro con una máscara blanca lisa, sin rasgos, y un cuchillo largo.
+- `siete-cuchillos.png` — Siete Cuchillos: un asesino de cuero oscuro con una bandolera de cuchillos al pecho y uno en cada mano.
+- `la-viuda-del-puerto.png` — La Viuda del Puerto: una viuda de luto con velo negro y un estilete fino en la mano enguantada.
+- `el-cuervo.png` — El Cuervo: un asesino alto con capa de plumas negras y máscara de pico de cuervo, una daga curva.
+- `el-coleccionista.png` — El Coleccionista (los que llegaron de fuera): un aristócrata flaco con levita oscura que sostiene un frasco con una luz dentro.
+- `la-archivera.png` — La Archivera: una mujer seria con túnica gris y anteojos, un libro grande y una luz en la otra mano.
+- `el-hombre-de-los-numeros.png` — El Hombre de los Números: un hombre pálido de túnica negra con un ábaco y dos arcos de luz azul alrededor (sin cifras dibujadas).
+- `la-tejedora.png` — La Tejedora: una hechicera pálida de túnica negra con hilos de luz verde colgando de los dedos.
+
+## El enemigo sin dibujo
+
+- `enemigo-sin-dibujo.png` — una sombra encapuchada de capa raída, ojos ámbar y garras, entre humo negro. La lleva en el tablero un enemigo que no tiene dibujo propio ni arquetipo (el jefe que trae una campaña tuya o de tu Gem), en vez de la calavera (`enemyArt` en `pixel-art.js`).

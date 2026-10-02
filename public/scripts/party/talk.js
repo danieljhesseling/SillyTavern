@@ -33,9 +33,9 @@ import { servicesOf } from '../game-engine/campaign/services.js';
 import { readBox, boxExamples, explainMiss } from '../game-engine/campaign/read-box.js';
 import { outcomeOf as checkOutcome, consequence } from '../game-engine/campaign/consequences.js';
 import { describeLootItem, declaredLootNames } from '../game-engine/combat/loot-items.js';
-import { sightsOf, pickLooks, findLook, lookLabel, lookFound } from '../game-engine/campaign/sights.js';
+import { sightsOf, splitSights, pickLooks, findLook, lookLabel, lookFound } from '../game-engine/campaign/sights.js';
 import { dialogueFor, dialogueMilestones } from '../game-engine/campaign/dialogues.js';
-import { PLACE_KINDS } from '../game-engine/campaign/town.js';
+import { PLACE_KINDS, townPlaces } from '../game-engine/campaign/town.js';
 import { openDialogueWindow } from '../game-engine/ui/dialogue-window.js';
 import { isShellOpen, refreshGameShell } from '../game-engine/ui/shell/game-shell.js';
 export { opinionsOn, optionTraits, opinionBadges } from '../game-engine/campaign/companion-opinions.js';
@@ -69,10 +69,13 @@ import {
 } from './narration.js';
 import { payFromParty, savePartyState } from './roster.js';
 import { changeAttitude } from './companions.js';
+import { honorChallengeAfterThreat } from './brawl.js';
 import { fieldLookBonus } from './magic.js';
 import { neighbourPlaces, askBeforeTravelling, travelWithTime } from './travel.js';
 import { hearRumor, openService, buildServiceCards, runService, rumorsLeftHere } from './town.js';
 import { openJournalSafely, openHelp } from './menus.js';
+import { learnName } from './known-people.js';
+import { introFor } from '../game-engine/ui/shown-names.js';
 
 /**
  * @returns {{day: number, keys: string[], looked: string[]}}
@@ -745,7 +748,8 @@ export function lookChips() {
     if (!currentLocationName || currentBoardName || combatEncounter.active) return [];
     const place = hereLocation();
     // J10.2: primero lo que el paquete escribe para este sitio (`sights`); luego, lo del compendio.
-    const sights = sightsOf(place);
+    // J3.11: lo de un sitio de dentro del pueblo (la sala del gremio) sale al entrar en él, no aquí.
+    const sights = splitSights(sightsOf(place), placeKindsOf(place)).loose;
     const rows = compendiumLooks(place);
     if (sights.length === 0 && rows.length === 0) return [];
     const random = createSeededRandom(derive(String(chat_metadata?.[METADATA_KEY] || ''), 'mirar', currentLocationName, String(campaignDay())));
@@ -756,6 +760,49 @@ export function lookChips() {
             icon: SKILLS[/** @type {keyof typeof SKILLS} */ (row.skill)]?.icon ?? 'fa-eye',
             command: `/examinar ${row.id}`,
         }));
+}
+
+/**
+ * J3.11: las clases de sitio que tiene el pueblo de aquí (las que enseña su pantalla).
+ *
+ * @param {any} place
+ * @returns {string[]}
+ */
+function placeKindsOf(place) {
+    if (!place) return [];
+    // El gremio solo sale en el pueblo que lo escribe en sus sitios (Puerto Alba), como en su pantalla.
+    const guild = (Array.isArray(place.places) ? place.places : []).some((/** @type {any} */ p) => p?.kind === 'gremio');
+    return townPlaces({ location: place, guild }).places.map(p => String(p.kind));
+}
+
+/**
+ * J3.11 y J10.2: lo que se puede examinar dentro de cada sitio del pueblo (la sala del gremio, la
+ * capilla…), por su clase, para la pantalla del pueblo. Todo lo de cada sitio, menos lo ya
+ * examinado hoy: dentro se mira con calma, no dos cosas al azar como en la fila.
+ *
+ * @returns {Record<string, Array<{id: string, label: string, icon: string, command: string, detail: string, source: string}>>}
+ */
+export function placeLookChips() {
+    if (!currentLocationName || currentBoardName || combatEncounter.active) return {};
+    const place = hereLocation();
+    const { byPlace } = splitSights(sightsOf(place), placeKindsOf(place));
+    const looked = new Set(fieldGainsToday().looked);
+    /** @type {ReturnType<typeof placeLookChips>} */
+    const out = {};
+    for (const [kind, rows] of Object.entries(byPlace)) {
+        const chips = rows
+            .filter(row => !looked.has(`${currentLocationName}|${row.id}`))
+            .map(row => ({
+                id: `look:${row.id}`,
+                label: lookLabel(row),
+                icon: SKILLS[/** @type {keyof typeof SKILLS} */ (row.skill)]?.icon ?? 'fa-eye',
+                command: `/examinar ${row.id}`,
+                detail: `Una tirada de ${SKILLS[/** @type {keyof typeof SKILLS} */ (row.skill)]?.label ?? 'Investigación'}, una vez al día.`,
+                source: 'motor',
+            }));
+        if (chips.length > 0) out[kind] = chips;
+    }
+    return out;
 }
 
 /**
@@ -880,6 +927,8 @@ async function openWrittenTalk(npc, dialogue, draft = '') {
             return judgeOption(option, { dialogue });
         },
         opinionsFor: (option) => optionOpinionTags(option, { dialogue }),
+        // J13.7: hablar con alguien que aún no se ha presentado empieza por su nombre.
+        introduce: true,
         extras: [{ id: 'otras', label: 'Otras cosas', icon: 'fa-ellipsis', title: 'Sonsacar, convencer, amenazar…' }],
         pack: lastPack,
         place: service in PLACE_KINDS ? service : '',
@@ -959,6 +1008,9 @@ async function openTalk(name, draft = '', ask = '') {
         return;
     }
     setTalkingTo(npc.name);
+    // J13.7: si aún no se ha presentado, lo primero que dice es su nombre.
+    const hello = introFor(npc.name);
+    if (hello) learnName(npc.name, 'presentado');
     // Cómo os mira de verdad ahora: quien os planta cara no os mira neutral (2026-09-28).
     const attitude = () => attitudeTowards(npc.name);
     const confronting = confrontingNow(npc.name);
@@ -987,6 +1039,7 @@ async function openTalk(name, draft = '', ask = '') {
         log.append($('<div class="tk-line"></div>').text(line));
         log.scrollTop(log[0]?.scrollHeight ?? 0);
     };
+    if (hello) add(`${npc.name}: «${hello}»`);
 
     /** @type {Popup|null} */
     let popup = null;
@@ -1052,6 +1105,8 @@ async function openTalk(name, draft = '', ask = '') {
         // Amenazar se paga, salga o no.
         changeAttitude(npc.name, -1, 'amenazado');
         drawMood();
+        // J12.7: a quien es de armas tomar y no se asusta, la amenaza le suena a reto.
+        if (!result.success) void honorChallengeAfterThreat(npc, () => { void popup?.completeAffirmative(); });
     }, 'Intimidación: si sale, lo suelta aunque no os quiera; os lo tendrá en cuenta siempre', 'amenazar');
     const inn = (/** @type {any} */ (getCurrentWorldLocationMaps().find((/** @type {any} */ l) => l.name === currentLocationName))?.services ?? []).includes('posada');
     // A quien viene a por vosotros no se le invita a una ronda.

@@ -1,0 +1,2037 @@
+/*
+ * El tablero de combate como un VTT (tanda 10, wiki/maquetas/ENCARGO_COMBATE_VTT.md y la maqueta
+ * aprobada wiki/maquetas/combate-vtt-v3.html): el mapa a toda la pantalla de juego y, encima,
+ * una capa de HUD en la que solo las islas reciben clics.
+ *
+ * Lo escriben tres partes, cada una en su sección y sin tocar la de las otras:
+ *   1. «El lienzo y la cámara»: el tablero a pantalla entera, la cámara, el minimapa, los
+ *      marcadores de borde, la iniciativa y el resumen del combate.
+ *   2. y 3.: la barra de acciones, sus menús y lo demás, cada una debajo de la anterior.
+ */
+
+/* ================================================================================
+   1. EL LIENZO Y LA CÁMARA
+   ================================================================================ */
+
+/* Los colores del HUD, los de la maqueta. Van en la mesa virtual (`.wm-vtt`, la pone
+   party/board-view.js dentro del Modo Juego) y en la raíz del juego, para la barra de abajo. */
+.gs-root,
+.wm-vtt {
+    --vtt-hud-bg: rgba(18, 15, 12, 0.88);
+    --vtt-hud-border: rgba(214, 180, 106, 0.28);
+    --vtt-gold: #e2c27a;
+    --vtt-text: #eee4d2;
+    --vtt-danger: #d08a86;
+    --vtt-success: #6f9e5d;
+    --vtt-reach: rgba(59, 130, 246, 0.22);
+    --vtt-reach-line: rgba(96, 165, 250, 0.75);
+}
+
+/* Lo que ocupan las esquinas de abajo y la columna de la derecha, para quien ponga algo flotando
+   abajo en el centro (la barra de acciones): que no se monte encima del minimapa. */
+.gs-root:has(.wm-location-content.wm-vtt) {
+    --vtt-left-reserve: 214px;
+    --vtt-right-reserve: 324px;
+}
+
+/* ---- El tablero, a toda la pantalla de juego ----
+   Sin márgenes ni barras de desplazamiento: el escenario es el tablero, y lo de alrededor flota. */
+.gs-root[data-scene="combat"] .gs-stage:has(.wm-vtt) {
+    padding: 0;
+    overflow: hidden;
+}
+
+.gs-root[data-scene="combat"] .gs-scene-map:has(.wm-vtt) {
+    display: block;
+    height: 100%;
+}
+
+.gs-root .gs-scene-map > .gs-map-slot:has(.wm-vtt),
+.gs-root .gs-scene .gs-adopted:has(.wm-vtt),
+.gs-root .gs-adopted > .world-map-collection:has(.wm-vtt),
+.gs-root .gs-adopted .wm-location-shell:has(.wm-vtt) {
+    height: 100%;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+}
+
+.gs-root .gs-adopted .wm-location-content.wm-vtt {
+    display: block;
+    position: relative;
+    height: 100%;
+    min-height: 0;
+    padding: 0;
+    overflow: hidden;
+}
+
+.gs-root .gs-adopted .wm-location-content.wm-vtt > [data-map-root] {
+    position: absolute;
+    inset: 0;
+    display: block;
+    min-height: 0;
+}
+
+.gs-root .gs-adopted .wm-location-content.wm-vtt > [data-map-root] > .wm-container {
+    position: absolute;
+    inset: 0;
+    height: auto !important;
+    margin: 0;
+    border: none;
+    border-radius: 0;
+    background: #0c0b09;
+    box-shadow: inset 0 0 120px rgba(0, 0, 0, 0.85);
+    cursor: grab;
+    /* El dedo mueve la cámara; el navegador no se lleva la página. */
+    touch-action: none;
+}
+
+.gs-root .wm-vtt .wm-container.grabbing,
+.gs-root .wm-vtt .wm-container .wm-content.grabbing {
+    cursor: grabbing;
+}
+
+/* Los números de los bordes no van: quedarían debajo del HUD. */
+.wm-vtt .wm-axes-x,
+.wm-vtt .wm-axes-y {
+    display: none;
+}
+
+/* Los botones, el minimapa y la cámara se deslizan en vez de saltar. */
+.wm-vtt .wm-content.vtt-glide {
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+:root[data-gs-motion="none"] .wm-vtt .wm-content.vtt-glide {
+    transition: none;
+}
+
+:root[data-gs-motion="short"] .wm-vtt .wm-content.vtt-glide {
+    transition-duration: 0.12s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    :root:not([data-gs-motion]) .wm-vtt .wm-content.vtt-glide {
+        transition: none;
+    }
+}
+
+/* ---- La capa del HUD: no recibe clics; sus islas, sí ---- */
+.vtt-hud {
+    position: absolute;
+    inset: 0;
+    z-index: 30;
+    pointer-events: none;
+    color: var(--vtt-text);
+    font-size: 0.92rem;
+}
+
+.vtt-hud .vtt-island {
+    pointer-events: auto;
+}
+
+.vtt-top-left,
+.vtt-top-center,
+.vtt-top-right,
+.vtt-bottom-left {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
+}
+
+.vtt-top-left {
+    top: 10px;
+    left: 12px;
+    align-items: flex-start;
+    max-width: min(44%, 440px);
+}
+
+.vtt-top-center {
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    align-items: center;
+    max-width: 40%;
+}
+
+.vtt-top-center:empty {
+    display: none;
+}
+
+.vtt-top-right {
+    top: 10px;
+    right: 12px;
+    width: 300px;
+    /* Hasta abajo, sin taparle la esquina a la barra ni salirse. */
+    max-height: calc(100% - 20px);
+}
+
+.vtt-bottom-left {
+    left: 12px;
+    bottom: 12px;
+    align-items: flex-start;
+}
+
+/* Una isla del HUD: el fondo oscuro de la maqueta, con su borde dorado. */
+.vtt-init,
+.vtt-summary,
+.vtt-minimap,
+.vtt-tools,
+.vtt-hud .sc-row,
+.vtt-hud .wm-terrain-palette {
+    background: var(--vtt-hud-bg);
+    border: 1px solid var(--vtt-hud-border);
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(10px);
+    box-sizing: border-box;
+}
+
+/* Arriba a la izquierda: «Volver» y el pincel, y debajo, el sitio y lo que dice la ficha. */
+.vtt-tools {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 4px;
+}
+
+.vtt-tools .menu_button {
+    margin: 0;
+    width: auto;
+    white-space: nowrap;
+    font-size: 0.85rem;
+    padding: 5px 10px;
+}
+
+.vtt-hud .wm-location-header,
+.vtt-hud .wm-tactical-hud,
+.vtt-hud .wm-cell-info {
+    position: static;
+    margin: 0;
+    max-width: 100%;
+    padding: 5px 10px;
+    border-radius: 8px;
+    background: rgba(12, 10, 8, 0.78);
+    border: 1px solid rgba(214, 180, 106, 0.18);
+    color: var(--vtt-text);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.55);
+    box-sizing: border-box;
+}
+
+.vtt-hud .wm-location-header {
+    display: block;
+}
+
+.vtt-hud .wm-location-header-name {
+    font-weight: bold;
+    font-size: 0.9rem;
+    color: var(--vtt-gold);
+}
+
+.vtt-hud .wm-location-header-desc {
+    font-size: 0.78rem;
+    opacity: 0.85;
+    margin-top: 2px;
+}
+
+.vtt-hud .wm-tactical-hud {
+    font-size: 0.8rem;
+}
+
+.vtt-hud .wm-cell-info {
+    font-size: 0.78rem;
+    opacity: 0.95;
+}
+
+.vtt-hud .sc-row {
+    margin: 0;
+    padding: 6px 10px;
+}
+
+.vtt-hud .wm-terrain-palette {
+    margin: 0;
+    padding: 6px;
+}
+
+/* ---- La iniciativa ---- */
+.vtt-init {
+    flex: 0 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    padding: 10px 12px;
+}
+
+.vtt-init .wm-init-head {
+    flex-wrap: wrap;
+    gap: 2px 8px;
+    padding-bottom: 6px;
+    margin-bottom: 8px;
+    border-bottom: 1px solid rgba(214, 180, 106, 0.2);
+}
+
+.vtt-init .wm-init-round {
+    color: var(--vtt-gold);
+    font-size: 0.95em;
+}
+
+.vtt-init .wm-init-turn {
+    font-size: 0.8em;
+    opacity: 0.85;
+}
+
+.vtt-init .wm-init-list {
+    gap: 4px;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+
+.vtt-init .wm-init-row {
+    gap: 8px;
+    padding: 5px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.vtt-init .wm-init-row:hover,
+.vtt-init .wm-init-row:focus-visible {
+    background: rgba(255, 255, 255, 0.08);
+    outline: none;
+}
+
+.vtt-init .wm-init-row:focus-visible {
+    box-shadow: 0 0 0 2px var(--vtt-gold);
+}
+
+.vtt-init .wm-init-row.current {
+    border-left-color: var(--vtt-gold);
+    background: rgba(214, 180, 106, 0.16);
+}
+
+.vtt-init .wm-init-score {
+    flex: 0 0 20px;
+}
+
+/* La cara, en un círculo de 26 px. */
+.vtt-init .wm-init-face {
+    width: 26px;
+    height: 26px;
+    flex: 0 0 26px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    background: #252528;
+    box-sizing: border-box;
+}
+
+.vtt-init .wm-init-face.pixel-art {
+    object-fit: cover;
+    object-position: 50% 20%;
+}
+
+.vtt-init .wm-init-initial {
+    color: #c9c2b5;
+}
+
+.vtt-init .wm-init-row.enemy .wm-init-face {
+    border-color: rgba(224, 139, 122, 0.7);
+}
+
+.vtt-init .wm-init-name {
+    font-size: 0.85em;
+    font-weight: bold;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.vtt-init .wm-init-row.enemy .wm-init-name {
+    color: var(--vtt-danger);
+}
+
+.vtt-init .vtt-init-you {
+    font-size: 0.78em;
+    opacity: 0.75;
+}
+
+.vtt-init .wm-init-hp-text {
+    margin-left: auto;
+    padding-left: 6px;
+    font-size: 0.72em;
+    opacity: 0.75;
+}
+
+.vtt-init .wm-init-hp-fill {
+    background: var(--vtt-success);
+    border-radius: 2px;
+}
+
+.vtt-init .wm-init-row.enemy .wm-init-hp-fill {
+    background: var(--vtt-danger);
+}
+
+.vtt-init .wm-init-row.bloodied .wm-init-hp-fill {
+    background: #c9772f;
+}
+
+/* Quién le mueve (J7.3): un botón pequeño al final de su fila. */
+.vtt-init-control {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 7px;
+    font-size: 0.7rem;
+    color: var(--vtt-text);
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 6px;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.vtt-init-control:hover,
+.vtt-init-control:focus-visible {
+    border-color: var(--vtt-gold);
+    color: #fff;
+}
+
+.vtt-init-control[data-control="engine"] {
+    color: #bae6fd;
+    border-color: rgba(56, 189, 248, 0.4);
+}
+
+.vtt-init-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 6px;
+}
+
+/* Lo que solo leen los lectores de pantalla (y quien busca el botón por el nombre). */
+.vtt-sr {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+}
+
+/* Los objetivos de la pelea, debajo de la iniciativa. */
+.vtt-init-goals {
+    margin: 8px 0 0;
+    padding: 6px 0 0;
+    border: none;
+    border-top: 1px solid rgba(214, 180, 106, 0.2);
+    background: none;
+    font-size: 0.8em;
+}
+
+.vtt-init-goals .wm-objectives-title {
+    font-size: 0.85em;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--vtt-gold);
+    margin-bottom: 2px;
+}
+
+/* ---- El resumen del combate ---- */
+.vtt-summary {
+    flex: 0 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 8px 12px 10px;
+}
+
+.vtt-summary-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-bottom: 5px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--vtt-gold);
+}
+
+.vtt-summary-title {
+    flex: 1;
+}
+
+.vtt-summary .cl-round-badge {
+    font-size: 0.65rem;
+    text-transform: none;
+    letter-spacing: 0;
+}
+
+.vtt-summary-toggle {
+    background: transparent;
+    border: none;
+    color: inherit;
+    cursor: pointer;
+    font-size: 0.85rem;
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
+.vtt-summary-toggle:hover,
+.vtt-summary-toggle:focus-visible {
+    background: rgba(255, 255, 255, 0.08);
+    outline: none;
+}
+
+.vtt-summary-last {
+    display: none;
+    font-size: 0.8em;
+    line-height: 1.35;
+    opacity: 0.9;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.vtt-summary .cl-filters {
+    margin: 0;
+}
+
+.vtt-summary .cl-body {
+    min-height: 0;
+    max-height: 160px;
+    gap: 2px;
+    overscroll-behavior: contain;
+    font-size: 0.82em;
+}
+
+.vtt-summary .cl-body::-webkit-scrollbar {
+    width: 4px;
+}
+
+.vtt-summary .cl-body::-webkit-scrollbar-thumb {
+    background: rgba(214, 180, 106, 0.3);
+    border-radius: 2px;
+}
+
+.vtt-summary.collapsed .cl-body,
+.vtt-summary.collapsed .cl-filters {
+    display: none;
+}
+
+.vtt-summary.collapsed .vtt-summary-last:not(:empty) {
+    display: block;
+}
+
+.vtt-summary.collapsed .vtt-summary-head {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+/* ---- La cámara y el minimapa, abajo a la izquierda ---- */
+.vtt-camera {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.vtt-cam-btn {
+    width: 36px;
+    height: 36px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border-radius: 8px;
+    background: var(--vtt-hud-bg);
+    border: 1px solid var(--vtt-hud-border);
+    color: var(--vtt-text);
+    font-size: 0.85rem;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(8px);
+    transition: background 0.15s, border-color 0.15s;
+}
+
+.vtt-cam-btn:hover,
+.vtt-cam-btn:focus-visible {
+    background: rgba(60, 50, 36, 0.95);
+    border-color: var(--vtt-gold);
+    color: #fff;
+    outline: none;
+}
+
+.vtt-cam-btn:active {
+    transform: translateY(1px);
+}
+
+.vtt-cam-btn.active {
+    color: var(--vtt-gold);
+    border-color: rgba(226, 194, 122, 0.6);
+}
+
+.vtt-minimap {
+    width: 190px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.vtt-minimap-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    padding: 4px 8px;
+    background: rgba(0, 0, 0, 0.45);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    font-size: 0.7rem;
+    font-weight: bold;
+    color: var(--vtt-gold);
+}
+
+.vtt-minimap-zoom {
+    font-variant-numeric: tabular-nums;
+    color: #cfc6b4;
+}
+
+.vtt-minimap-box {
+    position: relative;
+    height: 112px;
+    background: #0d0b09;
+    cursor: crosshair;
+    overflow: hidden;
+}
+
+.vtt-minimap-canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.vtt-minimap-view {
+    position: absolute;
+    border: 1.5px solid var(--vtt-gold);
+    background: rgba(226, 194, 122, 0.15);
+    box-shadow: 0 0 8px rgba(226, 194, 122, 0.4);
+    pointer-events: none;
+    box-sizing: border-box;
+}
+
+/* ---- Los marcadores de borde ---- */
+.vtt-edges {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+
+.vtt-edge {
+    position: absolute;
+    z-index: 2;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    max-width: 240px;
+    padding: 5px 11px;
+    background: rgba(24, 18, 14, 0.94);
+    border: 1px solid var(--vtt-danger);
+    border-radius: 20px;
+    color: #fca5a5;
+    font-size: 0.76rem;
+    font-weight: bold;
+    white-space: nowrap;
+    cursor: pointer;
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.85), 0 0 10px rgba(239, 68, 68, 0.3);
+    backdrop-filter: blur(8px);
+    transition: background 0.15s, border-color 0.15s;
+}
+
+.vtt-edge:hover,
+.vtt-edge:focus-visible {
+    background: rgba(45, 22, 18, 0.98);
+    border-color: #f87171;
+    color: #fff;
+    outline: none;
+}
+
+.vtt-edge-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.vtt-edge-arrow {
+    font-size: 0.8rem;
+}
+
+/* ---- El alcance al pasar el ratón por tu ficha: una zona azul ---- */
+.vtt-reach-layer {
+    position: absolute;
+    inset: 0;
+    z-index: 6;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s ease-in-out;
+}
+
+.vtt-reach-layer.on {
+    opacity: 1;
+}
+
+.vtt-reach-cell {
+    position: absolute;
+    box-sizing: border-box;
+    background: var(--vtt-reach);
+    box-shadow: inset 0 0 8px rgba(59, 130, 246, 0.2);
+}
+
+.vtt-reach-cell[data-edge*="n"] { border-top: 2px solid var(--vtt-reach-line); }
+.vtt-reach-cell[data-edge*="e"] { border-right: 2px solid var(--vtt-reach-line); }
+.vtt-reach-cell[data-edge*="s"] { border-bottom: 2px solid var(--vtt-reach-line); }
+.vtt-reach-cell[data-edge*="w"] { border-left: 2px solid var(--vtt-reach-line); }
+.vtt-reach-cell[data-edge*="n"][data-edge*="w"] { border-top-left-radius: 8px; }
+.vtt-reach-cell[data-edge*="n"][data-edge*="e"] { border-top-right-radius: 8px; }
+.vtt-reach-cell[data-edge*="s"][data-edge*="w"] { border-bottom-left-radius: 8px; }
+.vtt-reach-cell[data-edge*="s"][data-edge*="e"] { border-bottom-right-radius: 8px; }
+
+/* ---- De acompañante (la novela, con el tablero a un lado): solo el tablero ---- */
+.gs-root[data-scene="dialogue"] .wm-vtt .vtt-hud {
+    display: none;
+}
+
+/* ---- El teléfono: el HUD se compacta y se coloca en una columna ----
+   En vertical no caben dos esquinas arriba: la iniciativa va primero, de lado a lado y en una
+   fila de caras; debajo, volver y el sitio; abajo, el minimapa con la cámara al lado. */
+@media (max-width: 600px), (orientation: landscape) and (max-height: 500px) and (max-width: 1000px) {
+    .gs-root:has(.wm-location-content.wm-vtt) {
+        --vtt-left-reserve: 0px;
+        --vtt-right-reserve: 0px;
+    }
+
+    .vtt-hud {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        padding: 6px;
+        font-size: 0.85rem;
+    }
+
+    .vtt-top-left,
+    .vtt-top-center,
+    .vtt-top-right,
+    .vtt-bottom-left {
+        position: static;
+        transform: none;
+        max-width: 100%;
+        width: auto;
+        max-height: none;
+        gap: 6px;
+    }
+
+    .vtt-top-right {
+        order: 1;
+    }
+
+    .vtt-top-left {
+        order: 2;
+    }
+
+    .vtt-top-center {
+        order: 3;
+        align-items: flex-start;
+    }
+
+    .vtt-bottom-left {
+        order: 4;
+        margin-top: auto;
+        flex-direction: row;
+        align-items: flex-end;
+    }
+
+    /* La iniciativa, en una fila de caras que se desliza: la vida debajo de cada una. */
+    .vtt-init {
+        padding: 6px 8px;
+    }
+
+    .vtt-init .wm-init-head {
+        margin-bottom: 4px;
+        padding-bottom: 4px;
+    }
+
+    .vtt-init .wm-init-list {
+        flex-direction: row;
+        overflow-x: auto;
+        overflow-y: hidden;
+        gap: 4px;
+        scrollbar-width: none;
+    }
+
+    .vtt-init .wm-init-row {
+        flex: 0 0 auto;
+        flex-direction: column;
+        align-items: center;
+        gap: 2px;
+        width: 54px;
+        padding: 4px 2px;
+        border-left: none;
+        border-bottom: 3px solid transparent;
+    }
+
+    .vtt-init .wm-init-row.current {
+        border-bottom-color: var(--vtt-gold);
+    }
+
+    .vtt-init .wm-init-row.next {
+        border-bottom-color: rgba(201, 162, 39, 0.45);
+    }
+
+    .vtt-init .wm-init-score,
+    .vtt-init .wm-init-status,
+    .vtt-init .wm-init-hp-text,
+    .vtt-init .vtt-init-you,
+    .vtt-init .wm-init-status-text {
+        display: none;
+    }
+
+    .vtt-init .wm-init-body {
+        width: 100%;
+    }
+
+    .vtt-init .wm-init-name-line {
+        justify-content: center;
+    }
+
+    .vtt-init .wm-init-name {
+        font-size: 0.66rem;
+        max-width: 50px;
+    }
+
+    .vtt-init .wm-init-row .vtt-init-control {
+        padding: 2px 4px;
+    }
+
+    .vtt-init .wm-init-row .vtt-init-control-text {
+        display: none;
+    }
+
+    .vtt-init-goals {
+        display: none;
+    }
+
+    .vtt-summary {
+        padding: 5px 10px 6px;
+    }
+
+    .vtt-summary .cl-body {
+        max-height: 90px;
+    }
+
+    .vtt-hud .wm-location-header-desc,
+    .vtt-hud .wm-cell-info:empty {
+        display: none;
+    }
+
+    .vtt-tools .menu_button {
+        font-size: 0.78rem;
+        padding: 4px 8px;
+    }
+
+    .vtt-camera {
+        display: grid;
+        grid-template-columns: repeat(2, 34px);
+        gap: 4px;
+    }
+
+    .vtt-cam-btn {
+        width: 34px;
+        height: 34px;
+    }
+
+    .vtt-minimap {
+        width: 128px;
+    }
+
+    .vtt-minimap-box {
+        height: 76px;
+    }
+
+    .vtt-edge {
+        max-width: 170px;
+        padding: 4px 9px;
+        font-size: 0.7rem;
+    }
+}
+
+/* Tumbado, con poco alto: sin minimapa (la cámara basta) y el resumen, una línea. */
+@media (orientation: landscape) and (max-height: 500px) and (max-width: 1000px) {
+    .vtt-hud {
+        display: block;
+    }
+
+    .vtt-top-left,
+    .vtt-top-center,
+    .vtt-top-right,
+    .vtt-bottom-left {
+        position: absolute;
+    }
+
+    .vtt-top-left {
+        top: 6px;
+        left: 6px;
+        max-width: 38%;
+    }
+
+    .vtt-top-center {
+        display: none;
+    }
+
+    .vtt-top-right {
+        top: 6px;
+        right: 6px;
+        width: min(52%, 380px);
+    }
+
+    .vtt-bottom-left {
+        left: 6px;
+        bottom: 6px;
+    }
+
+    .vtt-minimap {
+        display: none;
+    }
+
+    .vtt-hud .wm-location-header,
+    .vtt-hud .wm-tactical-hud {
+        font-size: 0.72rem;
+        padding: 3px 8px;
+    }
+}
+
+/* ============================ fin de 1. EL LIENZO Y LA CÁMARA ============================ */
+
+/* ================================================================================
+   2. LA BARRA DE ACCIONES (D&D 2024) Y SUS MENÚS DE GRIMORIO
+   game-engine/ui/combat-vtt/action-bar.js. La barra va en el pie del juego (`.gs-actions`), que
+   en plena pelea flota sobre el tablero, abajo en el centro, entre las reservas del minimapa y
+   de la columna de la derecha (`--vtt-left-reserve`, `--vtt-right-reserve`, de la sección 1).
+   ================================================================================ */
+
+.gs-root .gs-actions.gs-actions-vtt {
+    position: absolute;
+    left: var(--vtt-left-reserve, 12px);
+    right: var(--vtt-right-reserve, 12px);
+    bottom: 12px;
+    z-index: 40;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0;
+    padding: 0;
+    margin: 0;
+    background: none;
+    border: none;
+    box-shadow: none;
+    overflow: visible;
+    /* Solo la barra y su menú reciben clics: el resto del pie deja pasar al tablero. */
+    pointer-events: none;
+    container-type: inline-size;
+    container-name: vttbar;
+    color: var(--vtt-text, #eee4d2);
+}
+
+.gs-actions-vtt .gs-vtt-bar {
+    pointer-events: auto;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    max-width: 100%;
+    box-sizing: border-box;
+    padding: 8px 14px;
+    background: var(--vtt-hud-bg, rgba(18, 15, 12, 0.92));
+    border: 1px solid var(--vtt-hud-border, rgba(214, 180, 106, 0.28));
+    border-radius: 14px;
+    box-shadow: 0 10px 35px rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(14px);
+}
+
+/* El estado del turno: quién, lo que le queda y la postura. */
+.gs-vtt-bar .gs-actions-status {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 150px;
+    padding-right: 14px;
+    border-right: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.gs-vtt-bar .gs-turn-label {
+    max-width: 230px;
+    overflow: hidden;
+    color: var(--vtt-gold, #e2c27a);
+    font-weight: bold;
+    font-size: 0.95em;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.gs-vtt-bar .gs-budget-pills {
+    display: flex;
+    gap: 4px;
+}
+
+.gs-vtt-bar .gs-pill {
+    padding: 1px 6px;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.05);
+    color: #e7e0d4;
+    font-size: 0.68rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.gs-vtt-bar .gs-pill.ready {
+    border-color: #6f9e5d;
+    color: #a9e3a0;
+}
+
+.gs-vtt-bar .gs-pill.ready::after {
+    content: ' ●';
+}
+
+.gs-vtt-bar .gs-pill.spent {
+    border-color: transparent;
+    color: #9a948a;
+    text-decoration: line-through;
+}
+
+.gs-vtt-bar .gs-move-container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.gs-vtt-bar .gs-move-label {
+    font-size: 0.8rem;
+    white-space: nowrap;
+    color: #e7e0d4;
+}
+
+.gs-vtt-bar .gs-prone-toggle {
+    padding: 2px 6px;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.05);
+    color: #e7e0d4;
+    font-size: 0.7rem;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.gs-vtt-bar .gs-prone-toggle:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.12);
+}
+
+.gs-vtt-bar .gs-prone-toggle.active {
+    border-color: #f59e0b;
+    background: rgba(245, 158, 11, 0.15);
+    color: #fbbf24;
+}
+
+/* Los botones: Atacar, Magia, Acciones, Adicional, Fin de turno y Abandonar. */
+.gs-vtt-bar .gs-actions-buttons {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 6px;
+}
+
+.gs-vtt-bar .gs-btn {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    min-height: 40px;
+    margin: 0;
+    padding: 8px 12px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    color: #eee4d2;
+    font-size: 0.88em;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+}
+
+.gs-vtt-bar .gs-btn:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.12);
+}
+
+.gs-vtt-bar .gs-btn:active:not(:disabled) {
+    transform: translateY(1px);
+}
+
+.gs-vtt-bar .gs-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.gs-vtt-bar .gs-btn.active-menu {
+    border-color: var(--vtt-gold, #e2c27a);
+    background: rgba(214, 180, 106, 0.18);
+    color: #fff;
+}
+
+.gs-vtt-bar .gs-btn-attack {
+    border-color: rgba(208, 138, 134, 0.55);
+}
+
+.gs-vtt-bar .gs-btn-attack i {
+    color: #fca5a5;
+}
+
+.gs-vtt-bar .gs-btn-attack:hover:not(:disabled),
+.gs-vtt-bar .gs-btn-attack.active-menu {
+    border-color: #d08a86;
+    background: rgba(165, 83, 79, 0.22);
+}
+
+.gs-vtt-bar .gs-btn-bonus {
+    border-color: rgba(96, 165, 250, 0.45);
+}
+
+.gs-vtt-bar .gs-btn-bonus i {
+    color: #93c5fd;
+}
+
+.gs-vtt-bar .gs-btn-bonus:hover:not(:disabled),
+.gs-vtt-bar .gs-btn-bonus.active-menu {
+    border-color: #60a5fa;
+    background: rgba(59, 130, 246, 0.2);
+}
+
+.gs-vtt-bar .gs-btn-quiet {
+    margin-left: 0;
+    border-color: transparent;
+    color: #cfc8bb;
+    opacity: 1;
+}
+
+.gs-vtt-bar .gs-btn-key {
+    position: absolute;
+    top: 2px;
+    right: 4px;
+    padding: 0;
+    border: none;
+    background: none;
+    box-shadow: none;
+    color: #b8b0a2;
+    font-size: 0.6rem;
+    font-family: inherit;
+    line-height: 1;
+}
+
+.gs-vtt-bar .gs-btn:focus-visible,
+.gs-vtt-bar .gs-prone-toggle:focus-visible,
+.gs-grimoire button:focus-visible {
+    outline: 2px solid var(--vtt-gold, #e2c27a);
+    outline-offset: 2px;
+}
+
+/* Sin sitio (1280 px con el minimapa y la iniciativa al lado): el icono encima del nombre. */
+@container vttbar (max-width: 880px) {
+    .gs-vtt-bar {
+        gap: 10px;
+        padding: 6px 10px;
+    }
+
+    .gs-vtt-bar .gs-actions-status {
+        min-width: 132px;
+        padding-right: 10px;
+    }
+
+    .gs-vtt-bar .gs-actions-buttons {
+        gap: 4px;
+    }
+
+    .gs-vtt-bar .gs-btn {
+        flex-direction: column;
+        gap: 3px;
+        min-width: 62px;
+        padding: 6px 7px;
+        font-size: 0.76em;
+    }
+
+    .gs-vtt-bar .gs-btn i {
+        font-size: 1.05rem;
+    }
+}
+
+/* ---- Los menús: se abren hacia arriba, como un grimorio ----
+   Pisan lo de `.gs-targets` del pie de siempre (game-shell.css): aquí no flotan sueltos, van
+   encima de la barra, y nunca más altos que el sitio que queda (lo mide action-bar.js). Con
+   `#game-shell` delante: la hoja del móvil de game-shell.css (`#game-shell .gs-targets`) va así. */
+#game-shell .gs-actions-vtt .gs-targets.gs-grimoire {
+    position: static;
+    order: -1;
+    pointer-events: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    box-sizing: border-box;
+    width: min(580px, 100%);
+    min-width: min(420px, 100%);
+    max-height: 440px;
+    margin: 0 0 10px;
+    padding: 12px;
+    overflow: hidden;
+    background: rgba(20, 17, 14, 0.97);
+    border: 1px solid rgba(214, 180, 106, 0.4);
+    border-radius: 12px;
+    box-shadow: 0 12px 35px rgba(0, 0, 0, 0.85);
+    color: var(--vtt-text, #eee4d2);
+    animation: gsGrimoireUp 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes gsGrimoireUp {
+    from { opacity: 0; transform: translateY(12px) scale(0.97); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+:root[data-gs-motion="none"] .gs-actions-vtt .gs-grimoire {
+    animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    :root:not([data-gs-motion]) .gs-actions-vtt .gs-grimoire {
+        animation: none;
+    }
+}
+
+.gs-grimoire .gs-grimoire-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 8px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(214, 180, 106, 0.2);
+}
+
+.gs-grimoire .gs-grimoire-title {
+    display: flex;
+    flex: 1 1 auto;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    color: var(--vtt-gold, #e2c27a);
+    font-size: 0.8rem;
+    font-weight: bold;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.gs-grimoire .gs-targets-close,
+.gs-grimoire .gs-grimoire-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin: 0;
+    padding: 4px 8px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.05);
+    color: #e7e0d4;
+    font-size: 0.78rem;
+    cursor: pointer;
+}
+
+.gs-grimoire .gs-targets-close:hover,
+.gs-grimoire .gs-grimoire-back:hover {
+    background: rgba(255, 255, 255, 0.12);
+}
+
+/* Las gemas de los espacios de conjuro que quedan. */
+.gs-grimoire .gs-slot-counter {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 10px;
+    color: #d6d0c4;
+    font-size: 0.72rem;
+}
+
+.gs-grimoire .gs-slot-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.gs-grimoire .gs-slot-gems {
+    display: inline-flex;
+    gap: 3px;
+    color: #60a5fa;
+}
+
+.gs-grimoire .gs-slot-gem-spent {
+    color: rgba(255, 255, 255, 0.22);
+}
+
+.gs-grimoire .gs-filter-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.gs-grimoire .gs-filter-pill {
+    margin: 0;
+    padding: 3px 9px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.05);
+    color: #e7e0d4;
+    font-size: 0.72rem;
+    cursor: pointer;
+}
+
+.gs-grimoire .gs-filter-pill.active,
+.gs-grimoire .gs-filter-pill:hover:not(:disabled) {
+    border-color: var(--vtt-gold, #e2c27a);
+    background: rgba(214, 180, 106, 0.16);
+    color: var(--vtt-gold, #e2c27a);
+}
+
+.gs-grimoire .gs-filter-pill:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+.gs-grimoire .gs-grimoire-body {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    gap: 6px;
+    min-height: 0;
+    padding-right: 3px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+
+.gs-grimoire .gs-grimoire-body::-webkit-scrollbar {
+    width: 5px;
+}
+
+.gs-grimoire .gs-grimoire-body::-webkit-scrollbar-thumb {
+    border-radius: 3px;
+    background: rgba(214, 180, 106, 0.3);
+}
+
+.gs-grimoire .gs-grimoire-section {
+    flex-shrink: 0;
+    margin-top: 4px;
+    color: #d9bd7e;
+    font-size: 0.7rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.gs-grimoire .gs-grimoire-empty {
+    padding: 10px 4px;
+    color: #cfc8bb;
+    font-style: italic;
+}
+
+/* Una tarjeta: su icono, su nombre con sus etiquetas y su frase, y a la derecha lo que hace. */
+.gs-grimoire .gs-card {
+    display: grid;
+    /* En la lista que se desliza, cada tarjeta con su alto entero: no se aprietan. */
+    flex-shrink: 0;
+    grid-template-columns: 44px minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: 10px;
+    box-sizing: border-box;
+    width: 100%;
+    margin: 0;
+    padding: 8px 10px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.03);
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, transform 0.15s;
+}
+
+.gs-grimoire button.gs-card:hover:not(:disabled),
+.gs-grimoire button.gs-card:focus-visible {
+    border-color: var(--vtt-gold, #e2c27a);
+    background: rgba(255, 255, 255, 0.08);
+    transform: translateY(-1px);
+}
+
+.gs-grimoire button.gs-card:disabled {
+    cursor: not-allowed;
+    background: rgba(255, 255, 255, 0.015);
+}
+
+.gs-grimoire button.gs-card:disabled .gs-card-glyph,
+.gs-grimoire button.gs-card:disabled .gs-card-badges {
+    opacity: 0.5;
+}
+
+/* La del arma no se pulsa: sus objetivos van debajo, uno por fila. */
+.gs-grimoire .gs-card-weapon {
+    cursor: default;
+    border-color: rgba(239, 68, 68, 0.25);
+    background: rgba(165, 83, 79, 0.08);
+}
+
+.gs-grimoire .gs-card-weapon + .gs-card-target,
+.gs-grimoire .gs-card-target + .gs-card-target {
+    margin-top: -2px;
+}
+
+.gs-grimoire .gs-card-target {
+    grid-template-columns: 34px minmax(0, 1fr) auto auto;
+    padding: 6px 10px;
+}
+
+.gs-grimoire .gs-card-weapon ~ .gs-card-target {
+    width: calc(100% - 18px);
+    margin-left: 18px;
+}
+
+.gs-grimoire .gs-card-glyph {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.4);
+    font-size: 1.25rem;
+}
+
+.gs-grimoire .gs-card-target .gs-card-glyph {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    border-color: rgba(208, 138, 134, 0.6);
+    font-size: 0.95rem;
+}
+
+.gs-grimoire .gs-card-glyph img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    image-rendering: pixelated;
+}
+
+.gs-grimoire .gs-card-target .gs-card-glyph img {
+    object-fit: cover;
+}
+
+.gs-grimoire .gs-card-key {
+    position: absolute;
+    top: 1px;
+    left: 2px;
+    padding: 0 2px;
+    border: none;
+    border-radius: 3px;
+    background: rgba(0, 0, 0, 0.65);
+    box-shadow: none;
+    color: #e7e0d4;
+    font-size: 0.58rem;
+    font-family: inherit;
+    line-height: 1.2;
+}
+
+.gs-grimoire .gs-tone-weapon { color: #fca5a5; border-color: rgba(239, 68, 68, 0.35); }
+.gs-grimoire .gs-tone-target { color: #f0a39e; }
+.gs-grimoire .gs-tone-action { color: #e2c27a; border-color: rgba(226, 194, 122, 0.35); }
+.gs-grimoire .gs-tone-magic { color: #93c5fd; border-color: rgba(96, 165, 250, 0.35); }
+.gs-grimoire .gs-tone-fire { color: #f97316; border-color: rgba(249, 115, 22, 0.35); text-shadow: 0 0 8px rgba(249, 115, 22, 0.5); }
+.gs-grimoire .gs-tone-cold { color: #67e8f9; border-color: rgba(103, 232, 249, 0.35); }
+.gs-grimoire .gs-tone-storm { color: #fde047; border-color: rgba(253, 224, 71, 0.35); }
+.gs-grimoire .gs-tone-dark { color: #c4b5fd; border-color: rgba(196, 181, 253, 0.35); }
+.gs-grimoire .gs-tone-holy { color: #fde68a; border-color: rgba(253, 230, 138, 0.35); }
+.gs-grimoire .gs-tone-heal { color: #86efac; border-color: rgba(34, 197, 94, 0.35); }
+
+.gs-grimoire .gs-card-body {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.gs-grimoire .gs-card-name {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 6px;
+    color: #fff;
+    font-size: 0.88em;
+    font-weight: bold;
+}
+
+.gs-grimoire .gs-card-desc {
+    color: #d6cfc2;
+    font-size: 0.74em;
+    line-height: 1.3;
+}
+
+.gs-grimoire .gs-card-why {
+    color: #f3b1ab;
+    font-size: 0.72em;
+    line-height: 1.3;
+}
+
+.gs-grimoire .gs-card-badges {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 3px;
+}
+
+.gs-grimoire .gs-card-badge {
+    padding: 2px 6px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.06);
+    color: #e7e0d4;
+    font-size: 0.68rem;
+    white-space: nowrap;
+}
+
+.gs-grimoire .gs-badge-damage { border-color: rgba(239, 68, 68, 0.4); color: #fca5a5; }
+.gs-grimoire .gs-badge-heal { border-color: rgba(34, 197, 94, 0.35); color: #86efac; }
+.gs-grimoire .gs-badge-reach { border-color: rgba(56, 189, 248, 0.4); color: #bae6fd; }
+.gs-grimoire .gs-badge-cost { border-color: rgba(226, 194, 122, 0.4); color: #e2c27a; }
+.gs-grimoire .gs-badge-dc { border-color: rgba(168, 85, 247, 0.45); color: #d8b4fe; }
+
+.gs-grimoire .gs-tag-mastery,
+.gs-grimoire .gs-tag-dc,
+.gs-grimoire .gs-tag-plain {
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-size: 0.65rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.gs-grimoire .gs-tag-mastery {
+    border: 1px solid rgba(234, 179, 8, 0.45);
+    background: rgba(234, 179, 8, 0.15);
+    color: #fde047;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.gs-grimoire .gs-tag-dc {
+    border: 1px solid rgba(168, 85, 247, 0.45);
+    background: rgba(168, 85, 247, 0.15);
+    color: #d8b4fe;
+}
+
+.gs-grimoire .gs-tag-plain {
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    color: #d6cfc2;
+}
+
+.gs-grimoire .gs-card-more {
+    color: #b8b0a2;
+    font-size: 0.75rem;
+}
+
+/* ---- El teléfono: la barra, de lado a lado al pie; el menú, una hoja que sube ----
+   En vertical la barra no flota: va en su sitio, debajo del tablero, para no taparle a la
+   cámara (sección 1) los botones de abajo. */
+@media (max-width: 600px) {
+    .gs-root .gs-actions.gs-actions-vtt {
+        position: relative;
+        left: auto;
+        right: auto;
+        bottom: auto;
+        align-items: stretch;
+    }
+
+    .gs-actions-vtt .gs-vtt-bar {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 4px;
+        width: 100%;
+        padding: 5px 6px calc(5px + env(safe-area-inset-bottom, 0px));
+        border-radius: 12px 12px 0 0;
+        border-bottom: none;
+    }
+
+    .gs-vtt-bar .gs-actions-status {
+        flex-direction: row;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 4px 6px;
+        min-width: 0;
+        padding-right: 0;
+        border-right: none;
+    }
+
+    .gs-vtt-bar .gs-turn-label {
+        max-width: 42%;
+        font-size: 0.82em;
+    }
+
+    .gs-vtt-bar .gs-pill {
+        padding: 0 4px;
+        font-size: 0.6rem;
+    }
+
+    .gs-vtt-bar .gs-move-container {
+        margin-left: auto;
+        gap: 6px;
+    }
+
+    .gs-vtt-bar .gs-move-label {
+        font-size: 0.72rem;
+    }
+
+    /* Tirarse o levantarse, con el dedo: un botón de 44 px, con su icono. */
+    .gs-vtt-bar .gs-prone-toggle {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 44px;
+        min-height: 44px;
+        padding: 0 8px;
+        font-size: 0.68rem;
+    }
+
+    .gs-vtt-bar .gs-prone-toggle span {
+        display: none;
+    }
+
+    .gs-vtt-bar .gs-prone-toggle i {
+        font-size: 1rem;
+    }
+
+    .gs-vtt-bar .gs-actions-buttons {
+        gap: 3px;
+    }
+
+    .gs-vtt-bar .gs-btn {
+        flex: 1 1 0;
+        flex-direction: column;
+        gap: 2px;
+        min-width: 0;
+        min-height: 46px;
+        padding: 5px 2px;
+        font-size: 0.66rem;
+        white-space: normal;
+        line-height: 1.1;
+        text-align: center;
+    }
+
+    .gs-vtt-bar .gs-btn i {
+        font-size: 1rem;
+    }
+
+    .gs-vtt-bar .gs-btn-key {
+        display: none;
+    }
+
+    #game-shell .gs-actions-vtt .gs-targets.gs-grimoire {
+        position: absolute;
+        bottom: 100%;
+        left: 4px;
+        right: 4px;
+        width: auto;
+        min-width: 0;
+        margin: 0 0 6px;
+        padding: 10px;
+    }
+
+    /* Con el dedo, nada de menos de 44 px (J20.3). */
+    .gs-grimoire .gs-targets-close,
+    .gs-grimoire .gs-grimoire-back,
+    .gs-grimoire .gs-filter-pill {
+        min-width: 44px;
+        min-height: 44px;
+        justify-content: center;
+    }
+
+    .gs-grimoire .gs-card {
+        min-height: 48px;
+    }
+
+    .gs-grimoire .gs-card {
+        grid-template-columns: 38px minmax(0, 1fr) auto;
+        gap: 8px;
+        padding: 7px 8px;
+    }
+
+    .gs-grimoire .gs-card-glyph {
+        width: 38px;
+        height: 38px;
+    }
+
+    .gs-grimoire .gs-card-more {
+        display: none;
+    }
+
+    .gs-grimoire .gs-card-badges {
+        max-width: 96px;
+    }
+
+    .gs-grimoire .gs-card-badge {
+        white-space: normal;
+        text-align: right;
+    }
+}
+
+/* El teléfono tumbado: poco alto. La barra en una fila al pie, y el menú sube a su lado. */
+@media (orientation: landscape) and (max-height: 500px) and (max-width: 1000px) {
+    .gs-root .gs-actions.gs-actions-vtt {
+        position: relative;
+        left: auto;
+        right: auto;
+        bottom: auto;
+        align-items: stretch;
+    }
+
+    .gs-actions-vtt .gs-vtt-bar {
+        gap: 8px;
+        width: 100%;
+        padding: 4px 8px calc(4px + env(safe-area-inset-bottom, 0px));
+        border-radius: 10px 10px 0 0;
+        border-bottom: none;
+    }
+
+    .gs-vtt-bar .gs-actions-status {
+        min-width: 0;
+        max-width: 34%;
+        padding-right: 8px;
+    }
+
+    .gs-vtt-bar .gs-turn-label {
+        font-size: 0.78em;
+    }
+
+    .gs-vtt-bar .gs-pill {
+        padding: 0 4px;
+        font-size: 0.58rem;
+    }
+
+    .gs-vtt-bar .gs-actions-buttons {
+        flex: 1 1 auto;
+        gap: 3px;
+    }
+
+    .gs-vtt-bar .gs-btn {
+        flex: 1 1 0;
+        flex-direction: column;
+        gap: 1px;
+        min-width: 0;
+        min-height: 40px;
+        padding: 3px 2px;
+        font-size: 0.64rem;
+        white-space: normal;
+        line-height: 1.05;
+    }
+
+    .gs-vtt-bar .gs-btn-key {
+        display: none;
+    }
+
+    .gs-vtt-bar .gs-actions-status {
+        flex-direction: row;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 2px 6px;
+    }
+
+    .gs-vtt-bar .gs-prone-toggle {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 44px;
+        min-height: 44px;
+        padding: 0 6px;
+    }
+
+    .gs-vtt-bar .gs-prone-toggle span {
+        display: none;
+    }
+
+    .gs-grimoire .gs-targets-close,
+    .gs-grimoire .gs-grimoire-back,
+    .gs-grimoire .gs-filter-pill {
+        min-width: 44px;
+        min-height: 44px;
+        justify-content: center;
+    }
+
+    .gs-grimoire .gs-card {
+        min-height: 46px;
+    }
+
+    #game-shell .gs-actions-vtt .gs-targets.gs-grimoire {
+        position: absolute;
+        bottom: 100%;
+        left: 50%;
+        width: min(560px, 96vw);
+        min-width: 0;
+        margin: 0 0 4px;
+        padding: 8px;
+        transform: translateX(-50%);
+        animation: none;
+    }
+}
+
+/* ============================ fin de 2. LA BARRA DE ACCIONES ============================ */
+
+/* ================================================================================
+   3. ENTRAR EN LA PELEA Y MOVERSE
+   ================================================================================ */
+
+/* El agua honda (el mar del muelle, un río profundo): no se pisa. El mismo dibujo que la poco
+   honda, más oscuro, para que se distingan de un vistazo. */
+.wm-terrain-deep_water {
+    background: repeating-linear-gradient(0deg,
+        rgba(18, 58, 125, 0.78) 0px, rgba(18, 58, 125, 0.78) 3px,
+        rgba(18, 58, 125, 0.56) 3px, rgba(18, 58, 125, 0.56) 6px);
+    border: 1px solid rgba(30, 80, 160, 0.7);
+}
+
+.wm-terrain-deep_water.wm-terrain-tiled {
+    filter: brightness(0.55) saturate(1.35);
+    box-shadow: inset 0 0 0 100vmax rgba(8, 28, 70, 0.28);
+}
+
+/* Las casillas de salida, en azul (el azul del alcance de la maqueta): se pulsa una y el
+   elegido va ahí. Van encima de las fichas, así que solo tiñen. */
+.wm-highlight-place {
+    background: rgba(59, 130, 246, 0.24);
+    box-shadow: inset 0 0 0 1px rgba(96, 165, 250, 0.8);
+    cursor: pointer;
+}
+
+.wm-highlight-place:hover {
+    background: rgba(59, 130, 246, 0.42);
+}
+
+/* Colocar al grupo antes de la iniciativa: una isla abajo en el centro, como la barra de
+   acciones. Mientras, lo de abajo del Modo Juego (las fichas, el aviso de inspección) se aparta. */
+.gs-root.cv-placing .gs-actions {
+    visibility: hidden;
+}
+
+.cv-place {
+    position: fixed;
+    left: 50%;
+    bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+    transform: translateX(-50%);
+    z-index: 60;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    width: max-content;
+    max-width: min(760px, calc(100vw - 32px));
+    padding: 10px 12px 10px 16px;
+    background: rgba(18, 15, 12, 0.94);
+    border: 1px solid rgba(214, 180, 106, 0.38);
+    border-radius: 14px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55);
+    color: #eee4d2;
+    font-size: 14px;
+    pointer-events: auto;
+}
+
+.cv-place-ambush {
+    border-color: rgba(208, 138, 134, 0.7);
+}
+
+.cv-place-body {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+}
+
+.cv-place-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #e2c27a;
+    font-weight: 700;
+    font-size: 15px;
+}
+
+.cv-place-ambush .cv-place-head {
+    color: #e8a39e;
+}
+
+.cv-place-hint {
+    color: #ddd2bd;
+    line-height: 1.35;
+}
+
+.cv-place-faces {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    scrollbar-width: thin;
+    padding-bottom: 2px;
+}
+
+.cv-place-face {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 0 0 auto;
+    min-height: 40px;
+    padding: 4px 10px 4px 4px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(214, 180, 106, 0.22);
+    border-radius: 999px;
+    color: #eee4d2;
+    font: inherit;
+    cursor: pointer;
+}
+
+.cv-place-face:hover,
+.cv-place-face:focus-visible {
+    border-color: rgba(214, 180, 106, 0.6);
+    outline: none;
+}
+
+.cv-place-face.selected {
+    background: rgba(59, 130, 246, 0.22);
+    border-color: #60a5fa;
+    box-shadow: 0 0 0 1px #60a5fa;
+}
+
+.cv-place-face.locked {
+    opacity: 0.75;
+    cursor: default;
+}
+
+.cv-place-ring {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    overflow: hidden;
+    background: #2a231b;
+    border: 2px solid rgba(214, 180, 106, 0.55);
+    color: #e2c27a;
+    font-weight: 700;
+}
+
+.cv-place-face.selected .cv-place-ring {
+    border-color: #60a5fa;
+}
+
+.cv-place-ring img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    image-rendering: pixelated;
+}
+
+.cv-place-name {
+    white-space: nowrap;
+}
+
+.cv-place-lock {
+    font-size: 12px;
+    color: #c9bda6;
+}
+
+.cv-place-start {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    flex: 0 0 auto;
+    min-height: 48px;
+    padding: 0 20px;
+    background: #e2c27a;
+    border: 1px solid #f0d89a;
+    border-radius: 10px;
+    color: #1a140d;
+    font: inherit;
+    font-weight: 700;
+    font-size: 16px;
+    cursor: pointer;
+}
+
+.cv-place-start:hover,
+.cv-place-start:focus-visible {
+    background: #f0d89a;
+    outline: 2px solid #fff3d0;
+    outline-offset: 2px;
+}
+
+/* En el teléfono de pie: a lo ancho, con el botón debajo, y las caras se deslizan. */
+@media (max-width: 600px) {
+    .cv-place {
+        left: 16px;
+        right: 16px;
+        transform: none;
+        width: auto;
+        max-width: none;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+        padding: 10px 12px;
+    }
+
+    .cv-place-hint {
+        font-size: 13px;
+    }
+
+    .cv-place-start {
+        justify-content: center;
+    }
+}
+
+/* Y tumbado, bajito: sin la explicación, que la cabecera ya dice lo que pasa. */
+@media (max-height: 500px) {
+    .cv-place {
+        bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+        padding: 6px 8px 6px 12px;
+        gap: 10px;
+    }
+
+    .cv-place-hint {
+        display: none;
+    }
+
+    .cv-place-face {
+        min-height: 34px;
+    }
+
+    .cv-place-ring {
+        width: 24px;
+        height: 24px;
+    }
+
+    .cv-place-start {
+        min-height: 40px;
+    }
+}
+
+/* ============================ fin de 3. ENTRAR EN LA PELEA Y MOVERSE ============================ */

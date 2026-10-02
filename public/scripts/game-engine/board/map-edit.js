@@ -51,6 +51,7 @@ export const MAP_BRUSHES = [
     { id: 'c', label: 'Cobertura' },
     { id: 'C', label: 'Cobertura alta' },
     { id: 'w', label: 'Agua' },
+    { id: 'W', label: 'Agua honda' },
     { id: 'x', label: 'Salida' },
 ];
 
@@ -58,7 +59,7 @@ export const MAP_BRUSHES = [
 const CHAR_WORDS = {
     '.': 'Suelo', '#': 'Muro', 'D': 'Puerta', 'L': 'Puerta con llave', 'o': 'Puerta abierta',
     '~': 'Terreno difícil', 'c': 'Cobertura', 'C': 'Cobertura alta', 'v': 'Sima', '>': 'Escalera',
-    'w': 'Agua', 'i': 'Hielo', 'b': 'Maleza', 'T': 'Barril', 'k': 'Cofre', '^': 'En alto',
+    'w': 'Agua', 'W': 'Agua honda', 'i': 'Hielo', 'b': 'Maleza', 'T': 'Barril', 'k': 'Cofre', '^': 'En alto',
     'x': 'Salida', 'P': 'Palanca', '=': 'Barricada',
 };
 

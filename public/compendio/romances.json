@@ -1,0 +1,396 @@
+{
+  "version": 1,
+  "domain": "romances",
+  "about": "Los romances (J14.10 de ROADMAP_SIN_CONEXION): opcionales, con quien lo permita su ficha (el campo ROMANCE de companeros.json). Una fila por escena. KIND: senal (la quedada en que sale la pregunta, a partir del vínculo 4), cita (STEP 1, 2 y 3: una por quedada), final (la noche: solo de noche, y acaba en fundido a negro), pareja (LINES: frases sueltas para cuando ya sois pareja) y epilogo (HOME: su línea al final de una campaña del gremio; AWAY: al final de una campaña suelta; HALL: su línea en el Salón de la fama). WHO es su nombre tal cual; WHO «*» es la señal común, para quien tiene ficha pero no señal escrita. Las escenas se escriben como las quedadas: BEATS con NOTE (lo que pasa), SAY (lo que dice), MOOD (alegre, enfadado, triste) y REPLIES (TEXT, BOND 1/0/-1, THEN lo que contesta). La respuesta que hace avanzar el romance lleva ROMANCE «avanza» (sale con un corazón delante); la que lo cierra como amigos, ROMANCE «amigos»; la de la noche que funde a negro, además FADE true. Pon la decisión en el último paso. Huecos: {nombre} (su nombre corto), {heroe}, {ending} (el final), {day} (el día); y {chico|chica} para concordar con tu héroe. Nada explícito: se funde a negro.",
+  "rows": [
+    {
+      "id": "romance-comun-senal",
+      "kind": "senal",
+      "name": "La señal común",
+      "who": "*",
+      "title": "Un rato a solas",
+      "where": "",
+      "beats": [
+        {
+          "note": "Por una vez, no hay nada urgente que hacer. {nombre} se sienta a tu lado, más cerca de lo normal.",
+          "say": "Me alegro de que hayas venido. Contigo se está bien.",
+          "replies": [
+            { "text": "Le dices que te gusta. Que te gusta de verdad.", "bond": 1, "romance": "avanza", "then": "" },
+            { "text": "Le dices que tú también estás a gusto.", "bond": 0, "then": "Pues eso. Se está bien." },
+            { "text": "Le dices que es como de tu familia.", "bond": 1, "romance": "amigos", "then": "Eso es lo más bonito que me han dicho en mucho tiempo.", "mood": "alegre" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "romance-nella-senal",
+      "kind": "senal",
+      "name": "Nella · la señal",
+      "who": "Nella Tresflechas",
+      "title": "La última flecha",
+      "where": "plaza",
+      "beats": [
+        {
+          "note": "En la plaza, Nella ha clavado una diana nueva en el poste de siempre, pero hoy no tira: te espera sentada en el borde de la fuente, con el arco en las rodillas.",
+          "say": "Te propongo una apuesta. Tiras una flecha. Si das en el centro, te digo una cosa que no le he dicho a nadie. Si fallas, me invitas a cenar.",
+          "mood": "alegre",
+          "replies": [
+            { "text": "Acepto. Y voy a acertar.", "bond": 1, "then": "Eso dicen todos. Venga, tira.", "mood": "alegre" },
+            { "text": "¿Y si no quiero tirar?", "bond": 0, "then": "Entonces te lo digo igual, que ya lo tengo en la punta de la lengua." }
+          ]
+        },
+        {
+          "note": "Tiras. La flecha se clava a un dedo del centro. Nella se ríe, se levanta y se queda muy cerca de ti, más de lo que se queda nunca con nadie.",
+          "say": "Casi. Te lo digo igual. Llevo semanas buscando excusas para quedar contigo. Y no son por las flechas.",
+          "replies": [
+            { "text": "Le coges la mano. «Yo también buscaba excusas.»", "bond": 1, "romance": "avanza", "then": "Nella no te suelta. «Pues se acabaron las excusas. Y me debes una cena: has fallado, ¿recuerdas?»", "mood": "alegre" },
+            { "text": "Te ríes y le das una palmada en el hombro.", "bond": 0, "then": "Ya. Vale. Olvida lo que he dicho." },
+            { "text": "Le dices, con cariño, que la quieres como amiga.", "bond": 0, "romance": "amigos", "then": "Me lo imaginaba. Tenía que intentarlo. Lo de la cena sigue en pie, ¿eh?", "mood": "triste" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "romance-nella-cita-1",
+      "kind": "cita",
+      "step": 1,
+      "name": "Nella · primera cita",
+      "who": "Nella Tresflechas",
+      "title": "La mesa del rincón",
+      "where": "posada",
+      "beats": [
+        {
+          "note": "Nella ha reservado la mesa del rincón de la posada, la de la vela buena. Se ha lavado la cara y se ha peinado, y parece molesta de que lo notes.",
+          "say": "No digas nada del pelo. Ni una palabra.",
+          "replies": [
+            { "text": "Estás muy guapa.", "bond": 1, "then": "Te he dicho que ni una palabra. …Gracias.", "mood": "alegre" },
+            { "text": "¿Qué pelo?", "bond": 1, "then": "Así me gusta." },
+            { "text": "Pareces otra persona.", "bond": -1, "then": "Pues soy la de siempre. Siéntate.", "mood": "enfadado" }
+          ]
+        },
+        {
+          "note": "Cenáis guiso y pan negro. Nella te cuenta cómo cazaba en el bosque del barón: dónde ponía los lazos, cómo engañaba a los perros y a qué sabía un conejo después de un invierno de nabos.",
+          "say": "Nunca le había contado esto a nadie sin que acabara en un cartel con mi cara. ¿Y tú qué robabas de {pequeño|pequeña}?",
+          "replies": [
+            { "text": "Manzanas del vecino. Todas.", "bond": 1, "then": "Lo sabía. Tienes cara de manzanas robadas.", "mood": "alegre" },
+            { "text": "Nada. Era {un niño muy bueno|una niña muy buena}.", "bond": 0, "then": "Mentira. Pero me gusta cómo mientes." }
+          ]
+        },
+        {
+          "note": "Al salir, la calle está vacía y hace frío. Nella se queda en la puerta de la posada, sin decidirse a entrar ni a irse.",
+          "say": "Bueno. Pues ya está. Cena pagada.",
+          "replies": [
+            { "text": "Le das un beso en la mejilla antes de que se vaya.", "bond": 1, "romance": "avanza", "then": "Nella se queda quieta un momento. «Eso no entraba en la apuesta.» Pero sonríe hasta que dobla la esquina.", "mood": "alegre" },
+            { "text": "Le das las buenas noches.", "bond": 0, "then": "Buenas noches. …Ya." },
+            { "text": "Le dices que mejor lo dejáis en amistad.", "bond": 0, "romance": "amigos", "then": "Vale. Lo entiendo. No pasa nada.", "mood": "triste" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "romance-nella-cita-2",
+      "kind": "cita",
+      "step": 2,
+      "name": "Nella · segunda cita",
+      "who": "Nella Tresflechas",
+      "title": "El tejado del almacén",
+      "where": "plaza",
+      "beats": [
+        {
+          "note": "Nella te lleva por una escalera de mano hasta el tejado del almacén de la plaza. Desde allí se ve todo el puerto: las luces de los barcos y la niebla que entra del mar.",
+          "say": "Aquí subo cuando no puedo dormir. Nadie mira hacia arriba. Es lo primero que aprende una furtiva.",
+          "replies": [
+            { "text": "Es precioso.", "bond": 1, "then": "Lo sé. Por eso no se lo enseño a cualquiera." },
+            { "text": "¿Y si nos ven?", "bond": 0, "then": "Nadie mira hacia arriba. Te lo acabo de decir." }
+          ]
+        },
+        {
+          "note": "Nella saca la flecha torcida de Tobías, la de las plumas rojas, y le da vueltas entre los dedos.",
+          "say": "A veces pienso que no sé estar con nadie. Me acostumbré a irme antes de que me pillaran: de casa, del bosque, de todo.",
+          "mood": "triste",
+          "replies": [
+            { "text": "Conmigo no tienes que irte.", "bond": 1, "then": "Eso es mucho decir. …Me gustaría creerlo." },
+            { "text": "Todos huimos de algo.", "bond": 1, "then": "Ya. Pero yo soy muy buena huyendo." },
+            { "text": "Pues no te vayas, y ya está.", "bond": 0, "then": "Qué fácil lo dices." }
+          ]
+        },
+        {
+          "note": "La niebla os envuelve. Nella se ha acercado sin que te dieras cuenta, como hace siempre, y tiene la cabeza apoyada en tu hombro.",
+          "say": "Si me muevo, se acaba. Así que no me muevo.",
+          "replies": [
+            { "text": "La besas.", "bond": 1, "romance": "avanza", "then": "Esta vez no se aparta. Cuando os separáis, Nella se ríe bajito. «Tres flechas, tres manzanas. Y ahora tú.»", "mood": "alegre" },
+            { "text": "Le dices que es tarde, y bajáis.", "bond": 0, "then": "Tarde. Sí. Bajo yo primero." },
+            { "text": "Le dices que esto no va a ninguna parte.", "bond": 0, "romance": "amigos", "then": "Ya. Lo sabía. Bajo yo primero.", "mood": "triste" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "romance-nella-cita-3",
+      "kind": "cita",
+      "step": 3,
+      "name": "Nella · tercera cita",
+      "who": "Nella Tresflechas",
+      "title": "La feria",
+      "where": "plaza",
+      "beats": [
+        {
+          "note": "Ha llegado a Puerto Alba una feria pequeña: tres carros, un oso viejo y un puesto de tiro con premio. Nella te arrastra hasta el puesto antes de que puedas decir nada.",
+          "say": "Tres manzanas a cincuenta pasos, como en Hoz. Hoy tiro por ti: si acierto las tres, el premio es tuyo.",
+          "mood": "alegre",
+          "replies": [
+            { "text": "¿Y si fallas?", "bond": 1, "then": "Yo no fallo. Salvo contigo, que no hay quien te acierte." },
+            { "text": "Tira. Confío en ti.", "bond": 1, "then": "Eso es lo más bonito que me ha dicho nadie antes de tirar.", "mood": "alegre" }
+          ]
+        },
+        {
+          "note": "Tres flechas, tres manzanas. El feriante le da el premio de mala gana: una cinta roja, de las de atar el pelo. Nella te la ata a la muñeca con un nudo de cazadora que no se suelta.",
+          "say": "Ya está. Así, si te pierdes, te encuentro.",
+          "replies": [
+            { "text": "No pienso quitármela.", "bond": 1, "then": "Más te vale. Ese nudo no lo deshace ni el barón." },
+            { "text": "¿Y si me pierdo a propósito?", "bond": 0, "then": "Te encuentro igual. Es mi oficio." }
+          ]
+        },
+        {
+          "note": "Volvéis por el muelle, despacio. Nella se para antes de llegar a la posada y te mira muy seria, sin sonreír.",
+          "say": "Me he pasado la vida sin quedarme en ningún sitio. Si me quedo, es por ti. Dime si esto va en serio, porque yo sí voy en serio.",
+          "replies": [
+            { "text": "Va en serio, Nella.", "bond": 1, "romance": "avanza", "then": "Nella te aprieta la muñeca, justo donde está la cinta. «Vale. Entonces no me voy a ninguna parte.»", "mood": "alegre" },
+            { "text": "Vamos poco a poco.", "bond": 0, "then": "Poco a poco. Vale. Yo no sé ir despacio, pero lo intento." },
+            { "text": "Creo que es mejor dejarlo aquí.", "bond": 0, "romance": "amigos", "then": "Nella asiente muy despacio. «Vale.» No dice nada más en todo el camino.", "mood": "triste" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "romance-nella-final",
+      "kind": "final",
+      "name": "Nella · la noche",
+      "who": "Nella Tresflechas",
+      "title": "La ventana que da al mar",
+      "where": "posada",
+      "beats": [
+        {
+          "note": "Esa noche, Nella te espera en lo alto de la escalera de la posada, con una vela en la mano. Su habitación es pequeña: una cama, el arco colgado de un clavo y una ventana que da al mar.",
+          "say": "No es gran cosa. Pero es lo primero que tengo que es mío. Quería que lo vieras.",
+          "replies": [
+            { "text": "Es perfecta.", "bond": 1, "then": "No mientas. Pero gracias." },
+            { "text": "Se oye el mar.", "bond": 1, "then": "Por eso la elegí. Dicen que ayuda a dormir. A mí, casi nunca." }
+          ]
+        },
+        {
+          "note": "Nella deja la vela en el alféizar. Te mira como mira la diana antes de tirar: sin prisa y sin miedo.",
+          "say": "Quédate esta noche.",
+          "replies": [
+            { "text": "Te quedas.", "bond": 1, "romance": "avanza", "fade": true, "then": "Nella sopla la vela. Lo demás se queda entre vosotros y el mar." },
+            { "text": "Hoy no. Pero pronto.", "bond": 0, "then": "Pronto. Te lo apunto, que me lo cobro." }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "romance-nella-pareja",
+      "kind": "pareja",
+      "name": "Nella · de pareja",
+      "who": "Nella Tresflechas",
+      "lines": [
+        "Nella te ha guardado sitio a su lado, como siempre, y te roba un trozo de pan sin preguntar.",
+        "Nella lleva tu cinta roja atada al carcaj. Cuando la miras, hace como que no se ha dado cuenta.",
+        "Antes de sentaros, Nella te da un beso rápido, de los que no ve nadie que no esté mirando."
+      ]
+    },
+    {
+      "id": "romance-nella-epilogo",
+      "kind": "epilogo",
+      "name": "Nella · el epílogo",
+      "who": "Nella Tresflechas",
+      "home": "Nella Tresflechas vuelve contigo al gremio. Después de «{ending}», duerme en la habitación que da al mar, y ya no se va a ninguna parte.",
+      "away": "Nella Tresflechas se quedó contigo después de «{ending}». Dicen que en cada feria gana el premio de tiro y te lo ata a la muñeca.",
+      "hall": "{heroe} y Nella Tresflechas, {juntos|juntas} desde el día {day}. En la posada de Puerto Alba hay una ventana que da al mar, y es {de los dos|de las dos}."
+    },
+    {
+      "id": "romance-osric-senal",
+      "kind": "senal",
+      "name": "Osric · la señal",
+      "who": "Osric Mediapaga",
+      "title": "Las aceitunas negras",
+      "where": "posada",
+      "beats": [
+        {
+          "note": "La posada está casi vacía. Osric sigue en su rincón, con la jarra que le dura horas. Cuando te sientas, empuja hacia ti un plato de aceitunas sin decir nada.",
+          "say": "Te he guardado las negras. Las verdes no te gustan. Me he fijado.",
+          "replies": [
+            { "text": "Qué detalle.", "bond": 1, "then": "No es un detalle. Es que me fijo. Es mi oficio." },
+            { "text": "¿Desde cuándo compartes?", "bond": 0, "then": "Desde hace poco. No te acostumbres." }
+          ]
+        },
+        {
+          "note": "Osric le da vueltas a la jarra. Tarda en hablar, como siempre, pero hoy parece que le cuesta más.",
+          "say": "Once años haciendo guardia sin dormirme. Y desde que vas conmigo, me doy cuenta de que no vigilo el camino. Te vigilo a ti. No sé qué hacer con eso.",
+          "replies": [
+            { "text": "Le pones la mano encima de la suya. «Yo tampoco lo sé. Pero me gusta.»", "bond": 1, "romance": "avanza", "then": "Osric mira tu mano un buen rato, como si fuera algo que se puede romper. Luego pone la otra encima. «Vale. Despacio, entonces. Que yo soy lento.»" },
+            { "text": "Le dices que es un buen compañero de guardia.", "bond": 0, "then": "Ya. Eso. Un buen compañero." },
+            { "text": "Le dices, con cariño, que para ti es un amigo.", "bond": 0, "romance": "amigos", "then": "Osric asiente. «Mejor así. Olvida lo que he dicho, que ha sido la cerveza.» No ha bebido casi nada." }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "romance-osric-cita-1",
+      "kind": "cita",
+      "step": 1,
+      "name": "Osric · primera cita",
+      "who": "Osric Mediapaga",
+      "title": "Las redes",
+      "where": "muelle",
+      "beats": [
+        {
+          "note": "Osric te espera en el muelle con un montón de redes rotas y dos agujas de hueso. Los pescadores le saludan con la cabeza. Aquí nadie le llama Mediapaga.",
+          "say": "Mi padre decía que quien sabe remendar una red no pasa hambre. Siéntate. Te enseño.",
+          "replies": [
+            { "text": "Enséñame.", "bond": 1, "then": "Así. Nudo, vuelta y aprieta. Otra vez." },
+            { "text": "No se me dan bien las manos.", "bond": 0, "then": "A mí tampoco se me daba bien nada. Se aprende." }
+          ]
+        },
+        {
+          "note": "Pasáis un buen rato con las redes. Tus nudos son un desastre, y Osric los deshace uno por uno y los vuelve a hacer a tu lado, más despacio, para que veas cómo.",
+          "say": "Hacía años que no hablaba tanto con nadie. Y eso que casi no he hablado.",
+          "replies": [
+            { "text": "Me gusta tu silencio.", "bond": 1, "then": "A casi nadie le gusta. Gerd dice que parezco un poste." },
+            { "text": "Pues habla más.", "bond": 0, "then": "Lo intento. Poco a poco." }
+          ]
+        },
+        {
+          "note": "Al recoger, vuestras manos se tocan sobre la misma red. Osric no aparta la suya.",
+          "say": "Mañana vuelvo a por más redes. Si quieres venir…",
+          "replies": [
+            { "text": "Aquí estaré, a la misma hora.", "bond": 1, "romance": "avanza", "then": "Osric sonríe. En él, eso es mucho: casi nunca se le ve.", "mood": "alegre" },
+            { "text": "Ya veremos.", "bond": 0, "then": "Ya veremos. Claro." },
+            { "text": "Mejor lo dejamos como amigos, Osric.", "bond": 0, "romance": "amigos", "then": "Osric asiente despacio. «Amigos. Está bien. Es más de lo que tenía.»", "mood": "triste" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "romance-osric-cita-2",
+      "kind": "cita",
+      "step": 2,
+      "name": "Osric · segunda cita",
+      "who": "Osric Mediapaga",
+      "title": "Dos velas",
+      "where": "templo",
+      "beats": [
+        {
+          "note": "En la capilla del templo, Osric tiene dos velas en la mano en vez de una.",
+          "say": "Una es por él, como siempre. La otra no sé por quién es. Enciéndela tú, si quieres.",
+          "replies": [
+            { "text": "Por los que seguimos aquí.", "bond": 1, "then": "Por los que seguimos aquí. Eso está bien." },
+            { "text": "Por tu barca.", "bond": 1, "then": "Ja. Por la «Gaviota». Que no se hunda.", "mood": "alegre" },
+            { "text": "Yo no enciendo velas.", "bond": -1, "then": "Vale. No pasa nada." }
+          ]
+        },
+        {
+          "note": "Las dos velas arden juntas. Osric no mira la suya: te mira a ti.",
+          "say": "Once años encendiendo una vela para pedir perdón. Hoy es la primera vez que no pienso en aquella noche. Pienso en ti. No sé si eso está bien.",
+          "mood": "triste",
+          "replies": [
+            { "text": "Está bien, Osric. Tienes derecho.", "bond": 1, "then": "Tengo derecho. Me lo tendré que creer." },
+            { "text": "Él no querría que siguieras castigándote.", "bond": 1, "then": "No lo conociste. Pero seguramente tienes razón." }
+          ]
+        },
+        {
+          "note": "En la puerta del templo, Osric se para. Tiene en la mano el anillo de su señor, y lo vuelve a guardar.",
+          "say": "Algún día iré a Valdés y cerraré lo del anillo. Y cuando vuelva, quiero volver a ti. ¿Me esperarías?",
+          "replies": [
+            { "text": "Te esperaría. O mejor: voy contigo.", "bond": 1, "romance": "avanza", "then": "Osric tarda en contestar. «Contigo. Sí. Así sí puedo.»" },
+            { "text": "No sé qué decirte.", "bond": 0, "then": "No digas nada. No pasa nada." },
+            { "text": "No, Osric. Lo siento.", "bond": 0, "romance": "amigos", "then": "Lo entiendo. Gracias por decírmelo a la cara.", "mood": "triste" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "romance-osric-cita-3",
+      "kind": "cita",
+      "step": 3,
+      "name": "Osric · tercera cita",
+      "who": "Osric Mediapaga",
+      "title": "La Gaviota",
+      "where": "muelle",
+      "beats": [
+        {
+          "note": "La «Gaviota» ya es suya. Osric la ha pintado de azul y le ha cosido una vela nueva. Hoy te lleva mar adentro, hasta que Puerto Alba es una raya en la costa.",
+          "say": "El mar no te pregunta a quién servías. Ya te lo dije una vez. Tampoco te pregunta a quién quieres.",
+          "replies": [
+            { "text": "¿Y a quién quieres, Osric?", "bond": 1, "then": "Ya lo sabes. No me hagas decirlo, que se me da fatal." },
+            { "text": "Aquí se está bien.", "bond": 1, "then": "Se está bien. Contigo, mejor." }
+          ]
+        },
+        {
+          "note": "Echáis la red. No pescáis casi nada: dos sardinas y una bota vieja. Osric se ríe, y es la primera vez que le oyes reírse fuerte.",
+          "say": "Gerd no se lo va a creer. Osric Mediapaga, riéndose en una barca.",
+          "mood": "alegre",
+          "replies": [
+            { "text": "Ríete más a menudo.", "bond": 1, "then": "Contigo, puede." },
+            { "text": "Guárdame el secreto de la bota.", "bond": 1, "then": "Hasta la tumba.", "mood": "alegre" }
+          ]
+        },
+        {
+          "note": "De vuelta, Osric deja los remos y se sienta a tu lado, con cuidado, como quien se sienta junto a un fuego.",
+          "say": "Me he pasado la vida siendo medio escolta, media paga, medio hombre. Contigo me siento entero. Dime si esto va en serio.",
+          "replies": [
+            { "text": "Va en serio, Osric.", "bond": 1, "romance": "avanza", "then": "Osric respira hondo, como quien deja una carga en el suelo. «Entonces la barca es de los dos.»", "mood": "alegre" },
+            { "text": "Vamos despacio.", "bond": 0, "then": "Despacio. Eso sé hacerlo." },
+            { "text": "No puedo darte eso, Osric.", "bond": 0, "romance": "amigos", "then": "Osric asiente y coge los remos. Volvéis en silencio.", "mood": "triste" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "romance-osric-final",
+      "kind": "final",
+      "name": "Osric · la noche",
+      "who": "Osric Mediapaga",
+      "title": "La guardia de Gerd",
+      "where": "muelle",
+      "beats": [
+        {
+          "note": "Esa noche, la «Gaviota» está amarrada al muelle con un farol encendido en la proa. Osric te espera sentado en la borda, sin la espada.",
+          "say": "Es la primera noche en once años que no hago guardia. Se la he dejado a Gerd. Le he dicho que tenía algo mejor que hacer.",
+          "replies": [
+            { "text": "¿Algo mejor?", "bond": 1, "then": "Alguien. Me he equivocado de palabra a propósito." },
+            { "text": "Gerd ronca.", "bond": 1, "then": "Por eso. Que ronque lejos.", "mood": "alegre" }
+          ]
+        },
+        {
+          "note": "Osric te tiende la mano para ayudarte a subir a bordo. No la suelta cuando ya estás arriba.",
+          "say": "Quédate conmigo esta noche.",
+          "replies": [
+            { "text": "Te quedas.", "bond": 1, "romance": "avanza", "fade": true, "then": "Osric apaga el farol. El muelle se queda a oscuras y, por una vez, nadie vigila. Lo demás es cosa vuestra." },
+            { "text": "Hoy no. Pero pronto.", "bond": 0, "then": "Te espero. Eso sé hacerlo." }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "romance-osric-pareja",
+      "kind": "pareja",
+      "name": "Osric · de pareja",
+      "who": "Osric Mediapaga",
+      "lines": [
+        "Osric te ha guardado las aceitunas negras, como siempre. Ahora ya no finge que es casualidad.",
+        "Osric lleva al cuello una cuerda de red con un nudo tuyo, el peor que hiciste. Dice que es el que más le gusta.",
+        "Cuando llegas, Osric se aparta un poco en el banco para hacerte sitio, y te roza la mano al hacerlo."
+      ]
+    },
+    {
+      "id": "romance-osric-epilogo",
+      "kind": "epilogo",
+      "name": "Osric · el epílogo",
+      "who": "Osric Mediapaga",
+      "home": "Osric Mediapaga vuelve contigo al gremio después de «{ending}». Por las tardes salís en la «Gaviota», y ya nadie le llama Mediapaga delante de ti.",
+      "away": "Después de «{ending}», Osric Mediapaga se quedó contigo. Dicen que en su barca hay dos redes, y que una tiene los nudos torcidos.",
+      "hall": "{heroe} y Osric Mediapaga, juntos desde el día {day}. En el muelle de Puerto Alba hay una barca azul, la «Gaviota», y es de los dos."
+    }
+  ]
+}

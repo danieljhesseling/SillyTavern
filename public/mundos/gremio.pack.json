@@ -25,6 +25,19 @@
         { "kind": "tienda", "keeper": "marisa" },
         { "kind": "templo", "name": "La capilla", "keeper": "elvira" }
       ],
+      "sights": [
+        { "verbo": "mirar", "text": "las barcas del muelle", "skill": "perception", "found": "Una barca negra, sin nombre en la proa, está amarrada lejos de las demás. Nadie del puerto dice de quién es, y con la marea alta sale hacia el norte sin luces." },
+        { "verbo": "leer", "text": "los avisos clavados en la lonja", "skill": "investigation", "found": "Entre los precios del pescado hay un aviso nuevo: el herrero paga bien a quien le traiga el carro de carbón que no llegó por el camino de la costa." },
+        { "verbo": "mirar", "text": "el faro de la punta, al caer la tarde", "skill": "perception", "found": "El faro viejo sigue apagado. Pero en la ventana más alta algo se mueve despacio, y no tiene forma de farero." },
+        { "verbo": "escuchar", "text": "a los pescadores que remiendan redes", "skill": "insight", "found": "Hablan bajo de las salinas: los lobos bajan cada noche a las chozas, y alguien les deja carne para que vuelvan." },
+        { "place": "gremio", "verbo": "leer", "text": "los nombres grabados en la viga del salón", "skill": "investigation", "found": "Son las compañías que salieron de esta casa y no volvieron. Junto al último nombre hay un hueco raspado a cuchillo, como si alguien hubiera borrado el suyo." },
+        { "place": "gremio", "verbo": "examinar", "text": "el tablón viejo, debajo del nuevo", "skill": "investigation", "found": "Debajo de los papeles de hoy quedan clavos con restos de encargos de hace años. Uno sigue entero: «Barovia. No vuelve nadie». Alguien ha tachado el «nadie»." },
+        { "place": "gremio", "verbo": "mirar", "text": "las armas colgadas sobre la chimenea", "skill": "perception", "found": "Una espada mellada, un escudo partido y un arco sin cuerda. Debajo, una placa de latón: «Lo que trajeron de vuelta». En el escudo, casi borrado, se lee el nombre de Brunilda: fue suyo." },
+        { "place": "posada", "verbo": "escuchar", "text": "lo que se habla en la barra", "skill": "insight", "found": "Dos marineros cuentan que una barca sin luces entra en la cala del norte con la marea alta. Callan en cuanto ven que escuchas." },
+        { "place": "templo", "verbo": "leer", "text": "las tablillas junto a las velas", "skill": "investigation", "found": "Son ruegos por los que se fueron con el gremio. Una dice «Que vuelva de Barovia» y lleva tres inviernos ahí. Alguien sigue cambiándole la vela." },
+        { "place": "herreria", "verbo": "examinar", "text": "la forja", "skill": "investigation", "found": "Las brasas están casi frías y el cubo del carbón, vacío. Sin el carro del monte, aquí no se forja nada." },
+        { "place": "tienda", "verbo": "mirar", "text": "los estantes del fondo", "skill": "perception", "found": "Detrás de los sacos de sal hay una mochila vieja, con la correa cosida a mano. No está a la venta: tiene una etiqueta con un nombre y una fecha de hace dos años." }
+      ],
       "routes": []
     },
     {
@@ -247,12 +260,35 @@
           "failure": "«¿Y quién me lo asegura?» Aprieta el cuchillo."
         }
       ],
+      "parley": {
+        "leader": "Ratero del muelle",
+        "sobornar": {
+          "text": "Tirarle unas monedas: que deje la bolsa y se vaya",
+          "gold": 2,
+          "success": "El chico coge las monedas al vuelo, deja la bolsa en las tablas y se escurre entre las barcas.",
+          "failure": "«¿Eso es todo?» Escupe a tus pies y aprieta el cuchillo."
+        },
+        "convencer": {
+          "text": "Decirle que aún está a tiempo: si suelta la bolsa, nadie le persigue",
+          "dc": 10,
+          "success": "Al chico le tiembla el cuchillo. Deja la bolsa en las tablas, se tira al agua y nada hasta las barcas.",
+          "partial": "El chico duda y mira el agua. Esta ronda no ataca.",
+          "failure": "«¡Mentira! ¡Me colgarán igual!» Se lanza a por ti."
+        },
+        "engañar": {
+          "text": "Gritar que la guardia del puerto viene por las tablas",
+          "dc": 10,
+          "success": "El chico mira por encima de tu hombro, tira la bolsa y salta al agua. Cuando saca la cabeza, ya está al otro lado del muelle.",
+          "failure": "«¡Aquí la guardia no baja hasta la noche!» Se ríe y aprieta el cuchillo."
+        },
+        "no": ["entregarse"]
+      },
       "locationName": "Puerto Alba",
       "map": [
         "##############",
-        "#wwwwwwwwwwww#",
-        "#www....wwwww#",
-        "#T....c....Tw#",
+        "#WWWWWWWWWWWW#",
+        "#WWW....WWWWW#",
+        "#T....c....TW#",
         "#...........T#",
         "#..c.........#",
         "#T......c....#",
@@ -312,11 +348,41 @@
           "success": "Se llevan el oro, empujan la barca al agua y no vuelven."
         }
       ],
+      "parley": {
+        "leader": "Bandido contrabandista",
+        "entregarse": {
+          "text": "Clavar el arma en la arena y levantar las manos",
+          "resolves": false,
+          "success": {
+            "text": "Os atan a una barca varada y os vacían la bolsa. Se van con la marea. De madrugada, un pescador os encuentra y os corta las cuerdas.",
+            "effects": [{ "gold": -6 }, "time", { "fame": -1 }]
+          }
+        },
+        "sobornar": {
+          "text": "Tirarles una bolsa: que cojan lo suyo y se vayan",
+          "gold": 10,
+          "success": "El del arco cuenta las monedas desde las rocas y da un silbido. Empujan la barca al agua y se van remando.",
+          "failure": "«Con eso no pagas ni la barca.» Siguen."
+        },
+        "convencer": {
+          "text": "Decirles que la cala ya está vista: mañana la vigilará la guardia del puerto",
+          "dc": 13,
+          "success": "Se miran entre ellos. Cargan lo que pueden en la barca y reman mar adentro. No volverán a esta cala.",
+          "partial": "Bajan las armas un momento para mirar hacia el puerto. Esta ronda, nadie ataca.",
+          "failure": "«Pues que venga. Para entonces ya no estaremos, y tú tampoco.»"
+        },
+        "engañar": {
+          "text": "Señalar el acantilado: «¡Ahí arriba están los del gremio!»",
+          "dc": 13,
+          "success": "El del arco se gira, ve sombras en lo alto y no espera a saber de quién son. Empujan la barca y se van.",
+          "failure": "«Ahí arriba solo hay gaviotas.» Ahora vienen a por ti sin cuidarse."
+        }
+      },
       "locationName": "La cala del norte",
       "map": [
         "################",
-        "#wwwwwwwwwwwwww#",
-        "#wwww....wwwwww#",
+        "#WWWWWWWWWWWWWW#",
+        "#WWWW....WWWWWW#",
         "#w.....c.....ww#",
         "#...T......c..w#",
         "#..c....bb.....#",
@@ -388,6 +454,36 @@
           "success": "Cogen las monedas y se van hacia el interior. El carro de Ramiro podrá pasar."
         }
       ],
+      "parley": {
+        "leader": "Bandido del camino",
+        "entregarse": {
+          "text": "Soltar el arma en el camino",
+          "resolves": false,
+          "success": {
+            "text": "Os quitan la bolsa y os dejan atados a un pino, junto al camino. Al anochecer pasa un carbonero y os suelta sin hacer preguntas.",
+            "effects": [{ "gold": -6 }, "time", { "fame": -1 }]
+          }
+        },
+        "sobornar": {
+          "text": "Pagarles para que se vayan a robar a otro camino",
+          "gold": 8,
+          "success": "Cuentan las monedas, se ríen y se pierden por los acantilados. El carro podrá pasar.",
+          "failure": "«¿Y por qué no nos lo quedamos todo?» Siguen."
+        },
+        "convencer": {
+          "text": "Decirles que el carbón no vale nada sin carro, y que el gremio volverá con más gente",
+          "dc": 13,
+          "success": "Los salteadores se miran, se encogen de hombros y se van monte arriba con lo que llevan.",
+          "partial": "Dudan, con las armas a medio bajar. Esta ronda, no atacan.",
+          "failure": "«El gremio no sale de la taberna.» Siguen."
+        },
+        "engañar": {
+          "text": "Gritar que ya bajan los carboneros con las hachas",
+          "dc": 12,
+          "success": "Miran hacia el monte, oyen ruido entre los árboles y salen corriendo hacia el acantilado.",
+          "failure": "«Los carboneros no se juegan el pellejo por nadie.» Ahora vienen a por ti sin cuidarse."
+        }
+      },
       "locationName": "El camino de la costa",
       "map": [
         "##################",
@@ -695,8 +791,21 @@
         {
           "id": "inicio",
           "mood": "neutral",
-          "line": "Así que tú eres {el nuevo|la nueva}. Aquí se entra de una sola forma: haciendo lo que te pido y volviendo de una pieza. Pregunta rápido, que tengo el libro abierto.",
-          "again": "¿Otra vez tú? Dime, que tengo el libro abierto.",
+          "line": "Bueno, {el nuevo|la nueva}. En esta casa se entra de una sola forma: haciendo lo que te pido y volviendo de una pieza. Pregunta rápido, que tengo el libro abierto.",
+          "again": [
+            { "if": { "milestone": { "id": "el-tablon", "is": "open" } }, "text": "Has subido por tu pie. Eso ya es más de lo que hacen algunos. ¿Y las ratas?" },
+            { "if": { "milestone": { "id": "la-prueba", "is": "open" } }, "text": "¿Todavía aquí? Las ratas no se van a ir solas." },
+            "¿Otra vez tú? Dime, que tengo el libro abierto.",
+            "Tú dirás. Y abrevia, que hoy salen dos compañías.",
+            "Otra vez por aquí. Habla, que te escucho.",
+            "¿Qué necesitas? Rápido, que se me seca la tinta."
+          ],
+          "more": [
+            "¿Qué más?",
+            "¿Algo más, o te vas a quedar mirando?",
+            "Sigue. Te escucho.",
+            "Rápido, que el libro no se escribe solo."
+          ],
           "options": [
             { "id": "quiero-entrar", "text": "Quiero entrar en el gremio.", "if": { "milestone": { "id": "el-gremio", "is": "open" } }, "next": "prueba" },
             { "id": "bodega", "text": "¿Qué me espera en la bodega?", "if": { "milestone": { "id": "la-prueba", "is": "open" } }, "next": "bodega" },
@@ -739,22 +848,23 @@
           "line": "Ratas de bodega. Muerden, y si les va mal, huyen. No te pido que las mates con estilo: te pido que subas de una pieza.",
           "options": [
             { "id": "bodega-consejo", "text": "¿Algún consejo?", "next": "consejo" },
-            { "id": "bodega-vale", "text": "Entendido.", "next": "inicio" }
+            { "id": "bodega-vale", "text": "Entendido.", "reply": "Pues venga.", "next": "inicio" }
           ]
         },
         {
           "id": "consejo",
           "mood": "alegre",
           "line": "Pelea con la pared a la espalda, que no te rodeen. Y si te muerden, no te hagas {el valiente|la valiente}: bebe algo y sigue.",
+          "again": "Ya te lo he dicho: la pared a la espalda, y si te muerden, bebes y sigues. No hay más secreto.",
           "journal": "Consejo de Brunilda: pelear con la pared a la espalda, para que no te rodeen.",
           "options": [
-            { "id": "consejo-gracias", "text": "Gracias.", "next": "inicio" }
+            { "id": "consejo-gracias", "text": "Gracias.", "reply": "No me las des. Sube {entero|entera} y me las das arriba.", "next": "inicio" }
           ]
         },
         {
           "id": "libro",
           "mood": "alegre",
-          "line": "Bien hecho. Ya estás en el libro del gremio. Ahí tienes el tablón: cada papel es una campaña entera. Si vas corto de gente, en el salón hay espadas que se alquilan.",
+          "line": "Bien. Pues ya eres del gremio: ahí va tu nombre, en el libro. El tablón es tuyo; cada papel es una campaña entera. Y si vas corto de gente, en el salón hay espadas que se alquilan.",
           "journal": "Ya eres del gremio. En el tablón están las campañas, y en el salón se alquilan espadas.",
           "effects": [{ "milestone": "el-tablon" }],
           "options": [
@@ -768,7 +878,7 @@
           "line": "Para empezar, nada con niebla: de Barovia volvieron dos de cinco. Lee bien lo que pone cada papel, y si vas al norte, lleva mantas.",
           "journal": "Brunilda no recomienda Barovia para empezar: de la última compañía volvieron dos de cinco.",
           "options": [
-            { "id": "recomienda-gracias", "text": "Gracias.", "next": "inicio" }
+            { "id": "recomienda-gracias", "text": "Gracias.", "reply": "Y lleva mantas. No lo digo por decir.", "next": "inicio" }
           ]
         },
         {
@@ -778,7 +888,7 @@
           "journal": "El gremio da cama, cura y guarda lo que traes; la cuenta de la semana la pagas tú.",
           "options": [
             { "id": "herido", "text": "¿Y si vuelvo {herido|herida}?", "next": "herido" },
-            { "id": "gremio-vale", "text": "Entendido.", "next": "inicio" }
+            { "id": "gremio-vale", "text": "Entendido.", "reply": "Bien. Lo demás se aprende fuera.", "next": "inicio" }
           ]
         },
         {
@@ -787,7 +897,7 @@
           "line": "Entonces vas a la capilla, con Madre Elvira. Cura bien y no hace preguntas. A los que no vuelven no los cura nadie.",
           "journal": "Si vuelves con heridas, Madre Elvira cura en la capilla.",
           "options": [
-            { "id": "herido-vale", "text": "Lo tendré en cuenta.", "next": "inicio" }
+            { "id": "herido-vale", "text": "Lo tendré en cuenta.", "reply": "Más te vale.", "next": "inicio" }
           ]
         },
         {
@@ -803,7 +913,7 @@
           "mood": "neutral",
           "line": "Aquí se mira lo que haces, no la cara que traes. Si alguien del gremio te mira raro, me lo dices a mí.",
           "options": [
-            { "id": "semiorco-gracias", "text": "Gracias.", "next": "inicio" }
+            { "id": "semiorco-gracias", "text": "Gracias.", "reply": "No me las des. Haz bien tu trabajo y nadie dirá nada.", "next": "inicio" }
           ]
         },
         {
@@ -813,7 +923,7 @@
           "journal": "Brunilda fue aventurera veinte años antes de llevar el gremio.",
           "options": [
             { "id": "veterana-por-que", "text": "¿Por qué lo dejaste?", "next": "pasado" },
-            { "id": "veterana-vale", "text": "Entiendo.", "next": "inicio" }
+            { "id": "veterana-vale", "text": "Entiendo.", "reply": { "text": "No hace falta que lo entiendas. Con que vuelvas, me basta.", "mood": "triste" }, "next": "inicio" }
           ]
         },
         {
@@ -821,7 +931,7 @@
           "mood": "alegre",
           "line": "Que cuiden de los que salen de ella, que de la casa ya me ocupo yo. Pásate por la capilla: Madre Elvira se alegrará de tener compañía.",
           "options": [
-            { "id": "clerigo-vale", "text": "Iré a verla.", "next": "inicio" }
+            { "id": "clerigo-vale", "text": "Iré a verla.", "reply": "Llévale pan. Nunca se acuerda de comer.", "next": "inicio" }
           ]
         },
         {
@@ -829,7 +939,7 @@
           "mood": "enfadado",
           "line": "El oro lo guardo donde no llegan tus dedos. Y el libro también.",
           "options": [
-            { "id": "picaro-broma", "text": "Era una broma.", "next": "inicio" }
+            { "id": "picaro-broma", "text": "Era una broma.", "reply": { "text": "Ya. Yo también me río mucho.", "mood": "enfadado" }, "next": "inicio" }
           ]
         },
         {
@@ -838,7 +948,7 @@
           "line": "Salimos cinco hacia el paso del norte. La nieve nos cerró el camino y volví yo sola. Desde entonces prefiero apuntar nombres que enterrarlos.",
           "journal": "Brunilda perdió a toda su compañía en el paso del norte. Por eso quiere que las compañías vuelvan vivas.",
           "options": [
-            { "id": "pasado-siento", "text": "Lo siento.", "next": "inicio" }
+            { "id": "pasado-siento", "text": "Lo siento.", "reply": { "text": "No lo sientas tú. Pasó hace mucho. Lo que quiero es que los míos vuelvan.", "mood": "triste" }, "next": "inicio" }
           ]
         },
         {
@@ -847,7 +957,7 @@
           "line": "Toma cinco monedas. No es un regalo: me las devuelves con la primera campaña.",
           "journal": "Brunilda te adelantó cinco monedas: se las debes.",
           "options": [
-            { "id": "adelanto-si-trato", "text": "Trato hecho.", "next": "inicio" }
+            { "id": "adelanto-si-trato", "text": "Trato hecho.", "reply": "Apuntado. Con tu nombre al lado.", "next": "inicio" }
           ]
         },
         {
@@ -855,7 +965,7 @@
           "mood": "neutral",
           "line": "Dos monedas, y porque me has pillado de buenas. No me pidas más.",
           "options": [
-            { "id": "adelanto-poco-vale", "text": "Me valen.", "next": "inicio" }
+            { "id": "adelanto-poco-vale", "text": "Me valen.", "reply": "Pues que te duren.", "next": "inicio" }
           ]
         },
         {
@@ -863,7 +973,321 @@
           "mood": "enfadado",
           "line": "Aquí nadie cobra antes de trabajar. Ni tú.",
           "options": [
-            { "id": "adelanto-no-vale", "text": "Vale, vale.", "next": "inicio" }
+            { "id": "adelanto-no-vale", "text": "Vale, vale.", "reply": { "text": "Eso. Primero el trabajo.", "mood": "neutral" }, "next": "inicio" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "tomas-la-barra",
+      "speaker": "Tomás",
+      "title": "Tomás, en la barra",
+      "start": "inicio",
+      "nodes": [
+        {
+          "id": "inicio",
+          "mood": "alegre",
+          "line": "¡Pasa, pasa, que fuera sopla el viento del puerto! Siéntate donde quieras. Y pregunta lo que te dé la gana: por esta barra pasa todo Puerto Alba, y yo me entero de todo.",
+          "again": [
+            "¡Otra vez por aquí! Siéntate, que el vaso ya está seco. Bueno, casi.",
+            "Pasa, que te guardo el sitio de siempre. ¿Qué me cuentas? O mejor: ¿qué te cuento yo?",
+            "¡Anda, mira quién entra! Siéntate, siéntate.",
+            "Llegas a tiempo: acabo de abrir un barril. ¿Qué te pongo?"
+          ],
+          "more": [
+            "¿Y qué más? Que hoy estoy de charla.",
+            "Sigue, sigue, que el vaso no se seca solo.",
+            "¿Algo más? Pregunta sin miedo.",
+            "Tú dirás. Yo de aquí no me muevo."
+          ],
+          "options": [
+            { "id": "tres-monedas", "text": "Lo de las tres monedas del muelle… ¿sigues dolido?", "if": { "chose": "cuanto-pagas" }, "effects": [{ "attitude": 1 }], "reply": { "text": "¿Dolido yo? Un poco. Pero la bolsa volvió entera, y eso es lo que cuenta. Eso sí: la cerveza te la cobro.", "mood": "neutral" }, "next": "inicio" },
+            { "id": "esa-cerveza", "text": "Vengo a por esa cerveza que me debes.", "if": { "chose": "una-cerveza" }, "reply": { "text": "¡Y yo que pensaba que se te había olvidado! Toma, de la buena, de la que no saco para cualquiera.", "mood": "alegre" }, "next": "inicio" },
+            { "id": "quien-vuelve", "text": "¿Quién ha vuelto últimamente de alguna campaña?", "next": "vueltas" },
+            { "id": "comer", "text": "¿Qué hay hoy de comer?", "next": "comida" },
+            { "id": "camas", "text": "¿Cómo va lo de las camas?", "next": "camas" },
+            { "id": "agua-de-fregar", "text": "¿Esto es cerveza o agua de fregar?", "if": { "species": "Enano" }, "effects": [{ "attitude": 1 }], "next": "enano" },
+            { "id": "adios", "text": "Me voy, que tengo cosas que hacer.", "end": true, "repeat": true }
+          ]
+        },
+        {
+          "id": "vueltas",
+          "mood": "triste",
+          "line": "Hace un mes volvió de Barovia una compañía. Salieron cinco y volvieron dos. Uno de ellos se sienta ahí, en el rincón, y no ha dicho una palabra desde entonces. Le pongo el plato, se lo come y se va.",
+          "journal": "Tomás: de la última compañía que fue a Barovia volvieron dos de cinco, y uno no habla desde entonces.",
+          "effects": [{ "rumor": "r-vuelta-de-barovia" }],
+          "options": [
+            { "id": "que-le-paso", "text": "¿Qué le pasó allí?", "next": "callado" },
+            { "id": "mala-suerte", "text": "Qué mala suerte.", "reply": { "text": "Suerte, dice. Allí no hay suerte: hay niebla.", "mood": "triste" }, "next": "inicio" }
+          ]
+        },
+        {
+          "id": "callado",
+          "mood": "triste",
+          "line": "No lo sé, y no se lo pregunto. Solo una noche, con tres cervezas encima, dijo que la niebla no te deja irte: que caminas y caminas, y siempre vuelves al mismo pueblo.",
+          "effects": [{ "rumor": "r-la-niebla" }],
+          "options": [
+            { "id": "callado-vale", "text": "Lo tendré en cuenta.", "reply": "Tenlo. Y si un día vas para allá, vuelve a contármelo. Vuelve, sobre todo.", "next": "inicio" }
+          ]
+        },
+        {
+          "id": "comida",
+          "mood": "alegre",
+          "line": "Guiso de pescado, como ayer y como mañana: es lo que trae el puerto. Pero el pan lo hace mi hermana, y ese sí que vale la pena.",
+          "options": [
+            { "id": "un-plato", "text": "Ponme un plato.", "reply": { "text": "¡Marchando! Y si te gusta el pan, díselo a mi hermana, que a mí no me cree.", "mood": "alegre" }, "next": "inicio" }
+          ]
+        },
+        {
+          "id": "camas",
+          "mood": "neutral",
+          "line": "Las camas son del gremio: si eres de la casa, duermes. La cuenta de la semana la paga cada uno, eso sí. Yo no fío, que luego no vuelve la mitad.",
+          "options": [
+            { "id": "camas-vale", "text": "Entendido.", "reply": "Y si no vuelves, que alguien me pague la cuenta, ¿eh? Es broma. Casi.", "next": "inicio" }
+          ]
+        },
+        {
+          "id": "enano",
+          "mood": "alegre",
+          "line": "¡Ja! Agua de fregar, dice. Toma, prueba esta, del barril de abajo. Si esta no te gusta, no te gusta ninguna.",
+          "options": [
+            { "id": "enano-vale", "text": "Esta ya es otra cosa.", "reply": "¡Lo sabía! Con los enanos no hay manera de colar la barata.", "next": "inicio" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ramiro-la-fragua",
+      "speaker": "Ramiro",
+      "title": "Ramiro, en la fragua",
+      "start": "inicio",
+      "nodes": [
+        {
+          "id": "inicio",
+          "mood": "neutral",
+          "line": "Habla. Pero habla mientras trabajo, que el hierro no espera.",
+          "again": [
+            "Tú otra vez. Habla.",
+            "Dime. Y no toques nada, que quema.",
+            "¿Qué traes? Enséñamelo.",
+            "Pasa. Y no te quedes en la puerta, que tapas la luz."
+          ],
+          "more": [
+            "¿Más?",
+            "Sigue.",
+            "Dime.",
+            "¿Algo más? El hierro se enfría."
+          ],
+          "options": [
+            { "id": "mirar-arma", "text": "¿Me miras el arma?", "next": "arma" },
+            { "id": "precio-espada", "text": "¿Cuánto cuesta una espada buena?", "next": "precio" },
+            { "id": "esta-hoja", "text": "Esta hoja ha visto mucho.", "if": { "class": ["Guerrero", "Bárbaro", "Soldado"] }, "effects": [{ "attitude": 1 }], "next": "hoja" },
+            { "id": "brazo-de-mago", "text": "¿Tienes algo para alguien que no sabe usar la espada?", "if": { "class": ["Mago", "Bardo"] }, "next": "mago" },
+            { "id": "buen-fuego", "text": "Buen fuego. Casi como los de casa.", "if": { "species": "Enano" }, "effects": [{ "attitude": 1 }], "next": "enano" },
+            { "id": "el-mar", "text": "¿Nunca sales a pescar con los del puerto?", "if": { "attitude": 1 }, "next": "mar" },
+            { "id": "adios", "text": "Te dejo trabajar.", "end": true, "repeat": true }
+          ]
+        },
+        {
+          "id": "arma",
+          "mood": "neutral",
+          "line": "Trae. … Aguanta. Pero tráemela antes de que se melle, no después. Una hoja mellada se parte cuando más falta hace.",
+          "journal": "Ramiro: llevarle el arma antes de que se melle, no cuando ya se ha partido.",
+          "options": [
+            { "id": "arma-vale", "text": "Te la traeré a tiempo.", "reply": "Eso dicen todos. Luego vienen con el mango y media hoja.", "next": "inicio" }
+          ]
+        },
+        {
+          "id": "precio",
+          "mood": "neutral",
+          "line": "Dieciocho monedas, una buena. Si en el muelle te la ofrecen por cinco, o está rota o es robada. O las dos cosas.",
+          "effects": [{ "rumor": "r-precio-espada" }],
+          "options": [
+            { "id": "precio-caro", "text": "Es caro.", "reply": "Más cara sale una que se parte.", "next": "inicio" }
+          ]
+        },
+        {
+          "id": "hoja",
+          "mood": "alegre",
+          "line": "Se nota. La has afilado mal, pero la has cuidado. Eso ya es más que la mayoría.",
+          "options": [
+            { "id": "hoja-vale", "text": "¿Me enseñas a afilarla bien?", "reply": { "text": "Otro día. Hoy mírame hacerlo, y calla.", "mood": "alegre" }, "next": "inicio" }
+          ]
+        },
+        {
+          "id": "mago",
+          "mood": "neutral",
+          "line": "Un bastón. De roble, que no se parte. Con eso y tus cosas, a ver qué pasa.",
+          "options": [
+            { "id": "mago-vale", "text": "Un bastón, entonces.", "reply": "Y no lo uses para apoyarte. Es para pegar.", "next": "inicio" }
+          ]
+        },
+        {
+          "id": "enano",
+          "mood": "alegre",
+          "line": "Casi. Los vuestros tiran más. Pero este es mío, y no me quejo.",
+          "options": [
+            { "id": "enano-vale", "text": "No te quejes, no.", "reply": "No me quejo. Lo has dicho tú.", "next": "inicio" }
+          ]
+        },
+        {
+          "id": "mar",
+          "mood": "triste",
+          "line": "No. Ni pienso. El agua no se deja golpear, y lo que no puedo golpear no me gusta. Y no se lo cuentes a nadie: vivo en un puerto.",
+          "journal": "Ramiro le tiene miedo al mar: vive en un puerto y no ha subido nunca a una barca.",
+          "options": [
+            { "id": "mar-secreto", "text": "Será nuestro secreto.", "effects": [{ "attitude": 1 }], "reply": { "text": "Bien. Ya sabía yo que eras de fiar.", "mood": "alegre" }, "next": "inicio" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "marisa-el-mostrador",
+      "speaker": "Marisa",
+      "title": "Marisa, en el mostrador",
+      "start": "inicio",
+      "nodes": [
+        {
+          "id": "inicio",
+          "mood": "alegre",
+          "line": "¡Pasa, pasa! Cuerda, antorchas, mantas, raciones: lo que se lleva cualquier compañía antes de salir, aquí lo tienes. Pregunta, que yo mientras apunto.",
+          "again": [
+            "¡Otra vez tú! Espera, que te apunto. Ya está. ¿Qué te hace falta hoy?",
+            "Pasa, pasa. ¿Vienes a comprar o a mirar? Las dos cosas valen, pero una vale más.",
+            "¡Hola, hola! Tengo antorchas nuevas, secas, recién llegadas. ¿Qué te pongo?",
+            "Dime rápido, que la humedad del puerto se me come la cuerda."
+          ],
+          "more": [
+            "¿Qué más?",
+            "¿Algo más? Yo sigo apuntando.",
+            "Dime, dime.",
+            "¿Y qué más te hace falta?"
+          ],
+          "options": [
+            { "id": "que-llevo", "text": "¿Qué me hace falta para salir de campaña?", "next": "lista" },
+            { "id": "el-norte", "text": "¿Qué se lleva la gente que va al norte?", "next": "norte" },
+            { "id": "la-tiza", "text": "¿Qué apuntas tanto con esa tiza?", "next": "tiza" },
+            { "id": "mostrador-solo", "text": "Bonito mostrador. ¿Lo dejas solo a menudo?", "if": { "class": ["Pícaro", "Pícara"] }, "effects": [{ "attitude": -1 }], "next": "picaro" },
+            { "id": "adios", "text": "Volveré luego.", "end": true, "repeat": true }
+          ]
+        },
+        {
+          "id": "lista",
+          "mood": "neutral",
+          "line": "Cuerda, que siempre falta. Antorchas, que la oscuridad no avisa. Y algo para las heridas: las pociones son caras, pero más caro es no llevarlas.",
+          "journal": "Marisa: antes de salir, cuerda, antorchas y algo para curarse.",
+          "options": [
+            { "id": "lista-gracias", "text": "Gracias.", "reply": "No me des las gracias: cómpramelo.", "next": "inicio" }
+          ]
+        },
+        {
+          "id": "norte",
+          "mood": "neutral",
+          "line": "Mantas y cuerda. Allí la nieve cierra los pasos en cuanto llega el invierno, y quien se queda fuera ya no vuelve a comprarme nada.",
+          "effects": [{ "rumor": "r-mantas-para-el-norte" }],
+          "options": [
+            { "id": "norte-vale", "text": "Lo tendré en cuenta.", "reply": "Tenlo. Las mantas, en el estante de arriba.", "next": "inicio" }
+          ]
+        },
+        {
+          "id": "tiza",
+          "mood": "triste",
+          "line": "Quién compra qué, y quién vuelve a comprar. Cuando alguien no vuelve, borro su nombre. Hay semanas que borro más que apunto.",
+          "options": [
+            { "id": "la-mochila", "text": "¿Y esa mochila vieja de la trastienda?", "if": { "attitude": 1 }, "next": "mochila" },
+            { "id": "tiza-siento", "text": "Lo siento.", "reply": { "text": "No lo sientas. Tú vuelve, y así no tengo que borrarte.", "mood": "triste" }, "next": "inicio" }
+          ]
+        },
+        {
+          "id": "mochila",
+          "mood": "triste",
+          "line": "De un chico que salió con la compañía de Barovia. Me la dejó para que se la guardara, que pesaba mucho. No la he abierto. Si un día vuelve, aquí estará.",
+          "journal": "Marisa guarda en la trastienda la mochila de un chico que fue a Barovia y no volvió.",
+          "options": [
+            { "id": "ojala-vuelva", "text": "Ojalá vuelva.", "reply": "Ojalá. Mientras tanto, la mochila no se mueve de ahí.", "next": "inicio" }
+          ]
+        },
+        {
+          "id": "picaro",
+          "mood": "enfadado",
+          "line": "Nunca. Y lo apunto todo, hasta lo que falta. Sobre todo lo que falta.",
+          "options": [
+            { "id": "picaro-broma", "text": "Era una broma.", "reply": { "text": "Ya. Te apunto igual.", "mood": "enfadado" }, "next": "inicio" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "elvira-la-capilla",
+      "speaker": "Madre Elvira",
+      "title": "Madre Elvira, en la capilla",
+      "start": "inicio",
+      "nodes": [
+        {
+          "id": "inicio",
+          "mood": "neutral",
+          "line": "Pasa, {hijo|hija}, y habla bajo, que aquí se descansa. ¿Traes alguna herida, o solo ganas de hablar?",
+          "again": [
+            "Otra vez por aquí, {hijo|hija}. Siéntate. ¿Cómo vas de heridas?",
+            "Pasa, {hijo|hija}. Me alegra verte de pie.",
+            "Ven, siéntate un rato. Aquí nadie tiene prisa.",
+            "Ven, {hijo|hija}. ¿Vienes a curarte o a que te escuchen? Las dos cosas se hacen aquí."
+          ],
+          "more": [
+            "¿Algo más, {hijo|hija}?",
+            "Sigue. Te escucho.",
+            "Dime. Sin prisa.",
+            "¿Qué más te pesa?"
+          ],
+          "options": [
+            { "id": "que-cobras", "text": "¿Qué cobras por curar?", "next": "curar" },
+            { "id": "las-tumbas", "text": "¿Quién está enterrado detrás de la capilla?", "next": "tumbas" },
+            { "id": "rezar-aqui", "text": "¿Puedo rezar aquí, Madre?", "if": { "class": "Clérigo" }, "effects": [{ "attitude": 1 }], "next": "clerigo" },
+            { "id": "curar-igual", "text": "¿Me curarás igual que a los demás?", "if": { "species": ["Semiorco", "Tiflin"] }, "effects": [{ "attitude": 1 }], "next": "igual" },
+            { "id": "los-pescadores", "text": "Dicen que a los pescadores no les cobras.", "if": { "attitude": 1 }, "next": "limosna" },
+            { "id": "adios", "text": "Me voy, Madre.", "end": true, "repeat": true }
+          ]
+        },
+        {
+          "id": "curar",
+          "mood": "neutral",
+          "line": "Lo que sea justo. Primero se cura, y luego se habla de dinero. Al revés no lo he hecho nunca.",
+          "options": [
+            { "id": "curar-gracias", "text": "Gracias, Madre.", "reply": "Dámelas volviendo de una pieza.", "next": "inicio" }
+          ]
+        },
+        {
+          "id": "tumbas",
+          "mood": "triste",
+          "line": "Veintitrés, {hijo|hija}. Me sé el nombre de cada uno, y de qué murió. La mayoría, por no hacer caso. Uno, de un resbalón en el muelle, que también pasa.",
+          "journal": "Detrás de la capilla hay veintitrés aventureros enterrados. Madre Elvira se sabe el nombre de cada uno.",
+          "options": [
+            { "id": "por-que-los-sabes", "text": "¿Por qué te los sabes todos?", "reply": { "text": "Porque alguien tiene que acordarse. Si no, es como si no hubieran salido nunca.", "mood": "triste" }, "next": "inicio" }
+          ]
+        },
+        {
+          "id": "clerigo",
+          "mood": "alegre",
+          "line": "Claro que sí. Y si te quedas a barrer, mejor todavía: los dioses también miran el suelo.",
+          "options": [
+            { "id": "clerigo-barro", "text": "Barreré.", "reply": { "text": "Eso me gusta. Las escobas, detrás del altar.", "mood": "alegre" }, "next": "inicio" }
+          ]
+        },
+        {
+          "id": "igual",
+          "mood": "neutral",
+          "line": "Aquí la sangre es toda del mismo color, {hijo|hija}. Siéntate, que te miro esa cara.",
+          "options": [
+            { "id": "igual-gracias", "text": "Gracias, Madre.", "reply": "No hay de qué. Y quien te diga otra cosa, que venga a decírmelo a mí.", "next": "inicio" }
+          ]
+        },
+        {
+          "id": "limosna",
+          "mood": "triste",
+          "line": "¿Quién te ha dicho eso? … Bueno. Un pescador con la mano rota no pesca, y si no pesca, no come. La limosna del gremio llega para todos. Que no se entere Brunilda, que todo lo apunta en el libro.",
+          "journal": "Madre Elvira cura sin cobrar a los pescadores que no pueden pagar, con la limosna del gremio.",
+          "options": [
+            { "id": "limosna-callo", "text": "No diré nada.", "effects": [{ "attitude": 1 }], "reply": { "text": "Eso pensaba. Tienes buena cara, {hijo|hija}.", "mood": "alegre" }, "next": "inicio" }
           ]
         }
       ]
@@ -877,18 +1301,18 @@
         "act": 1,
         "prologue": true,
         "title": "El ratero del muelle",
-        "hint": "Para al ratero. Pulsa «Iniciar combate»; en tu turno, acércate a él y atácale.",
-        "scene": "La barca del correo te deja en el muelle de Puerto Alba al caer la tarde, {cansado|cansada} del viaje. Huele a sal y a pescado frito. De pronto, un grito: «¡Al ladrón!». Un ratero le ha quitado la bolsa a Tomás, el posadero, y se ha metido en el embarcadero. No tiene por dónde salir, y saca un cuchillo.",
+        "hint": "Para al ratero. En el tablero, colócate y pulsa «Empezar»; en tu turno, acércate a él y atácale.",
+        "scene": "La barca del correo te deja en el muelle de Puerto Alba al caer la tarde, {cansado|cansada} del viaje. Huele a sal y a pescado frito. De pronto, un grito: «¡Al ladrón!». Un ratero le ha quitado la bolsa a un hombre con delantal de posadero, y se ha metido en el embarcadero. No tiene por dónde salir, y saca un cuchillo.",
         "backdrop": "muelle",
         "beats": [
-          { "text": "La barca del correo te deja en el muelle de Puerto Alba al caer la tarde, {cansado|cansada} del viaje. Huele a sal y a pescado frito." },
+          { "text": "La barca del correo te deja en el muelle de Puerto Alba al caer la tarde, {cansado|cansada} del viaje. Huele a sal y a pescado frito. En la puerta de una taberna, un hombre con delantal se pone a gritar." },
           { "who": "Tomás", "mood": "enfadado", "text": "¡Al ladrón! ¡Ese desgraciado me ha quitado la bolsa!" },
           { "text": "Un chico flaco corre por las tablas con una bolsa de cuero en la mano. Se mete en el embarcadero, pero allí no hay salida: solo agua." },
           { "text": "Se da la vuelta, te ve y saca un cuchillo." },
           {
             "who": "Tomás", "mood": "triste", "text": "¡Ahí dentro va la paga de toda la semana! ¡Sin ella no pago ni al panadero!",
             "options": [
-              { "id": "yo-me-encargo", "text": "Quédate atrás, Tomás. Yo me encargo.", "effects": [{ "attitude": 1 }],
+              { "id": "yo-me-encargo", "text": "Quédate atrás. Yo me encargo.", "effects": [{ "attitude": 1 }],
                 "reply": { "who": "Tomás", "mood": "alegre", "text": "¡Que los dioses te lo paguen! Cuidado con ese cuchillo." },
                 "later": {
                   "days": 3,
@@ -922,23 +1346,25 @@
         "id": "la-charla",
         "act": 1,
         "prologue": true,
-        "title": "Una charla con Tomás",
+        "title": "Una charla con el posadero",
         "hint": "Pulsa «Hablar con Tomás» y pregúntale qué se cuenta en el puerto.",
-        "scene": "El ratero suelta la bolsa, y dos pescadores se lo llevan a rastras hacia la guardia. Tomás, un hombre redondo con el delantal lleno de manchas, recoge sus monedas del suelo. «¡Gracias! Soy Tomás, el de la posada del gremio. Te debo una. Pregúntame lo que quieras: por mi barra pasa todo el puerto.»",
+        "scene": "El ratero suelta la bolsa, y dos pescadores se lo llevan a rastras hacia la guardia. El posadero, un hombre redondo con el delantal lleno de manchas, recoge sus monedas del suelo. «¡Gracias! Soy Tomás, el de la posada del gremio. Te debo una. Pregúntame lo que quieras: por mi barra pasa todo el puerto.»",
         "backdrop": "muelle",
         "beats": [
           { "text": "El ratero suelta la bolsa. Dos pescadores lo agarran de los brazos y se lo llevan a rastras hacia la guardia." },
-          { "text": "Tomás es un hombre redondo, con el delantal lleno de manchas. Recoge sus monedas del suelo una a una, sin prisa." },
-          { "who": "Tomás", "mood": "alegre", "text": "¡Gracias! Soy Tomás, el de la posada del gremio. Te debo una, y yo pago lo que debo." },
+          { "text": "El posadero es un hombre redondo, con el delantal lleno de manchas. Recoge sus monedas del suelo una a una, sin prisa." },
+          { "who": "Tomás", "mood": "alegre", "text": "¡Gracias! Soy Tomás, el de la posada del gremio. Te debo una, y yo pago lo que debo.",
+            "alt": [{ "if": { "chose": "cuanto-pagas" }, "mood": "neutral", "text": "Gracias, aunque me hayas cobrado. Soy Tomás, el de la posada del gremio. La bolsa está entera, y eso vale más que tres monedas." }] },
           {
             "who": "Tomás", "mood": "neutral", "text": "Dime qué quieres por ayudarme.",
+            "alt": [{ "if": { "chose": "cuanto-pagas" }, "text": "Bueno. ¿Quieres algo más, o con las tres monedas vamos en paz?" }],
             "options": [
               { "id": "una-cerveza", "text": "Con una cerveza me doy por {pagado|pagada}.", "effects": [{ "attitude": 1 }],
                 "reply": { "who": "Tomás", "mood": "alegre", "text": "¡Eso está hecho! Y cuando quieras otra, aquí estoy." } },
               { "id": "unas-monedas", "text": "Unas monedas. El viaje me ha dejado sin nada.", "effects": [{ "gold": 2 }],
                 "reply": { "who": "Tomás", "mood": "neutral", "text": "Justo es. Toma, dos monedas. La cerveza, eso sí, te la cobro." } },
               { "id": "que-se-cuenta", "text": "Cuéntame qué se dice por el puerto.", "effects": [{ "rumor": "r-vuelta-de-barovia" }],
-                "reply": { "who": "Tomás", "mood": "triste", "text": "Lo de siempre: que Barovia se traga a la gente." } }
+                "reply": { "who": "Tomás", "mood": "triste", "text": "¡Uy, de todo! Pero lo que más se oye estos días es que Barovia se traga a la gente." } }
             ]
           },
           { "who": "Tomás", "mood": "alegre", "text": "Pásate por la taberna cuando quieras. Por mi barra pasa todo el puerto, y yo me entero de todo." }
@@ -953,15 +1379,23 @@
         "prologue": true,
         "title": "La Casa del Gremio",
         "hint": "Pulsa «Hablar con Brunilda»: es la maestra del gremio.",
-        "scene": "Mientras habláis, llega una mujer de pelo gris y corto, con una cicatriz en la barbilla: Brunilda, la maestra del gremio. «Así que tú has parado al ratero. Ven conmigo.» Te lleva a la plaza, a la Casa del Gremio: una posada grande con un tablón en el salón. Ahí se apuntan las compañías y se reparten las campañas. Se vuelve con oro, aunque no siempre vuelven todos.",
+        "scene": "Mientras habláis, llega una mujer de pelo gris y corto, con una cicatriz en la barbilla. «Soy Brunilda, la maestra del gremio. Así que tú has parado al ratero. Ven conmigo.» Te lleva a la plaza, a la Casa del Gremio: una posada grande con un tablón en el salón. Ahí se apuntan las compañías y se reparten las campañas. Se vuelve con oro, aunque no siempre vuelven todos.",
         "backdrop": "gremio",
         "beats": [
           { "text": "Mientras habláis, se acerca una mujer de pelo gris y corto, con una cicatriz en la barbilla. En el muelle todos le abren paso." },
-          { "who": "Tomás", "mood": "alegre", "text": "¡Brunilda! Mira, {este es el que|esta es la que} ha parado al ratero." },
-          { "who": "Brunilda", "mood": "neutral", "text": "Ya lo he visto. Soy Brunilda, la maestra del gremio. Ven conmigo." },
+          { "who": "Tomás", "mood": "alegre", "text": "¡Brunilda! Mira, {este es el que|esta es la que} ha parado al ratero.",
+            "alt": [{ "if": { "chose": "cuanto-pagas" }, "text": "¡Brunilda! Mira, {este es el que|esta es la que} ha parado al ratero. Cobrando, eso sí, pero lo ha parado." }] },
+          { "who": "Brunilda", "mood": "neutral", "text": "Ya lo he visto. Soy Brunilda, la maestra del gremio. Ven conmigo.",
+            "alt": [{ "if": { "chose": "cuanto-pagas" }, "text": "Ya lo he visto. Y lo de las tres monedas, también. Soy Brunilda, la maestra del gremio. Ven conmigo." }] },
           { "text": "Te lleva a la plaza, a la Casa del Gremio: una posada grande con un tablón en el salón. Ahí se apuntan las compañías y se reparten las campañas." },
           {
             "who": "Brunilda", "mood": "neutral", "text": "Aquí se vuelve con oro, aunque no siempre vuelven todos. ¿Qué te trae a Puerto Alba?",
+            "alt": [
+              { "if": { "class": "Pícaro" }, "text": "Aquí se vuelve con oro, aunque no siempre vuelven todos. Y aquí dentro no se roba, que conste. ¿Qué te trae a Puerto Alba?" },
+              { "if": { "class": "Mago" }, "text": "Aquí se vuelve con oro, aunque no siempre vuelven todos. Y dentro de casa, nada de chispas. ¿Qué te trae a Puerto Alba?" },
+              { "if": { "class": "Clérigo" }, "text": "Aquí se vuelve con oro, aunque no siempre vuelven todos. A alguien que reza nos viene bien. ¿Qué te trae a Puerto Alba?" },
+              { "if": { "class": ["Guerrero", "Soldado", "Bárbaro"] }, "text": "Aquí se vuelve con oro, aunque no siempre vuelven todos. Por cómo te has movido en el muelle, no es tu primera pelea. ¿Qué te trae a Puerto Alba?" }
+            ],
             "options": [
               { "id": "trabajo", "text": "Busco trabajo, del que se paga bien.", "effects": [{ "attitude": 1 }],
                 "reply": { "who": "Brunilda", "mood": "alegre", "text": "Sin rodeos. Así me gusta." } },
@@ -980,17 +1414,18 @@
         "act": 1,
         "prologue": true,
         "title": "La prueba del gremio",
-        "hint": "Ve a la bodega: «Salir del tablero» y luego «Entrar en La bodega del gremio». Allí, pulsa «Iniciar combate» cuando estés {listo|lista}.",
+        "hint": "Ve a la bodega: «Salir del tablero» y luego «Entrar en La bodega del gremio». Allí, colócate y pulsa «Empezar» cuando estés {listo|lista}.",
         "scene": "Brunilda te mira de arriba abajo, como quien calcula lo que aguanta una cuerda. «Parar a un ratero lo hace cualquiera. ¿Quieres ser de los nuestros? Baja a la bodega: hay ratas entre los barriles. Si subes {entero|entera}, te apunto en el libro.»",
         "backdrop": "gremio",
         "beats": [
           { "text": "Brunilda te lleva detrás de la barra, hasta una trampilla. Del agujero sube olor a vino agrio y a algo muerto." },
-          { "who": "Brunilda", "mood": "neutral", "text": "Parar a un ratero lo hace cualquiera. Abajo hay ratas entre los barriles, gordas como gatos." },
+          { "who": "Brunilda", "mood": "neutral", "text": "Parar a un ratero lo hace cualquiera. Ahí abajo llevan una semana comiéndose el vino, y el vino no es barato.",
+            "alt": [{ "if": { "chose": "cuanto-pagas" }, "text": "Parar a un ratero lo hace cualquiera. Ahí abajo llevan una semana comiéndose el vino. Y esta vez nadie te paga por adelantado." }] },
           {
-            "who": "Brunilda", "mood": "neutral", "text": "Si subes {entero|entera}, te apunto en el libro del gremio. ¿Alguna pregunta?",
+            "who": "Brunilda", "mood": "neutral", "text": "Yo te espero arriba. ¿Bajas ya, o tienes alguna pregunta?",
             "options": [
               { "id": "voy-ya", "text": "Ninguna. Voy ahora mismo.", "effects": [{ "attitude": 1 }],
-                "reply": { "who": "Brunilda", "mood": "alegre", "text": "Así me gusta. Te espero aquí arriba." } },
+                "reply": { "who": "Brunilda", "mood": "alegre", "text": "Así me gusta. Que no te muerdan mucho." } },
               {
                 "id": "cuanto-por-rata", "text": "¿Cuánto se paga por rata?",
                 "check": {
@@ -1012,7 +1447,7 @@
         "act": 1,
         "title": "El tablón de campañas",
         "hint": "Habla con Brunilda. Luego mira el «Tablón de campañas» y elige una.",
-        "scene": "Subes de la bodega con la última rata colgando de la mano. Brunilda asiente y apunta tu nombre en el libro del gremio. «Bien. Ahí tienes el tablón: cada papel es una campaña entera. Si vas corto de gente, en el salón hay espadas que se alquilan.»",
+        "scene": "Subes de la bodega con la última rata colgando de la mano. En el salón, Brunilda te ve llegar, aparta el libro y moja la pluma: te está esperando.",
         "opens": { "kind": "after", "milestone": "la-prueba" },
         "asks": { "kind": "talk", "npc": "Brunilda" },
         "changes": { "reveal": [], "open": [], "standing": {}, "ending": "", "endingBy": {} }

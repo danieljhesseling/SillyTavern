@@ -10,9 +10,10 @@
  *
  * 1. **Tiene que haber camino.** Si hay un muro en medio, no se pasa. Es lo mismo que el
  *    combate ya exige, y no exigirlo fuera hacía que las paredes fueran decoración.
- * 2. **Hay un alcance.** No es un turno —fuera de combate nadie cuenta turnos— pero tampoco
- *    es el mapa entero: se anda un trecho, y para ir más lejos se anda otra vez. Sin esto,
- *    la distancia deja de significar nada y con ella el mapa.
+ * 2. **Sin enemigos alrededor, se anda lo que haga falta** (tanda 10). Antes había un tirón
+ *    (cuatro veces la velocidad) y el tablero decía «Anda hasta 120 pies de una vez»; pero
+ *    fuera de combate nadie cuenta pies, y con enemigos a la vista la pelea empieza sola. Quien
+ *    quiera un tope lo pide (`maxFeet`).
  * 3. **Estar sujeto impide andar, no actuar.** Atado, agarrado o paralizado te quedas
  *    donde estás, y sigues pudiendo abrir lo que tengas al lado o hablar con quien tengas
  *    delante. Es exactamente lo que se espera de estar atado.
@@ -41,10 +42,9 @@ export const IMMOBILISING = {
 };
 
 /**
- * Cuántas veces su velocidad se anda de una vez fuera de combate.
- *
- * Cuatro es un trecho generoso —una sala entera de las grandes— y sigue impidiendo cruzar
- * el mapa de una pasada. El número está aquí, y no repartido, para poder discutirlo.
+ * Cuántas veces su velocidad es un tirón (`strideOf`), para quien quiera poner un tope al andar
+ * fuera de combate (`maxFeet` de `planWalk`). Desde la tanda 10 el juego no lo pone: sin
+ * enemigos alrededor se anda libre.
  */
 export const STRIDE_MULTIPLIER = 4;
 
@@ -104,9 +104,10 @@ export function strideOf(member) {
  * @param {number} input.gridWidth
  * @param {number} input.gridHeight
  * @param {Array<{x: number, y: number}>} [input.occupied] Casillas con alguien encima.
+ * @param {number} [input.maxFeet] Un tope, si se quiere (tanda 10: sin él, se anda libre).
  * @returns {{allowed: boolean, reason: string, path: Array<{x: number, y: number}>, costFeet: number}}
  */
-export function planWalk({ member, to, terrain, gridWidth, gridHeight, occupied = [] }) {
+export function planWalk({ member, to, terrain, gridWidth, gridHeight, occupied = [], maxFeet = Infinity }) {
     const stuck = canWalk(member);
     if (!stuck.allowed) return { allowed: false, reason: stuck.reason, path: [], costFeet: 0 };
 
@@ -139,7 +140,7 @@ export function planWalk({ member, to, terrain, gridWidth, gridHeight, occupied 
     // sin traducir dejaba el limite en un numero veinte veces mayor del que parecia, y
     // por tanto sin efecto. Una casilla son cinco pies, como en el resto del motor.
     const costFeet = getPathCost(terrain, path) * FEET_PER_CELL;
-    const stride = strideOf(member);
+    const stride = Number.isFinite(Number(maxFeet)) ? Number(maxFeet) : Infinity;
     if (costFeet > stride) {
         return {
             allowed: false,

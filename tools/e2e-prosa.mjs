@@ -14,13 +14,16 @@
  * - ningún id («el-caliz-ensangrentado», «hub-chest», «shop-buy:…») ni casillas («(3, 4)»);
  * - ninguna palabra en inglés del motor (turn, attack, damage, round…);
  * - ningún número suelto entre paréntesis («(5 de oro)», «(−3)»): los números van en la frase;
+ * - ningún número de registro: «34/34», «34 → 34», «Ronda 2», «1. Irene», ni siglas con cifra
+ *   («8 PG», «CA 16»);
+ * - ningún emoji delante de la línea («👹 Rata ataca…»): la caja cuenta, no apunta;
  * - ninguna orden al narrador («Cuéntalo…», «Que lo pida…»).
  *
  * Y, en los momentos en que la caja está a la vista, lo mismo con lo que de verdad se lee en ella.
  *
  * Uso:
- *   node tools/e2e-prosa.mjs --port 8361
- *   node tools/e2e-prosa.mjs --port 8361 --volcar lineas.json --captura prosa.png
+ *   node tools/e2e-prosa.mjs --port 8383
+ *   node tools/e2e-prosa.mjs --port 8383 --volcar lineas.json --captura prosa.png
  */
 
 /* global window, document */
@@ -30,10 +33,11 @@ import { createRequire } from 'node:module';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { entrarEnLaPelea } from './e2e-entrar-pelea.mjs';
 
 const ROOT = new URL('..', import.meta.url).pathname.replace(/^[/]([A-Za-z]:)/, '$1');
 const argAfter = (/** @type {string} */ flag) => (process.argv.includes(flag) ? process.argv[process.argv.indexOf(flag) + 1] : '');
-const PORT = Number(argAfter('--port')) || 8361;
+const PORT = Number(argAfter('--port')) || 8383;
 const BASE = `http://127.0.0.1:${PORT}`;
 const HEADED = process.argv.includes('--headed');
 const SHOT = argAfter('--captura');
@@ -57,9 +61,12 @@ const BAD = [
     ['etiqueta', /\[[\p{Lu}][\p{Lu}\p{N} ·]{1,30}\]/u],
     ['id', /\b[a-z0-9]+(?:-[a-z0-9]+){2,}\b|\b(?:hub|shop|inn|chip|clock|enter|go)[-:][a-z]/u],
     ['casilla', /\(\s*\d+\s*,\s*\d+\s*\)/u],
-    ['inglés', /\b(?:turn|attack|damage|round|hit|miss|enemy|enemies|board|combat|player|HP|undefined|null|NaN)\b/u],
+    // Con los tipos de daño y los estados de 5e, que el motor guarda en inglés («Daño fire»).
+    ['inglés', /\b(?:turn|attack|damage|round|hit|miss|enemy|enemies|board|combat|player|HP|ft|undefined|null|NaN|vs|fire|cold|acid|lightning|necrotic|piercing|psychic|radiant|slashing|thunder|bludgeoning|Blinded|Charmed|Deafened|Frightened|Grappled|Incapacitated|Paralyzed|Petrified|Poisoned|Prone|Restrained|Stunned|Unconscious)\b/u],
     ['número entre paréntesis', /\(\s*[−+-]?\d+[^)]*\)/u],
-    ['orden al narrador', /\b(?:Cuéntalo|Cuentalo|No inventes|Dilo tal cual|Narra esta|Que lo (?:pida|diga|agradezca)|Que aparezcan?\b|Que les llegue|Que se note|con naturalidad)/u],
+    ['número de registro', /\d+\s*\/\s*\d+|\d\s*→\s*\d|^\s*(?:Ronda|Turno|Día)\s+\d+\s*(?:·|$)|(?:^|:)\s*\d+\.\s+\p{Lu}|\b\d+\s*(?:PG|PX)\b|\b(?:CA|CD)\s*\d|\bd20\(|\b\d*d\d+\s*=/u],
+    ['emoji delante', /^\s*\p{Extended_Pictographic}/u],
+    ['orden al narrador', /\b(?:Cuéntalo|Cuentalo|No inventes|Dilo tal cual|Narra esta|Que lo (?:pida|diga|agradezca)|Que aparezcan?\b|Que les llegue|Que se note|con naturalidad|Ya se ha dicho|no lo repitas|Si lo cuentas)/u],
 ];
 
 /**
@@ -81,7 +88,8 @@ function startServer() {
     server = spawn(process.execPath, ['server.js', '--port', String(PORT), '--dataRoot', dataRoot], { cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'] });
     const child = server;
     return new Promise((resolve, reject) => {
-        const timer = setTimeout(() => reject(new Error('the server did not start in 180s')), 180000);
+        // Con muchos agentes a la vez, webpack solo ya tarda minuto y medio en arrancar.
+        const timer = setTimeout(() => reject(new Error('the server did not start in 480s')), 480000);
         const watch = (/** @type {any} */ buffer) => {
             const text = String(buffer);
             if (text.includes(String(PORT)) || text.toLowerCase().includes('listening')) {
@@ -211,6 +219,21 @@ try {
             await clearDice();
         }
     };
+    /**
+     * Salir del tablero al pueblo, como quien juega: la ficha «Salir del tablero» de la caja y,
+     * si no está, el botón del mapa. Hasta que no quede tablero.
+     */
+    const leaveBoard = async () => {
+        for (let i = 0; i < 4 && (await state()).board; i++) {
+            await clearPopups();
+            if (!(await clickChip(/^Salir del tablero$/))) {
+                await carryOn('combat');
+                await page.locator('.wm-leave-loc-btn').filter({ visible: true }).first().click({ timeout: 4000 }).catch(() => {});
+            }
+            await page.waitForTimeout(900);
+        }
+        await clearPopups();
+    };
     const placeScene = () => page.evaluate(() => {
         const scene = document.querySelector('#game-shell .gs-town-scene');
         return {
@@ -297,7 +320,8 @@ try {
     };
 
     // --- 1. El título y tu personaje ---------------------------------------------------------
-    await page.goto(`${BASE}/`, { waitUntil: 'domcontentloaded' });
+    // Con la máquina cargada (muchas pruebas a la vez), la primera carga tarda más de 30 s.
+    await page.goto(`${BASE}/`, { waitUntil: 'domcontentloaded', timeout: 180000 });
     if (await page.locator('text=Welcome to SillyTavern!').waitFor({ state: 'visible', timeout: 20000 }).then(() => true).catch(() => false)) {
         await page.click('.popup-button-ok');
     }
@@ -315,22 +339,29 @@ try {
     await page.locator('.hc-root .hc-enter').click();
     const inGuild = await until(async () => /Gremio/.test((await state()).world), 90000);
     check('se entra en el gremio con Irene, sin conexión', inGuild);
-    await until(async () => (await chips()).some(c => /^Iniciar combate \(Ratero/.test(c)), 20000);
+    // Tanda 10: ya no hay «Iniciar combate»; la llegada se lee antes de pulsar «Continuar».
+    await until(async () => (await boxNow()).length > 0, 20000);
     await page.waitForTimeout(800);
     await look('la llegada al muelle');
     if (SHOT) await page.screenshot({ path: `${SHOT}.muelle.png` });
 
     // --- 2. El prólogo: el ratero, Tomás, Brunilda y la bodega --------------------------------
-    await clickChip(/^Iniciar combate \(Ratero/);
+    await entrarEnLaPelea(page);
     await winFight();
     await until(async () => (await sceneNow()) === 'dialogue', 10000);
     await page.waitForTimeout(800);
     await look('la pelea del muelle');
     if (SHOT) await page.screenshot({ path: `${SHOT}.tras-pelea.png` });
+    // Tanda 10: en un tablero no se ofrece hablar con nadie; se sale del muelle al pueblo primero.
+    await carryOn('combat');
+    await page.locator('#game-shell .gs-scene-map .wm-leave-loc-btn').first().click({ timeout: 5000 }).catch(() => {});
+    await page.waitForTimeout(800);
+    // J13.7: antes de presentarse, la ficha dice el oficio («Hablar con el posadero»), no el nombre.
     const talkWith = async (/** @type {string} */ name, /** @type {string} */ topic = '') => {
         await dropToasts();
-        await until(async () => (await chips()).some(c => c === `Hablar con ${name}`), 10000);
-        await clickChip(new RegExp(`^Hablar con ${name}$`));
+        const chip = new RegExp(`^Hablar con (?:${name})$`);
+        await until(async () => (await chips()).some(c => chip.test(c)), 10000);
+        await clickChip(chip);
         await page.waitForSelector('.popup:visible .tk-root', { timeout: 10000 }).catch(() => {});
         if (topic) {
             await page.locator(`.popup:visible .tk-root .tk-topic[data-topic="${topic}"]`).first().click({ timeout: 5000 }).catch(() => {});
@@ -342,19 +373,16 @@ try {
         await page.waitForSelector('.tk-root', { state: 'detached', timeout: 5000 }).catch(() => {});
         await page.waitForTimeout(600);
     };
-    await talkWith('Tomás', 'rumor');
+    await talkWith('Tomás|el posadero', 'rumor');
     await look('hablar con Tomás');
-    await talkWith('Brunilda');
+    await talkWith('Brunilda|la maestra del gremio');
     await page.waitForTimeout(600);
     await look('hablar con Brunilda');
-    await carryOn('combat');
-    await page.locator('#game-shell .gs-scene-map .wm-leave-loc-btn').first().click({ timeout: 5000 }).catch(() => {});
-    await page.waitForTimeout(800);
+    await carryOn('exploration');
     await until(async () => (await chips()).some(c => /^Entrar en La bodega del gremio$/.test(c)), 10000);
     await clickChip(/^Entrar en La bodega del gremio$/);
     await until(async () => (await state()).board === 'La bodega del gremio', 10000);
-    await until(async () => (await chips()).some(c => /^Iniciar combate/.test(c)), 15000);
-    await clickChip(/^Iniciar combate/);
+    await entrarEnLaPelea(page);
     await winFight();
     await until(async () => (await sceneNow()) === 'dialogue', 10000);
     await page.waitForTimeout(1000);
@@ -365,9 +393,7 @@ try {
         afterTrial.length > 0 && afterTrial.every(l => !/^\S{0,3}\s*\[/u.test(l)), JSON.stringify(afterTrial));
 
     // --- 3. El pueblo del gremio: la tienda, la taberna y dormir -------------------------------
-    await carryOn('combat');
-    await page.locator('#game-shell .gs-scene-map .wm-leave-loc-btn').first().click({ timeout: 5000 }).catch(() => {});
-    await page.waitForTimeout(800);
+    await leaveBoard();
     await clearPopups();
     await carryOn('exploration');
     await page.evaluate(async () => {
@@ -391,6 +417,20 @@ try {
     await clearPopups();
     await look('dormir en la taberna');
     check('en la taberna se come, se pasa el rato y se duerme', inInn);
+    // J13.1: las notas del motor guardan su versión contada aparte (`extra.display_text`), con la
+    // misma etiqueta delante; el mensaje sigue con sus datos de siempre. Se mira en el chat del gremio, antes de irse.
+    const told = await page.evaluate(async () => {
+        const { tagLength } = await import('/scripts/game-engine/ui/shell/engine-tags.js');
+        const chat = window.SillyTavern.getContext().chat || [];
+        const notes = chat.filter((/** @type {any} */ m) => m.is_system && typeof m.extra?.display_text === 'string' && m.extra.display_text !== m.mes);
+        const tagOf = (/** @type {string} */ s) => s.slice(0, tagLength(s)).replace(/\s+/g, '');
+        return {
+            count: notes.length,
+            lostTag: notes.filter((/** @type {any} */ m) => tagOf(m.mes) !== tagOf(m.extra.display_text)).map((/** @type {any} */ m) => m.mes.slice(0, 80)),
+            sample: notes.slice(0, 4).map((/** @type {any} */ m) => [m.mes.slice(0, 90), m.extra.display_text.slice(0, 90)]),
+        };
+    });
+    check('las notas del motor llevan su versión contada, con la etiqueta guardada delante (J13.1)', told.count >= 5 && told.lostTag.length === 0, JSON.stringify(told));
     if (await sceneNow() === 'dialogue') {
         const restBox = await boxNow();
         check('tras dormir, la caja se lee sin etiquetas (J18.10)', restBox.every(l => !badIn(l)), JSON.stringify(restBox));
@@ -414,12 +454,7 @@ try {
         check('el viaje a 1387 se lee en la caja sin «[VIAJE]» ni otra etiqueta (J18.10)', tripBox.length > 0 && tripBox.every(l => !badIn(l)), JSON.stringify(tripBox));
         if (SHOT) await page.screenshot({ path: `${SHOT}.viaje.png` });
     }
-    for (let i = 0; i < 4 && (await state()).board; i++) {
-        await carryOn('combat');
-        await page.locator('.wm-leave-loc-btn').filter({ visible: true }).first().click({ timeout: 4000 }).catch(() => {});
-        await page.waitForTimeout(900);
-        await clearPopups();
-    }
+    await leaveBoard();
     await carryOn('exploration');
     await look('fuera del tablero de 1387');
 
@@ -460,6 +495,18 @@ try {
         // Acampar abre su ventana: el fuego, las guardias y la cena.
         await page.locator('.popup:visible .cp-go, .popup:visible .popup-button-ok').first().click({ timeout: 5000 }).catch(() => {});
         await page.waitForTimeout(1200);
+        await clearPopups();
+    } else {
+        // Sin posada ni tarjeta «Descansar»: la ficha «Acampar aquí» o «Descanso corto», abriendo
+        // «+N más» si hace falta, como quien juega.
+        if (!(await chips()).some(c => /^(?:Acampar aquí|Descanso corto)$/.test(c))) await clickChip(/^\+\d+ más$/);
+        await page.waitForTimeout(400);
+        if (await clickChip(/^Acampar aquí$/)) {
+            await page.locator('.popup:visible .cp-go, .popup:visible .popup-button-ok').first().click({ timeout: 5000 }).catch(() => {});
+        } else {
+            await clickChip(/^Descanso corto$/);
+        }
+        await page.waitForTimeout(1500);
         await clearPopups();
     }
     await page.waitForTimeout(1000);

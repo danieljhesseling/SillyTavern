@@ -16,5 +16,8 @@ Fondos para la pantalla del pueblo (J3.11), el selector de sitios. 320×180, sin
 - `templo-noche.png` — la capilla de noche: solo la luz de las velas del altar y una ventana con estrellas.
 - `tienda.png` — la tienda de día: mostrador largo, estanterías de tarros y pociones, sacos y la puerta abierta.
 - `tienda-noche.png` — la tienda cerrada de noche: lámparas encendidas sobre el mostrador y la puerta a la calle oscura.
+- `calabozo.png` — la celda del calabozo de la guardia (D-J47): paredes de piedra, un ventanuco con barrotes, un banco, un cubo y una antorcha en el pasillo. Una sola versión: dentro no se nota si es de día. La usa la escena del calabozo (`campaign/jail.js`); no es un sitio del selector.
+- `biblioteca.png` — la biblioteca del gremio: estanterías altas de libros viejos, una mesa con un libro abierto y una vela, y una ventana estrecha. Una sola versión: con las velas vale de día y de noche. La usa el rato de leer cuando el gremio ya tiene biblioteca (J14.11, `party/pastimes.js`); sin ella se lee en la sala.
+- `patio.png` — el patio de entrenamiento detrás de la sala del gremio, de día: muros de piedra, suelo de tierra y armeros con espadas, lanzas y escudos a los lados. Solo de día: de noche no se entrena. La usa el rato de entrenar en el patio (J14.11).
 
-Retoques a mano: en `taberna.png` dos cuadros de la pared tenían garabatos con forma de letra y en `tienda.png` dos placas tenían rayas de texto falso; se pintaron lisos. En `templo-noche.png` y `tienda-noche.png` se rellenaron unas franjas negras finas arriba y abajo.
+Retoques a mano: en `taberna.png` dos cuadros de la pared tenían garabatos con forma de letra y en `tienda.png` dos placas tenían rayas de texto falso; se pintaron lisos. En `templo-noche.png` y `tienda-noche.png` se rellenaron unas franjas negras finas arriba y abajo; en `calabozo.png`, en espejo, unas de diez píxeles. En `patio.png` la puerta traía una placa con rayas; se pintó de madera.

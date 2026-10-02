@@ -11,6 +11,10 @@
  * hace falta es saber qué campañas hay empezadas desde este gremio, y llevar al grupo de un
  * chat a otro sin perder nada por el camino.
  *
+ * J4.2: y el gremio en sí —el renombre, los edificios, el arca, el almacén, quien espera en casa
+ * y la mascota— es uno para todas: vive en el almacén de la partida, en los metadatos de este
+ * mundo (`HUB_STATE_KEY` de `game-state.js`), y cada chat lleva su copia al día.
+ *
  * Puro: decide y describe. Quien llama abre los chats, crea las fichas y guarda.
  */
 
@@ -81,6 +85,9 @@ export const HUB_IMPORTED_LIST = 'tablon-campanas.json';
  * donde la empezaste.
  */
 export const HUB_KEPT_NOTE = 'La quitaste del tablón. Sigue aquí porque la empezaste en este gremio.';
+
+/** J10.7: lo que dice la tarjeta de una campaña de semilla, la primera de sus señas. */
+export const HUB_SEED_TRAIT = 'Su historia la escribe el juego al empezarla: cada mundo, la suya';
 
 /** @param {any} value @returns {string} */
 const text = (value) => String(value ?? '').trim();
@@ -404,7 +411,9 @@ export function journeyLine({ world, home = 'el gremio', back = false }) {
     if (back) return `${capital(span)} de camino después, volvéis ${toPlace('a', from)} con lo ganado.`;
     // El «cómo» se escribe como frase, con su punto o sin él: aquí se le pone uno solo.
     const how = text(world?.journey?.how).replace(/[.\s]+$/, '');
-    const name = text(world?.name) || text(world?.id);
+    // J9.1: adónde se va, si el nombre de la campaña no es un sitio («hacia 1387» no se lee:
+    // «hacia el valle de Vane», sí). Sin `journey.to`, el nombre, como siempre.
+    const name = text(world?.journey?.to) || text(world?.name) || text(world?.id);
     return [`Salís ${toPlace('de', from)} hacia ${name}.`, how ? `${how}.` : '', `${capital(span)} de camino.`]
         .filter(Boolean).join(' ');
 }
@@ -412,10 +421,11 @@ export function journeyLine({ world, home = 'el gremio', back = false }) {
 /**
  * Las campañas del tablón, con cómo van para este gremio.
  *
- * Solo las que traen su paquete: una campaña del tablón es una historia escrita entera, no
- * una semilla por la que tirar. Y detrás, las que has añadido tú desde un archivo (J5.4): las
- * de tu lista, que salen en todos tus gremios (D-J35), y las que guardaba este gremio antes.
- * Una añadida que quitaste del tablón sigue en el gremio donde la empezaste, sin «Quitar».
+ * Primero las que traen su paquete, una historia escrita entera. Detrás, las que has añadido tú
+ * desde un archivo (J5.4): las de tu lista, que salen en todos tus gremios (D-J35), y las que
+ * guardaba este gremio antes. Y al final (J10.7) las de semilla, sin paquete: su historia la
+ * escribe el juego al empezarlas (`generated`). Una añadida que quitaste del tablón sigue en el
+ * gremio donde la empezaste, sin «Quitar».
  *
  * @param {Object} input
  * @param {any[]} input.worlds Los de `mundos.json`.
@@ -423,7 +433,7 @@ export function journeyLine({ world, home = 'el gremio', back = false }) {
  * @param {any[]} [input.imported] D-J35: tu lista de campañas añadidas (`readImportedList`).
  * @param {number} [input.level] El del héroe, para decir si le viene grande.
  * @returns {Array<{id: string, name: string, genre: string, note: string, synopsis: string, icon: string,
- *   traits: string[], levels: string, minLevel: number, hard: boolean, distance: string, state: 'nueva'|'en-curso'|'terminada',
+ *   traits: string[], generated: boolean, levels: string, minLevel: number, hard: boolean, distance: string, state: 'nueva'|'en-curso'|'terminada',
  *   action: string, warn: string, ending: string, chapter: string, imported: boolean}>}
  */
 export function hubCampaignCards({ worlds, hub = null, imported = [], level = 1 }) {
@@ -432,8 +442,12 @@ export function hubCampaignCards({ worlds, hub = null, imported = [], level = 1 
     const shipped = Array.isArray(worlds) ? worlds : [];
     // J5.4 y D-J35: detrás de las del juego, las que has añadido tú.
     const known = new Set(shipped.map(world => text(world?.id)));
+    // J10.7: las de semilla (sin paquete, con semilla) también, detrás de todas: su historia la
+    // escribe el juego al empezarlas (`seed-pack.js`).
+    const seeded = shipped.filter(world => text(world?.id) && !text(world?.pack) && text(world?.seed));
     const listed = [...shipped, ...importedForHub(imported, record).filter(row => !known.has(row.id))]
-        .filter(world => text(world?.id) && text(world?.pack));
+        .filter(world => text(world?.id) && text(world?.pack))
+        .concat(seeded);
     // D-J35: una añadida por ti que quitaste del tablón, pero que este gremio tiene empezada o
     // terminada: su tarjeta se queda aquí, para volver a ella. Su mundo ya lo lleva todo dentro.
     const shown = new Set(listed.map(world => text(world.id)));
@@ -458,7 +472,12 @@ export function hubCampaignCards({ worlds, hub = null, imported = [], level = 1 
                 note: text(world.note),
                 synopsis: text(world.synopsis),
                 icon: text(world.icon) || 'fa-scroll',
-                traits: (Array.isArray(world.traits) ? world.traits : []).map(text).filter(Boolean),
+                traits: [
+                    // J10.7: que se sepa que no está escrita, y que cada mundo da la suya.
+                    ...(!text(world.pack) && text(world.seed) ? [HUB_SEED_TRAIT] : []),
+                    ...(Array.isArray(world.traits) ? world.traits : []).map(text).filter(Boolean),
+                ],
+                generated: !text(world.pack) && Boolean(text(world.seed)),
                 // D-J22: que se vea bien para qué nivel es: las hay que empiezan en el 10.
                 levels: min > 0 ? `Nivel recomendado: ${max > min ? `${min} a ${max}` : min}` : '',
                 minLevel: Math.max(0, min),

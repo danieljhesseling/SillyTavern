@@ -13,5 +13,8 @@ Un fondo por localización de `public/mundos/1387.pack.json`. 320×180, sin tran
 - `campamento-keller.png` — tiendas negras en filas perfectas sobre la nieve, rodeadas de una empalizada de estacas, entre montañas.
 - `la-mina-abandonada.png` — la boca negra de la mina en la ladera, apuntalada con vigas viejas, con un montón de carbón y nieve.
 - `el-cruce-de-caminos.png` — el lodazal del deshielo en el valle: charcos, un carro atascado y un árbol muerto bajo nubes de lluvia.
+- `el-roble-de-los-recados.png` — el roble enorme y hueco al borde del bosque de pinos nevado, con papeles y una bolsa metidos en el hueco del tronco.
+- `la-choza-de-brigida.png` — la choza de piedra y tepe en una ladera nevada, con humo en la chimenea, manojos de hierbas colgados junto a la puerta y la ventana encendida.
+- `los-banos-viejos.png` — las termas en ruina junto a la calzada: columnas de piedra y la piscina de agua caliente humeando en mitad de la nieve, con montañas detrás.
 
-Retoques a mano: en `el-lago-helado.png` se borró una firma falsa (abajo a la derecha); en `el-camino-viejo.png`, unas letras talladas en el mojón; en `la-mina-abandonada.png`, una raya blanca de carretera. En `la-ermita-derruida.png` y `la-granja-quemada.png` se rellenaron franjas negras arriba y abajo (la de la granja llevaba un texto falso).
+Retoques a mano: en `el-lago-helado.png` se borró una firma falsa (abajo a la derecha); en `el-camino-viejo.png`, unas letras talladas en el mojón; en `la-mina-abandonada.png`, una raya blanca de carretera. En `la-ermita-derruida.png` y `la-granja-quemada.png` se rellenaron franjas negras arriba y abajo (la de la granja llevaba un texto falso). En `los-banos-viejos.png` se rellenaron, en espejo, franjas negras de diez píxeles arriba y abajo.

@@ -15,6 +15,7 @@
 
 import { sceneStep, sceneView, startScene } from '../campaign/meetups.js';
 import { firstArt, loadPixelManifest, pixelManifest } from './pixel-art.js';
+import { hearLine, knowsName, meetPerson, shownName, shownText } from './shown-names.js';
 
 /** @param {any} value @returns {string} */
 const text = (value) => String(value ?? '').trim();
@@ -202,9 +203,10 @@ export async function openMeetupScene({
     backdrop.hidden = !art;
     const portrait = el('div', 'qd-portrait');
     const box = el('div', 'qd-box');
-    const plate = el('div', 'qd-nameplate', who);
+    // J13.7: por lo que es hasta que se presente.
+    const plate = el('div', 'qd-nameplate', shownName(who));
     const head = el('div', 'qd-head');
-    const title = el('span', 'qd-title', [text(scene?.title), text(placeLabel)].filter(Boolean).join(' · '));
+    const title = el('span', 'qd-title', shownText([text(scene?.title), text(placeLabel)].filter(Boolean).join(' · '), { mask: true }));
     const step = el('span', 'qd-step');
     head.append(title, step);
     const lines = el('div', 'qd-text');
@@ -220,6 +222,8 @@ export async function openMeetupScene({
 
     return new Promise(resolve => {
         const close = (/** @type {boolean} */ finished) => {
+            // J13.7: después de pasar un rato juntos, ya sabes cómo se llama.
+            if (finished && !knowsName(who)) meetPerson(who, 'charla');
             dialog.close();
             dialog.remove();
             resolve({ finished, choices: state.choices });
@@ -258,24 +262,30 @@ export async function openMeetupScene({
                 return;
             }
             const view = sceneView(scene, state);
+            // J14.10: la respuesta que funde a negro (`fade`): la escena se apaga, y así se queda.
+            if (state.answered !== null && /** @type {any} */ (scene?.beats?.[state.beat]?.replies?.[state.answered])?.fade) root.classList.add('qd-fade');
             plate.hidden = false;
             step.textContent = view.steps > 1 ? `${view.step} / ${view.steps}` : '';
             // Con varios, la placa y el retrato son de quien habla en este paso.
             const speaking = people.length > 0 ? speakerOf(text(view.speaker) || who) : /** @type {{name: string, short?: string}} */ ({ ...person, name: who });
-            plate.textContent = text(speaking.short) || speaking.name;
+            // J13.7: lo que dice enseña su nombre (si lo dice); la placa, después.
+            for (const line of beatLines(view)) if (line.kind === 'say') hearLine({ who: speaking.name, text: line.text });
+            plate.textContent = knowsName(speaking.name) ? text(speaking.short) || speaking.name : shownName(speaking.name);
             root.dataset.speaker = speaking.name;
             drawPortrait(portrait, portraitFor({ ...speaking, pack, mood: view.face }), speaking.name);
             for (const line of beatLines(view)) {
                 const p = el('p', `qd-line qd-${line.kind}`);
                 if (line.kind === 'you') p.appendChild(el('span', 'qd-who', 'Tú'));
-                p.appendChild(document.createTextNode(line.text));
+                p.appendChild(document.createTextNode(shownText(line.text, { mask: line.kind === 'note' || line.kind === 'then' })));
                 lines.appendChild(p);
             }
             let first = /** @type {HTMLButtonElement|null} */ (null);
             for (const one of beatChips(view)) {
                 const button = one.kind === 'reply'
-                    ? chip(one.label, one.key, 'reply', () => act({ reply: one.index }))
+                    ? chip(shownText(one.label, { mask: true }), one.key, 'reply', () => act({ reply: one.index }))
                     : chip(one.label, one.key, one.kind, () => act({ next: true }));
+                // J14.10: la respuesta romántica lleva su corazón delante; que se vea a la primera.
+                if (one.kind === 'reply' && one.label.startsWith('♥')) button.classList.add('qd-chip-love');
                 first = first ?? button;
             }
             first?.focus();

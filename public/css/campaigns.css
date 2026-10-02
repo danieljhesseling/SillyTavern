@@ -2951,6 +2951,7 @@ input[type="file"].tl-file {
 .tl-bp [data-t="cobertura-alta"] { background: #55702e; }
 .tl-bp [data-t="dificil"] { background: #6b5638; }
 .tl-bp [data-t="agua"] { background: #2f6285; }
+.tl-bp [data-t="agua-honda"] { background: #173a57; }
 .tl-bp [data-t="hielo"] { background: #a6cbe0; }
 .tl-bp [data-t="maleza"] { background: #4d7338; }
 .tl-bp [data-t="barril"] { background: #84532a; }

@@ -13,6 +13,7 @@
 import { loadPixelManifest } from './pixel-art.js';
 import { portraitFor, backdropFor } from './meetup-scene.js';
 import { faceElement } from './hero-face.js';
+import { shownName } from './shown-names.js';
 
 /** @param {any} value @returns {string} */
 const text = (value) => String(value ?? '').trim();
@@ -66,7 +67,8 @@ export async function askInScene({
     const portrait = el('div', 'qd-portrait vq-portrait');
     const box = el('div', 'qd-box vq-box');
     const name = text(who?.name);
-    const plate = el('div', 'qd-nameplate', name);
+    // J13.7: por lo que es hasta que se presente.
+    const plate = el('div', 'qd-nameplate', shownName(name));
     plate.hidden = !name;
     const head = el('div', 'qd-head');
     head.appendChild(el('span', 'qd-title', text(title)));

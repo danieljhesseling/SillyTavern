@@ -17,6 +17,11 @@
  *   node tools/vuelta-1387.mjs --final vane            # la última paga con Vane (la tienda de Keller)
  *   node tools/vuelta-1387.mjs --peleas                # las peleas de verdad (más lenta)
  *   node tools/vuelta-1387.mjs --estricto              # y un silencio o un atasco cuentan como fallo
+ *   VUELTA_PELEAS=gancho node tools/vuelta-1387.mjs    # los turnos del grupo, con el gancho (sin la barra)
+ *
+ * Las peleas: si la barra de combate no responde a lo que pulsa la vuelta (se está rehaciendo,
+ * wiki/maquetas/ENCARGO_COMBATE_VTT.md), los turnos del grupo pasan solos al gancho
+ * `playCurrentTurnAlone`, y la vuelta lo dice («GANCHO …» y su número al final).
  */
 
 /* global window, document */
@@ -26,7 +31,7 @@ import { createRequire } from 'node:module';
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { createBot, startOffline, runCampaign, fixedNumbers, proseNotes } from './vuelta-bot.mjs';
+import { createBot, startOffline, runCampaign, fixedNumbers, proseNotes, boardGoalsFromPack } from './vuelta-bot.mjs';
 
 const ROOT = new URL('..', import.meta.url).pathname.replace(/^[/]([A-Za-z]:)/, '$1');
 const argAfter = (/** @type {string} */ flag) => (process.argv.includes(flag) ? process.argv[process.argv.indexOf(flag) + 1] : '');
@@ -67,7 +72,8 @@ function startServer() {
     server = spawn(process.execPath, ['server.js', '--port', String(PORT), '--dataRoot', dataRoot], { cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'] });
     const child = server;
     return new Promise((resolve, reject) => {
-        const timer = setTimeout(() => reject(new Error('the server did not start in 180s')), 180000);
+        // Con muchas pruebas a la vez (e2e-todo.mjs), el servidor tarda en arrancar.
+        const timer = setTimeout(() => reject(new Error('the server did not start in 360s')), 360000);
         const watch = (/** @type {any} */ buffer) => {
             const text = String(buffer);
             if (text.includes(String(PORT)) || text.toLowerCase().includes('listening')) {
@@ -103,24 +109,40 @@ try {
         } catch { /* nada */ }
     });
 
-    await page.goto(`${BASE}/`, { waitUntil: 'domcontentloaded' });
+    await page.goto(`${BASE}/`, { waitUntil: 'domcontentloaded', timeout: 180000 });
     const bot = createBot(page, { fast: !REAL_FIGHTS, log: (line) => console.log(line) });
     const clicked = await startOffline(page, { name: 'Tessa', gender: 'Mujer', race: 'Humano', klass: 'Guerrero' });
 
     // --- El gremio: saltar la prueba y el tablón ------------------------------------------
     let v = await bot.observe();
-    for (let i = 0; i < 60 && !v.done.includes('la-prueba'); i++) {
+    // El prólogo empieza con la pelea del muelle (con el combate nuevo, sola al entrar: «otra
+    // salida», colocar y «Empezar»); después, «Saltar la prueba».
+    const guildGoals = boardGoalsFromPack(readJson('public/mundos/gremio.pack.json'));
+    for (let i = 0; i < 120 && !v.done.includes('la-prueba'); i++) {
         v = await bot.observe();
         if (await bot.handleLayer(v)) continue;
+        if (v.fight) {
+            await bot.fightTurn(v, guildGoals.get(v.board) ?? null);
+            continue;
+        }
+        if (v.board && v.start.length > 0) {
+            await bot.confirmStart(v);
+            continue;
+        }
         if (await bot.tapChip(v, /^Saltar la prueba$/, 'saltar la prueba', 'hub.js')) continue;
+        if (await bot.tapChip(v, /^Iniciar combate/, 'iniciar el combate', 'action-chips.js')) continue;
         if (v.scene === 'dialogue' && v.vn.next) await bot.act(v, '«Continuar»', () => bot.press(bot.chip(/^Continuar$/)));
+        else await page.waitForTimeout(300);
     }
     check('en el gremio, «Saltar la prueba» deja el prólogo hecho', v.done.includes('la-prueba'), JSON.stringify(v.done));
     const pack = readJson('public/mundos/1387.pack.json');
     const onHub = async (/** @type {any} */ now) => {
         const card = page.locator('dialog[open] .hb-root [data-campaign="1387"]');
         if (await card.count() === 0) return false;
-        return bot.act(now, 'empezar 1387 en el tablón', () => bot.press(card), { module: 'hub-panel.js', wait: 8000 });
+        const done = await bot.act(now, 'empezar 1387 en el tablón', () => bot.press(card), { module: 'hub-panel.js', wait: 8000 });
+        // Cargar la campaña tarda: no se vuelve a mirar el tablón mientras carga.
+        await bot.until(async () => /1387/.test((await bot.observe()).world), 30000, 400);
+        return done;
     };
     for (let i = 0; i < 40 && !/1387/.test(v.world); i++) {
         v = await bot.observe();
@@ -166,8 +188,11 @@ try {
         .map((/** @type {any} */ m) => String(m.extra?.display_text ?? m.mes ?? '')));
     const leaks = read.filter(t => ORDER.test(t));
     check('ninguna orden al narrador a la vista en toda la vuelta', leaks.length === 0, JSON.stringify(leaks.slice(0, 3).map(t => t.slice(0, 160))));
-    // J18.10 y J13.1: las notas que se leen con su etiqueta del motor («[HILO] …»), sin prosa.
-    const raw = read.filter(t => RAW.test(t));
+    // J18.10 y J13.1: las notas del chat que llevan su etiqueta del motor («[HILO] …»). La caja de
+    // la novela las limpia al pintarlas (engine-tags.js): lo que cuenta es lo que se VE, que mira
+    // el bot en cada paso (`oddities`, «crudo»).
+    const tagged = read.filter(t => RAW.test(t));
+    const raw = bot.oddities.filter(o => o.kind === 'crudo');
 
     // --- El recuento ------------------------------------------------------------------------
     const main = (pack.plot?.milestones ?? []).filter((/** @type {any} */ m) => !m.hidden && m.opens?.kind !== 'clock').map((/** @type {any} */ m) => String(m.id));
@@ -179,6 +204,15 @@ try {
     console.log('\n--- los atascos ---');
     for (const b of bot.blocks) console.log(`  #${b.n} ${b.where} · ${b.goal}\n      se ve: ${b.sees.slice(0, 300)}\n      rescate: ${b.rescue}`);
     if (bot.blocks.length === 0) console.log('  (ninguno)');
+    console.log('\n--- lo que se ve mal (sin ser silencio ni atasco) ---');
+    for (const o of bot.oddities) console.log(`  #${o.n} ${o.where} · ${o.kind}: ${o.text.slice(0, 300)}`);
+    if (bot.oddities.length === 0) console.log('  (nada)');
+    console.log('\n--- el grupo ha caído (la tarjeta «ha muerto») ---');
+    for (const f of bot.falls) console.log(`  #${f.n} ${f.where} · ${f.text}\n      salidas: ${f.ways.join(' | ') || '(ninguna)'}`);
+    if (bot.falls.length === 0) console.log('  (nunca)');
+    console.log('\n--- los clics lentos (la página tarda más de 1,5 s en atenderlos) ---');
+    for (const s of bot.slow) console.log(`  ${s.ms} ms · ${s.what} · ${s.where}`);
+    if (bot.slow.length === 0) console.log('  (ninguno)');
     console.log('\n--- lo que se eligió ---');
     for (const c of bot.choices) console.log(`  ${c.scene}: ${c.option}`);
 
@@ -192,7 +226,14 @@ try {
     number('Pasos (clics)', bot.steps.length);
     number('Peleas, escenas con decisión, sucesos, charlas, viajes y tiradas',
         `${bot.counts.fights} · ${bot.counts.options} · ${bot.counts.sucesos} · ${bot.counts.talks} · ${bot.counts.travels} · ${bot.counts.checks}`);
-    number('Notas del juego con su versión en prosa', `${notes.prose} de ${notes.total} (en crudo a la vista en la vuelta: ${raw.length})`);
+    number('Notas del juego con su versión en prosa', `${notes.prose} de ${notes.total} (etiqueta del motor a la vista en la vuelta: ${raw.length}; en el chat, sin pintar: ${tagged.length})`);
+    number('Escenas del hilo que salen con su hito ya cumplido', bot.oddities.filter(o => o.kind === 'tarde').length);
+    number('Ventanas abiertas encima de otra a medias', bot.oddities.filter(o => o.kind === 'encima').length);
+    number('Veces que cae el grupo entero', `${bot.falls.length} (partidas cargadas después: ${bot.counts.loads})`);
+    number('Descansos (posada, acampar, cazar), al ver el agotamiento o media vida', bot.counts.rests);
+    number('«Otra salida» antes o en mitad de una pelea (la vuelta elige pelear)', bot.counts.exits);
+    number('Turnos del grupo jugados con el gancho (la barra de combate no respondía)', bot.counts.hooked);
+    number('Clics lentos (más de 1,5 s)', bot.slow.length ? `${bot.slow.length} (el peor, ${Math.max(...bot.slow.map(s => s.ms))} ms)` : 0);
     number('Filas del narrador (frases.json)', all.frases);
     number('Sucesos con decisión (sucesos.json)', all.sucesos);
     number('Charlas con ramas escritas en 1387', all.charlas1387);

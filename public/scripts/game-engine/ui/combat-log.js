@@ -231,14 +231,29 @@ export function renderCombatLog(container, entries, options = {}) {
 
     const body = container.find('.cl-body');
     const target = body.length ? body : container;
-    target.empty();
+    const node = target[0];
+    if (!node) return;
 
     if (list.length === 0) {
+        target.empty();
+        paintedRows.delete(node);
         target.append('<div class="cl-empty">Sin actividad de combate.</div>');
         return;
     }
 
-    for (const item of list) {
+    // J20.6: lo que ya está pintado se queda; se quitan las filas viejas que el registro ha
+    // soltado y se añaden solo las nuevas, todas de una vez. Antes se pintaba entero en cada línea.
+    const reuse = reusableRows(paintedRows.get(node), list);
+    let from = 0;
+    if (reuse && node.childElementCount === reuse.drop + reuse.keep) {
+        for (let i = 0; i < reuse.drop; i++) node.firstElementChild?.remove();
+        from = reuse.keep;
+    } else {
+        target.empty();
+    }
+
+    const rows = document.createDocumentFragment();
+    for (const item of list.slice(from)) {
         const style = KIND_STYLE[item.kind] || DEFAULT_STYLE;
         const row = $('<div class="cl-row"></div>').addClass(style.cls);
 
@@ -255,12 +270,56 @@ export function renderCombatLog(container, entries, options = {}) {
             row.append(renderRoll(item));
         }
 
-        target.append(row);
+        rows.appendChild(row[0]);
     }
+    node.appendChild(rows);
+    paintedRows.set(node, list);
 
-    if (autoScroll) {
-        target.scrollTop(target[0].scrollHeight);
+    if (autoScroll) scrollToEnd(node);
+}
+
+/** J20.6: lo pintado en cada registro, para añadir solo lo nuevo. @type {WeakMap<Element, LogEntry[]>} */
+const paintedRows = new WeakMap();
+
+/** J20.6: los registros que ya tienen pedido bajar hasta el final. @type {WeakSet<Element>} */
+const scrolling = new WeakSet();
+
+/**
+ * J20.6: bajar hasta lo último, en el siguiente fotograma. Medir lo que mide (`scrollHeight`)
+ * obliga a colocar la página entera: hecho justo antes de pintar, se coloca una vez y no dos.
+ *
+ * @param {Element} node
+ */
+function scrollToEnd(node) {
+    if (scrolling.has(node)) return;
+    scrolling.add(node);
+    const later = typeof requestAnimationFrame === 'function' ? requestAnimationFrame : (/** @type {() => void} */ fn) => setTimeout(fn, 0);
+    later(() => {
+        scrolling.delete(node);
+        node.scrollTop = node.scrollHeight;
+    });
+}
+
+/**
+ * J20.6: cuánto de lo ya pintado sirve para pintar `next`. El registro solo crece por el final
+ * y, lleno, suelta las más viejas por el principio: `drop` filas de arriba sobran y las `keep`
+ * siguientes son las primeras de `next`, en su orden. `null` si no encaja (otro filtro, otra
+ * pelea): entonces se pinta entero.
+ *
+ * @param {LogEntry[]|undefined} before Lo pintado.
+ * @param {LogEntry[]} next Lo que hay que pintar.
+ * @returns {{drop: number, keep: number}|null}
+ */
+export function reusableRows(before, next) {
+    if (!Array.isArray(before) || !Array.isArray(next) || before.length === 0 || next.length === 0) return null;
+    const drop = before.indexOf(next[0]);
+    if (drop < 0) return null;
+    const keep = before.length - drop;
+    if (keep > next.length) return null;
+    for (let i = 0; i < keep; i++) {
+        if (before[drop + i] !== next[i]) return null;
     }
+    return { drop, keep };
 }
 
 /**
@@ -348,11 +407,13 @@ export function logFilterOf(panel) {
  */
 export function setRound(panel, round) {
     const badge = panel.find('.cl-round-badge');
+    // J20.6: `display` a mano. `.show()` de jQuery pregunta antes cómo se ve, y eso obliga al
+    // navegador a colocar la página entera a mitad del dibujo del tablero.
     if (!round) {
-        badge.text('').hide();
+        badge.text('').css('display', 'none');
         return;
     }
-    badge.text(`Ronda ${round}`).show();
+    badge.text(`Ronda ${round}`).css('display', '');
 }
 
 /**

@@ -30,6 +30,7 @@ import { convertTextToBase64 } from './utils.js';
 import { HUB_IMPORTED_DIR, HUB_IMPORTED_LIST, readImportedList, importedListFile, isHubWorld } from './game-engine/campaign/hub.js';
 import { readHall } from './game-engine/campaign/legacy.js';
 import { canCheckpoint } from './game-engine/rules/mortality.js';
+import { partyHasFallen } from './game-engine/combat/party-fallen.js';
 import { getActiveRuleset } from './game-engine/rules/ruleset.js';
 import { CHECKPOINT_KEY } from './game-engine/campaign/checkpoint.js';
 import { campaignTitle } from './game-engine/campaign/saved-games.js';
@@ -138,6 +139,12 @@ async function flush() {
         if (chat_metadata && typeof chat_metadata === 'object' && Object.keys(chat_metadata).length > 0) roster.savePartyState?.();
     } catch (error) {
         console.warn('[guardar] no se pudo poner el grupo al día', error);
+    }
+    // J4.2: y el gremio de la partida, al día en su almacén del mundo del gremio, que va en la ranura.
+    try {
+        await (await import('./party/game-state.js')).syncGameState();
+    } catch (error) {
+        console.warn('[guardar] no se pudo poner al día el gremio', error);
     }
     if (this_chid !== undefined && getCurrentChatId()) await saveChatConditional();
     try {
@@ -545,6 +552,9 @@ export function onDayTurned(calendar) {
         void inTurn(async () => {
             // En una campaña que solo guarda en el refugio, el automático tampoco guarda fuera.
             if (!(await savingNow()).allowed) return null;
+            // J9.1 (H7 de las vueltas): con todo el grupo muerto (de hambre al pasar el día) no
+            // se guarda: pisaría la mañana a la que se quiere volver.
+            if (partyHasFallen(chat_metadata?.party)) return null;
             return autosave(stAdapter(), { day });
         }).then(done => {
             if (done?.ok) toastr.info(done.notice.line, done.notice.title, { timeOut: 3000 });

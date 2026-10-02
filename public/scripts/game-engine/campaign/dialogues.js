@@ -45,6 +45,7 @@ import { resolveGender, genderOf, leftoverMarkers } from './grammar.js';
 import { BACKGROUNDS } from './backgrounds.js';
 import { describeAttitude, ATTITUDE } from './attitudes.js';
 import { readNoReturn, optionNoReturn } from './weighty.js';
+import { followUpLine, hashOf } from './human-lines.js';
 
 /** Los gestos del retrato. `neutral` es la cara de siempre. */
 export const MOODS = ['neutral', 'alegre', 'enfadado', 'triste'];
@@ -53,7 +54,7 @@ export const MOODS = ['neutral', 'alegre', 'enfadado', 'triste'];
 export const EFFECT_KINDS = ['attitude', 'clue', 'rumor', 'milestone', 'give', 'take', 'bond', 'gold', 'time', 'end'];
 
 /** Las condiciones que se entienden, con la clave con que se escriben. */
-export const CONDITION_KEYS = ['attitude', 'milestone', 'item', 'gold', 'species', 'class', 'background', 'gender', 'said'];
+export const CONDITION_KEYS = ['attitude', 'milestone', 'item', 'gold', 'species', 'class', 'background', 'gender', 'said', 'chose'];
 
 /** Cómo puede estar un hito para una condición. */
 export const MILESTONE_STATES = ['open', 'done', 'not-done'];
@@ -78,6 +79,8 @@ export const DC_LIMITS = { min: 5, max: 30 };
  * @property {string[]} [background]
  * @property {string} [gender]
  * @property {string} [said] Una opción de esta charla que ya se eligió.
+ * @property {string[]} [chose] J13.8: algo que se eligió en una escena del hilo (el id de su
+ *   opción): basta uno. Así quien te habla se acuerda de lo que hiciste.
  * @property {string[]} [unknown] Lo escrito que no es ninguna condición.
  */
 
@@ -122,6 +125,9 @@ export const DC_LIMITS = { min: 5, max: 30 };
  * @property {DialogueEffect[]} effects
  * @property {DialogueCheck|null} check
  * @property {string} journal Lo que queda en el Diario al elegirla.
+ * @property {{text: string, mood: string}|null} [reply] J13.8: lo que contesta quien habla nada
+ *   más oírla, antes de seguir («Gracias» → «No me las des»). Si lleva de vuelta a donde ya
+ *   estabais, con eso basta: no repite su frase.
  * @property {string} [noReturn] J11.1: su aviso, si se escribe `irreversible` («Esto no tiene vuelta atrás»).
  * @property {string[]} [decision] J7.5: lo que es, si se escribe (`pagar`, `amenazar`…, de
  *   `companion-opinions.js`), para lo que opinan tus compañeros.
@@ -132,9 +138,15 @@ export const DC_LIMITS = { min: 5, max: 30 };
  * @property {string} id
  * @property {string} line Lo que dice quien habla la primera vez.
  * @property {string} again Lo que dice si ya se lo oísteis (J8.6). Vacío: lo mismo.
+ * @property {Array<{text: string, when: DialogueCondition[]}>} [agains] J13.8: si `again` se
+ *   escribe como lista, todas: vale la primera con condición que se cumpla; si no, una sin
+ *   condición, distinta según el día.
+ * @property {string[]} [more] J13.8: lo que dice al volver aquí sin haberse ido (tras «Gracias»
+ *   o «Entendido»), por turnos. Sin escribir, una frase corta del compendio (`charla-sigue`).
  * @property {string} mood
  * @property {string} journal Lo que queda en el Diario al oírlo.
  * @property {DialogueEffect[]} effects Lo que pasa al oírlo la primera vez.
+ * @property {string|string[]|boolean} [presenta] J13.7: quién se da a conocer en esta línea (`true`: quien habla).
  * @property {DialogueOption[]} options
  */
 
@@ -159,6 +171,7 @@ export const DC_LIMITS = { min: 5, max: 30 };
  * @property {number} [day] Hoy, para lo que se apunta.
  * @property {Record<string, string>} [weighty] J11.1: los hitos que pesan (`weightyMilestones`): una
  *   opción que cumple uno avisa de que no tiene vuelta atrás.
+ * @property {string[]} [chose] J13.8: lo elegido en las escenas del hilo, por el id de la opción.
  */
 
 /**
@@ -173,6 +186,9 @@ export const DC_LIMITS = { min: 5, max: 30 };
  * @property {string[]} chosen Las opciones elegidas, de antes y de ahora.
  * @property {Array<{who: string, text: string, day: number}>} learned Lo aprendido en esta charla.
  * @property {Array<{kind: 'npc'|'hero'|'roll'|'note', who: string, text: string, mood?: string}>} log
+ * @property {string[]} [here] J13.8: los nudos por los que ha pasado esta charla (no las de antes).
+ * @property {number} [backs] J13.8: las veces que se ha vuelto al principio en esta charla.
+ * @property {string} [face] J13.8: el gesto de lo último que dijo (una respuesta trae el suyo).
  */
 
 /** @param {any} value @returns {string} */
@@ -291,7 +307,36 @@ function readCondition(raw) {
     }
     if (text(raw.gender)) out.gender = text(raw.gender);
     if (text(raw.said)) out.said = text(raw.said);
+    if (raw.chose !== undefined && listOf(raw.chose).length > 0) out.chose = listOf(raw.chose);
     return out;
+}
+
+/**
+ * J13.8: lo que contesta quien habla nada más oír una opción: una frase, o `{text, mood}`.
+ *
+ * @param {any} raw
+ * @returns {{text: string, mood: string}|null}
+ */
+function readReply(raw) {
+    const source = typeof raw === 'string' ? { text: raw } : isObject(raw) ? raw : null;
+    if (!source || !text(source.text)) return null;
+    const mood = fold(source.mood);
+    return { text: text(source.text), mood: MOODS.includes(mood) ? mood : '' };
+}
+
+/**
+ * J13.8: lo que dice al volver otro día (`again`): una frase o una lista. En la lista, cada una
+ * puede traer su condición (`{"if": {…}, "text": "…"}`). Una ya leída trae `when`.
+ *
+ * @param {any} raw
+ * @returns {Array<{text: string, when: DialogueCondition[]}>}
+ */
+function readAgain(raw) {
+    return (Array.isArray(raw) ? raw : raw == null ? [] : [raw])
+        .map(entry => (typeof entry === 'string' ? { text: text(entry), when: [] }
+            : isObject(entry) ? { text: text(entry.text), when: Array.isArray(entry.when) ? entry.when : readConditions(entry.if) }
+                : { text: '', when: [] }))
+        .filter(entry => entry.text);
 }
 
 /**
@@ -373,6 +418,8 @@ function readOption(raw, node, index) {
         effects: effects.filter(e => e.kind !== 'end'),
         check: readCheck(source.check),
         journal: text(source.journal),
+        // J13.8: lo que te contesta al momento, si se escribe.
+        ...(readReply(source.reply) ? { reply: readReply(source.reply) } : {}),
         // J11.1: solo si se escribe, para que una opción de antes se lea igual que siempre. Una
         // ya leída trae el suyo en `noReturn`.
         ...(readNoReturn(source) || text(source.noReturn) ? { noReturn: readNoReturn(source) || text(source.noReturn) } : {}),
@@ -400,16 +447,23 @@ function readNode(raw, index) {
     const source = isObject(raw) ? raw : {};
     const id = text(source.id) || `nudo-${index + 1}`;
     const mood = fold(source.mood);
+    // J13.8: `again` puede ser una lista; `again` se queda con la primera sin condición, como antes.
+    const agains = readAgain(source.agains ?? source.again);
+    const more = listOf(source.more);
     return {
         id,
         line: text(source.line),
-        again: text(source.again),
+        again: agains.find(a => a.when.length === 0)?.text ?? agains[0]?.text ?? '',
+        ...(agains.length > 1 || agains.some(a => a.when.length > 0) ? { agains } : {}),
+        ...(more.length > 0 ? { more } : {}),
         mood: MOODS.includes(mood) ? mood : 'neutral',
         journal: text(source.journal),
         // Lo que pasa al oírlo la primera vez, se llegue por donde se llegue: pagando, con una
         // buena tirada o por las malas, Giles cuenta lo mismo y el hito se cumple una vez.
         effects: readEffects(source.effects).filter(e => e.kind !== 'end'),
         options: (Array.isArray(source.options) ? source.options : []).map((option, i) => readOption(option, id, i)),
+        // J13.7: quién se da a conocer en esta línea (`true`: quien habla), si el paquete lo dice.
+        ...(source.presenta != null && source.presenta !== '' ? { presenta: source.presenta } : {}),
     };
 }
 
@@ -509,6 +563,8 @@ function checkCondition(condition, hero, world, { speaker, chosen }) {
         if (!ok) return hide;
     }
     if (condition.said && !chosen.includes(condition.said)) return hide;
+    // J13.8: lo que hiciste en una escena del hilo.
+    if (condition.chose && !condition.chose.some(id => (world.chose ?? []).includes(id))) return hide;
     const attitude = Math.round(Number(world.attitude) || 0);
     if (condition.attitude?.max !== undefined && attitude > condition.attitude.max) return hide;
     // Lo que se puede ganar: se ve, apagado, y dice cómo se abre.
@@ -674,20 +730,53 @@ function learn(state, said, day, before = []) {
 }
 
 /**
+ * J13.8: lo que dice al volver otro día: la primera de sus frases con condición que se cumpla
+ * («¿Has subido entera?» si vienes de la bodega) o una de las de siempre, distinta según el día
+ * y lo que lleváis hablado.
+ *
+ * @param {DialogueNode} node
+ * @param {DialogueState} state
+ * @param {any} hero
+ * @param {DialogueWorld} world
+ * @returns {string}
+ */
+function againLine(node, state, hero, world) {
+    const list = node.agains ?? (node.again ? [{ text: node.again, when: [] }] : []);
+    const context = { speaker: state.dialogue.speaker, chosen: state.chosen };
+    const fits = list.find(a => a.when.length > 0 && checkConditions(a.when, hero, world, context).ok);
+    if (fits) return fits.text;
+    const plain = list.filter(a => a.when.length === 0);
+    if (plain.length === 0) return '';
+    const day = Math.max(0, Math.floor(Number(world.day) || 0));
+    return plain[(hashOf(state.dialogue.id) + day + state.chosen.length) % plain.length].text;
+}
+
+/**
  * Entrar en un nudo: lo que dice, con su gesto, y lo que se apunta.
+ *
+ * J13.8: volver al principio sin haberse ido (tras «Gracias», «Lo siento») no es volver otro
+ * día. Ahí no sale `again` («¿Otra vez tú?»), sino lo que dice para seguir (`followUpLine`); y si
+ * la opción ya traía su respuesta (`reply`), nada más: la respuesta basta.
  *
  * @param {DialogueState} state
  * @param {string} id
  * @param {any} hero
  * @param {DialogueWorld} world
  * @param {Array<{who: string, text: string, day: number}>} [before]
+ * @param {{replied?: boolean}} [how] Si quien habla acaba de contestar a la opción.
  * @returns {DialogueState}
  */
-function enter(state, id, hero, world, before = []) {
+function enter(state, id, hero, world, before = [], { replied = false } = {}) {
     const node = nodeOf(state.dialogue, id);
     if (!node) return { ...state, node: '', ended: true, pending: [] };
     const repeated = state.heard.includes(node.id);
-    const said = repeated && node.again ? node.again : node.line;
+    const here = state.here ?? [];
+    // Un nudo al que se vuelve dentro de la misma charla: el principio, o uno con `more` escrito.
+    const back = here.includes(node.id) && (node.id === state.dialogue.start || (node.more?.length ?? 0) > 0);
+    const backs = state.backs ?? 0;
+    const said = back
+        ? (replied ? '' : followUpLine({ more: node.more ?? [], attitude: world.attitude, seed: state.dialogue.id, turn: backs, who: { heroe: hero } }))
+        : (repeated ? againLine(node, state, hero, world) || node.line : node.line);
     const day = Math.max(0, Math.floor(Number(world.day) || 0));
     // Lo que hace el nudo, solo la primera vez: volver a oírlo no vuelve a cumplir el hito.
     const pending = repeated ? [] : resolveEffects(node.effects, state.dialogue.speaker, hero, world);
@@ -701,6 +790,9 @@ function enter(state, id, hero, world, before = []) {
         pending,
         heard: repeated ? state.heard : [...state.heard, node.id],
         log: said ? [...state.log, { kind: 'npc', who: state.dialogue.speaker, text: voiced(said, hero, world), mood: node.mood }] : state.log,
+        here: here.includes(node.id) ? here : [...here, node.id],
+        backs: back ? backs + 1 : backs,
+        face: said ? node.mood : (state.face ?? node.mood),
     };
 }
 
@@ -746,6 +838,9 @@ export function startDialogue(dialogue, { memory = null, hero = null, world = {}
         chosen: past ? [...past.chosen] : [],
         learned: [],
         log: [],
+        here: [],
+        backs: 0,
+        face: '',
     };
     return enter(state, dialogue.start, hero, world, past?.learned ?? []);
 }
@@ -827,7 +922,8 @@ export function dialogueView(state, hero, world = {}) {
     const last = [...state.log].reverse().find(entry => entry.kind === 'npc');
     return {
         speaker: state.dialogue.speaker,
-        mood: node?.mood ?? last?.mood ?? 'neutral',
+        // J13.8: con la cara de lo último que dijo (una respuesta trae la suya).
+        mood: state.face || node?.mood || last?.mood || 'neutral',
         line: last?.text ?? '',
         options: optionsFor(state, hero, world),
         ended: state.ended,
@@ -922,13 +1018,20 @@ export function choose(state, optionId, { hero = null, world = {}, rollD20 = () 
     // Con quién es cada cosa: sin decirlo, con quien habla.
     const resolved = resolveEffects(effects, state.dialogue.speaker, hero, world);
 
+    // J13.8: lo que contesta al momento, con su gesto (o el del nudo).
+    const reply = option.reply ?? null;
+    if (reply) log.push({ kind: 'npc', who: state.dialogue.speaker, text: voiced(reply.text, hero, world), mood: reply.mood || node.mood });
+
     /** @type {DialogueState} */
-    let after = { ...state, log, pending: [], chosen: state.chosen.includes(option.id) ? state.chosen : [...state.chosen, option.id] };
+    let after = {
+        ...state, log, pending: [], chosen: state.chosen.includes(option.id) ? state.chosen : [...state.chosen, option.id],
+        ...(reply ? { face: reply.mood || node.mood } : {}),
+    };
     if (journal) after = { ...after, learned: learn(after, voiced(journal, hero, world), day, before) };
     for (const clue of resolved.filter(e => e.kind === 'clue')) after = { ...after, learned: learn(after, clue.text ?? '', day, before) };
 
     if (end) after = { ...after, node: '', ended: true };
-    else if (next) after = enter(after, next, hero, world, before);
+    else if (next) after = enter(after, next, hero, world, before, { replied: Boolean(reply) });
 
     return {
         ok: true,
@@ -1178,7 +1281,21 @@ export function checkDialogues(raw, { people = [], milestones = null, rumors = [
             const nodeId = text(node.id);
             if (!text(node.line)) errors.push({ path: `${nodePath}.line`, message: 'Falta lo que dice quien habla (`line`).' });
             markers(text(node.line), `${nodePath}.line`);
-            markers(text(node.again), `${nodePath}.again`);
+            // J13.8: `again` puede ser una lista, con condición en cada frase; y `more`, lo de seguir.
+            if (Array.isArray(node.again)) {
+                node.again.forEach((/** @type {any} */ entry, i) => {
+                    const where = `${nodePath}.again[${i}]`;
+                    if (typeof entry === 'string') {
+                        markers(entry, where);
+                    } else if (!isObject(entry) || !text(entry.text)) {
+                        errors.push({ path: where, message: 'Cada frase de `again` es un texto, o `{"if": {…}, "text": "…"}`.' });
+                    } else {
+                        markers(text(entry.text), `${where}.text`);
+                        if (entry.if !== undefined) (Array.isArray(entry.if) ? entry.if : [entry.if]).forEach((/** @type {any} */ c, k) => validateCondition(c, Array.isArray(entry.if) ? `${where}.if[${k}]` : `${where}.if`));
+                    }
+                });
+            } else markers(text(node.again), `${nodePath}.again`);
+            listOf(node.more).forEach((said, i) => markers(said, `${nodePath}.more[${i}]`));
             markers(text(node.journal), `${nodePath}.journal`);
             checkEffects(node.effects, `${nodePath}.effects`);
             if (node.mood !== undefined && !MOODS.includes(fold(node.mood))) {
@@ -1194,6 +1311,10 @@ export function checkDialogues(raw, { people = [], milestones = null, rumors = [
                 if (!text(option.text)) errors.push({ path: `${optionPath}.text`, message: 'Falta lo que dice quien juega (`text`).' });
                 markers(text(option.text), `${optionPath}.text`);
                 markers(text(option.journal), `${optionPath}.journal`);
+                if (option.reply !== undefined) {
+                    if (!readReply(option.reply)) errors.push({ path: `${optionPath}.reply`, message: 'La respuesta es un texto, o `{"text": "…", "mood": "…"}`.' });
+                    else markers(readReply(option.reply)?.text ?? '', `${optionPath}.reply`);
+                }
                 const read = readOption(option, nodeId, o);
                 if (optionIds.has(read.id)) errors.push({ path: `${optionPath}.id`, message: `La opción "${read.id}" está repetida en este nudo: lo ya dicho se recuerda por su id.` });
                 optionIds.add(read.id);

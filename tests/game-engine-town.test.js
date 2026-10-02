@@ -182,9 +182,9 @@ describe('los sitios en el paquete', () => {
             ['plaza', 'La plaza', ''],
         ]);
         expect(places[5].people.map(p => p.name)).toContain('Barón Vargas Vallakovich');
-        // Y Krezk, con su abadía.
+        // Y Krezk, con su abadía y (M4) el tablón de su puerta, para su encargo.
         const krezk = plan.metadata.locationMaps.find((/** @type {any} */ l) => l.name === 'Aldea de Krezk');
-        expect(townPlaces({ location: krezk, npcs }).places.map(p => p.keeper?.name ?? '')).toEqual(['Dmitri Krezkov', 'El Abad', '']);
+        expect(townPlaces({ location: krezk, npcs }).places.map(p => p.keeper?.name ?? '')).toEqual(['Dmitri Krezkov', 'El Abad', '', '']);
     });
 
     test('el gremio escribe sus sitios, y el importador los deja con quien atiende por nombre', () => {

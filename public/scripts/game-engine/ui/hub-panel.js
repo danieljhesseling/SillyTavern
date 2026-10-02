@@ -11,7 +11,7 @@
 
 import { firstArt, loadPixelManifest } from './pixel-art.js';
 import { resolveGender } from '../campaign/grammar.js';
-import { HUB_NEXT_HERO_GOLD, HUB_KEPT_NOTE } from '../campaign/hub.js';
+import { HUB_NEXT_HERO_GOLD, HUB_KEPT_NOTE, HUB_SEED_TRAIT } from '../campaign/hub.js';
 
 /** @param {string} value @returns {JQuery} */
 const div = (value) => $('<div></div>').addClass(value);
@@ -200,6 +200,8 @@ function campaignTile(one, onClick, onRemove = null, who = {}, onChronicle = nul
     tile.append(div(`hb-state hb-${one.state}`).text(one.ending ? `${state}: ${one.ending}` : state));
     // J9.3: por qué capítulo ibais al volver al gremio.
     if (one.chapter) tile.append(div('hb-chapter').append('<i class="fa-solid fa-bookmark"></i>').append($('<span></span>').text(one.chapter)));
+    // J10.7: una sin historia escrita lo dice: la escribe el juego al empezarla (`seed-pack.js`).
+    if (one.generated) tile.append(div('hb-generated').append('<i class="fa-solid fa-feather-pointed"></i>').append($('<span></span>').text(HUB_SEED_TRAIT)));
     // J11.4: por qué os la ofrecen a vosotros, por cómo acabó otra (`offeredCampaigns`).
     const because = String(/** @type {any} */ (one).because ?? '').trim();
     if (because) tile.append(div('hb-because').text(because));
@@ -522,6 +524,8 @@ export async function openHubBoard({ Popup, POPUP_TYPE, cards, heroes = [], onIm
                 else tile.insertBefore(addTile);
                 empty.remove();
                 tile[0].scrollIntoView({ block: 'nearest' });
+                // J5.6: y lo comprobado debajo de ella, con su veredicto a la vista.
+                report[0].scrollIntoView({ block: 'nearest' });
             } else {
                 report[0].scrollIntoView({ block: 'nearest' });
             }
@@ -572,7 +576,8 @@ export async function openHubBoard({ Popup, POPUP_TYPE, cards, heroes = [], onIm
         pasteAdd.prop('disabled', false);
         if (done) pasteText.val('');
     });
-    body.append(grid, div('hb-paste').append(pasteOpen, pasteBox), report, picker);
+    // J5.6: el informe, pegado a las tarjetas: la recién añadida y lo que se ha comprobado se ven juntas.
+    body.append(grid, report, div('hb-paste').append(pasteOpen, pasteBox), picker);
     body.append(div('hb-foot').append($('<button type="button" class="menu_button hb-close"></button>')
         .text('Ahora no')
         .on('click', () => { void popup?.completeCancelled(); })));

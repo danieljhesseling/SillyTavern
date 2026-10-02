@@ -506,3 +506,31 @@ Cada parte de cada momento, **al menos ocho frases**; las de viajar y llegar, **
 - Dejar un hito que no se pueda abrir, o una localidad a la que no se pueda llegar.
 - Escribir un combate que solo se gane con terreno que el motor todavía no tiene. Si lo quieres, déjalo como `mecanica_pendiente`.
 - Resolver la trama con el narrador: si algo tiene que pasar, es un hito, un encargo o un encuentro escrito.
+
+## Que la gente suene a gente
+
+Jugando sin modelo, lo que delata a la máquina es la gente: la misma frase seis veces, un saludo por tu nombre de quien no te conoce, una escena que no se acuerda de lo que acabas de hacer. El formato tiene sitio para evitarlo; úsalo.
+
+### Las herramientas
+
+- **En una charla, `again` puede ser una lista.** La primera con condición que se cumpla gana; si no, una sin condición, distinta según el día. `{ "if": { "chose": "vigilo" }, "text": "La otra noche no pegué ojo, pero tú tampoco." }`.
+- **`again` es para quien vuelve otro día.** Al volver al principio en la misma charla (tras «Gracias» o «Entendido») sale `more`: una lista de frases cortas, por turnos («¿Algo más?», «Tú dirás.»). Sin `more`, el motor pone una corta de la tabla `charla-sigue`, según cómo te mire.
+- **`reply` en una opción**: lo que contesta al momento («Gracias» → «No me las des»), con su gesto. Si la opción vuelve a donde estabais, con la respuesta basta.
+- **`alt` en una línea de escena**: la misma línea con otras palabras, según lo que elegiste antes (`chose`: el id de la opción), tu clase (`class`), tu especie (`species`), tu género (`gender`) o tu pasado (`background`). Vale la primera que se cumpla; sin ninguna, la línea tal cual.
+- **La condición `chose`** sirve también en las charlas: Tomás se acuerda de si le cobraste en el muelle.
+- **Saludos de quien atiende un sitio** (tabla `saludo` de `frases.json`): `when` con `servicio`, `primera`, `hora`, `actitud`, `persona` (sus frases propias, por su nombre) y `clase` (solo la primera vez). Huecos: `{quien}`, `{hola}` («Buenas tardes») y `{nombre}`, que solo vale si ya te conoce.
+
+### Antes de entregar, repasa
+
+- [ ] **Nadie dice tu nombre sin conocerte.** Una frase de primera vez no lleva `{nombre}`; quien no se ha presentado tampoco dice el suyo.
+- [ ] **Primera vez y de siempre suenan distinto.** La primera, te mide o pregunta quién eres; luego, ya te conoce y te trata como a alguien de la casa.
+- [ ] **Cada PNJ habla con su `voz`** en todas sus líneas: si Madre Elvira llama «{hijo|hija}», lo hace siempre; si Ramiro habla con el martillo en la mano, no suena a funcionario.
+- [ ] **«Otra vez tú» solo para quien se fue y vuelve.** Dentro de la misma charla, `more`.
+- [ ] **Las respuestas cortas del héroe tienen `reply`**: «Gracias», «Lo siento», «Entendido» no se quedan sin contestar.
+- [ ] **La escena siguiente se acuerda de la última elección que pesa** (un `alt` con `chose`): si cobraste, lo dicen.
+- [ ] **Una línea por clase o especie donde encaje** (un `alt` con `class`), sin pasarse: una o dos por escena.
+- [ ] **Ninguna frase se repite casi igual** en la escena de al lado ni en el nudo de la charla que la sigue.
+- [ ] **Nada de formulario.** Ni «Dime qué quieres» tres veces, ni frases que suenan a menú («Opciones disponibles»).
+- [ ] **El saludo cambia con la hora y con cómo te mira.** Quien te tiene manía no sonríe; de noche se nota la noche.
+- [ ] **Singular o plural, según vayas.** Al empezar vas solo: nada de «Sentaos» ni «os mira».
+- [ ] **`node tools/variedad-frases.mjs --check` en verde** si has añadido frases.

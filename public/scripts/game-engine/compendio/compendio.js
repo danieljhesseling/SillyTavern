@@ -39,6 +39,12 @@ export const DOMAINS = [
     // J7.2, J7.5, J14.7 a J14.9: cómo es cada compañero, las noches y las charlas de pareja, y
     // las misiones personales.
     'companeros', 'noches', 'personales',
+    // J14.10: los romances, opcionales: la señal, las citas, la noche y el epílogo.
+    'romances',
+    // J10.7: las historias en tres actos de las campañas sin hilo escrito.
+    'actos',
+    // J12.7: las peleas de taberna y los duelos: quién busca pelea, quién reta y lo que se lee.
+    'peleas',
 ];
 
 /** Cuantas filas recientes se recuerdan por dominio, para no repetir. */

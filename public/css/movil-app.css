@@ -188,4 +188,12 @@ body.game-shell-on {
         -webkit-backdrop-filter: none;
         backdrop-filter: none;
     }
+
+    /* J20.6: lo que brilla sin parar (el «estás aquí» del mapa de la campaña, lo urgente del
+       libro) obliga a repintar en cada fotograma mientras se ve, y eso calienta el teléfono.
+       Aquí brilla tres veces y se queda encendido, quieto. */
+    body .cm-place[data-state="aqui"] .cm-medal,
+    body .lb-badge[data-urgency="hoy"] {
+        animation-iteration-count: 3;
+    }
 }

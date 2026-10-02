@@ -1890,9 +1890,10 @@ body.game-shell-on #character_popup {
     font-weight: 600;
 }
 
+/* J15.5: con 0.75 no llegaba al contraste de la WCAG sobre el botón. */
 .hp-detail {
     font-size: 0.85em;
-    opacity: 0.75;
+    opacity: 0.9;
 }
 
 /* Idea 147: el contador de tokens. Rojizo cuando el turno sale caro. */

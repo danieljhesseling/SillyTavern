@@ -165,7 +165,8 @@
       "services": [
         "posada",
         "tienda",
-        "templo"
+        "templo",
+        "tablon"
       ],
       "places": [
         {
@@ -182,6 +183,10 @@
           "kind": "templo",
           "name": "La iglesia",
           "keeper": "donavich"
+        },
+        {
+          "kind": "tablon",
+          "name": "Las notas de la puerta de la iglesia"
         }
       ],
       "routes": [
@@ -500,7 +505,8 @@
       "biome": "montaña",
       "services": [
         "posada",
-        "templo"
+        "templo",
+        "tablon"
       ],
       "places": [
         {
@@ -512,6 +518,10 @@
           "kind": "templo",
           "name": "La abadía de Santa Markovia",
           "keeper": "el-abad"
+        },
+        {
+          "kind": "tablon",
+          "name": "El tablón de la puerta de Krezk"
         }
       ],
       "routes": [
@@ -849,6 +859,7 @@
       "arcana": "La Sacerdotisa",
       "initialBondPoints": 0,
       "className": "clériga",
+      "stranger": "la adivina",
       "motive": "bond",
       "spells": [
         "hab-bendicion",
@@ -1588,7 +1599,39 @@
           "text": "Salir a la calle antes de que empiece",
           "dc": 10
         }
-      ]
+      ],
+      "parley": {
+        "leader": "Bruja Baroviana",
+        "sobornar": {
+          "text": "Ofrecerle a la bruja unas monedas para que se vaya con su muerto",
+          "gold": 6,
+          "success": "La bruja muerde una moneda, sonríe sin dientes y se escurre por la puerta de atrás. El muerto la sigue, arrastrando los pies.",
+          "failure": "«El conde paga en cosas mejores que la plata.» Sisea un conjuro."
+        },
+        "convencer": {
+          "text": "Decirle delante de todos que aquí el conde no la protege: la aldea entera la está mirando",
+          "dc": 14,
+          "success": {
+            "text": "La bruja mira a los parroquianos, que se han levantado de sus mesas. Recoge sus harapos y se va por la puerta de atrás, con el muerto detrás.",
+            "effects": [
+              {
+                "fame": 1
+              }
+            ]
+          },
+          "partial": "La bruja duda y mira a los parroquianos. Esta ronda, no ataca.",
+          "failure": "«Aquí todos son del conde, aunque no lo sepan.» Se ríe con la boca negra."
+        },
+        "engañar": {
+          "text": "Gritar que el cura viene por la calle con agua bendita",
+          "dc": 13,
+          "success": "La bruja escupe, se tapa la cara con la capucha y sale corriendo por la puerta de atrás. El muerto se queda quieto, sin nadie que le mande, y se desploma.",
+          "failure": "«Ese cura no sale de su iglesia desde hace semanas.» Sisea, furiosa."
+        },
+        "no": [
+          "entregarse"
+        ]
+      }
     },
     {
       "id": "mansion_burgomaestre",
@@ -1731,7 +1774,19 @@
           "sobornar",
           "entregarse"
         ]
-      }
+      },
+      "traps": [
+        {
+          "name": "Escalón podrido",
+          "x": 10,
+          "y": 3,
+          "tell": "El último peldaño de la escalera está negro de humedad, y la madera se ve blanda.",
+          "damage": "1d6",
+          "spotDC": 11,
+          "disarmDC": 10,
+          "once": true
+        }
+      ]
     },
     {
       "id": "tienda_madam_eva",
@@ -1793,7 +1848,7 @@
           "skill": "survival",
           "dc": 13,
           "success": "Los lobos grises se lanzan a por la carne. El grande duda, gruñe y los sigue entre los árboles.",
-          "failure": "El lobo grande ni mira la carne: os mira a vosotros."
+          "failure": "El lobo grande ni mira la carne: os mira a la garganta."
         },
         {
           "kind": "esconderse",
@@ -1924,6 +1979,33 @@
           "text": "Salir por la puerta de servicio antes de que se cierre",
           "dc": 13
         }
+      ],
+      "parley": {
+        "leader": "Engendro Vampírico",
+        "engañar": {
+          "text": "Levantar la copa y brindar por el conde, como sus invitados",
+          "dc": 16,
+          "success": "Los engendros se detienen, se miran y se retiran a las sombras del techo: nadie toca a un invitado del conde.",
+          "failure": "«El conde no tiene invitados. Tiene cena.»"
+        },
+        "no": [
+          "entregarse",
+          "sobornar",
+          "convencer"
+        ]
+      },
+      "traps": [
+        {
+          "name": "La lámpara de hierro",
+          "x": 8,
+          "y": 5,
+          "tell": "La cadena de la lámpara grande está gastada, y la lámpara cuelga justo encima.",
+          "damage": "2d10",
+          "condition": "prone",
+          "spotDC": 13,
+          "disarmDC": 14,
+          "once": true
+        }
       ]
     },
     {
@@ -1995,6 +2077,50 @@
           "kind": "huir",
           "text": "Bajar la escalera del molino antes de que cierre la puerta",
           "dc": 12
+        }
+      ],
+      "parley": {
+        "leader": "Saga Nocturna",
+        "sobornar": {
+          "text": "Ofrecerle oro a cambio de los niños",
+          "gold": 25,
+          "success": "La saga sopesa el oro, se relame y abre la trampilla de una patada. «Llevaos a los críos. Ya encontraré otros.» Se va por la chimenea, y la bruja detrás.",
+          "failure": "«El oro no se come.» La saga se ríe, y el horno ruge."
+        },
+        "convencer": {
+          "text": "Decirle que el pueblo entero sabe ya lo de los pasteles y vendrá con antorchas",
+          "dc": 16,
+          "success": {
+            "text": "La saga mira por la ventana y luego al horno. Escupe al fuego, coge su saco y se va por la chimenea. Los niños están en la trampilla, vivos.",
+            "effects": [
+              {
+                "fame": 1
+              }
+            ]
+          },
+          "partial": "La saga se para a escuchar el ruido de fuera. Esta ronda, no ataca.",
+          "failure": "«Que vengan. Haré más pasteles.»"
+        },
+        "engañar": {
+          "text": "Hacerte pasar por cliente: pedirle una docena de pasteles y pagar después",
+          "dc": 16,
+          "success": "La saga se relame y se da la vuelta hacia el horno. Os basta ese momento para abrir la trampilla y sacar a los niños por la ventana.",
+          "failure": "«A mí no se me engaña dentro de mi casa.» Ahora ataca sin cuidarse."
+        },
+        "no": [
+          "entregarse"
+        ]
+      },
+      "traps": [
+        {
+          "name": "Trampilla suelta",
+          "x": 8,
+          "y": 7,
+          "tell": "Una trampilla sin cerrojo cruje bajo el polvo de harina.",
+          "damage": "2d6",
+          "condition": "prone",
+          "spotDC": 12,
+          "disarmDC": 11
         }
       ]
     },
@@ -2202,14 +2328,29 @@
           "kind": "esconderse",
           "text": "Cruzar el barro cuando la bruja entre en la choza y sacar la gema por la ventana",
           "dc": 15,
-          "success": "Los espantapájaros siguen mirando al camino. La gema sale por la ventana envuelta en un trapo, y vosotros detrás."
+          "success": "Los espantapájaros siguen mirando al camino. La gema sale por la ventana envuelta en un trapo, y salís detrás de ella."
         },
         {
           "kind": "huir",
           "text": "Volver por el pantano antes de que os vean",
           "dc": 12
         }
-      ]
+      ],
+      "parley": {
+        "leader": "Baba Lysaga",
+        "engañar": {
+          "text": "Gritarle que su hijo, el conde, la llama al castillo",
+          "dc": 17,
+          "success": "Baba Lysaga se queda quieta, con los ojos muy abiertos. «¿Me llama? ¿A mí?» Silba a sus espantapájaros y se va cojeando por el barro, hacia el castillo. La gema se queda en la choza.",
+          "partial": "Baba Lysaga duda, con la cabeza ladeada. Esta ronda, no ataca.",
+          "failure": "«Mi hijo nunca me llama.» Grita, y los espantapájaros se lanzan."
+        },
+        "no": [
+          "entregarse",
+          "sobornar",
+          "convencer"
+        ]
+      }
     },
     {
       "id": "cima_yester",
@@ -2287,7 +2428,28 @@
           "text": "Bajar la colina antes de que acabe el canto",
           "dc": 12
         }
-      ]
+      ],
+      "parley": {
+        "leader": "Druida de Yester",
+        "convencer": {
+          "text": "Plantarte junto al muñeco de ramas con una antorcha: si no se van, arde",
+          "skill": "intimidation",
+          "dc": 15,
+          "success": "Los druidas dejan de reír. Se apartan del muñeco, despacio, y bajan la colina sin daros la espalda. La gema sigue a sus pies.",
+          "partial": "Los druidas se quedan quietos, mirando la antorcha. Esta ronda, nadie ataca.",
+          "failure": "Los druidas se ríen más fuerte. «¡Quémalo! ¡Volverá a crecer!»"
+        },
+        "engañar": {
+          "text": "Unirte al canto como uno más y acercarte a la gema",
+          "dc": 15,
+          "success": "Los druidas vuelven al trance y dejan de miraros. Cogéis la gema de los pies del muñeco y bajáis la colina sin correr.",
+          "failure": "Te equivocas de verso. Los druidas se giran todos a la vez."
+        },
+        "no": [
+          "entregarse",
+          "sobornar"
+        ]
+      }
     },
     {
       "id": "islote_torre",
@@ -2366,7 +2528,28 @@
           "text": "Cruzar el camino de tierra antes de que os corten el paso",
           "dc": 13
         }
-      ]
+      ],
+      "parley": {
+        "leader": "Hombre Lobo",
+        "convencer": {
+          "text": "Plantarte en la puerta de la torre con la plata en la mano: el primero que entre, la prueba",
+          "skill": "intimidation",
+          "dc": 16,
+          "success": "El hombre lobo mira la plata y enseña los dientes, pero no se acerca. Aúlla a su manada, y la manada se va con él a la niebla.",
+          "partial": "La manada da vueltas sin acercarse. Esta ronda, no atacan.",
+          "failure": "El hombre lobo se ríe con su boca de lobo y carga."
+        },
+        "engañar": {
+          "text": "Aullar desde lo alto de la torre como la manada de Kiril",
+          "dc": 15,
+          "success": "El hombre lobo levanta el hocico, duda y se lleva a su manada por el camino de tierra, hacia el bosque.",
+          "failure": "El hombre lobo conoce ese aullido, y no es de los suyos. Ahora ataca sin cuidarse."
+        },
+        "no": [
+          "entregarse",
+          "sobornar"
+        ]
+      }
     },
     {
       "id": "cueva_madre_noche",
@@ -2441,7 +2624,35 @@
           "text": "Salir de la cueva antes de que os huelan",
           "dc": 13
         }
-      ]
+      ],
+      "parley": {
+        "leader": "Kiril Stoyanovich",
+        "convencer": {
+          "text": "Ponerte entre Kiril y las jaulas con el arma de plata en alto",
+          "skill": "intimidation",
+          "dc": 17,
+          "success": {
+            "text": "Kiril mira la plata, mira las jaulas y escupe. «Volveré a por ellos.» Se va por el fondo de la cueva con sus lobos. Los niños salen de las jaulas uno a uno.",
+            "effects": [
+              {
+                "fame": 1
+              }
+            ]
+          },
+          "partial": "Kiril gruñe y da un paso atrás. Esta ronda, no ataca.",
+          "failure": "Kiril se golpea el pecho. «La plata no asusta a la Madre Noche.» Carga."
+        },
+        "engañar": {
+          "text": "Gritar que los del pueblo vienen por la entrada con plata y fuego",
+          "dc": 16,
+          "success": "Kiril olfatea hacia la entrada, duda y se va con sus lobos por un túnel del fondo. Las jaulas quedan solas.",
+          "failure": "Kiril olfatea el aire y se ríe. «Aquí solo huele a gente de fuera.»"
+        },
+        "no": [
+          "entregarse",
+          "sobornar"
+        ]
+      }
     },
     {
       "id": "camino_vino",
@@ -2579,7 +2790,30 @@
           "text": "Salir del patio antes de que os alcance",
           "dc": 12
         }
-      ]
+      ],
+      "parley": {
+        "leader": "Revenant",
+        "convencer": {
+          "text": "Decirle al caballero que venís a acabar con el vampiro, como su orden",
+          "dc": 15,
+          "success": {
+            "text": "El caballero baja la espada. «Entonces id. Y no volváis hasta que esté hecho.»",
+            "effects": [
+              {
+                "standing": "La Orden del Dragón de Plata",
+                "amount": 1
+              }
+            ]
+          },
+          "partial": "El caballero se queda quieto, con la espada en alto, escuchando. Esta ronda, no ataca.",
+          "failure": "«Eso dijeron los últimos.» Levanta la espada."
+        },
+        "no": [
+          "entregarse",
+          "sobornar",
+          "engañar"
+        ]
+      }
     },
     {
       "id": "vinedo_bodega",
@@ -2653,7 +2887,33 @@
           "text": "Volver a la bodega y atrancar la puerta",
           "dc": 11
         }
-      ]
+      ],
+      "parley": {
+        "leader": "Bruja Baroviana",
+        "sobornar": {
+          "text": "Ofrecerle a la bruja monedas y una botella para que se lleve a sus lobos",
+          "gold": 8,
+          "success": "La bruja coge las monedas y la botella, y silba a sus lobos. Se pierden entre las viñas.",
+          "failure": "«El conde me dará la bodega entera.» Los lobos gruñen."
+        },
+        "convencer": {
+          "text": "Plantarle cara a la bruja: sin ella, los lobos no se quedan",
+          "skill": "intimidation",
+          "dc": 14,
+          "success": "La bruja maldice, se sube la capucha y se pierde entre las viñas. Los lobos la siguen.",
+          "partial": "La bruja retrocede un paso, y los lobos con ella. Esta ronda, no atacan.",
+          "failure": "La bruja se ríe y señala hacia ti: los lobos se lanzan."
+        },
+        "engañar": {
+          "text": "Gritar que los de la bodega sueltan a sus perros",
+          "dc": 13,
+          "success": "Los lobos levantan las orejas y miran hacia la bodega. La bruja no se arriesga: silba y se van entre las viñas.",
+          "failure": "«En esa bodega no queda ni un perro.» Los lobos atacan sin cuidarse."
+        },
+        "no": [
+          "entregarse"
+        ]
+      }
     },
     {
       "id": "puertas_krezk",
@@ -2721,7 +2981,28 @@
           "text": "Retirarse al bosque hasta que se vayan",
           "dc": 13
         }
-      ]
+      ],
+      "parley": {
+        "leader": "Hombre Lobo",
+        "convencer": {
+          "text": "Hacer sonar la campana de la puerta y pedir antorchas en la muralla",
+          "skill": "intimidation",
+          "dc": 16,
+          "success": "El hombre lobo aúlla, mira las antorchas y se lleva a su manada a la niebla. Las puertas se abren.",
+          "partial": "El hombre lobo retrocede ante el fuego. Esta ronda, no ataca.",
+          "failure": "Cuatro antorchas no asustan a un hombre lobo. Salta hacia ti."
+        },
+        "engañar": {
+          "text": "Gritar a la muralla que tiren ya la plata",
+          "dc": 15,
+          "success": "El hombre lobo mira a la muralla, gruñe y se lleva a su manada a la niebla antes de comprobarlo.",
+          "failure": "Desde la muralla no cae nada. El hombre lobo se ríe y carga."
+        },
+        "no": [
+          "entregarse",
+          "sobornar"
+        ]
+      }
     },
     {
       "id": "cripta_strahd",
@@ -2777,6 +3058,38 @@
           "text": "Correr escaleras arriba antes de que se cierre la cripta",
           "dc": 16,
           "failure": "La reja de la cripta baja sola a vuestra espalda. Strahd sonríe."
+        }
+      ],
+      "parley": {
+        "leader": "Strahd von Zarovich",
+        "no": [
+          "entregarse",
+          "sobornar",
+          "convencer",
+          "engañar"
+        ]
+      },
+      "traps": [
+        {
+          "name": "Losa del murciélago",
+          "x": 8,
+          "y": 7,
+          "tell": "En el pasillo central hay una losa con un murciélago grabado, y sin polvo encima.",
+          "damage": "2d10",
+          "condition": "prone",
+          "spotDC": 15,
+          "disarmDC": 15
+        },
+        {
+          "name": "Dardos en la pared",
+          "x": 1,
+          "y": 7,
+          "tell": "Agujeros pequeños en la pared, a la altura del cuello.",
+          "damage": "2d8",
+          "condition": "poisoned",
+          "spotDC": 15,
+          "disarmDC": 14,
+          "once": true
         }
       ]
     }
@@ -3189,7 +3502,7 @@
     {
       "id": "izek-strazni",
       "name": "Izek Strazni",
-      "trade": "Hombre del barón",
+      "trade": "Jefe de la guardia del barón",
       "where": "Ciudad de Vallaki",
       "wants": "Encontrar a la chica que ve en sueños.",
       "knows": "Todo lo que pasa en las calles: él es quien arresta a los que no están contentos.",
@@ -4112,7 +4425,34 @@
           "id": "inicio",
           "mood": "triste",
           "line": "Siéntate, si no te importa beber con un hombre que no ha podido enterrar a su padre. Soy Ismark. En el pueblo me llaman el Menor.",
-          "again": "Otra vez tú. Siéntate, que el vino aquí es malo pero está caliente.",
+          "again": [
+            {
+              "if": {
+                "said": "vigilo"
+              },
+              "text": "Dormí. Por primera vez en tres noches, dormí. Siéntate: esta ronda la pago yo."
+            },
+            {
+              "if": [
+                {
+                  "said": "ayudar"
+                },
+                {
+                  "said": "miedo-ayudo"
+                }
+              ],
+              "text": "Has vuelto. Lo del ataúd sigue en pie, ¿verdad? No me hagas pedírtelo dos veces."
+            },
+            "Otra vez tú. Siéntate, que el vino aquí es malo pero está caliente.",
+            "Has vuelto. Aquí poca gente vuelve, ¿sabes? Siéntate.",
+            "Llevo un buen rato mirando la puerta. Prefiero que entres tú a cualquier otra cosa."
+          ],
+          "more": [
+            "¿Qué más quieres saber?",
+            "Pregunta. Esta noche no voy a dormir de todos modos.",
+            "Sigue. Hablar me quita la ventana de la cabeza.",
+            "Dime."
+          ],
           "options": [
             {
               "id": "padre",
@@ -4227,6 +4567,10 @@
             {
               "id": "padre-siento",
               "text": "Lo siento mucho.",
+              "reply": {
+                "text": "Gracias. Era terco como una mula, pero era un buen hombre. Aquí no quedan muchos.",
+                "mood": "triste"
+              },
               "next": "inicio"
             }
           ]
@@ -4249,6 +4593,7 @@
             {
               "id": "miedo-vale",
               "text": "Entiendo.",
+              "reply": "No los culpo del todo. Aquí el miedo se hereda, como las casas.",
               "next": "inicio"
             }
           ]
@@ -4262,6 +4607,10 @@
             {
               "id": "gracias-alli",
               "text": "Allí estaré.",
+              "reply": {
+                "text": "Te creo. No sé muy bien por qué, pero te creo.",
+                "mood": "alegre"
+              },
               "next": "inicio"
             }
           ]
@@ -4316,6 +4665,7 @@
             {
               "id": "ireena-vale",
               "text": "Entiendo.",
+              "reply": "Si de verdad lo entiendes, ayúdame a sacarla de aquí.",
               "next": "inicio"
             }
           ]
@@ -4329,6 +4679,10 @@
             {
               "id": "acepta-vale",
               "text": "Se lo diré.",
+              "reply": {
+                "text": "Suerte. Es más terca que yo, y eso ya es decir.",
+                "mood": "alegre"
+              },
               "next": "inicio"
             }
           ]
@@ -4341,6 +4695,7 @@
             {
               "id": "duda-vale",
               "text": "Piénsalo.",
+              "reply": "Lo pensaré. Total, de noche es lo único que hago.",
               "next": "inicio"
             }
           ]
@@ -4353,6 +4708,10 @@
             {
               "id": "no-acepta-vale",
               "text": "Como quieras.",
+              "reply": {
+                "text": "Perdona. No es contigo. Es que ya no sé de quién fiarme.",
+                "mood": "triste"
+              },
               "next": "inicio"
             }
           ]
@@ -4395,6 +4754,7 @@
             {
               "id": "cansado-vale",
               "text": "Cuídate.",
+              "reply": "Lo intento. Pero él no se cansa nunca.",
               "next": "inicio"
             }
           ]
@@ -4407,6 +4767,7 @@
             {
               "id": "bien-vale",
               "text": "Si tú lo dices.",
+              "reply": "Lo digo. Y casi me lo creo.",
               "next": "inicio"
             }
           ]
@@ -4419,6 +4780,7 @@
             {
               "id": "ajos-vale",
               "text": "Descansa.",
+              "reply": "Lo intentaré. Ireena dirá que la casa apesta, pero que lo diga viva.",
               "next": "inicio"
             }
           ]
@@ -4432,6 +4794,10 @@
             {
               "id": "vigilo-vale",
               "text": "Duerme tranquilo.",
+              "reply": {
+                "text": "Tranquilo, no. Pero dormiré.",
+                "mood": "alegre"
+              },
               "next": "inicio"
             }
           ]
@@ -4445,6 +4811,7 @@
             {
               "id": "carta-vale",
               "text": "Haremos lo que podamos.",
+              "reply": "Con eso me basta. Es más de lo que ha hecho nadie en esta aldea.",
               "next": "inicio"
             }
           ]
@@ -4457,6 +4824,10 @@
             {
               "id": "bruja-vale",
               "text": "No es nada.",
+              "reply": {
+                "text": "Para la aldea, sí que lo es. Es la primera buena noticia en un mes.",
+                "mood": "alegre"
+              },
               "next": "inicio"
             }
           ]
@@ -4470,6 +4841,7 @@
             {
               "id": "clerigo-vale",
               "text": "Lo haré.",
+              "reply": "Gracias. Él no era muy de rezar, pero creo que le habría gustado.",
               "next": "inicio"
             }
           ]
@@ -4482,6 +4854,10 @@
             {
               "id": "elfo-vale",
               "text": "No estás solo.",
+              "reply": {
+                "text": "Hacía tiempo que nadie me lo decía.",
+                "mood": "triste"
+              },
               "next": "inicio"
             }
           ]
@@ -4495,6 +4871,10 @@
             {
               "id": "espada-vale",
               "text": "Mañana empezamos.",
+              "reply": {
+                "text": "Al amanecer, entonces. Y no me tengas lástima: prefiero los moratones.",
+                "mood": "alegre"
+              },
               "next": "inicio"
             }
           ]
@@ -4536,7 +4916,7 @@
             "effects": [
               "llave:La barca de Nikolai"
             ],
-            "then": "Se rasca la barba y acaba diciendo que sí: si alguien tiene que ir a esa torre, mejor gente como vosotros."
+            "then": "Se rasca la barba y acaba diciendo que sí: si alguien tiene que ir a esa torre, mejor que sea gente con armas."
           },
           "fail": {
             "then": "Nikolai niega con la cabeza. Sin paga, no hay barca."
@@ -4833,7 +5213,7 @@
           {
             "who": "Ismark Kolyanovich",
             "mood": "triste",
-            "text": "Mi padre murió hace tres noches. Desde entonces, los muertos vienen a llamar a la puerta."
+            "text": "Mi padre murió hace tres noches. Desde entonces, los muertos vienen a llamar a la puerta, y mi hermana Ireena no quiere irse de casa."
           },
           {
             "text": "Abre una mujer joven de pelo castaño, con una espada corta en la mano. Tiene dos marcas rojas en el cuello."
@@ -4917,7 +5297,7 @@
           {
             "who": "Donavich",
             "mood": "triste",
-            "text": "Es mi hijo, Doru. Fue al castillo a matar al conde, y volvió así."
+            "text": "Soy Donavich, el cura de esta aldea. Lo que grita es mi hijo, Doru. Fue al castillo a matar al conde, y volvió así."
           },
           {
             "who": "Donavich",
@@ -5003,6 +5383,63 @@
         "title": "Lectura Interrumpida",
         "hint": "Proteger el campamento de los lobos. Está en Tienda de Madam Eva (Campamento del Estanque Tser).",
         "scene": "Mientras buscáis el campamento para que Madam Eva lea vuestro destino, unos lobos acechan desde la espesura.",
+        "backdrop": "Campamento del Estanque Tser",
+        "beats": [
+          {
+            "text": "Al final del camino, junto a un estanque negro, arden las hogueras de los vistani. Hay carros pintados, caballos y música: la primera que oís en Barovia."
+          },
+          {
+            "text": "La tienda más grande es la de la adivina del campamento. Dentro huele a humo y a incienso. Una mujer muy vieja baraja cartas sin mirarlas."
+          },
+          {
+            "who": "Madam Eva",
+            "mood": "neutral",
+            "text": "Me llaman Madam Eva. Llegáis tarde: las cartas llevan tres noches esperándoos."
+          },
+          {
+            "who": "Madam Eva",
+            "mood": "triste",
+            "text": "Él os ha dejado entrar en su valle, y no os dejará salir. Quiere ver de qué estáis {hechos|hechas}. Siéntate.",
+            "options": [
+              {
+                "id": "leeme-las-cartas",
+                "text": "Léeme las cartas.",
+                "effects": [
+                  {
+                    "attitude": 1
+                  }
+                ],
+                "reply": {
+                  "who": "Madam Eva",
+                  "mood": "alegre",
+                  "text": "Bien. Quien no tiene miedo de su suerte suele durar más."
+                }
+              },
+              {
+                "id": "por-que-ayudas",
+                "text": "¿Por qué nos ayudas?",
+                "effects": [
+                  {
+                    "clue": "Madam Eva dice que las armas contra el conde están repartidas por el valle, y que las cartas dirán dónde."
+                  }
+                ],
+                "reply": {
+                  "who": "Madam Eva",
+                  "mood": "triste",
+                  "text": "Porque mi gente también vive en esta jaula, aunque a nosotros nos deje ir y venir. Todo tiene un precio en este valle."
+                }
+              }
+            ]
+          },
+          {
+            "text": "Da la vuelta a la primera carta. Antes de que diga nada, fuera empiezan a aullar los lobos."
+          },
+          {
+            "who": "Madam Eva",
+            "mood": "enfadado",
+            "text": "Los manda él. No quiere que oigáis lo que dicen las cartas. Que no entren en mi tienda."
+          }
+        ],
         "opens": {
           "kind": "after",
           "milestone": "asedio-en-la-mansion"
@@ -5029,6 +5466,63 @@
         "title": "Pánico en el Festival",
         "hint": "Defender a los civiles hasta que escapen. Está en Plaza de Vallaki (Ciudad de Vallaki).",
         "scene": "Durante el Festivo del Sol Ardiente en la plaza de Vallaki, las bestias de Strahd atacan para demostrar que la falsa esperanza no sirve de nada.",
+        "backdrop": "Ciudad de Vallaki",
+        "beats": [
+          {
+            "text": "Vallaki está cerrada con una empalizada alta. Dentro, la plaza está llena de guirnaldas y farolillos, y nadie sonríe."
+          },
+          {
+            "who": "Barón Vargas Vallakovich",
+            "mood": "alegre",
+            "text": "¡{Bienvenidos|Bienvenidas} a la fiesta del Sol Ardiente! En Vallaki la gente está contenta, quiera o no. Es una orden."
+          },
+          {
+            "text": "En medio de la plaza hay un sol de mimbre enorme, empapado en aceite. Llueve, y la mecha no prende."
+          },
+          {
+            "who": "Barón Vargas Vallakovich",
+            "mood": "enfadado",
+            "text": "¡Que alguien encienda eso! El conde no puede con un pueblo feliz. Lo que le da fuerza es la tristeza.",
+            "options": [
+              {
+                "id": "lo-encendemos",
+                "text": "{Nosotros|Nosotras} lo encendemos.",
+                "effects": [
+                  {
+                    "attitude": 1
+                  }
+                ],
+                "reply": {
+                  "who": "Barón Vargas Vallakovich",
+                  "mood": "alegre",
+                  "text": "¡Así me gusta! Esta noche, en Vallaki, se brinda por {vosotros|vosotras}."
+                }
+              },
+              {
+                "id": "fiestas-no",
+                "text": "Una fiesta no para a un vampiro.",
+                "effects": [
+                  {
+                    "clue": "En Vallaki, el barón castiga a quien está triste en sus fiestas."
+                  }
+                ],
+                "reply": {
+                  "who": "Barón Vargas Vallakovich",
+                  "mood": "enfadado",
+                  "text": "Cuidado con esa lengua. En mi ciudad, la tristeza se paga en el cepo."
+                }
+              }
+            ]
+          },
+          {
+            "text": "Entonces se oyen gritos en la puerta norte. Por encima de la empalizada saltan lobos, y la gente corre hacia la plaza."
+          },
+          {
+            "who": "Barón Vargas Vallakovich",
+            "mood": "triste",
+            "text": "¡Guardias! ¡Proteged a la gente! ¡Y que nadie deje de sonreír!"
+          }
+        ],
         "opens": {
           "kind": "after",
           "milestone": "lectura-interrumpida"
@@ -5060,6 +5554,61 @@
         "title": "Pesadillas de Molino",
         "hint": "Erradicar al aquelarre. Está en Planta Baja del Molino (Viejo Mascahuesos).",
         "scene": "Habéis llegado al molino Viejo Mascahuesos. Hay que detener a la oscura presencia que roba niños para sus pasteles de los sueños.",
+        "backdrop": "Viejo Mascahuesos",
+        "beats": [
+          {
+            "text": "El molino se inclina sobre un barranco, con las aspas rotas. Por la chimenea sale un humo que huele a pan dulce."
+          },
+          {
+            "who": "Morgantha",
+            "mood": "alegre",
+            "text": "¿Venís a por pasteles? Un oro cada uno. Hacen soñar con sitios donde todavía sale el sol."
+          },
+          {
+            "text": "Arriba, detrás de una puerta con cerrojo, llora un niño. La vieja sube la voz para taparlo."
+          },
+          {
+            "who": "Morgantha",
+            "mood": "enfadado",
+            "text": "Eso son los gatos. Mis hijas los tienen muertos de hambre. ¿Compráis o no?",
+            "options": [
+              {
+                "id": "dejanos-subir",
+                "text": "Déjanos subir.",
+                "effects": [
+                  {
+                    "clue": "En el piso de arriba del molino hay niños encerrados."
+                  }
+                ],
+                "reply": {
+                  "who": "Morgantha",
+                  "mood": "enfadado",
+                  "text": "En mi casa no sube nadie. ¡Hijas, tenemos visita!"
+                }
+              },
+              {
+                "id": "compramos-uno",
+                "text": "Uno, por favor.",
+                "effects": [
+                  {
+                    "gold": -1
+                  },
+                  {
+                    "give": "Pastelito de los sueños"
+                  }
+                ],
+                "reply": {
+                  "who": "Morgantha",
+                  "mood": "alegre",
+                  "text": "Buen provecho. Y no os preocupéis por el llanto: a todo se acostumbra una."
+                }
+              }
+            ]
+          },
+          {
+            "text": "Detrás del horno se abren dos puertas. Salen dos mujeres con la misma sonrisa que la vieja."
+          }
+        ],
         "opens": {
           "kind": "after",
           "milestone": "panico-en-el-festival"
@@ -5084,6 +5633,58 @@
         "title": "El Caballero sin Descanso",
         "hint": "Derrotar al Revenant. Está en Patio de Argynvostholt (Argynvostholt).",
         "scene": "En el patio de Argynvostholt vaga un caballero no-muerto de la Orden del Dragón de Plata. No distingue entre los siervos del vampiro y quien entra sin permiso.",
+        "backdrop": "Argynvostholt",
+        "beats": [
+          {
+            "text": "Argynvostholt es una mansión de piedra partida por la mitad. En el tejado hay un faro apagado, y en el patio, estatuas de dragones sin cabeza."
+          },
+          {
+            "text": "Un caballero con la armadura abollada da vueltas por el patio. No respira, pero la armadura suena a cada paso."
+          },
+          {
+            "who": "Sir Godfrey Gwilym",
+            "mood": "triste",
+            "text": "Es uno de los nuestros. Ya no distingue a un amigo de un enemigo. Los demás, a veces, tampoco."
+          },
+          {
+            "who": "Sir Godfrey Gwilym",
+            "mood": "neutral",
+            "text": "Si lo paráis, no se levantará hasta que la orden descanse. ¿Por qué ibais a hacerlo?",
+            "options": [
+              {
+                "id": "mismo-enemigo",
+                "text": "Porque luchamos contra el mismo enemigo.",
+                "effects": [
+                  {
+                    "attitude": 1
+                  }
+                ],
+                "reply": {
+                  "who": "Sir Godfrey Gwilym",
+                  "mood": "alegre",
+                  "text": "Hace mucho que nadie decía eso aquí. Id, entonces. Argynvostholt se acordará."
+                }
+              },
+              {
+                "id": "en-el-camino",
+                "text": "Porque está en nuestro camino.",
+                "effects": [
+                  {
+                    "rumor": "r-el-craneo-del-dragon"
+                  }
+                ],
+                "reply": {
+                  "who": "Sir Godfrey Gwilym",
+                  "mood": "triste",
+                  "text": "Sincero, al menos. Escuchad algo antes, por si salís de esta."
+                }
+              }
+            ]
+          },
+          {
+            "text": "El caballero se para en seco y vuelve la cabeza hacia {vosotros|vosotras}. Levanta la espada."
+          }
+        ],
         "opens": {
           "kind": "after",
           "milestone": "panico-en-el-festival"
@@ -5108,6 +5709,58 @@
         "title": "El Viñedo Asediado",
         "hint": "Limpiar el viñedo. Está en Viñedo de la Bodega (Bodega El Mago de los Vinos).",
         "scene": "Una bruja y su manada de lobos rondan las viñas de la Bodega El Mago de los Vinos. Sin vino, Barovia pierde lo poco que le queda.",
+        "backdrop": "Bodega El Mago de los Vinos",
+        "beats": [
+          {
+            "text": "La bodega El Mago de los Vinos está en un valle de viñas negras. Hay barriles tirados por el suelo y sangre en la puerta del lagar."
+          },
+          {
+            "who": "Davian Martikov",
+            "mood": "enfadado",
+            "text": "¡Quietos ahí! ¿Quién os manda, el conde o la bruja?"
+          },
+          {
+            "text": "Es un viejo de barba blanca con un cuchillo de podar en la mano. En la casa, detrás de él, se oyen niños."
+          },
+          {
+            "who": "Davian Martikov",
+            "mood": "triste",
+            "text": "Llevan tres noches en las viñas: una vieja de dientes negros y sus lobos. Sin vino, Vallaki y Krezk no nos pagan, y sin eso aquí no se come.",
+            "options": [
+              {
+                "id": "limpiamos",
+                "text": "{Nosotros|Nosotras} limpiamos el viñedo.",
+                "effects": [
+                  {
+                    "attitude": 1
+                  }
+                ],
+                "reply": {
+                  "who": "Davian Martikov",
+                  "mood": "alegre",
+                  "text": "Si lo hacéis, la primera barrica es vuestra. Y os diré con quién hablan los cuervos de este valle."
+                }
+              },
+              {
+                "id": "a-cambio",
+                "text": "¿Qué nos das a cambio?",
+                "effects": [
+                  {
+                    "gold": 10
+                  }
+                ],
+                "reply": {
+                  "who": "Davian Martikov",
+                  "mood": "enfadado",
+                  "text": "Lo poco que tengo. Tomad, y que sirva de algo."
+                }
+              }
+            ]
+          },
+          {
+            "text": "Entre las cepas se mueven sombras bajas. Un aullido, y luego otro."
+          }
+        ],
         "opens": {
           "kind": "after",
           "milestone": "panico-en-el-festival"
@@ -5137,6 +5790,58 @@
         "title": "Lobos a las Puertas",
         "hint": "Acabar con el hombre lobo. Está en Puertas de Krezk (Aldea de Krezk).",
         "scene": "Un hombre lobo y su manada salen de la niebla ante las puertas de Krezk. Los de dentro no abren hasta que se vayan.",
+        "backdrop": "Aldea de Krezk",
+        "beats": [
+          {
+            "text": "Krezk es una aldea pequeña, encerrada en un muro de piedra. Las puertas son de madera gruesa y están cerradas."
+          },
+          {
+            "who": "Dmitri Krezkov",
+            "mood": "enfadado",
+            "text": "¡Aquí no se abre a nadie! Volved por donde habéis venido."
+          },
+          {
+            "text": "A vuestra espalda, entre los árboles, algo grande anda a cuatro patas. Luego se pone de pie."
+          },
+          {
+            "who": "Dmitri Krezkov",
+            "mood": "triste",
+            "text": "Es él, el que se llevó a los pastores. Si lo matáis, os abro. Tenéis mi palabra.",
+            "options": [
+              {
+                "id": "abre-despues",
+                "text": "Abre cuando haya caído.",
+                "effects": [
+                  {
+                    "attitude": 1
+                  }
+                ],
+                "reply": {
+                  "who": "Dmitri Krezkov",
+                  "mood": "neutral",
+                  "text": "Os miro desde aquí arriba. Que Dios os ayude."
+                }
+              },
+              {
+                "id": "y-si-caemos",
+                "text": "¿Y si caemos {nosotros|nosotras}?",
+                "effects": [
+                  {
+                    "rumor": "r-las-cuevas-del-lago"
+                  }
+                ],
+                "reply": {
+                  "who": "Dmitri Krezkov",
+                  "mood": "triste",
+                  "text": "Entonces rezaremos por vuestras almas. Y escuchad: esos lobos bajan de unas cuevas sobre el lago."
+                }
+              }
+            ]
+          },
+          {
+            "text": "El hombre lobo aúlla, y desde el bosque le contestan otros."
+          }
+        ],
         "opens": {
           "kind": "after",
           "milestone": "el-vinedo-asediado"
@@ -5161,6 +5866,58 @@
         "title": "Las Puertas del Diablo",
         "hint": "Llegar a la puerta principal. Está en Entrada a Ravenloft (Castillo Ravenloft).",
         "scene": "Llegáis al imponente Castillo Ravenloft. Las gárgolas de la entrada despiertan para poneros a prueba antes de cruzar el umbral.",
+        "backdrop": "Castillo Ravenloft",
+        "beats": [
+          {
+            "text": "El camino sube entre la niebla hasta un puente de piedra sobre un barranco sin fondo. Al otro lado está el castillo Ravenloft."
+          },
+          {
+            "text": "Hay luz en las ventanas. Alguien sabe que venís."
+          },
+          {
+            "who": "Rahadin",
+            "mood": "neutral",
+            "text": "Soy Rahadin, el chambelán. El amo os esperaba antes. Pasad, pero no toquéis nada: esta casa tiene su propio carácter."
+          },
+          {
+            "who": "Rahadin",
+            "mood": "neutral",
+            "text": "¿Qué le digo de vuestra parte?",
+            "options": [
+              {
+                "id": "venimos-a-por-el",
+                "text": "Que venimos a por él.",
+                "effects": [
+                  {
+                    "clue": "Rahadin, el chambelán del conde, os ha visto llegar al castillo."
+                  }
+                ],
+                "reply": {
+                  "who": "Rahadin",
+                  "mood": "alegre",
+                  "text": "Eso dicen todos. De algunos aún se acuerda."
+                }
+              },
+              {
+                "id": "sin-prisa",
+                "text": "Que no tenemos prisa.",
+                "effects": [
+                  {
+                    "rumor": "r-la-cena"
+                  }
+                ],
+                "reply": {
+                  "who": "Rahadin",
+                  "mood": "neutral",
+                  "text": "Se lo diré. Esta noche hay cena, y sois sus {invitados|invitadas}."
+                }
+              }
+            ]
+          },
+          {
+            "text": "Rahadin se va sin hacer ruido. Encima de la puerta, las gárgolas de piedra abren los ojos. Hay que llegar a la puerta principal."
+          }
+        ],
         "opens": {
           "kind": "after",
           "milestone": "pesadillas-de-molino"
@@ -5185,6 +5942,58 @@
         "title": "La Cena Está Servida",
         "hint": "Sobrevivir a la emboscada vampírica. Encontrar la reliquia. Está en Comedor del Conde (Castillo Ravenloft).",
         "scene": "Una ilusión de Strahd os da la bienvenida en el comedor. Cuando desaparece, las puertas se cierran de golpe y sus secuaces atacan. ¡Es la oportunidad de buscar conocimiento antiguo!",
+        "backdrop": "Castillo Ravenloft",
+        "beats": [
+          {
+            "text": "El comedor es largo y frío. La mesa está puesta para muchos, con comida caliente y velas nuevas. Al fondo, alguien toca un órgano."
+          },
+          {
+            "who": "Strahd von Zarovich",
+            "mood": "neutral",
+            "text": "{Bienvenidos|Bienvenidas} a mi casa. Sentaos. En Barovia nadie cena tan bien como esta noche."
+          },
+          {
+            "who": "Strahd von Zarovich",
+            "mood": "alegre",
+            "text": "Os he visto cruzar mi valle: la bruja, los lobos, el molino. Me habéis entretenido. Por eso seguís {vivos|vivas}.",
+            "options": [
+              {
+                "id": "no-comemos",
+                "text": "No vamos a comer nada tuyo.",
+                "effects": [
+                  {
+                    "clue": "El conde duerme en su cripta, bajo el castillo."
+                  }
+                ],
+                "reply": {
+                  "who": "Strahd von Zarovich",
+                  "mood": "enfadado",
+                  "text": "Qué pena. Entonces la cena seréis {vosotros|vosotras}. Si sobrevivís, os espero abajo, con mi familia."
+                }
+              },
+              {
+                "id": "que-quieres",
+                "text": "¿Qué quieres de {nosotros|nosotras}?",
+                "effects": [
+                  {
+                    "clue": "El conde duerme en su cripta, bajo el castillo."
+                  }
+                ],
+                "reply": {
+                  "who": "Strahd von Zarovich",
+                  "mood": "neutral",
+                  "text": "Lo mismo que de todos: que me divirtáis. Cuando os canséis, bajad a verme. Duermo abajo, con mi familia."
+                }
+              }
+            ]
+          },
+          {
+            "text": "El conde se deshace como el humo. Las velas se apagan a la vez, las puertas se cierran de golpe y algo baja por las paredes."
+          },
+          {
+            "text": "En algún sitio del comedor está su diario, el Tomo de Strahd. Hay que aguantar y encontrarlo."
+          }
+        ],
         "opens": {
           "kind": "after",
           "milestone": "las-puertas-del-diablo"
@@ -5209,6 +6018,48 @@
         "title": "El Señor de Barovia",
         "hint": "Derrotar a Strahd. Está en La Cripta de Strahd (Castillo Ravenloft).",
         "scene": "Bajo el castillo, en su cripta, Strahd os espera junto a su ataúd. O cae él, o caéis {vosotros|vosotras}.",
+        "backdrop": "Castillo Ravenloft",
+        "beats": [
+          {
+            "text": "Las escaleras bajan en espiral hasta las tumbas de la familia del conde. El aire huele a tierra y a flores secas."
+          },
+          {
+            "text": "Al fondo, sobre una tarima, hay un ataúd abierto. Strahd está de pie a su lado, como quien espera una visita."
+          },
+          {
+            "who": "Strahd von Zarovich",
+            "mood": "neutral",
+            "text": "Habéis llegado más lejos que nadie en mucho tiempo. Eso os lo concedo."
+          },
+          {
+            "who": "Strahd von Zarovich",
+            "mood": "enfadado",
+            "text": "Pero este valle es mío. La niebla, los lobos y los muertos son míos. Y ahora, {vosotros|vosotras} también.",
+            "options": [
+              {
+                "id": "se-acaba",
+                "text": "Esta noche se acaba.",
+                "reply": {
+                  "who": "Strahd von Zarovich",
+                  "mood": "alegre",
+                  "text": "Eso dijo el último. Está enterrado ahí, a tu izquierda."
+                }
+              },
+              {
+                "id": "por-barovia",
+                "text": "Por Barovia, y por todos los que has matado.",
+                "reply": {
+                  "who": "Strahd von Zarovich",
+                  "mood": "triste",
+                  "text": "Barovia era mía antes de que nacieran vuestros abuelos. Y lo seguirá siendo."
+                }
+              }
+            ]
+          },
+          {
+            "text": "Strahd sonríe. En los rincones de la cripta se mueve algo más."
+          }
+        ],
         "opens": {
           "kind": "after",
           "milestone": "la-cena-esta-servida"
@@ -5298,7 +6149,7 @@
                 "effects": [
                   "fama:+1"
                 ],
-                "then": "Ismark os da las gracias y dice que en Barovia siempre tendréis casa. En la taberna brindan por vosotros."
+                "then": "Ismark os da las gracias y dice que en Barovia siempre tendréis casa. En la taberna se brinda por el gremio."
               },
               {
                 "label": "Leerla a solas con los tuyos",

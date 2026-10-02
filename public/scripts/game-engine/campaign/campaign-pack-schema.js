@@ -26,9 +26,20 @@ import { SKILLS, DEFAULT_DC } from '../rules/checks.js';
 import { ATTITUDE } from './attitudes.js';
 import { OPENS, ASKS } from './plot.js';
 import { BACKGROUNDS } from './backgrounds.js';
+import { DEFAULT_SPOT_DC } from '../board/hazards.js';
 
 /** Schema version, so a pack can say which contract it was written against. */
 export const CAMPAIGN_PACK_VERSION = 1;
+
+/**
+ * J5.2: cómo puede dejar una trampa a quien la pisa. Las claves de los estados del juego
+ * (`STATUS_ICONS` de `combat/initiative-tracker.js`); `pack-fill.js` entiende también su nombre
+ * en castellano («derribado»), que es como lo escribiría un Gem.
+ */
+export const TRAP_CONDITIONS = ['prone', 'restrained', 'poisoned', 'blinded', 'deafened', 'frightened', 'grappled', 'stunned', 'paralyzed', 'incapacitated', 'bleeding', 'ralentizado'];
+
+/** Lo difícil de ver y de desarmar una trampa que no lo dice (`board/hazards.js`). */
+export const DEFAULT_TRAP_DC = DEFAULT_SPOT_DC;
 
 /**
  * What each objective type asks the author for, in the words a book can supply.
@@ -94,6 +105,8 @@ export function getMapLegend() {
         stairs: 'escalera al nivel siguiente',
         // R3 del roadmap de profundidad: el terreno que los elementos cambian.
         water: 'agua poco honda (cuesta el doble; el frío la hiela)',
+        // Tanda 10: el mar del muelle, un río profundo.
+        deep_water: 'agua honda (no se cruza andando; se ve a través): el mar, un río profundo',
         ice: 'hielo (el trueno lo quiebra, el fuego lo funde)',
         brush: 'maleza (cuesta el doble, y arde)',
         barrel: 'barril (cubre; con fuego, revienta)',
@@ -405,6 +418,33 @@ function buildSectionSchemas() {
                         no: { type: 'array', items: { type: 'string' }, description: 'Las formas que aquí no valen.' },
                     },
                 },
+                // J5.2 y J12.3: las trampas del tablero, como las lee `trapsFromPack` (`board/trap-actions.js`).
+                traps: {
+                    type: 'array',
+                    description: 'Las trampas del tablero: una losa que se hunde, dardos en la pared, un cepo. Se buscan, '
+                        + 'se desarman o se pisan. Cada una en una casilla de suelo, fuera de donde empieza el grupo; sin '
+                        + 'x e y (o en un tablero sin map), el juego la pone en el camino.',
+                    items: {
+                        type: 'object',
+                        required: ['name', 'tell'],
+                        properties: {
+                            name: { type: 'string', description: 'Lo que es, en pocas palabras: «Losa hundida».' },
+                            x: { type: 'integer' },
+                            y: { type: 'integer' },
+                            tell: { type: 'string', description: 'Lo que se ve sin buscar: «Una losa está más baja que las demás». Sin aviso, pisarla no es culpa de nadie.' },
+                            damage: { type: 'string', description: 'El daño al pisarla, en dados: "1d10" o "2d6". Va esto o condition, o las dos.' },
+                            condition: {
+                                type: 'string',
+                                enum: TRAP_CONDITIONS,
+                                description: 'Cómo deja a quien la pisa: prone (derribado), restrained (apresado), poisoned (envenenado), '
+                                    + 'blinded (cegado), frightened (asustado), grappled (agarrado), stunned (aturdido), bleeding (sangrando).',
+                            },
+                            spotDC: { type: 'integer', description: `Lo difícil de ver (Percepción), de 5 a 30. Sin ella, ${DEFAULT_TRAP_DC}.` },
+                            disarmDC: { type: 'integer', description: `Lo difícil de desarmar, de 5 a 30. Sin ella, ${DEFAULT_TRAP_DC}.` },
+                            once: { type: 'boolean', description: 'Si salta una vez y se acaba (unos dardos). Sin decirlo, vuelve a armarse (una losa).' },
+                        },
+                    },
+                },
             },
         },
     };
@@ -453,6 +493,12 @@ function buildSectionSchemas() {
                             text: { type: 'string', description: 'Sobre qué, corto y concreto: «el hueco del roble», «las huellas de la nieve».' },
                             skill: { type: 'string', enum: Object.keys(SKILLS), description: 'Con qué se tira. Sin ella, investigation.' },
                             found: { type: 'string', description: 'Lo que se ve si la tirada sale bien: una o dos frases llanas.' },
+                            place: {
+                                type: 'string',
+                                enum: Object.keys(PLACE_KINDS),
+                                description: 'Si está dentro de un sitio del pueblo (`places`): «gremio», «posada», «templo»… Sale al entrar '
+                                    + 'en ese sitio, en «Mirar», y no en la fila. Sin él, vale para toda la localización.',
+                            },
                         },
                     },
                 },
@@ -567,6 +613,14 @@ function buildSectionSchemas() {
         },
     };
 
+    // J13.7: solo sabes el nombre de quien se ha presentado. Una línea puede decir quién se da a
+    // conocer en ella; si quien habla dice su nombre, el juego ya lo ve solo.
+    const presenta = {
+        anyOf: [{ type: 'string' }, { type: 'array', items: { type: 'string' } }, { type: 'boolean' }],
+        description: 'Opcional: quién se da a conocer en esta línea, por su id o su nombre (true: quien la dice). '
+            + 'Hace falta solo si el nombre no sale en la línea: «Es la capitana de la guardia», y desde ahí sale con su nombre.',
+    };
+
     // J5.2: la gente del mundo. Las charlas, las escenas, los epílogos y el punto de vista ya la
     // nombraban («alguien de npcs»), pero el contrato no decía cómo se escribe.
     const npcs = {
@@ -579,7 +633,12 @@ function buildSectionSchemas() {
             properties: {
                 name: { type: 'string', description: 'Único en el paquete, y distinto de los compañeros y del bestiario.' },
                 where: { type: 'string', description: 'La localización donde vive, con su nombre exacto.' },
-                trade: { type: 'string', description: 'Su oficio, corto: «Molinero», «Posadera».' },
+                trade: { type: 'string', description: 'Su oficio, corto: «Molinero», «Posadera». Hasta que se presenta, sale así: «la posadera».' },
+                // J13.7: solo sabes el nombre de quien se ha presentado.
+                id: { type: 'string', description: 'Corto, en minúsculas y sin espacios («tomas»): es el de {npc:tomas} en los textos.' },
+                gender: { type: 'string', enum: ['Mujer', 'Hombre'], description: 'Si su oficio no lo dice («Guardia»), para llamarle bien hasta que se presente.' },
+                stranger: { type: 'string', description: 'Opcional: cómo se le llama sin conocerle, con su artículo («una mujer con capucha»). Sin él, su oficio.' },
+                famous: { type: 'boolean', description: 'Su nombre lo sabe todo el mundo (el señor del valle): sale con él desde el principio.' },
                 wants: { type: 'string', description: 'Lo que quiere, en una frase.' },
                 knows: { type: 'string', description: 'Lo que sabe y puede contar, en una frase.' },
                 secret: { type: 'string', description: 'Lo que calla: solo sale si se descubre.' },
@@ -750,6 +809,7 @@ function buildSectionSchemas() {
                             id: { type: 'string' },
                             line: { type: 'string', description: 'Lo que dice, en una a tres frases llanas. Con {forma|forma} donde se habla a quien juega.' },
                             again: { type: 'string', description: 'Lo que dice si ya os lo había dicho: más corto.' },
+                            presenta: presenta,
                             mood: { type: 'string', enum: MOODS, description: 'La cara del retrato.' },
                             journal: { type: 'string', description: 'Lo que queda en el Diario al oírlo.' },
                             effects: { type: 'array', items: ref('dialogueEffect'), description: 'Lo que pasa al oírlo la primera vez, se llegue por donde se llegue (el hito que cumple lo que cuenta).' },
@@ -804,6 +864,7 @@ function buildSectionSchemas() {
             who: { type: 'string', description: 'Quién lo dice: alguien de npcs o de confidants, con su nombre exacto (sale su retrato). Sin who, lo cuenta el narrador, sin retrato.' },
             mood: { type: 'string', enum: MOODS, description: 'La cara del retrato.' },
             text: { type: 'string', description: 'De una a tres frases llanas, sin acertijos. Con {forma|forma} donde se habla a quien juega.' },
+            presenta,
         },
     };
     const reply = { anyOf: [ref('sceneLine'), { type: 'array', items: ref('sceneLine') }] };
@@ -875,6 +936,12 @@ function buildSectionSchemas() {
                     + '"effects": [{"attitude": 1}], "reply": {"who": "Tomás", "mood": "alegre", "text": "¡Gracias!"}}]}].',
             },
             sceneDialogue: { type: 'string', description: 'El id de una charla de dialogues que se abre al acabar la escena.' },
+            // J13.7: un hito sin beats cuyo `scene` nombra a alguien («Es el espía al que llaman Sombra»).
+            presenta: {
+                ...presenta,
+                description: 'Opcional: quién se da a conocer en el texto de este hito (su scene), por su id o su nombre. '
+                    + 'Solo si el hito no trae beats y su scene dice el nombre de alguien que aún no se ha presentado.',
+            },
             // J5.2: el punto de vista, como en una novela: quién cuenta este trozo de la historia.
             pov: {
                 type: 'string',
@@ -1084,6 +1151,8 @@ export function getPackRules() {
         `Cada tablero mide entre ${BOARD_LIMITS.minWidth}×${BOARD_LIMITS.minHeight} y ${BOARD_LIMITS.maxWidth}×${BOARD_LIMITS.maxHeight} casillas. Uno de 14×10 ya da una escena; por encima de 24×18 se juega lento.`,
         'Desde donde empieza el grupo tiene que poderse llegar a toda casilla de suelo, abriendo puertas. Un enemigo en una sala incomunicada es un error; una sala vacía incomunicada, un aviso.',
         'Los nombres de `items` tampoco se repiten, y su `rarity` es una de las cuatro que conocen las tablas de botín: una rareza inventada nunca cae.',
+        // J5.2: las trampas de un tablero (`traps`).
+        'Cada trampa de `traps` cae en una casilla de suelo del mapa, fuera de `partyStart`, y trae su `tell`: lo que se ve sin buscarla («una losa está más baja que las demás»). Hace daño (`damage`, en dados), deja a quien la pisa de alguna forma (`condition`) o las dos. Si no sabes la casilla, deja fuera `x` e `y`: el juego la pone en el camino.',
         // J12.8 a J12.12: los tableros hechos de un mapa dibujado.
         'Solo un tablero hecho de un mapa dibujado lleva `image` y `grid`. Si tienes su `map` (lo escribe `tools/mapa-a-tablero.mjs` a partir de la imagen), mide lo mismo que la cuadrícula; si no, déjalo fuera y el juego lo lee del dibujo al añadir la campaña. Sin imagen, no escribas ninguno de los dos. Las `zones` (las salas con nombre) sí valen en cualquier tablero.',
         // J12.2: toda pelea escrita tiene otra salida.
@@ -1094,6 +1163,8 @@ export function getPackRules() {
         // J5.2 y J9.2: el hilo y sus escenas.
         'En `plot`, cada `opens.milestone`, `changes.open` y `changes.close` nombra un hito del hilo por su id, cada `asks.board` un tablero por su `name`, y cada `changes.ending` un final de `endings`. El primer hito se abre con `start`: es la mecha de la campaña.',
         'Los hitos importantes traen su escena en `beats`: de 3 a 8 líneas, cada una de alguien de `npcs` o `confidants` (sin `who`, del narrador), y una o dos decisiones que cambien algo: cómo os mira alguien, un rumor, un objeto o un hito. `scene` sigue haciendo falta: es lo que lee el narrador. `sceneDialogue` nombra una charla de `dialogues` por su id.',
+        // J13.7: solo sabes el nombre de quien se ha presentado.
+        'Quien juega solo sabe el nombre de quien se ha presentado: hasta entonces, el juego le llama por su oficio («el posadero»). Que la gente diga su nombre al conocerse («Tomás. Llevo la posada.»), o que otro lo diga en voz alta. Antes de eso, ni una opción de quien juega ni el narrador le nombran: el narrador dice «el posadero». En las líneas, las opciones y las respuestas de las escenas y las charlas, `{npc:id}` sale como su nombre si ya se sabe y como «el posadero» si no. El título de un hito sale antes de su escena: no nombres en él a quien se presenta en ella.',
         // D-J18: los epílogos.
         'Cada final de `plot.endings` trae sus `epilogues`: qué fue de 3 a 5 personas o facciones que pesaron en la historia, una línea cada una. El `who` de cada uno es un nombre de `npcs`, `confidants` o `world.factions`, letra por letra.',
         // D-J15 y D-J17: el género.

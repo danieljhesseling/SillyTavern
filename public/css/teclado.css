@@ -1,0 +1,106 @@
+/*
+ * J15.5 de ROADMAP_SIN_CONEXION: el juego con el teclado solo.
+ *
+ * El foco se ve siempre, y se ve distinto de pasar el ratón por encima: un anillo dorado claro
+ * con un filo oscuro a cada lado, que se lee sobre el fondo oscuro del juego, sobre el pergamino
+ * y sobre el tablero. Con el ratón en una ficha y el foco en otra, se sabe cuál es cuál.
+ *
+ * Solo con el juego abierto (`body.game-shell-on`): lo de SillyTavern sigue como estaba.
+ * `:focus-visible` es el foco de quien usa el teclado: un clic con el ratón no pinta el anillo.
+ */
+
+:root {
+    --gs-focus-ring: #ffd978;
+    --gs-focus-edge: rgba(10, 8, 6, 0.92);
+}
+
+body.game-shell-on :is(button, a[href], summary, select, input, textarea, [role="button"], [role="option"], [role="menuitem"], [role="radio"], [role="tab"], [role="checkbox"], [role="switch"], [tabindex]:not([tabindex="-1"]), .interactable):focus-visible {
+    outline: 3px solid var(--gs-focus-ring);
+    outline-offset: 2px;
+    /* El filo oscuro por dentro y por fuera del anillo: se ve también sobre algo dorado. */
+    box-shadow: 0 0 0 2px var(--gs-focus-edge), 0 0 0 7px var(--gs-focus-edge);
+}
+
+/* Lo que va dentro de una fila que se desliza o de una caja que recorta: el anillo por dentro,
+   para que no lo corte el borde. */
+body.game-shell-on :is(.gs-chips, .gs-actions, .gs-head-bar, .gs-tools, .gs-party-strip, .gs-saves, .gs-places, .hc-options, .go-list, .wm-combat-section, .popup-content) :is(button, [role="button"], [tabindex]:not([tabindex="-1"])):focus-visible {
+    outline-offset: -3px;
+    box-shadow: inset 0 0 0 5px var(--gs-focus-edge);
+}
+
+/* Lo que se enfoca a mano sin ser un botón (una tarjeta de dados que aún rueda, la chuleta): un
+   borde, no el anillo entero. */
+body.game-shell-on [tabindex="-1"]:focus-visible {
+    outline: 2px dashed var(--gs-focus-ring);
+    outline-offset: -2px;
+}
+
+/* El tablero con el teclado (board-keys.js): el marco, y la casilla o la ficha elegida. */
+body.game-shell-on .wm-container.gs-board-keys:focus-visible {
+    outline: 3px solid var(--gs-focus-ring);
+    outline-offset: -3px;
+    box-shadow: none;
+}
+
+.gs-board-cursor {
+    position: absolute;
+    z-index: 40;
+    pointer-events: none;
+    box-sizing: border-box;
+    border: 3px solid var(--gs-focus-ring);
+    border-radius: 4px;
+    box-shadow: 0 0 0 2px var(--gs-focus-edge), inset 0 0 0 2px var(--gs-focus-edge);
+}
+
+.gs-board-cursor[hidden] {
+    display: none;
+}
+
+/* Lo que dice el tablero de la casilla elegida, para quien no la ve (y también para quien sí). */
+.gs-board-say {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+
+/* La pista de cómo se usa el tablero con el teclado: solo cuando tiene el foco. */
+.gs-board-hint {
+    position: absolute;
+    left: 50%;
+    bottom: 8px;
+    z-index: 41;
+    transform: translateX(-50%);
+    max-width: calc(100% - 24px);
+    padding: 4px 10px;
+    border: 1px solid var(--gs-gold-line, rgba(214, 180, 106, 0.4));
+    border-radius: 6px;
+    background: rgba(12, 10, 8, 0.9);
+    color: #f1e6cf;
+    font-size: 0.85em;
+    pointer-events: none;
+}
+
+.gs-board-hint.gs-board-hint-top {
+    top: 8px;
+    bottom: auto;
+}
+
+.wm-container.gs-board-keys:not(:focus-within) .gs-board-hint,
+.wm-container.gs-board-keys:not(:focus-within) .gs-board-cursor {
+    display: none;
+}
+
+/* El contraste del texto (J15.5), medido con la regla de la WCAG (4,5 a 1 en texto normal): la
+   tecla «Esc» de la pausa, medio transparente sobre su cajita clara, y el número de avisos, gris
+   sobre rojo, se quedaban cortos. */
+body.game-shell-on .gs-pause-key {
+    opacity: 0.85;
+}
+
+body.game-shell-on .gs-tray-count:not(:empty) {
+    color: #fff;
+    font-weight: 700;
+}

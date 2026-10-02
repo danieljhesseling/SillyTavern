@@ -35,7 +35,11 @@ export const WORLD_MARKS_KEY = 'worldMarks';
 export const MARKS_MAX = 40;
 
 /** Lo que deja huella. */
-export const DEEDS = ['robo', 'robo-oculto', 'multa', 'huida', 'calabozo', 'nigromancia', 'caso-resuelto', 'caso-fallido'];
+export const DEEDS = [
+    'robo', 'robo-oculto', 'multa', 'huida', 'calabozo', 'nigromancia', 'caso-resuelto', 'caso-fallido',
+    // J12.7: las peleas de taberna (armada por ti, o ganada a quien la buscó) y los duelos.
+    'pelea', 'pelea-ganada', 'duelo-ganado', 'duelo-perdido', 'reto-rechazado',
+];
 
 /** Cuánto dura una reacción que no dice cuánto. */
 export const DEFAULT_DURATION = 14;

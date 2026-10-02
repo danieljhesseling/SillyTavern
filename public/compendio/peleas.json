@@ -1,0 +1,374 @@
+{
+  "version": 1,
+  "domain": "peleas",
+  "about": "Las peleas de taberna y los duelos (J12.7 de ROADMAP_SIN_CONEXION): a puñetazos, y nadie muere. KIND: camorrista (quien te busca pelea en la taberna, o con quien la armas tú; sus amigos salen de las otras filas), campeon (quien acepta un duelo por dinero en la taberna; EN es la localización donde está, y sin EN vale para cualquiera que no tenga el suyo), retador (alguien con nombre de una campaña que, si le amenazas y no le asusta, te reta a un duelo por honor; NAME es su nombre tal cual) y frase (lo que se lee en cada momento; MOMENTO dice cuál). ARQUETIPO es su dibujo en el tablero (un archivo de bestias/, sin .png). PROVOCA y RETA: lo que pasa (y DICE, lo que dice); GANA: lo que pasa si te gana; PIERDE: si le ganas. TEXTO, en las frases: se elige una al azar. Huecos: {heroe} es tu nombre, {quien} el rival, {pueblo} la localización, {taberna} el nombre de la taberna, {posadero} quien la lleva, {oro} el dinero en juego y {muebles} lo roto. GÉNERO: lo que te dicen a ti va con sus dos formas, {forastero|forastera}. Momentos: armar (empiezas tú), calmar-bien y calmar-mal (le hablas para que se calme), ronda (le invitas a una ronda), irse (te vas sin pelear), gana-taberna, pierde-taberna, rinde-taberna, paz-taberna (se acaba pagando una ronda), gana-apuesta, pierde-apuesta, rinde-apuesta, gana-honor, pierde-honor, rechaza-honor, posadero-cobra (lo roto se paga) y posadero-harto (ya no deja armar más peleas).",
+  "rows": [
+    {
+      "id": "bruno-el-tuerto",
+      "kind": "camorrista",
+      "name": "Bruno el Tuerto",
+      "arquetipo": "cunado-de-lope",
+      "provoca": "Bruno el Tuerto se levanta de su mesa con la jarra en la mano y te la vacía en las botas. Detrás de él, sus amigos dejan de reír.",
+      "dice": "«¿Y tú qué miras, {forastero|forastera}? Aquí se bebe y se calla. O se pelea.»",
+      "gana": "Bruno vuelve a su mesa resoplando, y pide otra jarra «a la salud de {heroe}, que aguanta poco».",
+      "pierde": "Bruno se queda en el suelo, entre serrín y cerveza, y desde ahí levanta el pulgar."
+    },
+    {
+      "id": "sancho-pelacanas",
+      "kind": "camorrista",
+      "name": "Sancho Pelacañas",
+      "arquetipo": "campesino-desesperado",
+      "provoca": "Sancho Pelacañas lleva toda la tarde perdiendo a los dados. Cuando pasas por su lado, te da un empujón con el hombro.",
+      "dice": "«Me has mirado mal. Me ha mirado mal, ¿lo habéis visto todos?»",
+      "gana": "Sancho se ríe con la boca rota y se gasta en vino lo poco que ha ganado hoy.",
+      "pierde": "Sancho acaba debajo de una mesa y decide que allí se está bien."
+    },
+    {
+      "id": "irene-malasombra",
+      "kind": "camorrista",
+      "name": "Irene Malasombra",
+      "arquetipo": "ratero-del-muelle",
+      "provoca": "Irene Malasombra se sienta en tu mesa sin pedir permiso y se bebe lo tuyo de un trago.",
+      "dice": "«Esto estaba aguado. Como tú. ¿Vas a hacer algo o vas a seguir mirando?»",
+      "gana": "Irene se limpia los nudillos en tu capa y se va silbando.",
+      "pierde": "Irene se levanta del suelo con dignidad, se arregla el pelo y vuelve a caerse."
+    },
+    {
+      "id": "tadeo-el-carretero",
+      "kind": "camorrista",
+      "name": "Tadeo el Carretero",
+      "arquetipo": "cunado-de-lope",
+      "provoca": "Tadeo el Carretero da un puñetazo en la mesa que hace saltar las jarras. Te señala con un dedo gordo como una morcilla.",
+      "dice": "«Tú. La gente como tú trae la desgracia a este sitio. Fuera de aquí, o te saco yo.»",
+      "gana": "Tadeo te arrastra hasta la puerta y te deja sentado en el barro, con cuidado de no hacerte daño de verdad.",
+      "pierde": "Tadeo se sienta en el suelo, se toca la mandíbula y pide perdón a medias."
+    },
+    {
+      "id": "mateo-nudillos",
+      "kind": "camorrista",
+      "name": "Mateo Nudillos",
+      "arquetipo": "bestia-bandido",
+      "provoca": "Mateo Nudillos hace crujir los dedos uno a uno mientras te mira. Cuando acaba, empieza otra vez.",
+      "dice": "«Me aburro. Y cuando me aburro, alguien acaba en el suelo. Hoy te toca a ti.»",
+      "gana": "Mateo se sopla los nudillos y se va a la barra sin mirar atrás.",
+      "pierde": "Mateo se queda mirando el techo y dice, a nadie en particular, que ya no se aburre."
+    },
+    {
+      "id": "lucia-la-estibadora",
+      "kind": "camorrista",
+      "name": "Lucía la Estibadora",
+      "arquetipo": "ratero-del-muelle",
+      "provoca": "Lucía la Estibadora vuelca tu jarra de un manotazo, como quien aparta una mosca.",
+      "dice": "«Ese sitio es mío. Siempre ha sido mío. Levanta, o te levanto yo.»",
+      "gana": "Lucía recupera su sitio, se sienta y te invita a una jarra con la mano todavía cerrada.",
+      "pierde": "Lucía se ríe desde el suelo: «Vale, vale. Hoy el sitio es tuyo.»"
+    },
+    {
+      "id": "damian-cuernoroto",
+      "kind": "camorrista",
+      "name": "Damián Cuernoroto",
+      "arquetipo": "campesino-desesperado",
+      "provoca": "Damián Cuernoroto ha bebido demasiado y llora en su jarra. Cuando le miras, deja de llorar y se levanta.",
+      "dice": "«¿Te ríes de mí? Todo el mundo se ríe de mí. Pues a ti te voy a romper la cara.»",
+      "gana": "Damián deja de llorar un rato: ha ganado algo, por una vez.",
+      "pierde": "Damián se duerme en el suelo, abrazado a la pata de una silla."
+    },
+    {
+      "id": "ferro-el-desdentado",
+      "kind": "camorrista",
+      "name": "Ferro el Desdentado",
+      "arquetipo": "bestia-bandido",
+      "provoca": "Ferro el Desdentado te sonríe con los tres dientes que le quedan y le da una patada a tu silla.",
+      "dice": "«Me faltan dientes, {forastero|forastera}. A ti te van a faltar más.»",
+      "gana": "Ferro busca por el suelo algún diente tuyo, por si acaso, y no encuentra ninguno.",
+      "pierde": "Ferro escupe el cuarto diente, que no sabía que tenía, y se lo guarda."
+    },
+    {
+      "id": "rosa-la-remera",
+      "kind": "campeon",
+      "name": "Rosa la Remera",
+      "en": "Puerto Alba",
+      "arquetipo": "ratero-del-muelle",
+      "reta": "Rosa la Remera se arremanga junto a la barra. Lleva tres inviernos sin perder una pelea en esta taberna, y lo sabe todo el puerto.",
+      "dice": "«Uno contra uno, a puñetazos, hasta que uno no se levante o diga basta. Pon el oro en la mesa y veremos.»",
+      "gana": "Rosa cuenta tus monedas delante de todos y luego te da la mano para levantarte.",
+      "pierde": "Rosa escupe sangre, se ríe y te paga sin rechistar: «Hacía años que nadie me tumbaba.»"
+    },
+    {
+      "id": "wulf-el-curtidor",
+      "kind": "campeon",
+      "name": "Wulf el Curtidor",
+      "en": "El Pueblo de Barro",
+      "arquetipo": "cunado-de-lope",
+      "reta": "Wulf el Curtidor huele a cuero y a sebo. En el Pueblo de Barro dicen que una vez tumbó a una mula de un puñetazo.",
+      "dice": "«La mula me debía dinero. Tú también me lo vas a deber. ¿Cuánto apuestas?»",
+      "gana": "Wulf se guarda tu oro en la bolsa del delantal y vuelve al trabajo.",
+      "pierde": "Wulf te paga con monedas que huelen a cuero y dice que la mula pegaba más fuerte."
+    },
+    {
+      "id": "kolyan-el-lenador",
+      "kind": "campeon",
+      "name": "Kolyan el Leñador",
+      "en": "Aldea de Barovia",
+      "arquetipo": "cunado-de-lope",
+      "reta": "Kolyan el Leñador no habla mucho. En esta aldea casi nadie habla. Pero cuando ve tu bolsa, deja la jarra en la mesa.",
+      "dice": "«Aquí no queda nada que celebrar. Una pelea es algo. Apuesta, y pelea.»",
+      "gana": "Kolyan coge tu oro sin alegría. Aquí nadie se alegra de nada.",
+      "pierde": "Kolyan te paga y, por primera vez en mucho tiempo, casi sonríe."
+    },
+    {
+      "id": "boris-mano-de-hierro",
+      "kind": "campeon",
+      "name": "Boris Mano de Hierro",
+      "en": "Ciudad de Vallaki",
+      "arquetipo": "bestia-bandido",
+      "reta": "Boris Mano de Hierro gana a todo el que entra en El Agua Azul, y el barón dice que eso es bueno para la alegría de la ciudad.",
+      "dice": "«Es obligatorio estar contentos, {forastero|forastera}. Yo me pongo contento ganando. ¿Cuánto pones?»",
+      "gana": "Boris levanta tu oro para que lo vea toda la taberna. Alguien aplaude, por si acaso.",
+      "pierde": "Boris te paga mirando a la puerta, por si se entera la guardia del barón."
+    },
+    {
+      "id": "marta-cuatrodedos",
+      "kind": "campeon",
+      "name": "Marta Cuatrodedos",
+      "arquetipo": "ratero-del-muelle",
+      "reta": "Marta Cuatrodedos perdió un dedo en una pelea y ganó todas las demás. Está sentada sola, y nadie se atreve a sentarse con ella.",
+      "dice": "«Con cuatro me basta. Pon tu oro, y no llores cuando lo pierdas.»",
+      "gana": "Marta se guarda tu oro y te da una palmada en la espalda que duele más que los golpes.",
+      "pierde": "Marta te paga y te enseña la mano: «Este dedo lo perdí con alguien como tú.»"
+    },
+    {
+      "id": "osvaldo-el-toro",
+      "kind": "campeon",
+      "name": "Osvaldo el Toro",
+      "arquetipo": "cunado-de-lope",
+      "reta": "Osvaldo el Toro ocupa él solo un banco entero. Cuando se levanta, la taberna se queda en silencio.",
+      "dice": "«Me llaman el Toro. Ya sabrás por qué. Apuesta lo que quieras.»",
+      "gana": "Osvaldo se guarda tu oro sin contarlo y se vuelve a sentar en su banco.",
+      "pierde": "Osvaldo te paga y dice que a partir de ahora le pueden llamar el Ternero."
+    },
+    {
+      "id": "retador-izek-strazni",
+      "kind": "retador",
+      "name": "Izek Strazni",
+      "reta": "Izek se acerca tanto que notas su aliento. Su brazo deforme se cierra en un puño.",
+      "dice": "«¿A mí me amenazas? Deja las armas. Tú y yo, a puñetazos, delante de todos. Si no, sal de Vallaki con la cabeza gacha.»",
+      "gana": "Izek te mira desde arriba, sin prisa, y se va sin decir nada. No lo olvidará.",
+      "pierde": "Izek se levanta despacio. Te mira de otra forma: ya no como a un insecto."
+    },
+    {
+      "id": "retador-szoldar",
+      "kind": "retador",
+      "name": "Szoldar Szoldarovich",
+      "reta": "Szoldar deja la piel de lobo que estaba curtiendo y se pone en pie.",
+      "dice": "«Yo cazo lobos con las manos. ¿Y tú me vienes con amenazas? A puñetazos, ahora. Si no aceptas, en Vallaki sabrán que hablas mucho y haces poco.»",
+      "gana": "Szoldar te ayuda a levantarte, como a un cachorro que aún tiene que aprender.",
+      "pierde": "Szoldar se ríe tumbado en el suelo: «Bien. Ahora sí podemos hablar.»"
+    },
+    {
+      "id": "retador-luvash",
+      "kind": "retador",
+      "name": "Luvash",
+      "reta": "Luvash deja la botella. Los vistani que hay alrededor del fuego se apartan para dejar sitio.",
+      "dice": "«En mi campamento nadie me amenaza. Pelea conmigo, a la manera antigua, sin acero. O vete, y que todos lo vean.»",
+      "gana": "Luvash vuelve a su botella. «Los forasteros nunca aprenden», dice a su gente.",
+      "pierde": "Luvash se levanta, se sacude el polvo y te ofrece la botella. Entre los vistani, eso es mucho."
+    },
+    {
+      "id": "retador-garret",
+      "kind": "retador",
+      "name": "Garret",
+      "reta": "Garret se quita el yelmo de guardia y lo deja con cuidado en el suelo.",
+      "dice": "«Amenazar a la guardia de la puerta. Muy bien. Sin armas, que estoy de servicio: tú y yo, aquí mismo. Si no aceptas, que lo sepa todo el pueblo.»",
+      "gana": "Garret se pone el yelmo otra vez y vuelve a su puesto como si no hubiera pasado nada.",
+      "pierde": "Garret se queda sentado contra el muro un buen rato. Luego te saluda al pasar."
+    },
+    {
+      "id": "retador-darek",
+      "kind": "retador",
+      "name": "Darek",
+      "reta": "Darek lleva demasiadas guerras encima para asustarse de ti. Se pone en pie sin prisa.",
+      "dice": "«He visto morir a gente mejor que tú por menos de eso. Pero hoy nadie va a morir: a puñetazos, y aprendes.»",
+      "gana": "Darek te tiende la mano desde arriba: «Para la próxima, guarda la amenaza para quien se asuste.»",
+      "pierde": "Darek se ríe desde el suelo: «Vaya. Todavía quedan soldados de verdad.»"
+    },
+    {
+      "id": "retador-hilda",
+      "kind": "retador",
+      "name": "Hilda",
+      "reta": "Hilda deja el martillo sobre el yunque. El golpe suena por toda la herrería.",
+      "dice": "«¿Me amenazas en mi propia forja? Fuera, al patio. Sin armas: a ver si pegas tan fuerte como hablas.»",
+      "gana": "Hilda vuelve al yunque. «Ahora ya sabes cómo suena el hierro cuando le pegan», dice.",
+      "pierde": "Hilda se levanta, se limpia la sangre del labio y te mira con algo parecido al respeto."
+    },
+    {
+      "id": "retador-ramiro",
+      "kind": "retador",
+      "name": "Ramiro",
+      "reta": "Ramiro se quita el mandil de cuero y lo cuelga de un clavo, muy despacio.",
+      "dice": "«Esa boca. Fuera, al patio, delante de todo el puerto. A ver si pegas tan fuerte como hablas.»",
+      "gana": "Ramiro vuelve a ponerse el mandil y te dice que mañana te arregla lo que haga falta. A precio de siempre.",
+      "pierde": "Ramiro se sienta en el abrevadero, se ríe y dice que ya no está para estas cosas."
+    },
+    {
+      "id": "frase-armar-1",
+      "kind": "frase",
+      "name": "Armas tú la pelea",
+      "momento": "armar",
+      "texto": [
+        "Le das un empujón a la mesa de {quien}. Las jarras caen, y en toda la taberna se hace el silencio que va antes de los golpes.",
+        "Le dices a {quien} lo que piensas de su cara, en voz alta. Su mesa entera se levanta a la vez."
+      ]
+    },
+    {
+      "id": "frase-calmar-bien",
+      "kind": "frase",
+      "name": "Le calmas",
+      "momento": "calmar-bien",
+      "texto": [
+        "{quien} se queda con el puño a medio levantar. Luego lo baja, gruñe algo y vuelve a su mesa.",
+        "{quien} se lo piensa, te mira de arriba abajo y decide que hoy no merece la pena."
+      ]
+    },
+    {
+      "id": "frase-calmar-mal",
+      "kind": "frase",
+      "name": "No le calmas",
+      "momento": "calmar-mal",
+      "texto": [
+        "{quien} no te deja acabar la frase: la mesa vuela, y sus amigos ya vienen.",
+        "Las palabras no le llegan. {quien} te agarra de la ropa, y sus amigos se levantan detrás."
+      ]
+    },
+    {
+      "id": "frase-ronda",
+      "kind": "frase",
+      "name": "Le invitas a una ronda",
+      "momento": "ronda",
+      "texto": [
+        "Le pides una ronda a {posadero} para {quien} y sus amigos. {quien} duda, coge la jarra y se sienta: hoy no hay pelea.",
+        "Una ronda para su mesa arregla lo que las palabras no arreglan. {quien} brinda contigo, de mala gana."
+      ]
+    },
+    {
+      "id": "frase-irse",
+      "kind": "frase",
+      "name": "Te vas sin pelear",
+      "momento": "irse",
+      "texto": [
+        "Te levantas y te vas a otra mesa. A tu espalda, {quien} y sus amigos se ríen, pero nadie te sigue.",
+        "Dejas la jarra a medias y te apartas. {quien} se ríe un rato y luego se olvida de ti."
+      ]
+    },
+    {
+      "id": "frase-gana-taberna",
+      "kind": "frase",
+      "name": "Ganas la pelea de taberna",
+      "momento": "gana-taberna",
+      "texto": [
+        "Cuando se acaba, en la taberna queda serrín revuelto, sillas por el suelo y gente que te mira de otra manera.",
+        "El último se queda en el suelo y la taberna estalla en gritos. Alguien te pone una jarra en la mano."
+      ]
+    },
+    {
+      "id": "frase-pierde-taberna",
+      "kind": "frase",
+      "name": "Pierdes la pelea de taberna",
+      "momento": "pierde-taberna",
+      "texto": [
+        "Te despiertas en el suelo con la boca llena de serrín. La bolsa pesa menos que antes.",
+        "Cuando abres los ojos, la pelea ya ha terminado sin ti. Alguien se ha llevado unas monedas de tu bolsa mientras dormías."
+      ]
+    },
+    {
+      "id": "frase-rinde-taberna",
+      "kind": "frase",
+      "name": "Te rindes en la taberna",
+      "momento": "rinde-taberna",
+      "texto": [
+        "Levantas las manos. {quien} se ríe, te da una palmada en la espalda que casi te tira y pide una ronda que pagas tú."
+      ]
+    },
+    {
+      "id": "frase-paz-taberna",
+      "kind": "frase",
+      "name": "La pelea se acaba con una ronda",
+      "momento": "paz-taberna",
+      "texto": [
+        "Pides una ronda para todos a gritos. Los puños bajan, las jarras suben, y la pelea se acaba como empezó: sin motivo."
+      ]
+    },
+    {
+      "id": "frase-gana-apuesta",
+      "kind": "frase",
+      "name": "Ganas el duelo por dinero",
+      "momento": "gana-apuesta",
+      "texto": [
+        "Los que miraban pagan sus apuestas entre gritos. {quien} te da los {oro} de oro que había en la mesa."
+      ]
+    },
+    {
+      "id": "frase-pierde-apuesta",
+      "kind": "frase",
+      "name": "Pierdes el duelo por dinero",
+      "momento": "pierde-apuesta",
+      "texto": [
+        "Los {oro} de oro de la mesa son de {quien}. Alguien te echa agua en la cara para que te despiertes."
+      ]
+    },
+    {
+      "id": "frase-rinde-apuesta",
+      "kind": "frase",
+      "name": "Te rindes en el duelo por dinero",
+      "momento": "rinde-apuesta",
+      "texto": [
+        "Dices basta. {quien} asiente y se queda los {oro} de oro: rendirse también es perder."
+      ]
+    },
+    {
+      "id": "frase-gana-honor",
+      "kind": "frase",
+      "name": "Ganas el duelo por honor",
+      "momento": "gana-honor",
+      "texto": [
+        "Antes de que anochezca, todo {pueblo} sabe que {heroe} tumbó a {quien} en un duelo limpio."
+      ]
+    },
+    {
+      "id": "frase-pierde-honor",
+      "kind": "frase",
+      "name": "Pierdes el duelo por honor",
+      "momento": "pierde-honor",
+      "texto": [
+        "En {pueblo} se cuenta que {quien} te dio una lección, y lo cuentan riéndose."
+      ]
+    },
+    {
+      "id": "frase-rechaza-honor",
+      "kind": "frase",
+      "name": "No aceptas el duelo por honor",
+      "momento": "rechaza-honor",
+      "texto": [
+        "Te das la vuelta. {quien} no dice nada más, pero la gente que lo ha visto sí, y en {pueblo} se sabrá pronto."
+      ]
+    },
+    {
+      "id": "frase-posadero-cobra",
+      "kind": "frase",
+      "name": "Lo roto se paga",
+      "momento": "posadero-cobra",
+      "texto": [
+        "{posadero} cuenta las sillas rotas con los labios apretados: {muebles}. Te cobra lo suyo antes de que te levantes."
+      ]
+    },
+    {
+      "id": "frase-posadero-harto",
+      "kind": "frase",
+      "name": "El posadero ya no quiere más peleas",
+      "momento": "posadero-harto",
+      "texto": [
+        "{posadero} te para con la mano antes de que digas nada: «Aquí ya se han roto bastantes sillas por tu culpa. Hasta dentro de unos días, ni una pelea más.»"
+      ]
+    }
+  ]
+}

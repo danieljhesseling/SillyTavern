@@ -44,6 +44,11 @@
 @import url(css/magia.css);
 @import url(css/companeros.css);
 @import url(css/peleas.css);
+@import url(css/teclado.css);
+@import url(css/trabajos.css);
+@import url(css/romance.css);
+@import url(css/peleas-taberna.css);
+@import url(css/combat-vtt.css);
 
 :root {
     interpolate-size: allow-keywords;

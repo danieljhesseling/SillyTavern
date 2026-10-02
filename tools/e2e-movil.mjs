@@ -18,24 +18,31 @@
  *   node tools/e2e-movil.mjs --headed              # mirándolo
  *   node tools/e2e-movil.mjs --port 8155 --captura movil   # y una captura por paso: movil.01-titulo.png…
  *   node tools/e2e-movil.mjs --cpu 6               # la pelea con la CPU 6 veces más lenta (4 si no se dice)
+ *   node tools/e2e-movil.mjs --perfil pelea.cpuprofile   # y el perfil de la CPU de la pelea, con lo que más pesa
+ *   node tools/e2e-movil.mjs --solo-pelea          # hasta la primera pelea y su medida (J20.6), sin el resto
  *
  * J20.6: la pelea a toques se juega con la CPU de un teléfono simulada (`Emulation.setCPUThrottlingRate`),
  * y se mide cuánto tarda en volver tu turno tras «Fin de turno» y cuánto trabaja el teléfono.
  */
 
-/* global window, document, HTMLElement, PointerEvent, MouseEvent */
+/* global window, document, HTMLElement, PointerEvent, MouseEvent, requestAnimationFrame, MutationObserver, Element */
 
 import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { entrarEnLaPelea } from './e2e-entrar-pelea.mjs';
 
 const ROOT = new URL('..', import.meta.url).pathname.replace(/^[/]([A-Za-z]:)/, '$1');
 const argAfter = (/** @type {string} */ flag) => (process.argv.includes(flag) ? process.argv[process.argv.indexOf(flag) + 1] : '');
 const PORT = Number(argAfter('--port')) || 8135;
 const BASE = `http://127.0.0.1:${PORT}`;
 const HEADED = process.argv.includes('--headed');
+/** J20.6: `--solo-pelea` acaba la vuelta tras la primera pelea, para medirla sin esperar al resto. */
+const FIGHT_ONLY = process.argv.includes('--solo-pelea');
+/** Lo que corta la vuelta a propósito (`--solo-pelea`): no es un fallo. */
+class StopHere extends Error {}
 const SHOT = argAfter('--captura');
 
 /** Un teléfono corriente, de pie y tumbado. */
@@ -53,6 +60,16 @@ const FINGER = 44;
 const CPU_SLOWDOWN = Math.max(1, Number(argAfter('--cpu')) || 4);
 /** J20.6: lo más que puede tardar, de mediana, en volver tu turno tras «Fin de turno», dados incluidos. */
 const TURN_BUDGET_MS = 8000;
+/**
+ * J20.6: `--perfil ruta.cpuprofile` graba lo que hace la CPU durante la pelea lenta (se abre en
+ * las herramientas de Chrome, pestaña «Rendimiento») y escribe qué funciones pesan más.
+ */
+const PROFILE = argAfter('--perfil');
+/**
+ * J20.6: lo más que puede tener el tablero dibujado en la primera pelea (casillas, fichas, niebla…).
+ * La bodega del muelle es pequeña: pasar de aquí es dibujar lo que no se ve.
+ */
+const BOARD_NODE_BUDGET = 400;
 
 const require = createRequire(join(ROOT, 'tests/package.json'));
 const { chromium } = require('@playwright/test');
@@ -75,7 +92,8 @@ function startServer() {
     server = spawn(process.execPath, ['server.js', '--port', String(PORT), '--dataRoot', dataRoot], { cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'] });
     const child = server;
     return new Promise((resolve, reject) => {
-        const timer = setTimeout(() => reject(new Error('the server did not start in 180s')), 180000);
+        // Con la batería entera a la vez, compilar las librerías del navegador tarda a veces más de un minuto.
+        const timer = setTimeout(() => reject(new Error('the server did not start in 300s')), 300000);
         const watch = (/** @type {any} */ buffer) => {
             const text = String(buffer);
             if (text.includes(String(PORT)) || text.toLowerCase().includes('listening')) {
@@ -87,6 +105,52 @@ function startServer() {
         child.stderr.on('data', watch);
         child.on('exit', (/** @type {number} */ code) => reject(new Error(`the server exited with code ${code}`)));
     });
+}
+
+/**
+ * J20.6: lo que más pesa en un perfil de la CPU (`Profiler.stop` de CDP). «Propio» es el tiempo
+ * dentro de la función misma; «con lo que llama», el de la función y todo lo que cuelga de ella
+ * (una vez por muestra, aunque se llame a sí misma).
+ *
+ * @param {any} profile
+ * @param {number} [top]
+ * @returns {{self: string[], total: string[], sampled: number}}
+ */
+function summarizeProfile(profile, top = 10) {
+    const nodes = new Map((profile?.nodes ?? []).map((/** @type {any} */ n) => [n.id, n]));
+    /** @type {Map<number, number>} */
+    const parent = new Map();
+    for (const node of nodes.values()) for (const child of node.children ?? []) parent.set(child, node.id);
+    const where = (/** @type {any} */ frame) => {
+        const file = String(frame.url || '').replace(/^https?:\/\/[^/]+\//, '').replace(/\?.*$/, '');
+        return `${frame.functionName || '(anónima)'}${file ? ` ${file}:${Number(frame.lineNumber) + 1}` : ''}`;
+    };
+    /** @type {Map<string, number>} */
+    const self = new Map();
+    /** @type {Map<string, number>} */
+    const total = new Map();
+    let sampled = 0;
+    const samples = profile?.samples ?? [];
+    const deltas = profile?.timeDeltas ?? [];
+    for (let i = 0; i < samples.length; i++) {
+        const ms = Math.max(0, Number(deltas[i + 1] ?? deltas[i]) || 0) / 1000;
+        const node = nodes.get(samples[i]);
+        if (!node || node.callFrame.functionName === '(idle)') continue;
+        sampled += ms;
+        self.set(where(node.callFrame), (self.get(where(node.callFrame)) ?? 0) + ms);
+        const seen = new Set();
+        for (let id = node.id; id !== undefined; id = parent.get(id)) {
+            const frame = nodes.get(id)?.callFrame;
+            if (!frame || frame.functionName === '(root)') continue;
+            const key = where(frame);
+            if (seen.has(key)) continue;
+            seen.add(key);
+            total.set(key, (total.get(key) ?? 0) + ms);
+        }
+    }
+    const list = (/** @type {Map<string, number>} */ map) => [...map.entries()].sort((a, b) => b[1] - a[1]).slice(0, top)
+        .map(([key, ms]) => `${(ms / 1000).toFixed(2).padStart(6)} s  ${key}`);
+    return { self: list(self), total: list(total), sampled };
 }
 
 /**
@@ -320,7 +384,9 @@ try {
         return upright;
     };
 
-    await page.goto(`${BASE}/`, { waitUntil: 'domcontentloaded' });
+    // J20.8: la dirección que da la guía del móvil (wiki/SERVIDOR_PRIVADO.md, apartado 5), con
+    // `?juego` al final: la misma por la que entra el icono de la pantalla de inicio.
+    await page.goto(`${BASE}/?juego`, { waitUntil: 'domcontentloaded', timeout: 120000 });
     // El juego tarda en arrancar con la máquina ocupada; la bienvenida de la primera vez, si
     // sale, se cierra tocando «OK».
     const opened = await until(async () => {
@@ -335,6 +401,21 @@ try {
     await until(() => page.evaluate(() => !document.querySelector('#preloader')), 180000);
     const coarse = await page.evaluate(() => window.matchMedia('(pointer: coarse)').matches);
     check('el navegador se presenta como un teléfono táctil: (pointer: coarse)', coarse);
+    // J20.7 y J20.8: con `?juego`, la página es la app: marcada (`html.gs-app`) y con su manifiesto
+    // («DnD Coin», que entra por `?juego`), que es lo que el móvil usa al añadirla a la pantalla de inicio.
+    const app = await until(() => page.evaluate(() => document.documentElement.classList.contains('gs-app')), 20000)
+        .then(() => page.evaluate(async () => {
+            const href = document.querySelector('link[rel="manifest"]')?.getAttribute('href') ?? '';
+            const manifest = href ? await fetch(href, { credentials: 'include' }).then(r => r.json()).catch(() => null) : null;
+            return {
+                marked: document.documentElement.classList.contains('gs-app'),
+                name: String(manifest?.short_name ?? ''),
+                start: String(manifest?.start_url ?? ''),
+                apple: document.querySelector('meta[name="apple-mobile-web-app-title"]')?.getAttribute('content') ?? '',
+            };
+        }));
+    check('la dirección de la guía del móvil (con «?juego») abre el juego como app, con su nombre para la pantalla de inicio (J20.7, J20.8)',
+        app.marked && app.name === 'DnD Coin' && app.apple === 'DnD Coin' && /[?&]juego\b/.test(app.start), JSON.stringify(app));
 
     // 1. El título.
     const offline = page.locator('#game-shell .gs-menu-btn').filter({ hasText: 'Jugar sin conexión' });
@@ -383,8 +464,10 @@ try {
         return /Gremio/.test(now.world) && now.party[0] === 'Nerea';
     }, 60000);
     check('empieza en el gremio, con Nerea', inHub, JSON.stringify(await state()));
-    const canFight = await until(async () => (await chips()).some(c => /^Iniciar combate/.test(c)), 30000);
-    check('al llegar, la fila ofrece la primera pelea', canFight, JSON.stringify(await chips()));
+    // Tanda 10: la primera pelea ya no se ofrece en la fila; empieza sola al seguir leyendo.
+    const canFight = await until(async () => (await state()).board === 'El muelle de Puerto Alba'
+        && (await chips()).length > 0 && !(await chips()).some(c => /^Iniciar combate/.test(c)), 30000);
+    check('al llegar, el muelle del prólogo, sin ficha de «Iniciar combate» (tanda 10)', canFight, JSON.stringify(await chips()));
 
     // 3. La novela visual: a pantalla entera, la caja abajo y las fichas en una fila que se desliza.
     await page.waitForTimeout(800);
@@ -498,9 +581,9 @@ try {
     // «Atacar» y su lista, y se pasa el turno con «Fin de turno». Andar por el tablero a toques
     // es J20.2, todavía por hacer.
     await noToasts();
-    await tapChip(/^Iniciar combate/);
+    await entrarEnLaPelea(page);
     const fighting = await until(async () => (await state()).fighting, 10000);
-    check('tocar «Iniciar combate» empieza la pelea', fighting);
+    check('la pelea del muelle empieza sola: decidir, colocarse y «Empezar» (tanda 10)', fighting);
     await tapDice();
     await page.waitForTimeout(800);
     await look('pelea');
@@ -610,31 +693,100 @@ try {
 
     // J20.6: el resto de la pelea, con la CPU de un teléfono corriente: cuánto tarda en volver tu
     // turno tras «Fin de turno» y cuánto trabaja el teléfono (las tareas largas, de más de 50 ms).
-    const cdp = CPU_SLOWDOWN > 1 ? await context.newCDPSession(page) : null;
+    const cdp = CPU_SLOWDOWN > 1 || PROFILE ? await context.newCDPSession(page) : null;
     if (cdp) await cdp.send('Emulation.setCPUThrottlingRate', { rate: CPU_SLOWDOWN });
+    if (cdp && PROFILE) {
+        await cdp.send('Profiler.enable');
+        await cdp.send('Profiler.setSamplingInterval', { interval: 500 });
+        await cdp.send('Profiler.start');
+    }
+    // Lo que el tablero tiene dibujado: casillas, fichas, niebla, lo encendido. Solo lo que se ve.
+    const boardNodes = await page.evaluate(() => document.querySelectorAll('#game-shell .gs-scene-map .wm-content *').length);
     await page.evaluate(() => {
         const seen = /** @type {any} */ (window);
         seen.__busy = 0;
         try {
             new PerformanceObserver((list) => { for (const entry of list.getEntries()) seen.__busy += entry.duration; }).observe({ type: 'longtask' });
         } catch { /* sin «longtask», solo se mide el tiempo */ }
+        // Las veces que el tablero se hace entero de nuevo (su caja `.wm-location-shell`).
+        seen.__boardDraws = 0;
+        const shells = document.querySelector('#world_location_maps_list') ?? document.body;
+        new MutationObserver((records) => {
+            for (const record of records) {
+                for (const node of record.addedNodes) if (node instanceof Element && node.classList.contains('wm-location-shell')) seen.__boardDraws++;
+            }
+        }).observe(shells, { childList: true });
+        // Lo que se desplaza o cambia de tamaño: cada vez, los menús de SillyTavern (Popper) se
+        // recolocan aunque estén escondidos, y eso obliga a colocar la página entera.
+        seen.__moves = {};
+        const note = (/** @type {string} */ kind) => (/** @type {Event} */ e) => {
+            const t = /** @type {any} */ (e.target);
+            const who = t === document ? 'document' : t === window ? 'window' : t === window.visualViewport ? 'viewport'
+                : `${t?.nodeName ?? '?'}${t?.id ? `#${t.id}` : ''}${typeof t?.className === 'string' && t.className ? `.${t.className.split(' ')[0]}` : ''}`;
+            seen.__moves[`${kind} ${who}`] = (seen.__moves[`${kind} ${who}`] ?? 0) + 1;
+        };
+        window.addEventListener('resize', note('resize'));
+        document.addEventListener('scroll', note('scroll'), true);
+        window.visualViewport?.addEventListener('scroll', note('scroll'));
+        window.visualViewport?.addEventListener('resize', note('resize'));
     });
     /** @type {number[]} */
     const turnTimes = [];
+    // La vuelta de turno: desde lo último que hizo tu héroe (atacar, o «Fin de turno») hasta que
+    // le vuelve a tocar, con el turno del ratero y sus dados en medio. Un ataque que acaba tu
+    // turno cuenta igual que «Fin de turno»: antes solo contaba este, y la bodega se gana sin él.
     let turnFrom = 0;
+    /** El turno (ronda y puesto) en el que tu héroe hizo lo último: su vuelta es otro turno suyo. */
+    let turnKey = '';
+    /** @type {number[]} Cuánto tarda la pantalla en contestar a un toque (hasta el siguiente fotograma). */
+    const tapLags = [];
+    const heroTurn = () => page.evaluate(async () => {
+        const enc = (await import('/scripts/party.js')).getCombatEncounter();
+        const entry = enc?.active ? enc.turnOrder?.[enc.currentTurnIndex] : null;
+        return { mine: Boolean(entry && !entry.isEnemy), key: `${enc?.round ?? 0}:${enc?.currentTurnIndex ?? 0}` };
+    });
+    const acted = async () => {
+        turnFrom = Date.now();
+        turnKey = (await heroTurn()).key;
+    };
     const fight = { attacks: 0, turns: 0, sheet: false };
     const fightEnd = Date.now() + 150000 * Math.min(CPU_SLOWDOWN, 2);
     while (Date.now() < fightEnd && (await state()).fighting) {
+        const now = await heroTurn();
+        if (now.mine && turnFrom && now.key !== turnKey) {
+            turnTimes.push(Date.now() - turnFrom);
+            turnFrom = 0;
+        }
         if (await tapDice()) continue;
         await noToasts();
         const attack = page.locator('#game-shell .gs-actions .gs-btn-attack');
         const endTurn = page.locator('#game-shell .gs-actions .gs-btn').filter({ hasText: 'Fin de turno' });
-        if (await attack.count() > 0 && await attack.isEnabled().catch(() => false)) {
-            if (turnFrom) {
-                turnTimes.push(Date.now() - turnFrom);
-                turnFrom = 0;
+        // J20.6: el primer turno se pasa sin atacar, para tener al menos una vuelta que medir: la
+        // bodega es corta, y si el primer golpe la gana no quedaba ninguna.
+        if (fight.turns === 0 && !turnFrom && await endTurn.count() > 0 && await endTurn.isEnabled().catch(() => false)) {
+            if (await endTurn.tap({ timeout: 4000 }).then(() => true).catch(() => false)) {
+                fight.turns++;
+                await acted();
             }
+            await page.waitForTimeout(900);
+            continue;
+        }
+        if (await attack.count() > 0 && await attack.isEnabled().catch(() => false)) {
+            // Lo que tarda en contestar la pantalla: del toque (su «click») a haberse pintado.
+            await page.evaluate(() => {
+                const seen = /** @type {any} */ (window);
+                seen.__tapAt = 0;
+                document.addEventListener('click', () => {
+                    seen.__tapAt = performance.now();
+                    requestAnimationFrame(() => setTimeout(() => { seen.__tapLag = performance.now() - seen.__tapAt; }, 0));
+                }, { once: true, capture: true });
+            });
             await attack.tap({ timeout: 4000 }).catch(() => {});
+            await acted();
+            const lag = await until(() => page.evaluate(() => /** @type {any} */ (window).__tapLag ?? 0), 4000)
+                .then(() => page.evaluate(() => Number(/** @type {any} */ (window).__tapLag) || 0));
+            if (lag > 0) tapLags.push(Math.round(lag));
+            await page.evaluate(() => { delete (/** @type {any} */ (window)).__tapLag; });
             const target = page.locator('#game-shell .gs-targets .gs-target');
             if (await target.first().waitFor({ state: 'visible', timeout: 3000 }).then(() => true).catch(() => false)) {
                 if (!fight.sheet) {
@@ -650,25 +802,48 @@ try {
             continue;
         }
         if (await endTurn.count() > 0 && await endTurn.isEnabled().catch(() => false)) {
-            await endTurn.tap({ timeout: 4000 }).then(() => {
+            if (await endTurn.tap({ timeout: 4000 }).then(() => true).catch(() => false)) {
                 fight.turns++;
-                turnFrom = Date.now();
-            }).catch(() => {});
+                await acted();
+            }
             await page.waitForTimeout(900);
             continue;
         }
         await page.waitForTimeout(500);
     }
     if (cdp) await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 });
+    if (cdp && PROFILE) {
+        const { profile } = await cdp.send('Profiler.stop');
+        writeFileSync(PROFILE, JSON.stringify(profile));
+        const heavy = summarizeProfile(profile);
+        console.log(`      J20.6, el perfil (${(heavy.sampled / 1000).toFixed(1)} s de CPU con trabajo) está en ${PROFILE}. Lo que más pesa, propio:`);
+        for (const line of heavy.self) console.log(`        ${line}`);
+        console.log('      y con lo que llama:');
+        for (const line of heavy.total) console.log(`        ${line}`);
+    }
     const busy = await page.evaluate(() => Math.round(/** @type {any} */ (window).__busy || 0));
+    const boardDraws = await page.evaluate(() => Number(/** @type {any} */ (window).__boardDraws) || 0);
+    if (PROFILE) {
+        const moves = await page.evaluate(() => Object.entries(/** @type {any} */ (window).__moves ?? {}).sort((a, b) => Number(b[1]) - Number(a[1])).slice(0, 8));
+        console.log(`      J20.6, lo que se desplaza o cambia de tamaño en la pelea: ${moves.map(([k, n]) => `${k} ×${n}`).join(', ') || 'nada'}.`);
+    }
     const sortedTurns = [...turnTimes].sort((a, b) => a - b);
     const medianTurn = sortedTurns.length ? sortedTurns[Math.floor(sortedTurns.length / 2)] : 0;
     console.log(`      J20.6, con la CPU ${CPU_SLOWDOWN} veces más lenta: ${turnTimes.length} vuelta(s) de turno, ${turnTimes.map(t => `${(t / 1000).toFixed(1)} s`).join(', ') || '—'};`
-        + ` el teléfono, ocupado ${(busy / 1000).toFixed(1)} s en tareas largas (${fight.attacks} ataque(s), ${fight.turns} fin(es) de turno).`);
-    check(`J20.6: con la CPU de un móvil (${CPU_SLOWDOWN}×), tu turno vuelve en menos de ${TURN_BUDGET_MS / 1000} s tras «Fin de turno», de mediana`,
-        medianTurn <= TURN_BUDGET_MS, JSON.stringify({ turnTimes, medianTurn, busy }));
+        + ` mediana ${(medianTurn / 1000).toFixed(1)} s; el teléfono, ocupado ${(busy / 1000).toFixed(1)} s en tareas largas (${fight.attacks} ataque(s), ${fight.turns} fin(es) de turno);`
+        + ` el tablero, ${boardNodes} piezas dibujadas y ${boardDraws} vez/veces hecho entero;`
+        + ` tocar «Atacar» se ve en ${tapLags.map(t => `${t} ms`).join(', ') || '—'}.`);
+    // Sin ninguna vuelta medida no se sabe nada: antes esto pasaba en blanco (la bodega se gana
+    // atacando, sin «Fin de turno», y solo se medía tras él).
+    check(`J20.6: con la CPU de un móvil (${CPU_SLOWDOWN}×), tu turno vuelve en menos de ${TURN_BUDGET_MS / 1000} s tras lo último que haces (atacar o «Fin de turno»), de mediana`,
+        turnTimes.length > 0 && medianTurn <= TURN_BUDGET_MS, JSON.stringify({ turnTimes, medianTurn, busy }));
+    check(`J20.6: el tablero de la bodega dibuja solo lo que hace falta (${BOARD_NODE_BUDGET} piezas o menos)`, boardNodes > 0 && boardNodes <= BOARD_NODE_BUDGET, String(boardNodes));
     const wonByTaps = !(await state()).fighting;
     check('la primera pelea se gana a toques: «Atacar», su lista y «Fin de turno» (J20.9)', wonByTaps && fight.attacks > 0, JSON.stringify(fight));
+    if (FIGHT_ONLY) {
+        check('sin errores en la página', problems.length === 0, problems.slice(0, 6).join('\n        '));
+        throw new StopHere('--solo-pelea');
+    }
     if (!wonByTaps) {
         // Para seguir la vuelta: la pelea se acaba como en e2e-gremio.
         await page.evaluate(async () => {
@@ -816,9 +991,13 @@ try {
     check('en toda la vuelta no se ha pulsado ni una tecla (J20.4)', keys.length === 0, JSON.stringify(keys.slice(0, 10)));
     check('sin errores en la página', problems.length === 0, problems.slice(0, 6).join('\n        '));
 } catch (error) {
-    failures++;
-    console.log(`FAIL  the run threw: ${/** @type {any} */ (error)?.message || error}`);
-    if (SHOT && page) await page.screenshot({ path: `${SHOT}.error.png` }).catch(() => {});
+    if (error instanceof StopHere) {
+        console.log('      (--solo-pelea: la vuelta acaba tras la primera pelea)');
+    } else {
+        failures++;
+        console.log(`FAIL  the run threw: ${/** @type {any} */ (error)?.message || error}`);
+        if (SHOT && page) await page.screenshot({ path: `${SHOT}.error.png` }).catch(() => {});
+    }
 } finally {
     if (browser) await browser.close().catch(() => {});
     if (server) {

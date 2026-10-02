@@ -18,7 +18,9 @@
  *
  * J12.5: después, otra campaña con un tablero hecho de un mapa en imagen y sin su mapa escrito
  * (lo que escribe un Gem, que no ve el dibujo): el tablón lo lee del dibujo, se juega encima del
- * dibujo, y el tesoro del sitio está en un cofre que se abre andando hasta él.
+ * dibujo, y el tesoro del sitio está en un cofre que se abre andando hasta él. J5.2: su tablero
+ * trae una trampa sin casilla (`traps`, con el estado en castellano): el juego la pone en el
+ * camino, se ve al pasar a su lado y se desarma con su ficha.
  *
  * Uso:
  *   node tools/e2e-campana-gem.mjs              # sin ventana
@@ -37,7 +39,7 @@ import { pathToFileURL } from 'node:url';
 
 const ROOT = new URL('..', import.meta.url).pathname.replace(/^[/]([A-Za-z]:)/, '$1');
 const argAfter = (/** @type {string} */ flag) => (process.argv.includes(flag) ? process.argv[process.argv.indexOf(flag) + 1] : '');
-const PORT = Number(argAfter('--port')) || 8163;
+const PORT = Number(argAfter('--port')) || 8262;
 const BASE = `http://127.0.0.1:${PORT}`;
 const HEADED = process.argv.includes('--headed');
 const SHOT = argAfter('--captura');
@@ -108,10 +110,12 @@ function drawMap() {
 const DRAWN_NAME = 'El Sótano del Molino';
 const DRAWN_ID = 'tuya-el-sotano-del-molino';
 const DRAWN_TREASURE = 'Llave del molino viejo';
+// J5.2: una trampa como la escribiría un Gem que no ve el dibujo: sin casilla, y «derribado».
+const DRAWN_TRAP = { name: 'Losa suelta', tell: 'Una losa baila bajo el polvo', damage: '1d4', condition: 'derribado', spotDC: 5, disarmDC: 5 };
 const DRAWN_PACK = {
     world: { name: DRAWN_NAME, synopsis: 'Bajo el molino viejo hay un sótano que nadie baja a mirar desde hace años.', levels: [1, 2], journey: { days: 2 } },
     locations: [{ name: 'El molino viejo', type: 'ruins', treasure: [DRAWN_TREASURE] }],
-    boards: [{ id: 'sotano', name: 'El sótano', locationName: 'El molino viejo', image: 'user/images/e2e-gem/sotano.png', grid: { cell: CELL, offsetX: 7, offsetY: 5 } }],
+    boards: [{ id: 'sotano', name: 'El sótano', locationName: 'El molino viejo', image: 'user/images/e2e-gem/sotano.png', grid: { cell: CELL, offsetX: 7, offsetY: 5 }, traps: [DRAWN_TRAP] }],
 };
 
 let failures = 0;
@@ -241,9 +245,13 @@ try {
             await page.waitForTimeout(250);
         }
     };
+    /** @type {string[]} Lo que salió en la caja de la novela en cada parada. */
+    const boxes = [];
     const dump = async (/** @type {string} */ label) => {
         console.log(`--- ${label}`);
-        console.log(JSON.stringify({ state: await state(), scene: await sceneNow(), chips: await chips(), box: await novelBox() }, null, 1).slice(0, 2500));
+        const box = await novelBox();
+        boxes.push(box.text);
+        console.log(JSON.stringify({ state: await state(), scene: await sceneNow(), chips: await chips(), box }, null, 1).slice(0, 2500));
     };
 
     /** La escena del hilo abierta en su ventana, si hay una. */
@@ -342,6 +350,7 @@ try {
     const skipped = await until(async () => (await chips()).some(c => /Tablón de campañas/.test(c)), 20000);
     check('en el gremio con Iria, y la prueba saltada', inHub && skipped, JSON.stringify({ state: await state(), chips: await chips() }));
     read.length = 0;
+    plates.length = 0;
 
     // 2. El tablón: pegar la campaña corta.
     await dropToasts();
@@ -356,10 +365,22 @@ try {
         return {
             text: (box?.textContent || '').replace(/\s+/g, ' ').trim(),
             verdict: box?.querySelector('.hb-check')?.getAttribute('data-verdict') ?? '',
-            groups: [...(box?.querySelectorAll('.hb-check-group') ?? [])].map(g => ({ key: g.getAttribute('data-group'), open: /** @type {HTMLDetailsElement} */ (g).open, text: (g.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 400) })),
+            groups: [...(box?.querySelectorAll('.hb-check-group') ?? [])].map(g => ({ key: g.getAttribute('data-group'), open: /** @type {HTMLDetailsElement} */ (g).open, text: (g.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 3000) })),
         };
     });
     console.log(JSON.stringify(report, null, 1));
+    // J5.6: el informe va pegado a las tarjetas y se ve sin buscarlo: su veredicto, en pantalla,
+    // y la tarjeta recién añadida justo encima.
+    const seen = await page.evaluate((id) => {
+        const verdict = document.querySelector('.hb-root .hb-import .hb-check-head')?.getBoundingClientRect();
+        const box = document.querySelector('.hb-root .hb-import');
+        return {
+            inView: Boolean(verdict) && /** @type {DOMRect} */ (verdict).top >= 0 && /** @type {DOMRect} */ (verdict).bottom <= window.innerHeight,
+            afterGrid: Boolean(box?.previousElementSibling?.classList.contains('hb-grid')),
+            tile: Boolean(document.querySelector(`.hb-root [data-campaign="${id}"]`)),
+        };
+    }, ID);
+    check('el informe sale bajo las tarjetas, con su veredicto a la vista al añadirla (J5.6)', seen.inView && seen.afterGrid && seen.tile, JSON.stringify(seen));
     if (SHOT) await page.screenshot({ path: `${SHOT}.informe.png` });
     // J5.6: comprobada antes de jugarla, en llano: se juega entera, y lo que puso el juego, plegado.
     const relleno = report.groups.find(g => g.key === 'relleno');
@@ -388,9 +409,10 @@ try {
         /Tres días de camino|tres días/i.test(`${tripText} ${(await novelBox()).text}`) && /Subís por la costa/.test(`${tripText} ${(await novelBox()).text}`),
         `${tripText} | ${(await novelBox()).text}`.slice(0, 400));
     const povAt = read.findIndex(t => /Aquí nadie os va a abrir la puerta/.test(t));
-    check('la primera escena la cuenta Tobías, con su nombre (pov)', povAt >= 0 && /Tobías/.test(plates[povAt] ?? ''), JSON.stringify({ read, plates }));
+    // J13.7: hasta que se presenta, se le llama por lo que es («El molinero»).
+    check('la primera escena la cuenta Tobías, con su nombre o lo que es (pov)', povAt >= 0 && /Tobías|molinero/i.test(plates[povAt] ?? ''), JSON.stringify({ read, plates }));
     const brezo = await chips();
-    check('Tobías el molinero está en la aldea (npcs.where): se puede hablar con él', brezo.some(c => /Tobías/.test(c)), JSON.stringify(brezo));
+    check('Tobías el molinero está en la aldea (npcs.where): se puede hablar con él', brezo.some(c => /^Hablar con (Tobías|el molinero)/.test(c)), JSON.stringify(brezo));
 
     // 4. Las tres misiones, una tras otra: ir, entrar, pelear, ganar.
     /** @type {string[]} Los tableros que avisaron de que no hay vuelta atrás (J11.1). */
@@ -448,6 +470,9 @@ try {
     await settle();
     console.log('leído:', JSON.stringify(read));
     await dump('al final');
+    // Sin modelo, la gente nueva de un sitio se dice sin la orden para el narrador.
+    const orders = boxes.filter(t => /con naturalidad|cuando toque/.test(t));
+    check('la caja no enseña órdenes para el narrador («Que aparezcan con naturalidad…»)', orders.length === 0, orders.join(' | ').slice(0, 400));
     if (SHOT) await page.screenshot({ path: `${SHOT}.final.png` });
 
     // 5. El final: la campaña se acaba con el que puso el juego, y se vuelve al gremio con ella hecha.
@@ -483,6 +508,7 @@ try {
     check('el tablón lee el mapa del dibujo al añadirla, y pone el tesoro en un cofre',
         drawnIn && /Un tablero traía su dibujo sin su mapa: se ha leído del dibujo/.test(drawnReport)
         && /1 tablero leído de su dibujo: El sótano/.test(drawnReport) && /1 cofre con su tesoro: El sótano/.test(drawnReport), drawnReport.slice(0, 700));
+    check('la trampa sin casilla la pone el juego en el camino, y lo dice (traps)', /1 trampa puesta en el camino: El sótano/.test(drawnReport), drawnReport.slice(0, 900));
     if (SHOT) await page.screenshot({ path: `${SHOT}.dibujo-informe.png` });
     await page.locator(`.hb-root [data-campaign="${DRAWN_ID}"]`).click();
     const drawnStarted = await until(async () => (await state()).world.includes(DRAWN_NAME), 120000);
@@ -513,12 +539,32 @@ try {
         return { x: Math.round(parseFloat(el.style.left) / w), y: Math.round(parseFloat(el.style.top) / h) };
     }, BOARD);
     const chestCell = await chestAt();
-    for (let step = 0; step < 8 && chestCell; step++) {
+    /** J5.2: la trampa del paquete, vista al pasar a su lado y desarmada con su ficha. */
+    const trap = { seen: '', disarmed: false, tries: 0 };
+    const disarmChip = /^Desarmar: losa suelta$/;
+    /** @type {Array<{at: string, lit: number}>} Por dónde se anduvo, y cuántas casillas se encendían. */
+    const walked = [];
+    for (let step = 0; step < 12 && chestCell; step++) {
+        if ((await chips()).some(c => disarmChip.test(c)) && !trap.disarmed) {
+            trap.seen ||= await page.evaluate(() => [...document.querySelectorAll('#toast-container .toast')].map(t => (t.textContent || '').replace(/\s+/g, ' ').trim()).join(' | '));
+            if (SHOT && trap.tries === 0) await page.screenshot({ path: `${SHOT}.trampa.png` });
+            for (; trap.tries < 5 && (await chips()).some(c => disarmChip.test(c)); trap.tries++) {
+                await dropToasts();
+                await clickChip(disarmChip);
+                await page.waitForTimeout(700);
+                await clearDice();
+                await page.waitForTimeout(400);
+            }
+            trap.disarmed = !(await chips()).some(c => disarmChip.test(c));
+        }
         const hero = await heroAt();
         if (Math.max(Math.abs(hero.x - chestCell.x), Math.abs(hero.y - chestCell.y)) <= 1) break;
         await clearDice();
-        await page.locator(`${BOARD} .wm-token[data-token-id="${hero.id}"]`).first().click({ timeout: 3000 }).catch(() => {});
-        await until(async () => (await page.locator(`${BOARD} .wm-highlight-move.wm-highlight-clickable`).count()) > 0, 4000);
+        // Si la ficha ya está elegida (se paró ante la trampa), pulsarla otra vez la soltaría.
+        const lit = () => page.locator(`${BOARD} .wm-highlight-move.wm-highlight-clickable`).count();
+        if (await lit() === 0) await page.locator(`${BOARD} .wm-token[data-token-id="${hero.id}"]`).first().click({ timeout: 3000 }).catch(() => {});
+        await until(async () => (await lit()) > 0, 4000);
+        walked.push({ at: `${hero.x},${hero.y}`, lit: await lit() });
         const target = await page.evaluate(({ sel, cx, cy }) => {
             const cells = [...document.querySelectorAll(`${sel} .wm-highlight-move.wm-highlight-clickable`)]
                 .map(n => ({ x: Number(n.getAttribute('data-x')), y: Number(n.getAttribute('data-y')) }))
@@ -536,8 +582,10 @@ try {
     await dropToasts();
     await page.locator(`${BOARD} .wm-terrain-door-actionable[title="Abrir el cofre"]`).first().click({ timeout: 4000 }).catch(() => {});
     const opened = await until(async () => (await heroAt()).items.includes(DRAWN_TREASURE), 8000);
+    check('la trampa del paquete se ve al pasar a su lado, con su aviso, y se desarma con su ficha (traps)',
+        /Una losa baila bajo el polvo/.test(trap.seen) && trap.disarmed, JSON.stringify(trap));
     check('andando hasta el cofre y abriéndolo, el tesoro del sitio va a la mochila (locations[].treasure)',
-        Boolean(chestCell) && opened && !(await chestAt()), JSON.stringify({ chestCell, beside, after: await heroAt() }));
+        Boolean(chestCell) && opened && !(await chestAt()), JSON.stringify({ chestCell, beside, walked, after: await heroAt() }));
     if (SHOT) await page.screenshot({ path: `${SHOT}.cofre.png` });
 
     check('sin errores en la página', problems.length === 0, problems.slice(0, 6).join('\n        '));

@@ -24,6 +24,7 @@ import { validatePack } from './campaign-pack.js';
 import { readLevelRange } from '../combat/level-adjust.js';
 import { HUB_IMPORTED_PREFIX } from './hub.js';
 import { fillPackGaps } from './pack-fill.js';
+import { withActThread } from './act-grammar.js';
 import { checkCampaign } from './campaign-check.js';
 import { readPackMaps } from './pack-maps.js';
 
@@ -299,8 +300,12 @@ function parseCampaignText(content) {
  * @returns {CampaignFileReport}
  */
 function finishCampaignRead({ kind, clean, notes }, { compendium = null, before = [] }) {
+    // J10.7: sin hilo (ni misiones en varios actos de donde sacarlo), el juego le escribe una
+    // historia en tres actos con sus sitios y su gente. Antes de rellenar: sus tableros, también.
+    const story = withActThread(clean, { compendium });
+    if (story.made) notes.push('No traía historia: el juego le ha escrito una en tres actos, con sus sitios y su gente.');
     // J5.3: lo que falta, lo pone el motor, con la semilla de la campaña.
-    const fill = fillPackGaps(clean, { compendium });
+    const fill = fillPackGaps(story.pack, { compendium });
     const pack = fill.pack;
     const filled = [...before, ...fill.filled];
     const boards = new Set(filled.filter(f => f.kind === 'tablero').map(f => f.name)).size;

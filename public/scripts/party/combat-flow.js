@@ -8,7 +8,7 @@
  * de lo guardado, en `keys.js`.
  */
 
-import { Popup } from '../popup.js';
+import { Popup, POPUP_TYPE } from '../popup.js';
 import { chat_metadata, saveMetadata, online_status, saveSettingsDebounced } from '../../script.js';
 import { extension_settings } from '../extensions.js';
 import { getCurrentWorldLocationMaps, getCurrentWorldEnemies, METADATA_KEY } from '../world-info.js';
@@ -20,7 +20,8 @@ import {
     rollDiceDetailed, getDistanceInFeet, getAttackRangeFeet, createEmptyCombatEncounter, nextRandom,
 } from './combat-rules.js';
 import { bestFor } from '../game-engine/rules/equipment.js';
-import { isPassable } from '../game-engine/board/terrain.js';
+import { isPassable, getCell } from '../game-engine/board/terrain.js';
+import { treasureInChest } from '../game-engine/campaign/scenarios.js';
 import { patchUpAfterFight } from '../game-engine/rules/field-uses.js';
 import {
     ROLES as ENEMY_ROLES, roleOf as bandRoleOf, tacticOf, describeBand,
@@ -44,6 +45,10 @@ import { noteOutcome, shouldSoften, softenEnemy, SOFTEN_NOTE } from '../game-eng
 import { wardLost } from '../game-engine/campaign/guests.js';
 import { buildVictoryReport } from '../game-engine/combat/tally.js';
 import { afterFightStep, whereItAsks } from '../game-engine/combat/after-fight.js';
+import { fallenCard, partyHasFallen } from '../game-engine/combat/party-fallen.js';
+import { normalizeCheckpoints, CHECKPOINT_KEY } from '../game-engine/campaign/checkpoint.js';
+import { boardLeftovers } from '../game-engine/board/leftovers.js';
+import { fogOnFor } from '../game-engine/board/board-camera.js';
 import { focusOf } from '../game-engine/campaign/plot.js';
 import { continueScene } from '../game-engine/ui/shell/scene-director.js';
 import { isShellOpen, refreshGameShell } from '../game-engine/ui/shell/game-shell.js';
@@ -54,6 +59,7 @@ import { resolveFall } from '../game-engine/rules/mortality.js';
 import { isIronRun, modeOf, modeLabel } from '../game-engine/rules/modes.js';
 import { epitaphFor, heirloomOf, heirOf, addGrave, addToHall } from '../game-engine/campaign/legacy.js';
 import { listNames } from '../game-engine/campaign/engine-narrator.js';
+import { countedName } from '../game-engine/campaign/narration-notes.js';
 import { gendered, groupGender } from '../game-engine/campaign/grammar.js';
 import { withJob, whoMourns } from '../game-engine/campaign/company.js';
 import { takePrisoners } from '../game-engine/campaign/prisoners.js';
@@ -61,7 +67,7 @@ import { boxExamples } from '../game-engine/campaign/read-box.js';
 import { readReasons } from '../game-engine/rules/companions.js';
 import { planSpawnCells } from '../game-engine/combat/spawn.js';
 import { enemiesInRoom, awakePlacements } from '../game-engine/campaign/campaign-map.js';
-import { buildBoardState, judgeScenario, hasScenario } from '../game-engine/combat/scenario-board.js';
+import { buildBoardState, judgeScenario, hasScenario, leftToDo } from '../game-engine/combat/scenario-board.js';
 import { recordBondEvent, getBondProgress } from '../game-engine/campaign/bonds.js';
 import { buildEpiloguePrompt } from '../game-engine/ui/combat-log.js';
 import { getActiveRuleset } from '../game-engine/rules/ruleset.js';
@@ -74,7 +80,7 @@ import {
     combatEncounter, currentBoardName, currentLocationName, partyMembers, setCombatBoardSelection,
     setCombatEncounter, setCombatLogEntries, setCurrentBoardName, setUsedReactions,
 } from './state.js';
-import { saveCheckpoint } from './checkpoints.js';
+import { saveCheckpoint, restoreCheckpoint } from './checkpoints.js';
 import { currentPet, offerTaming, petLivesIt } from './pet.js';
 import { expireTimedConditions, getAbilityCatalogue } from './magic.js';
 import { dismissGuests } from './contracts.js';
@@ -92,12 +98,13 @@ import { resolveEnemyAttackOn, resolveEnemyTurnAction } from './enemy-turn.js';
 import {
     handlePlayerCombatMove, performManeuver, handlePlayerCombatAttack, endPlayerCombatTurn,
 } from './player-actions.js';
-import { collectedHere, awardEncounterLoot, dropBoardKey } from './loot.js';
+import { collectedHere, awardEncounterLoot, dropBoardKey, openChest } from './loot.js';
 import {
-    persistBoardTerrain, getActiveBoardContext, explodeBarrels, recordBoardWon, boardVisibility,
+    persistBoardTerrain, getActiveBoardContext, explodeBarrels, recordBoardWon, boardVisibility, isBoardWon,
 } from './board.js';
 import { renderLocationMapsPreview } from './board-view.js';
-import { lastLevelPlan, getLocationBoards, hereLocation, lastCompendium, saveCurrentBoard, lastHub } from './world.js';
+import { beginAmbushPlacement } from './fight-entry.js';
+import { lastLevelPlan, getLocationBoards, hereLocation, lastCompendium, saveCurrentBoard, lastHub, lastHubHome } from './world.js';
 import { getCampaignCalendar, getCampaignBonds, saveCampaignState, markLocationComplete } from './time.js';
 import { notePlot, getPlot, scenesPending } from './plot.js';
 import { noteDeed } from './world-growth.js';
@@ -111,6 +118,8 @@ import { healerFirst } from '../game-engine/campaign/formation.js';
 import { afterFight } from './social.js';
 import { raiseFame } from './town.js';
 import { countStat } from './menus.js';
+import { brawlOf } from '../game-engine/combat/brawl.js';
+import { brawlTalk, endBrawl } from './brawl.js';
 
 /**
  * @param {string} name
@@ -350,6 +359,61 @@ export function buryMember(member, today, bonds) {
         .catch(error => console.error('[party] death note failed', error));
 }
 
+/** La partida en la que ya se dijo que había caído todo el grupo: no se repite sola. */
+let fallenToldFor = null;
+
+/**
+ * J9.1: todo el grupo ha muerto. Se dice claro, con las salidas: volver al último punto
+ * guardado en el que alguien seguía vivo o volver al gremio (la campaña se queda donde está).
+ * Sin esto la partida seguía con los muertos andando, y la pelea siguiente se quedaba en el
+ * turno de los enemigos para siempre.
+ *
+ * @param {{again?: boolean}} [options] again: decirlo aunque ya se dijera (al intentar pelear).
+ * @returns {Promise<void>}
+ */
+export async function sayPartyFallen({ again = false } = {}) {
+    if (!chat_metadata || !partyHasFallen(partyMembers)) return;
+    if (fallenToldFor === chat_metadata && !again) return;
+    fallenToldFor = chat_metadata;
+    const card = fallenCard({
+        party: partyMembers,
+        place: currentBoardName || currentLocationName,
+        checkpoints: normalizeCheckpoints(chat_metadata[CHECKPOINT_KEY]),
+        home: Boolean(lastHubHome),
+        // H7 de las vueltas: la partida de cada mañana («Nuevo día. Partida guardada»). Con una
+        // sola vida no hay vuelta atrás.
+        saves: !isIronRun(survivalNow(), chat_metadata?.[MODE_HISTORY_KEY] ?? null),
+    });
+    const body = $('<div class="st-root end-root gs-panel pf-root"></div>');
+    body.append($('<h3 class="gs-popup-title"></h3>').text(card.title));
+    body.append($('<p class="end-scene pf-text"></p>').text(card.text));
+    if (card.ways) body.append($('<p class="pf-ways"></p>').text(card.ways));
+    const BACK = 81;
+    const HOME = 82;
+    const LOAD = 83;
+    /** @type {Array<{text: string, result: number, classes: string[], icon: string}>} */
+    const buttons = [];
+    if (card.checkpoint) buttons.push({ text: 'Volver al punto guardado', result: BACK, classes: ['pf-back'], icon: 'fa-clock-rotate-left' });
+    if (card.saves) buttons.push({ text: 'Cargar partida', result: LOAD, classes: ['pf-load'], icon: 'fa-floppy-disk' });
+    if (card.home) buttons.push({ text: 'Volver al gremio', result: HOME, classes: ['pf-home'], icon: 'fa-house-flag' });
+    const choice = await new Popup(body[0], POPUP_TYPE.TEXT, '', {
+        okButton: 'Cerrar', leftAlign: true, allowVerticalScrolling: true, customButtons: buttons,
+    }).show();
+    if (choice === BACK && card.checkpoint) {
+        await restoreCheckpoint(String(card.checkpoint.id));
+        return;
+    }
+    if (choice === LOAD) {
+        const { openSaveGame } = await import('../guardar-partida.js');
+        await openSaveGame();
+        return;
+    }
+    if (choice === HOME && !combatEncounter.active) {
+        const { returnToHub } = await import('../campaigns.js');
+        await returnToHub();
+    }
+}
+
 export function applyFall(member, cause = '') {
     const fall = resolveFall(member, {
         roll: () => nextRandom(),
@@ -383,6 +447,9 @@ export function applyFall(member, cause = '') {
         buryMember(member, today, bonds);
         rememberTogether(`${member.name} murió en ${currentBoardName || currentLocationName}.`,
             partyMembers.map(m => String(m.name)));
+        // J9.1: fuera de una pelea (el hambre, el frío), si era el último, se dice ya. En una
+        // pelea lo dice la derrota.
+        if (!combatEncounter.active) void sayPartyFallen();
         return;
     }
 
@@ -544,6 +611,7 @@ function tellMagic(lines) {
         }
         postCombatNarration('💀 [COMBAT] Todos los miembros del grupo han caido. Fin del combate.');
         endCombat('defeat');
+        void sayPartyFallen();
         return true;
     }
     return false;
@@ -646,6 +714,37 @@ function objectiveCellFor(member) {
 }
 
 /**
+ * M4: el cofre que guarda el tesoro que pide el tablero, si aún no se ha sacado: el más
+ * cercano, y la casilla libre a su lado por la que se llega antes. `at`: ya está al lado.
+ *
+ * @param {any} member
+ * @returns {{x: number, y: number, at: boolean, beside: {x: number, y: number}|null}|null}
+ */
+function chestToOpen(member) {
+    const { board, terrain, gridWidth, gridHeight } = getActiveBoardContext();
+    if (!board || !treasureInChest(board.objectives, collectedHere(board))) return null;
+    const from = { x: Number(member.mapPosition?.gridX) || 0, y: Number(member.mapPosition?.gridY) || 0 };
+    const taken = new Set(partyMembers.filter(m => Number(m.id) !== Number(member.id) && (Number(m.hp) || 0) > 0)
+        .map(m => `${Number(m.mapPosition?.gridX) || 0},${Number(m.mapPosition?.gridY) || 0}`));
+    /** @type {{x: number, y: number, at: boolean, beside: {x: number, y: number}|null, steps: number}|null} */
+    let best = null;
+    for (let y = 0; y < gridHeight; y++) {
+        for (let x = 0; x < gridWidth; x++) {
+            if (getCell(terrain, x, y).type !== 'chest') continue;
+            if (Math.max(Math.abs(x - from.x), Math.abs(y - from.y)) <= 1) return { x, y, at: true, beside: null };
+            for (const [dx, dy] of [[0, 1], [1, 0], [0, -1], [-1, 0], [1, 1], [-1, -1], [1, -1], [-1, 1]]) {
+                const nx = x + dx;
+                const ny = y + dy;
+                if (!isPassable(terrain, nx, ny, gridWidth, gridHeight) || taken.has(`${nx},${ny}`)) continue;
+                const path = findPath(terrain, from.x, from.y, nx, ny, gridWidth, gridHeight, { occupied: taken });
+                if (path && (!best || path.length < best.steps)) best = { x, y, at: false, beside: { x: nx, y: ny }, steps: path.length };
+            }
+        }
+    }
+    return best;
+}
+
+/**
  * Andar hacia la casilla del objetivo, por donde se pueda y hasta donde den los pies.
  *
  * @param {any} member
@@ -699,6 +798,13 @@ export function resolveAllyTurnAction(entry) {
         // quien se escolta. Antes se quedaba quieto y la pelea no se acababa nunca.
         const goal = objectiveCellFor(member);
         if (goal) return walkTowardObjective(member, goal);
+        // M4: y si lo que falta es un tesoro, está en un cofre: ir a su lado y abrirlo.
+        const chest = chestToOpen(member);
+        if (chest?.at) {
+            openChest(getActiveBoardContext().board, chest.x, chest.y);
+            return `[COMBAT] ${member.name} abre el cofre que buscabais.`;
+        }
+        if (chest?.beside) return walkTowardObjective(member, chest.beside);
         return `[COMBAT] ${member.name} baja el arma: no queda nadie.`;
     }
 
@@ -831,6 +937,18 @@ export function controlChoices() {
 
 export function runCombatTurnLoop(includeCurrent = true) {
     if (!combatEncounter.active || combatEncounter.turnOrder.length === 0) return null;
+    // J9.1: sin nadie del grupo en pie no hay turno que esperar: se pierde, y no se queda
+    // la pelea en el turno de los enemigos para siempre.
+    if (getLivingPartyMembers().length === 0) {
+        if (everyoneOut(partyMembers.filter(m => !m.dead), combatEncounter.left)) {
+            finishEscape('Los que quedaban dentro han caído; los que salieron, se salvan.');
+            return null;
+        }
+        postCombatNarration('💀 [COMBAT] No queda nadie del grupo en pie. Fin del combate.');
+        endCombat('defeat');
+        void sayPartyFallen();
+        return null;
+    }
 
     let entry = includeCurrent ? getCurrentTurnEntry() : advanceTurnIndex();
     if (!entry || !canTurnEntryAct(entry)) {
@@ -853,6 +971,7 @@ export function runCombatTurnLoop(includeCurrent = true) {
             }
             postCombatNarration('💀 [COMBAT] Todos los miembros del grupo han caido. Fin del combate.');
             endCombat('defeat');
+            void sayPartyFallen();
             return null;
         }
 
@@ -1027,6 +1146,9 @@ function levelPlacements(placements, level, templates) {
 export function wakeRoomEnemies(board, room) {
     const placements = enemiesInRoom(room, board?.enemyPlacements ?? []);
     if (placements.length === 0) return 0;
+    // Tanda 10: sin pelea en marcha es una emboscada: antes de la iniciativa, el grupo se coloca
+    // alrededor de donde está (`fight-entry.js`), sin decisión previa.
+    if (!combatEncounter.active && beginAmbushPlacement(placements)) return placements.length;
 
     const woken = instancesFromPlacements(placements);
     if (woken.length === 0) return 0;
@@ -1135,11 +1257,13 @@ export function startCombat(template, count, gridWidth = 50, gridHeight = 50) {
  * turno: existian en el encuentro y no actuaban nunca.
  *
  * @param {import('../dnd-system.js').EnemyInstance[]} newEnemies
- * @param {{enemiesFirst?: boolean}} [options] J12.2: os han pillado huyendo o escondidos, y
- *   empiezan ellos, tire lo que tire cada uno.
+ * @param {{enemiesFirst?: boolean, brawl?: import('../game-engine/combat/brawl.js').Brawl|null}} [options] J12.2: os han
+ *   pillado huyendo o escondidos, y empiezan ellos, tire lo que tire cada uno. J12.7: `brawl`, la
+ *   bandera de una pelea sin muertes, puesta antes del primer golpe; quien mira un duelo no tira
+ *   iniciativa y va como «fuera» (nadie le pega).
  * @returns {string} El orden de iniciativa, ya escrito.
  */
-function beginEncounterWith(newEnemies, { enemiesFirst = false } = {}) {
+function beginEncounterWith(newEnemies, { enemiesFirst = false, brawl = null } = {}) {
     // Idea 200: la pelea se cuenta aquí, por donde pasan todas (el botón y la ficha del
     // tablero, una sala que se abre, `/fight`). Contada solo en `startCombat`, la bodega
     // salía en el final como «0 combates: 1 ganados».
@@ -1153,7 +1277,7 @@ function beginEncounterWith(newEnemies, { enemiesFirst = false } = {}) {
     // Antes de una pelea que puede torcer la campana, una red. Solo con los duros: un
     // punto antes de cada rata seria un cajon de sastre y tapa a los que guardas tu.
     const boss = newEnemies.find(e => (Number(e.cr) || 0) >= 2 || (Number(e.maxHp) || 0) >= 40);
-    if (boss && !combatEncounter.active) {
+    if (boss && !combatEncounter.active && !brawl) {
         saveCheckpoint(`Antes de ${boss.name}`, true);
     }
 
@@ -1164,7 +1288,7 @@ function beginEncounterWith(newEnemies, { enemiesFirst = false } = {}) {
     const sentinel = withJob(partyMembers, 'centinela') ? 1 : 0;
     // Quien ha muerto ya no pelea (idea 36): antes seguía tirando iniciativa, y un descanso
     // lo ponía en pie otra vez.
-    for (const m of partyMembers.filter(member => !member.dead)) {
+    for (const m of partyMembers.filter(member => !member.dead && !brawl?.watching.includes(String(member.id)))) {
         const init = rollInitiativeWithPopover(m.name, m.dexterity || 10, 'ally') + morale.value + sentinel + perkBonus(m, 'initiative');
         turnEntries.push({ id: String(m.id), name: m.name, initiative: init, isEnemy: false });
     }
@@ -1205,6 +1329,8 @@ function beginEncounterWith(newEnemies, { enemiesFirst = false } = {}) {
         currentTurnIndex: 0,
         round: 1,
         turnState: null,
+        // J12.7: la pelea sin muertes, sin treguas que pedir; y quien mira un duelo, fuera.
+        ...(brawl ? { brawl, left: [...brawl.watching], truce: 'refused' } : {}),
     });
 
     saveCombatState();
@@ -1219,6 +1345,22 @@ function beginEncounterWith(newEnemies, { enemiesFirst = false } = {}) {
     resetCombatTurnState(firstTurn);
     runCombatTurnLoop(true);
 
+    return summary;
+}
+
+/**
+ * J12.7: empezar una pelea sin muertes (`party/brawl.js`): sus rivales, ya hechos, y la bandera
+ * en el combate antes del primer golpe.
+ *
+ * @param {import('../dnd-system.js').EnemyInstance[]} enemies
+ * @param {import('../game-engine/combat/brawl.js').Brawl} brawl
+ * @returns {string} El orden de iniciativa, ya escrito.
+ */
+export function startBrawlFight(enemies, brawl) {
+    if (combatEncounter.active || enemies.length === 0) return '';
+    setCombatLogEntries([]);
+    const summary = beginEncounterWith(enemies, { brawl });
+    showInitiativeBanner(enemies.map(e => e.name));
     return summary;
 }
 
@@ -1265,17 +1407,23 @@ export function waitingSummary(awake) {
  * Empezar la pelea con los que esperan en el tablero: el botón del tablero y la ficha.
  *
  * @param {Array<{name: string, x: number, y: number}>} awake
- * @param {{enemiesFirst?: boolean}} [options] J12.2: si os pillaron al evitarla, empiezan ellos.
+ * @param {{enemiesFirst?: boolean, said?: string}} [options] J12.2: si os pillaron al evitarla, empiezan ellos.
+ *   Tanda 10: `said`, lo que se cuenta al empezar, si no es lo de siempre.
  */
-export function startWaitingFight(awake, { enemiesFirst = false } = {}) {
+export function startWaitingFight(awake, { enemiesFirst = false, said = '' } = {}) {
     if (combatEncounter.active) return;
+    // J9.1: con todo el grupo muerto no se empieza nada: se dice, con sus salidas.
+    if (partyHasFallen(partyMembers)) {
+        void sayPartyFallen({ again: true });
+        return;
+    }
     const enemies = instancesFromPlacements(awake);
     if (enemies.length === 0) {
         toastr.warning('Ninguno de los enemigos del tablero existe en el mundo.');
         return;
     }
     setCombatLogEntries([]);
-    postCombatNarration(`[COMBAT] Empieza el combate del tablero: ${waitingSummary(awake)}.`);
+    postCombatNarration(said || `[COMBAT] Empieza el combate del tablero: ${waitingSummary(awake)}.`);
     beginEncounterWith(enemies, { enemiesFirst });
     showInitiativeBanner(enemies.map(e => e.name));
     renderLocationMapsPreview();
@@ -1307,6 +1455,24 @@ export function judgeCurrentScenario() {
 }
 
 /**
+ * M4: sin nadie en pie y la misión del tablero sin cumplir, decir qué falta (un cofre, una
+ * casilla, aguantar unas rondas), una vez por pelea. Antes la pelea seguía sin decir por qué.
+ */
+function sayWhatIsLeft() {
+    const location = getCurrentWorldLocationMaps().find(l => l.name === currentLocationName);
+    const board = getLocationBoards(location).find((/** @type {any} */ b) => b.name === currentBoardName);
+    const line = board ? leftToDo(board.objectives, buildBoardState({
+        round: combatEncounter.round, enemies: combatEncounter.enemies, party: partyMembers, collectedTreasures: collectedHere(board),
+    })) : '';
+    // Lo mismo con otra ronda no se repite: solo cuando cambia lo que falta.
+    const key = line.replace(/\d+/g, '#');
+    if (!line || /** @type {any} */ (combatEncounter).leftSaid === key) return;
+    /** @type {any} */ (combatEncounter).leftSaid = key;
+    postCombatNarration(`🎯 [COMBAT] ${line}`);
+    toastr.info(line, 'Lo que falta', { timeOut: 12000 });
+}
+
+/**
  * Ends the fight when the scenario says it is over.
  *
  * Called after anything that could change the answer — an attack, a move, a turn passing —
@@ -1316,6 +1482,7 @@ export function judgeCurrentScenario() {
  */
 export function checkScenarioOutcome() {
     const verdict = judgeCurrentScenario();
+    if (verdict && !verdict.outcome) sayWhatIsLeft();
     if (!verdict || !verdict.outcome) return false;
 
     postCombatNarration(`🎯 [COMBAT] ${verdict.summary}`);
@@ -1342,6 +1509,8 @@ export function checkScenarioOutcome() {
  *   siempre (que diría «os retiráis a tiempo» a quien se ha entregado).
  */
 export function endCombat(reason = 'ended', { said = '', told = '' } = {}) {
+    // J12.7: una pelea sin muertes acaba a su manera: sin botín, sin muertos y de vuelta al pueblo.
+    if (endBrawl(reason)) return;
     postCombatNarration('🏁 [COMBAT] El combate termina.');
     // J19: lo que dura un minuto no pasa a la escena siguiente: las invocaciones se van, las
     // zonas se deshacen y las concentraciones de la pelea se acaban.
@@ -1450,7 +1619,14 @@ export function endCombat(reason = 'ended', { said = '', told = '' } = {}) {
     // Z1: si cuenta el motor, el final de la pelea en prosa.
     const woundedMembers = partyMembers.filter(m => (m.hp || 0) > 0 && (m.hp || 0) <= (Number(m.maxHp) || 1) / 2);
     const wounded = woundedMembers.map(m => m.name);
-    const fallenFoes = [...new Set(combatEncounter.enemies.filter(e => (e.currentHp || 0) <= 0).map(e => String(e.name).replace(/\s+\d+$/, '')))];
+    // J13.1: contados, «dos ratas de bodega», no «Rata de bodega» por las dos.
+    /** @type {Record<string, number>} */
+    const fallenCount = {};
+    for (const foe of combatEncounter.enemies.filter(e => (e.currentHp || 0) <= 0)) {
+        const base = String(foe.name).replace(/\s+\d+$/, '');
+        fallenCount[base] = (fallenCount[base] ?? 0) + 1;
+    }
+    const fallenFoes = Object.entries(fallenCount).map(([name, n]) => countedName(name, n));
     const ending = tellMoment('fin-combate', {
         ganado: reason === 'victory' ? 'sí' : (reason === 'manual' || reason === 'fled' ? 'huida' : 'no'),
         caidos: listNames(fallenFoes),
@@ -1559,7 +1735,28 @@ export function afterFightNow() {
         inCampaign,
         next: inCampaign ? campaignNextStep() : null,
         here: { place: currentLocationName, board: currentBoardName },
+        boardDone: boardIsDone(),
     });
+}
+
+/**
+ * Tanda 8: si al tablero abierto ya no le queda nada: ni enemigos escritos por pelear, ni nada
+ * por explorar, ni nada que coger (`boardLeftovers`). Entonces «Continuar» sale al sitio.
+ *
+ * @returns {boolean}
+ */
+function boardIsDone() {
+    const { board, gridWidth, gridHeight } = getActiveBoardContext();
+    if (!board) return false;
+    return boardLeftovers({
+        board,
+        won: isBoardWon(currentLocationName, currentBoardName),
+        fogOn: fogOnFor(board, gridWidth, gridHeight),
+        gridWidth,
+        gridHeight,
+        party: partyMembers.filter(m => !m.dead && (!m.mapPosition?.locationName || m.mapPosition.locationName === currentLocationName))
+            .map(m => ({ x: Number(m.mapPosition?.gridX) || 0, y: Number(m.mapPosition?.gridY) || 0 })),
+    }).done;
 }
 
 /**
@@ -1571,7 +1768,9 @@ export function afterFightNow() {
  * acabado entre medias.
  *
  * @param {import('../game-engine/ui/shell/scene-director.js').SceneName} next La escena que decía el botón.
- * @param {import('../game-engine/ui/shell/scene-director.js').GameSituation|null} [situation] La de ahora.
+ * @param {import('../game-engine/ui/shell/scene-director.js').GameSituation|null} [situation] La de ahora,
+ *   con los sitios del pueblo que contó la pantalla (`townPlaces`): sin ellos, en el gremio no se
+ *   podría salir del tablero al pueblo.
  * @returns {import('../game-engine/ui/shell/scene-director.js').SceneName} A dónde va la pantalla.
  */
 export function followAfterFight(next, situation = null) {
@@ -1585,6 +1784,8 @@ export function followAfterFight(next, situation = null) {
         saveCurrentBoard();
         renderLocationMapsPreview();
         if (step.kind === 'next') toastr.info(step.title.replace(/^Lo siguiente: /, ''), 'Lo siguiente', { timeOut: 6000 });
+        // Tanda 8: se sale de un tablero al que ya no le queda nada; se dice por qué.
+        else toastr.info(step.title, 'Aquí ya no queda nada', { timeOut: 6000 });
     }
     return scene;
 }
@@ -1721,6 +1922,11 @@ export function leaveThroughExit(member) {
  * @param {string} said
  */
 function finishEscape(said) {
+    // J12.7: en un duelo, los que miran no han huido: quien peleaba ha caído.
+    if (brawlOf(combatEncounter)) {
+        endCombat('defeat');
+        return;
+    }
     postCombatNarration(`🏃 [COMBAT] ${said} Os vais de ${currentBoardName || 'aquí'} sin ganar el tablero.`);
     noteDeed(`Salisteis por pies de ${currentBoardName || currentLocationName || 'un combate'}.`);
     savePartyState();
@@ -1737,6 +1943,11 @@ function finishEscape(said) {
  */
 export async function retreatFromCombat() {
     if (!combatEncounter.active) return;
+    // J12.7: de una pelea sin muertes no se huye: se rinde uno, o se paga una ronda.
+    if (brawlOf(combatEncounter)) {
+        await brawlTalk();
+        return;
+    }
     const cell = (/** @type {any} */ pos) => ({ x: Number(pos?.gridX) || 0, y: Number(pos?.gridY) || 0 });
     const plan = planRetreat({
         party: partyMembers.map(m => ({ id: m.id, name: m.name, ...cell(m.mapPosition), hp: Number(m.hp) || 0 })),

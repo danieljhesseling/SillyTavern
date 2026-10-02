@@ -60,6 +60,8 @@ import { normalizeTimers } from './condition-timers.js';
  * @property {any[]} [summons] J19.5: las invocaciones del grupo, como fichas.
  * @property {import('../board/spell-zones.js').Zone[]} [spellZones] J19.6: las zonas de conjuro.
  * @property {string[]} [shielded] J19.7: quien tiene el Escudo levantado hasta su turno.
+ * @property {any} [brawl] J12.7: la bandera de una pelea sin muertes (`brawl.js`), si lo es.
+ * @property {any} [tactics] Tanda 10: lo que recuerda el turno de 2024 (`rules/weapon-mastery.js`).
  */
 
 /** The three things a combatant may spend besides movement. */
@@ -119,6 +121,11 @@ export function normalizeEncounter(raw) {
         spellZones: Array.isArray(raw.spellZones) ? raw.spellZones.filter((/** @type {any} */ z) => z && Array.isArray(z.cells)) : [],
         // J19.7: quien tiene el Escudo levantado hasta su turno.
         shielded: Array.isArray(raw.shielded) ? raw.shielded.map(String) : [],
+        // J12.7: sin esto, recargar a mitad de una pelea de taberna la volvía a muerte.
+        ...(raw.brawl && typeof raw.brawl === 'object' ? { brawl: raw.brawl } : {}),
+        // Tanda 10: lo que recuerda el turno de 2024 (Molestar, el cambio de arma, la otra mano,
+        // lo estudiado; `rules/weapon-mastery.js`). Sin esto, recargar lo olvidaba.
+        ...(raw.tactics && typeof raw.tactics === 'object' ? { tactics: raw.tactics } : {}),
     };
 }
 

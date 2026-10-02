@@ -1,8 +1,8 @@
 ---
 title: El servidor privado — abrir el juego a tus amigos
-tags: [servidor, amigos, red, seguridad, arranque, J0.9]
+tags: [servidor, amigos, red, seguridad, arranque, movil, J0.9, J20.8]
 created: 2026-09-29
-updated: 2026-09-29
+updated: 2026-10-01
 author: DanielJHesseling / Claude Opus 5.5
 ---
 
@@ -69,11 +69,7 @@ port: 8000
 
 **Paso 4: tus amigos.** En su navegador escriben `http://192.168.1.35:8000` (tu dirección y tu puerto). Les pide el usuario y la contraseña, y entran en la portada del juego. **A ti también te la pide**, una vez por sesión.
 
-### Desde el móvil, en la misma wifi
-
-Lo mismo: en el navegador del móvil, `http://192.168.1.35:8000`, usuario y contraseña. El móvil está en tu red de casa, así que la lista ya lo deja pasar.
-
-Hoy el juego **funciona pero no está hecho para el móvil**: la pantalla es de ordenador y el tablero va con ratón. Jugar bien desde el teléfono es la fase **J20** de [[ROADMAP_SIN_CONEXION]] (J20.8 retomará esta guía con el paso del móvil).
+Desde tu móvil es igual: lo cuenta el [apartado 5](#5-jugar-desde-el-móvil).
 
 ---
 
@@ -98,7 +94,71 @@ La otra forma es abrir el puerto en el router de casa, pero no la recomiendo: de
 
 ---
 
-## 5. Lo que hay que saber antes de abrirlo
+## 5. Jugar desde el móvil
+
+El juego está hecho para el teléfono (J20 de [[ROADMAP_SIN_CONEXION]]): se ve de pie y tumbado, todo va a toques, el tablero se mueve con un dedo y se amplía con dos, y no hace falta teclado. **El juego sigue en tu ordenador**: el móvil solo lo abre, así que el ordenador tiene que estar encendido con `Jugar.bat` abierto.
+
+Tus partidas se guardan en el ordenador, no en el móvil. Puedes empezar en uno y seguir en el otro, pero no juguéis en los dos a la vez en la misma partida.
+
+### En casa, con la misma wifi
+
+1. **El ordenador**, preparado como en el [apartado 3](#3-en-tu-casa-con-la-misma-wifi): `listen: true`, tu red en la lista y la contraseña puesta.
+2. **El móvil, en la wifi de casa.** Con los datos del móvil no llega: tiene que ser la misma wifi que el ordenador.
+3. **La dirección.** En Chrome (Android) o Safari (iPhone), escribe la dirección de tu ordenador y el puerto, con `/?juego` al final:
+
+   ```
+   http://192.168.1.35:8000/?juego
+   ```
+
+   Pon **tu** dirección (la del `ipconfig`) y **tu** puerto. El `?juego` del final hace que entre directo en la portada del juego.
+4. **Usuario y contraseña**, los de `config.yaml`. El móvil está en tu red de casa, así que la lista ya lo deja pasar.
+
+**Si no carga:**
+- Mira que el móvil esté en la misma wifi, y no en los datos.
+- Mira que Windows deje pasar a *Node.js* en las redes privadas (paso 3 del [apartado 3](#3-en-tu-casa-con-la-misma-wifi)).
+- La dirección del ordenador puede cambiar de un día a otro (la reparte el router). Si ayer iba y hoy no, vuelve a mirar `ipconfig`. Para que no cambie nunca, el router suele tener una opción para *reservar* una dirección para tu ordenador (se llama «DHCP estático» o «reserva de IP»; cada router lo pone en un sitio).
+
+### Fuera de casa, con la contraseña
+
+1. En el ordenador, `config.yaml` como en el [apartado 4](#4-desde-fuera-de-casa): sin lista y **con contraseña**.
+2. Abre `Remote-Link.cmd`. En su ventana sale una dirección que empieza por `https://` y acaba en `trycloudflare.com`.
+3. En el móvil, con datos o con cualquier wifi, abre esa dirección con `/?juego` al final. Pide el usuario y la contraseña.
+4. **La dirección cambia cada vez** que abres `Remote-Link.cmd`. Mándatela al móvil (por ejemplo, en un mensaje a ti mismo) cada vez que lo abras.
+
+Al acabar, cierra la ventana del túnel.
+
+### Añadir a la pantalla de inicio
+
+Así el juego tiene su icono, **DnD Coin**, como una app más. Abre antes el juego con `/?juego` al final: el icono entrará directo en la portada.
+
+**Android (Chrome):**
+1. Toca el menú **⋮** (arriba a la derecha).
+2. Toca **«Añadir a pantalla de inicio»** (o **«Instalar aplicación»**, si sale) y luego **«Añadir»** o **«Instalar»**.
+
+Lo que se consigue depende de la dirección:
+- **Con la de casa** (`http://192.168.…`), Chrome pone un acceso directo: el icono abre el juego en una pestaña de Chrome, con la barra de la dirección arriba. Se juega igual.
+- **Con una `https://`** (la del túnel), Chrome lo instala como una app: se abre a pantalla entera, sin barra. Pero la dirección del túnel cambia cada vez, y el icono se quedaría con la vieja. Para fuera de casa, mejor abrir la dirección nueva cada vez.
+- **Truco para tenerlo a pantalla entera en casa** (opcional): en Chrome, escribe `chrome://flags` en la barra de la dirección, busca **«Insecure origins treated as secure»**, escribe en su casilla tu dirección con el puerto (`http://192.168.1.35:8000`), ponlo en **Enabled** y toca **Relaunch**. Vuelve a abrir el juego: ahora el menú ofrece **«Instalar aplicación»**. Si la dirección del ordenador cambia, hay que hacerlo otra vez.
+
+**iPhone (Safari):**
+1. Toca el botón de **compartir** (el cuadrado con una flecha hacia arriba).
+2. Baja y toca **«Añadir a pantalla de inicio»**, y luego **«Añadir»**.
+
+El icono abre el juego a pantalla entera, sin la barra de Safari. La primera vez que lo abras desde el icono, puede que vuelva a pedir el usuario y la contraseña: el iPhone guarda aparte lo de cada icono.
+
+### Si el teléfono va lento o se calienta
+
+- En la pausa, toca **Opciones** y luego **Animaciones** hasta que diga **«Ninguna»**. El juego deja de animar los dados, los golpes y los viajes, y el teléfono trabaja menos.
+- En un teléfono, el juego ya acorta las animaciones él solo y no pone el desenfoque detrás de las ventanas.
+- Cierra las otras pestañas del navegador: cada una gasta su parte.
+
+### Más adelante: un APK de Android
+
+Cuando el juego esté a punto, la idea es hacer **un APK de Android**: el juego se instala como cualquier app, guarda en el propio teléfono y se juega sin tener el ordenador encendido. Es el plan de [[ROADMAP_PWA_SIN_SERVIDOR]]. Hasta entonces, el móvil juega contra tu ordenador, como cuenta este apartado.
+
+---
+
+## 6. Lo que hay que saber antes de abrirlo
 
 - **Quien entra puede hacer lo mismo que tú.** Ve y borra tus partidas y tus personajes. Si algún día pones claves de una IA, las puede gastar. Dáselo solo a gente de confianza.
 - **Cambia `user` y `password`.** Son los de ejemplo, y los conoce cualquiera. Una frase larga es mejor que una palabra rara.

@@ -4,9 +4,11 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
     slugify, classIdOf, genderFileOf, readManifest, artFor, firstArt, isPlainFace, buildPixelManifest, packOfWorld,
-    setPixelManifest, loadPixelManifest, pixelManifest, PIXEL_BASE, boardBiome, terrainTile,
+    setPixelManifest, loadPixelManifest, pixelManifest, PIXEL_BASE, boardBiome, terrainTile, hazardTile, enemyArt,
+    pastimePlace,
 } from '../public/scripts/game-engine/ui/pixel-art.js';
 import { pixelManifestText } from '../tools/pixel-manifest.mjs';
+import { jailScene, guardOf } from '../public/scripts/game-engine/campaign/jail.js';
 
 /** Un índice pequeño, con lo justo para cada tipo. */
 const small = readManifest({
@@ -284,6 +286,109 @@ describe('el índice', () => {
     });
 });
 
+describe('el arte de lo nuevo: nada sale con ☠ ni sin fondo', () => {
+    const PACKS = ['1387', 'strahd', 'gremio'];
+    const pack = (/** @type {string} */ id) => JSON.parse(readFileSync(new URL(`../public/mundos/${id}.pack.json`, import.meta.url), 'utf8'));
+    const real = () => readManifest(JSON.parse(readFileSync(join(PIXEL_DIR, 'manifest.json'), 'utf8')));
+
+    test('cada bicho de los paquetes y de las misiones personales tiene su dibujo en el tablero', () => {
+        const manifest = real();
+        const personal = JSON.parse(readFileSync(new URL('../public/compendio/personales.json', import.meta.url), 'utf8'));
+        const names = [
+            ...PACKS.flatMap(id => {
+                const data = pack(id);
+                return [...(data.bestiary ?? []).map((/** @type {any} */ b) => b.name),
+                    ...(data.boards ?? []).flatMap((/** @type {any} */ b) => (b.enemies ?? []).map((/** @type {any} */ e) => e.name))];
+            }),
+            ...personal.rows.flatMap((/** @type {any} */ r) => (r.steps ?? []).flatMap((/** @type {any} */ s) => [
+                ...(s.bestiary ?? []).map((/** @type {any} */ b) => b.name), ...(s.board?.enemies ?? []).map((/** @type {any} */ e) => e.name)])),
+        ];
+        expect([...new Set(names)].filter(name => !firstArt('creature', { name }, manifest))).toEqual([]);
+        // Los que salían con ☠ (las misiones de Gerd y Nella) y los del gremio, con el suyo y no el genérico.
+        expect(firstArt('creature', { name: 'Cuñado de Lope 2' }, manifest)).toBe(url('bestias/cunado-de-lope.png'));
+        expect(firstArt('creature', { name: 'Guarda del barón' }, manifest)).toBe(url('bestias/guarda-del-baron.png'));
+        expect(firstArt('creature', { name: 'Zombi ahogado 3' }, manifest)).toBe(url('bestias/zombi-ahogado.png'));
+        expect(firstArt('creature', { name: 'Lobo de las salinas' }, manifest)).toBe(url('bestias/lobo-de-las-salinas.png'));
+    });
+
+    test('cada localización de los paquetes tiene su escenario, con o sin el paquete dicho', () => {
+        const manifest = real();
+        const lost = PACKS.flatMap(id => (pack(id).locations ?? [])
+            .filter((/** @type {any} */ l) => !firstArt('scene', { name: l.name, pack: id }, manifest))
+            .map((/** @type {any} */ l) => `${id}: ${l.name}`));
+        expect(lost).toEqual([]);
+        expect(firstArt('scene', { name: 'Los Baños Viejos', pack: '1387' }, manifest)).toBe(url('escenarios/1387/los-banos-viejos.png'));
+        expect(firstArt('scene', { name: 'El Nido de la Pluma' }, manifest)).toBe(url('escenarios/strahd/el-nido-de-la-pluma.png'));
+        // De noche, el de día: las de alrededor de Puerto Alba tienen uno solo.
+        expect(firstArt('scene', { name: 'El faro viejo', pack: 'gremio', night: true }, manifest)).toBe(url('escenarios/gremio/el-faro-viejo.png'));
+    });
+
+    test('el calabozo (D-J47): la celda detrás, y la guardia sin nombre con cara en los tres paquetes', () => {
+        const manifest = real();
+        const hero = { id: 'h1', name: 'Ana', gender: 'Mujer' };
+        const scene = jailScene({
+            town: 'Puerto Alba', guard: guardOf({ npcs: pack('gremio').npcs, town: 'Puerto Alba' }), thief: hero, hero,
+            days: 2, fine: 5, paid: true, taken: ['una daga'], releaseDay: 4,
+        });
+        expect(scene.backdrop.place).toBe('calabozo');
+        expect(firstArt('place', { id: scene.backdrop.place, night: true }, manifest)).toBe(url('sitios/calabozo.png'));
+        expect(scene.beats[1].who).toBe('Un guardia');
+        for (const id of PACKS) expect(firstArt('portrait', { name: 'Un guardia', pack: id, mood: 'enfadado' }, manifest)).toBe(url(`retratos/${id}/un-guardia.png`));
+    });
+
+    test('cada villano de las historias en tres actos tiene su propio dibujo, de jefe en el tablero y en sus escenas', () => {
+        const manifest = real();
+        const actos = JSON.parse(readFileSync(new URL('../public/compendio/actos.json', import.meta.url), 'utf8'));
+        const villains = actos.rows.filter((/** @type {any} */ r) => r.kind === 'trama').flatMap((/** @type {any} */ r) => r.villanos ?? []);
+        expect(villains.length).toBeGreaterThan(20);
+        // Como lo nombra `act-grammar.js`: con mayúscula delante («El Hombre del Farol»).
+        const own = (/** @type {string} */ name) => firstArt('creature', { name: name.charAt(0).toUpperCase() + name.slice(1) }, manifest);
+        expect(villains.filter((/** @type {string} */ v) => !own(v).endsWith(`bestias/${slugify(v)}.png`) && v !== 'el Gran Lobo Gris')).toEqual([]);
+        // El Zorro de Ceniza es un ladrón, no el zorro del bestiario.
+        expect(own('el Zorro de Ceniza')).toBe(url('bestias/el-zorro-de-ceniza.png'));
+        expect(own('el Gran Lobo Gris')).toBe(url('bestias/bestia-lobo.png'));
+    });
+
+    test('el rival de un duelo que es alguien del paquete sale con su retrato, no con el bandido de su arquetipo', () => {
+        const manifest = real();
+        const peleas = JSON.parse(readFileSync(new URL('../public/compendio/peleas.json', import.meta.url), 'utf8'));
+        const PACK_OF = { 'Izek Strazni': 'strahd', 'Szoldar Szoldarovich': 'strahd', Luvash: 'strahd', Garret: '1387', Darek: '1387', Hilda: '1387', Ramiro: 'gremio' };
+        for (const row of peleas.rows.filter((/** @type {any} */ r) => r.kind === 'retador')) {
+            const pack = /** @type {Record<string, string>} */ (PACK_OF)[row.name];
+            expect([row.name, enemyArt({ name: row.name, archetype: 'bestia-bandido', pack }, manifest)]).toEqual([row.name, expect.stringContaining(`retratos/${pack}/`)]);
+        }
+        // Sin paquete abierto, el del arquetipo; y quien tiene su bicho propio, el bicho.
+        expect(enemyArt({ name: 'Ramiro', archetype: 'bestia-bandido' }, manifest)).toBe(url('bestias/bestia-bandido.png'));
+        expect(enemyArt({ name: 'Guarda del barón', pack: '1387' }, manifest)).toBe(url('bestias/guarda-del-baron.png'));
+        // Uno sin dibujo ni arquetipo (el jefe propio de una campaña tuya): la sombra, no la calavera.
+        expect(enemyArt({ name: 'El Guardián de la cripta' }, manifest)).toBe(url('bestias/enemigo-sin-dibujo.png'));
+        expect(enemyArt({ name: 'El Guardián de la cripta' }, small)).toBe('');
+        // Ningún enemigo de los paquetes cambia de dibujo por esto.
+        const changed = PACKS.flatMap(id => [...(pack(id).bestiary ?? []), ...(pack(id).boards ?? []).flatMap((/** @type {any} */ b) => b.enemies ?? [])]
+            .map((/** @type {any} */ e) => ({ id, name: typeof e === 'string' ? e : e.name, archetype: e?.archetype ?? '' }))
+            .filter(e => enemyArt({ name: e.name, archetype: e.archetype, pack: e.id }, manifest) !== firstArt('creature', { name: e.name, archetype: e.archetype }, manifest)));
+        expect(changed).toEqual([]);
+    });
+
+    test('los ratos libres (J14.11): la biblioteca del gremio y el patio, con su sitio dibujado', () => {
+        const manifest = real();
+        const place = (/** @type {string} */ id, night = false) => firstArt('place', { id, night }, manifest);
+        expect(place(pastimePlace('patio', 'gremio', {}, manifest))).toBe(url('sitios/patio.png'));
+        expect(place(pastimePlace('leer', 'gremio', { library: 1 }, manifest), true)).toBe(url('sitios/biblioteca.png'));
+        // Sin biblioteca se lee en la sala; los trabajos y las cartas, en su sitio de siempre.
+        expect(pastimePlace('leer', 'gremio', { library: 0 }, manifest)).toBe('gremio');
+        expect(pastimePlace('cartas', 'taberna', { library: 2 }, manifest)).toBe('taberna');
+        expect(pastimePlace('forja', 'herreria', {}, manifest)).toBe('herreria');
+        // Sin el dibujo del patio, la sala del gremio.
+        expect(pastimePlace('patio', 'gremio', {}, small)).toBe('gremio');
+        // Cada trabajo y rato tiene detrás un sitio dibujado, de día y de noche.
+        for (const art of ['taberna', 'herreria', 'gremio', 'muelle']) {
+            expect(place(art)).toBe(url(`sitios/${art}.png`));
+            expect(place(art, true)).toBe(url(`sitios/${art}-noche.png`));
+        }
+    });
+});
+
 describe('las casillas del tablero', () => {
     test('el bioma: el dicho, el que se lee en el nombre, el del tipo, o mazmorra', () => {
         expect(boardBiome({ biome: 'cueva', name: 'Taberna' })).toBe('cueva');
@@ -313,6 +418,17 @@ describe('las casillas del tablero', () => {
         expect(firstArt('tile', { id: 'suelo-madera' }, tiles)).toBe(url('tablero/suelo-mazmorra.png'));
         expect(firstArt('tile', { id: 'muro-madera' }, tiles)).toBe(url('tablero/muro-madera.png'));
         expect(firstArt('tile', { id: 'agua' }, tiles)).toBe('');
+    });
+
+    test('lo ya visto en el suelo: la trampa descubierta y el fuego, cada uno con su dibujo de verdad', () => {
+        const manifest = readManifest(JSON.parse(readFileSync(join(PIXEL_DIR, 'manifest.json'), 'utf8')));
+        expect(hazardTile({ kind: 'trampa' })).toBe('trampa');
+        expect(hazardTile({ kind: 'fuego' })).toBe('fuego');
+        // Una sin tipo es una trampa, como en `readHazard`.
+        expect(hazardTile({})).toBe('trampa');
+        expect(hazardTile(null)).toBe('trampa');
+        expect(firstArt('tile', { id: hazardTile({ kind: 'trampa' }) }, manifest)).toBe(url('tablero/trampa.png'));
+        expect(firstArt('tile', { id: hazardTile({ kind: 'fuego' }) }, manifest)).toBe(url('tablero/fuego.png'));
     });
 });
 

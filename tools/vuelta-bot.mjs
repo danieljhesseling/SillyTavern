@@ -63,26 +63,35 @@ export function observe(page) {
         document.querySelectorAll('[data-vuelta-top]').forEach(d => d.removeAttribute('data-vuelta-top'));
         top?.setAttribute('data-vuelta-top', '');
         const dice = document.querySelector('.wm-dice-overlay.active');
+        // La tarjeta de «ha caído todo el grupo» (`.pf-root`) lleva también `.end-root`: no es un final.
+        // «Guardar y cargar» (`.sv-root`), la de las ranuras.
+        const KINDS = [['.pf-root', 'fallen'], ['.end-root', 'end'], ['.sv-root', 'saves'], ['.su-root', 'suceso'], ['.tk-root', 'talk']];
+        const kindOf = (/** @type {Element} */ d) => {
+            const found = KINDS.find(([selector]) => d.querySelector(selector))?.[1];
+            if (found) return found;
+            if (d.querySelector('.qd-root')) return d.classList.contains('ps-dialog') ? 'scene' : d.classList.contains('dw-dialog') ? 'dialogue' : 'meetup';
+            if (d.querySelector('.hb-root')) return 'hub';
+            return d.classList.contains('lb-dialog') ? 'book' : 'popup';
+        };
         /** @type {any} */
         let layer = null;
         if (top) {
-            const qd = top.querySelector('.qd-root');
-            const kind = top.querySelector('.end-root') ? 'end'
-                : top.querySelector('.su-root') ? 'suceso'
-                    : top.querySelector('.tk-root') ? 'talk'
-                        : qd ? (top.classList.contains('ps-dialog') ? 'scene' : top.classList.contains('dw-dialog') ? 'dialogue' : 'meetup')
-                            : top.querySelector('.hb-root') ? 'hub'
-                                : top.classList.contains('lb-dialog') ? 'book'
-                                    : 'popup';
+            const kind = kindOf(top);
             layer = {
                 kind,
                 id: top.querySelector('.ps-root')?.getAttribute('data-scene') || top.querySelector('.dw-root')?.getAttribute('data-dialogue')
                     || top.querySelector('.su-root')?.getAttribute('data-suceso') || '',
                 title: said(top.querySelector('.qd-title, .gs-popup-title, h3, h2')).slice(0, 120),
                 text: said(top.querySelector('.qd-text') || top.querySelector('.su-text') || top.querySelector('.tk-log') || top).slice(0, 400),
+                // Las opciones de una escena llevan `data-option`; las de «otra salida» (antes o en mitad
+                // de una pelea, avoid-scene.js), `data-exit`.
                 options: [...top.querySelectorAll('.dw-option')].filter(seen).map(o => ({
-                    id: o.getAttribute('data-option') || '', locked: o.classList.contains('dw-locked'), text: said(o).slice(0, 120),
+                    id: o.getAttribute('data-option') || o.getAttribute('data-exit') || '',
+                    attr: o.hasAttribute('data-option') ? 'data-option' : o.hasAttribute('data-exit') ? 'data-exit' : '',
+                    locked: o.classList.contains('dw-locked'), text: said(o).slice(0, 120),
                 })),
+                // «Otra salida»: `avoid` antes de pelear (Pelear, Hablar, Pagar…), `parley` en mitad.
+                exit: top.classList.contains('ev-dialog') ? (top.classList.contains('ev-parley') ? 'parley' : 'avoid') : '',
                 buttons: [...top.querySelectorAll('button, .menu_button')].filter(b => seen(b) && !(/** @type {HTMLButtonElement} */ (b).disabled))
                     .map(b => said(b).slice(0, 60)).filter(Boolean).slice(0, 16),
             };
@@ -104,12 +113,16 @@ export function observe(page) {
             pause: seen(document.querySelector('#game-shell .gs-pause')),
             layer,
             dialogs: dialogs.length,
+            // Las ventanas que quedan debajo de la de encima (una escena sobre un suceso, J16).
+            under: dialogs.filter(d => d !== top).map(d => `${kindOf(d)}${d.querySelector('.su-root')?.getAttribute('data-suceso') ? ` ${d.querySelector('.su-root')?.getAttribute('data-suceso')}` : ''}`),
             vn: { text: vnText.slice(0, 400), next: document.querySelector('#game-shell .gs-vn-box .gs-chip-continue')?.getAttribute('data-next') || '' },
             focus: said(document.querySelector('#game-shell .gs-focus-title')) + (document.querySelector('#game-shell .gs-focus-hint') ? ` — ${said(document.querySelector('#game-shell .gs-focus-hint'))}` : ''),
             chips: [...new Set(chips)],
             town: {
                 places: [...document.querySelectorAll('#game-shell .gs-town-place')].filter(seen).map(p => ({ id: p.getAttribute('data-place') || '', text: said(p).slice(0, 120) })),
-                inside: document.querySelector('#game-shell .gs-town-scene')?.getAttribute('data-place') || '',
+                // Dentro de un sitio solo si se ve: tras un tablero, la escena del sitio sigue en la
+                // página, tapada, y su «Volver» no se puede pulsar.
+                inside: seen(document.querySelector('#game-shell .gs-town-scene')) ? (document.querySelector('#game-shell .gs-town-scene')?.getAttribute('data-place') || '') : '',
                 acts: [...document.querySelectorAll('#game-shell .gs-town-act')].filter(seen).map(b => ({ id: b.getAttribute('data-action') || '', text: said(b).slice(0, 80), off: Boolean(/** @type {HTMLButtonElement} */ (b).disabled) })),
             },
             places: [...document.querySelectorAll('#game-shell .gs-place')].filter(seen).map(p => ({
@@ -117,6 +130,12 @@ export function observe(page) {
             })),
             boards: [...document.querySelectorAll('#game-shell .gs-board')].filter(seen).map(b => said(b.querySelector('.gs-board-name'))),
             bar: [...document.querySelectorAll('#game-shell .gs-actions .gs-btn')].filter(seen).map(b => ({ text: said(b), off: Boolean(/** @type {HTMLButtonElement} */ (b).disabled) })),
+            // El combate nuevo (wiki/maquetas/ENCARGO_COMBATE_VTT.md) empieza solo al entrar en el
+            // tablero: primero se colocan los tuyos y luego se confirma. El botón que lo confirma, si
+            // se ve (fuera de las ventanas); se busca por lo que dice, que es lo que lee quien juega.
+            start: [...document.querySelectorAll('#game-shell button, #game-shell .menu_button, .gs-root button')]
+                .filter(b => seen(b) && !b.closest('dialog') && !(/** @type {HTMLButtonElement} */ (b).disabled))
+                .map(b => said(b)).filter(t => /^(¡?A pelear!?|Empezar( la pelea| el combate)?|Comenzar( la pelea| el combate)?|Listo|Hecho, a pelear|Confirmar( la colocación)?)$/i.test(t)).slice(0, 3),
             world: String(meta.world_info || ''),
             location: String(meta.currentLocation || ''),
             board: String(meta.currentBoard || ''),
@@ -129,8 +148,12 @@ export function observe(page) {
                 who: String(turn?.name || ''),
                 foes: (enc.enemies || []).filter((/** @type {any} */ e) => (Number(e.currentHp) || 0) > 0).map((/** @type {any} */ e) => String(e.name)),
             } : null,
-            hero: hero ? { name: String(hero.name), hp: Number(hero.hp) || 0, maxHp: Number(hero.maxHp) || 0, level: Number(hero.level) || 1, xp: Number(hero.xp) || 0, gold: Number(hero.gold) || 0 } : null,
+            hero: hero ? { name: String(hero.name), hp: Number(hero.hp) || 0, maxHp: Number(hero.maxHp) || 0, level: Number(hero.level) || 1, xp: Number(hero.xp) || 0, gold: Number(hero.gold) || 0, dead: Boolean(hero.dead) } : null,
             party: members.map((/** @type {any} */ m) => String(m.name)),
+            // El agotamiento (hambre, sed, sueño) del peor del grupo: lo que avisa el «Agotamiento
+            // N de 6» y lo que se ve en su ficha. Quien juega con cabeza come y duerme antes del 6.
+            tired: Math.max(0, ...members.filter((/** @type {any} */ m) => !m.dead).map((/** @type {any} */ m) => Number(/agotamiento (\d)/i
+                .exec(String((Array.isArray(m.injuries) ? m.injuries : []).find((/** @type {any} */ i) => i?.id === 'exhaustion')?.label ?? ''))?.[1]) || 0)),
             day: Number(/^Día (\d+)/.exec(said(document.querySelector('#game-shell .gs-clock-label')))?.[1]) || 0,
             chat: chat.length,
             last: String(chat[chat.length - 1]?.extra?.display_text ?? chat[chat.length - 1]?.mes ?? '').slice(0, 200),
@@ -141,12 +164,43 @@ export function observe(page) {
         /** @type {any} */ (view).print = JSON.stringify([
             view.scene, view.dice, view.diceText, layer?.kind, layer?.id, layer?.text, layer?.options?.length, view.dialogs, view.vn, view.focus, view.chips,
             view.town.inside, view.town.places.length, view.town.acts.map(a => a.text), view.location, view.board, view.done.length, view.fight,
-            view.hero?.hp, view.hero?.gold, view.chat, view.last, view.toasts, view.menu, view.day,
+            view.hero?.hp, view.hero?.gold, view.chat, view.last, view.toasts, view.menu, view.day, view.start,
             document.querySelector('#game-shell .gs-targets') ? said(document.querySelector('#game-shell .gs-targets')).slice(0, 80) : '',
             document.querySelector('.hc-root') ? 'hc' : '',
         ]);
         return view;
     })]).finally(() => clearTimeout(timer));
+}
+
+/**
+ * Si quien juega con cabeza pararía a descansar, y por qué: con el aviso «Agotamiento 2 de 6»
+ * (hambre, sed o sueño) o con el héroe por debajo de la mitad de su vida. Vacío si no.
+ *
+ * @param {{tired?: number, hero?: {hp: number, maxHp: number, dead?: boolean}|null}} v Lo que se ve (`observe`).
+ * @returns {string} «agotamiento 3 de 6, 7 de 34 de vida»
+ */
+export function restNeed(v) {
+    const hero = v?.hero;
+    if (!hero || hero.dead) return '';
+    const tired = Number(v.tired) || 0;
+    const low = hero.maxHp > 0 && hero.hp < hero.maxHp / 2;
+    return [tired >= 2 ? `agotamiento ${tired} de 6` : '', low ? `${hero.hp} de ${hero.maxHp} de vida` : ''].filter(Boolean).join(', ');
+}
+
+/**
+ * En la ventana de «otra salida» (party/avoid.js), lo que elige la vuelta: antes de pelear,
+ * «Pelear» (el hito pide ganar el tablero); en mitad de la pelea, «Seguir peleando». Por su id
+ * (`pelear`, `seguir`) o, si cambia, por lo que dice.
+ *
+ * @param {string} exit `avoid`, `parley` o vacío (no es esa ventana).
+ * @param {Array<{id: string, text: string, locked?: boolean}>} options
+ * @returns {{id: string, text: string}|null}
+ */
+export function exitPick(exit, options) {
+    if (!exit) return null;
+    const free = (options || []).filter(o => !o.locked);
+    const [id, words] = exit === 'parley' ? ['seguir', /seguir peleando|dejarlo estar/] : ['pelear', /^\d*\s*pelear\b|empezar la pelea/];
+    return free.find(o => o.id === id) ?? free.find(o => words.test(plain(o.text))) ?? null;
 }
 
 /** Las palabras que quitan los acentos, para comparar nombres como los lee una persona. */
@@ -169,7 +223,51 @@ export function createBot(page, { fast = true, log = console.log, prefer = [] } 
     const blocks = [];
     /** @type {Array<{scene: string, option: string}>} */
     const choices = [];
-    const counts = { scenes: 0, options: 0, sucesos: 0, talks: 0, fights: 0, won: 0, travels: 0, popups: 0, checks: 0 };
+    /** Los clics que la página tardó en atender más que la espera de un clic (1,5 s). */
+    /** @type {Array<{what: string, ms: number, where: string}>} */
+    const slow = [];
+    /**
+     * Lo que se ve mal sin ser un silencio ni un atasco: una etiqueta del motor en lo que se lee
+     * («[HILO] …»), una ventana encima de otra a medias, la escena de un hito ya cumplido.
+     *
+     * @type {Array<{kind: 'crudo'|'encima'|'tarde'|'descanso'|'portada', n: number, where: string, text: string}>}
+     */
+    const oddities = [];
+    const oddSeen = new Set();
+    /** Dónde y cuándo se cumplió cada hito, para saber si su escena llega tarde. */
+    /** @type {Map<string, {where: string, n: number, location: string}>} */
+    const doneAt = new Map();
+    const TAG = /(?:^|[\s«"(])\[[A-ZÁÉÍÓÚÜÑ]{2}[A-ZÁÉÍÓÚÜÑ ·]{0,28}\]/u;
+    /**
+     * `exits`: «otra salida» antes o en mitad de una pelea; `hooked`: turnos jugados con el gancho;
+     * `loads`: partidas cargadas tras caer el grupo.
+     */
+    const counts = { scenes: 0, options: 0, sucesos: 0, talks: 0, fights: 0, won: 0, travels: 0, popups: 0, checks: 0, rests: 0, exits: 0, hooked: 0, loads: 0 };
+    /** Cuando cae el grupo entero (la tarjeta «X ha muerto»): dónde, de qué y qué salidas había. */
+    /** @type {Array<{n: number, where: string, text: string, ways: string[]}>} */
+    const falls = [];
+    /** Descansar: el día en que se intentó y cuántos pasos lleva, para no dar vueltas sin fin. */
+    let restDay = -1;
+    let restTries = 0;
+    /** Los sitios del pueblo donde ya se ha mirado si se puede descansar («día:localización:sitio»). */
+    const restLooked = new Set();
+    /** Lo pulsado en la barra de combate que no hizo nada, seguido; con dos, el turno va con el gancho. */
+    let fightFails = 0;
+    let hookSaid = false;
+    /** El turno («ronda:quién») en el que ya se atacó: una acción por turno. */
+    let lastAttack = '';
+    /**
+     * El turno en el que se anduvo, y en el que ya se volvió a probar a atacar tras andar: como
+     * quien juega, se anda hasta el enemigo y se le pega en el mismo turno. Sin esto, la bruja que
+     * se aparta y dispara (la taberna, el molino) no caía nunca.
+     */
+    let walkedOn = '';
+    let retriedOn = '';
+    /** Se pulsó «Cargar partida» en la tarjeta de «ha caído el grupo»: en «Guardar y cargar», cargar. */
+    let loadAfterFall = false;
+    /** Cuántas veces se ha esperado en cada tablero a que la pelea empiece sola. */
+    /** @type {Map<string, number>} */
+    const startWaits = new Map();
     /** @type {number|null} */
     let firstDecisionAt = null;
     /** @type {Map<string, number>} */
@@ -212,7 +310,20 @@ export function createBot(page, { fast = true, log = console.log, prefer = [] } 
      */
     const act = async (before, what, run, how = {}) => {
         const t0 = Date.now();
-        const did = await run();
+        let did = await run();
+        // Un clic cuyo manejador tarda más que la espera del clic sale como «no se pudo pulsar»,
+        // pero ha pasado: si la pantalla cambia, se pulsó, y se apunta como clic lento.
+        if (!did && /Timeout/.test(pressError)) {
+            let late = before;
+            if (await until(async () => {
+                late = await observe(page);
+                return late.print !== before.print;
+            }, 2500)) {
+                did = true;
+                slow.push({ what, ms: Date.now() - t0, where: where(before) });
+                if (process.env.VUELTA_VER) log(`  ~ ${what}: lento (${Date.now() - t0} ms)`);
+            }
+        }
         if (!did) {
             // No se pudo pulsar (lo tapa algo, o ya no está): no es un silencio del juego, pero se apunta.
             steps.push({ n: steps.length + 1, what: `${what} (no se pudo pulsar: ${pressError})`, silent: false, ms: Date.now() - t0, where: where(before) });
@@ -247,9 +358,14 @@ export function createBot(page, { fast = true, log = console.log, prefer = [] } 
         void window.SillyTavern.getContext().executeSlashCommandsWithOptions(c).catch(() => '');
     }, command);
 
-    /** Elegir entre las opciones de una escena o una charla: lo preferido, si no la primera abierta. */
-    const pickOption = (/** @type {any[]} */ options) => {
+    /**
+     * Elegir entre las opciones de una escena o una charla: lo preferido, si no la primera abierta.
+     * En «otra salida» (`exit`), pelear: lo que se mide es el camino, y el hito pide ganar el tablero.
+     */
+    const pickOption = (/** @type {any[]} */ options, exit = '') => {
         const free = options.filter(o => !o.locked);
+        const fight = exitPick(exit, free);
+        if (fight) return fight;
         for (const want of prefer) {
             const hit = free.find(o => o.id === want || plain(o.text).includes(plain(want)));
             if (hit) return hit;
@@ -280,6 +396,42 @@ export function createBot(page, { fast = true, log = console.log, prefer = [] } 
         if (!layer) return false;
         const top = page.locator('dialog[data-vuelta-top]');
         if (layer.kind === 'end') return onEnd ? onEnd(v) : false;
+        if (layer.kind === 'fallen') {
+            // Ha caído el grupo entero. Quien juega vuelve al punto guardado, si se lo ofrecen; si
+            // no, la vuelta acaba aquí (lo decide `runCampaign`).
+            if (!falls.some(f => f.n === steps.length)) {
+                falls.push({ n: steps.length, where: where(v), text: layer.text.slice(0, 240), ways: layer.buttons });
+                log(`CAÍDO #${steps.length} ${layer.title}: ${layer.text.slice(0, 200)} (${where(v)}) [${layer.buttons.join(' | ')}]`);
+            }
+            const back = top.locator('.pf-back:visible');
+            if (await back.count() > 0) return act(v, 'volver al punto guardado', () => press(back), { module: 'combat-flow.js (sayPartyFallen)', wait: 8000 });
+            // Si no, la partida de la mañana («Cargar partida», H7): hasta tres veces por vuelta.
+            const load = top.locator('.pf-load:visible');
+            if (await load.count() > 0 && falls.length <= 3) {
+                loadAfterFall = true;
+                return act(v, 'cargar partida (ha caído el grupo)', () => press(load), { module: 'combat-flow.js (sayPartyFallen)', wait: 5000 });
+            }
+            return false;
+        }
+        if (layer.kind === 'saves') {
+            // «Guardar y cargar» (save-screen.js): tras caer el grupo, la ranura de la mañana (la
+            // automática) o, si no se puede, la más reciente que se pueda cargar; si no, se cierra.
+            const yes = top.locator('.sv-confirm-yes:visible');
+            if (await yes.count() > 0) {
+                counts.loads++;
+                return act(v, `«${(await yes.first().textContent() || '').trim()}»`, () => press(yes), { module: 'save-screen.js', wait: 15000 });
+            }
+            if (loadAfterFall) {
+                loadAfterFall = false;
+                const auto = top.locator('.sv-slot.sv-auto .sv-load:not([disabled])');
+                const slot = await auto.count() > 0 ? auto : top.locator('.sv-slot .sv-load:not([disabled])');
+                if (await slot.count() > 0) {
+                    const said = (await slot.first().locator('xpath=ancestor::article[1]').textContent().catch(() => '') || '').replace(/\s+/g, ' ').trim();
+                    return act(v, `cargar la ranura «${said.slice(0, 80)}»`, () => press(slot), { module: 'save-screen.js' });
+                }
+            }
+            return act(v, 'cerrar «Guardar y cargar»', () => press(top.locator('.sv-close')), { module: 'save-screen.js' });
+        }
         if (layer.kind === 'scene' || layer.kind === 'dialogue' || layer.kind === 'meetup') {
             if (!layer.text && layer.options.length === 0) {
                 silences.push({ n: steps.length, where: where(v), what: `ventana ${layer.kind} ${layer.id} sin texto`, sees: describe(v), module: 'plot-scene.js / dialogue-window.js' });
@@ -287,22 +439,24 @@ export function createBot(page, { fast = true, log = console.log, prefer = [] } 
             }
             const free = layer.options.filter((/** @type {any} */ o) => !o.locked);
             if (free.length > 0) {
-                const choice = pickOption(layer.options);
+                const choice = pickOption(layer.options, layer.exit);
                 counts.options++;
+                if (layer.exit) counts.exits++;
                 markDecision();
-                choices.push({ scene: layer.id || layer.title, option: choice.text });
-                return act(v, `elegir «${choice.text.slice(0, 60)}»`, async () => {
-                    const option = top.locator(`.dw-option[data-option="${choice.id}"]`);
+                choices.push({ scene: layer.exit ? `otra salida (${layer.exit}) ${layer.title}` : layer.id || layer.title, option: choice.text });
+                const attr = choice.attr || 'data-option';
+                return act(v, `elegir «${choice.text.slice(0, 60)}»${layer.id ? ` (${layer.id})` : layer.exit ? ` (otra salida: ${layer.title.slice(0, 40)})` : ''}`, async () => {
+                    const option = top.locator(`.dw-option[${attr}="${choice.id}"]`);
                     const ok = await press(option);
                     // Lo que no tiene vuelta atrás se decide a la segunda pulsación (J11.1).
                     await page.waitForTimeout(150);
-                    if (await top.locator(`.dw-option.nr-armed[data-option="${choice.id}"]`).count() > 0) await press(option);
+                    if (await top.locator(`.dw-option.nr-armed[${attr}="${choice.id}"]`).count() > 0) await press(option);
                     return ok;
-                }, { module: layer.kind === 'scene' ? 'plot-scene.js' : 'dialogue-window.js' });
+                }, { module: layer.exit ? 'avoid-scene.js (party/avoid.js)' : layer.kind === 'scene' ? 'plot-scene.js' : 'dialogue-window.js', wait: layer.exit ? 5000 : undefined });
             }
             if (layer.kind === 'scene' && layer.id) counts.scenes += 0;
             const forward = top.locator('.qd-chip-next:visible, .qd-chip-finish:visible, .ps-finish:visible, .dw-finish:visible');
-            if (await forward.count() > 0) return act(v, `«${(await forward.first().textContent() || '').replace(/[↵\s]+/g, ' ').trim()}»`, () => press(forward), { module: 'plot-scene.js' });
+            if (await forward.count() > 0) return act(v, `«${(await forward.first().textContent() || '').replace(/[↵\s]+/g, ' ').trim()}»${layer.id ? ` (${layer.id})` : ''}`, () => press(forward), { module: 'plot-scene.js' });
             const other = top.locator('.qd-chip:not(.dw-option):visible, .qd-pick-card:visible');
             if (await other.count() > 0) {
                 markDecision();
@@ -348,7 +502,7 @@ export function createBot(page, { fast = true, log = console.log, prefer = [] } 
             markDecision();
             return act(v, `ritmo normal («${layer.title || layer.text.slice(0, 40)}»)`, () => press(pace), { module: 'travel.js' });
         }
-        const ok = top.locator('.popup-button-ok:visible, .hb-close:visible, .mm-close:visible');
+        const ok = top.locator('.popup-button-ok:visible, .hb-close:visible, .mm-close:visible, .cm-close:visible');
         if (await ok.count() > 0) return act(v, `aceptar «${layer.title || layer.text.slice(0, 40)}»`, () => press(ok.last()), { module: 'popup' });
         const custom = top.locator('.popup-button-custom:visible');
         if (await custom.count() > 0) {
@@ -386,6 +540,9 @@ export function createBot(page, { fast = true, log = console.log, prefer = [] } 
                 // A un golpe, sin armadura y casi sin puntería (solo un 20 natural entra): lo
                 // que se mide es el camino, no la pelea.
                 foe.currentHp = 1;
+                // Y con la vida entera (1 de 1): con 1 de 16, la cobarde (la bruja de la taberna)
+                // se ve malherida y huye por la sala para siempre.
+                foe.maxHp = 1;
                 foe.armorClass = 1;
                 foe.ac = 1;
                 foe.strength = 1;
@@ -405,23 +562,50 @@ export function createBot(page, { fast = true, log = console.log, prefer = [] } 
             await act(v, 'esperar el turno enemigo', async () => true, { quiet: true, wait: 1500 });
             return;
         }
-        if (!fast) {
-            // Peleas de verdad: cada turno del grupo lo juega la máquina, como «Que actúe solo».
+        // El turno con el gancho (`playCurrentTurnAlone`, como «Que actúe solo»): en las peleas de
+        // verdad (`fast` apagado), con VUELTA_PELEAS=gancho, o si la barra de combate no responde a
+        // lo que pulsa la vuelta (la pelea se está rehaciendo: wiki/maquetas/ENCARGO_COMBATE_VTT.md).
+        const hooked = !fast || process.env.VUELTA_PELEAS === 'gancho' || fightFails >= 2;
+        if (hooked) {
+            if (fast && !hookSaid) {
+                hookSaid = true;
+                log(`GANCHO #${steps.length} la barra de combate no responde a lo que pulsa la vuelta${process.env.VUELTA_PELEAS === 'gancho' ? ' (o VUELTA_PELEAS=gancho)' : ''}: los turnos del grupo van con playCurrentTurnAlone (${where(v)})`);
+            }
             markDecision();
-            await act(v, `su turno, solo (${v.fight.who})`, () => page.evaluate(async () => (await import('/scripts/party.js')).playCurrentTurnAlone()), { module: 'combat', quiet: true });
+            if (fast) counts.hooked++;
+            const did = await act(v, `su turno, solo (${v.fight.who})${fast ? ' (gancho)' : ''}`, () => page.evaluate(async () => (await import('/scripts/party.js')).playCurrentTurnAlone()), { module: 'combat', quiet: true });
+            if (did) fightFails = 0;
             return;
         }
+        // Lo que se pulsó en la barra y no hizo nada (no se pudo pulsar, o fue un silencio) cuenta
+        // para pasar al gancho.
+        const tally = (/** @type {boolean} */ did) => { fightFails = did && !steps[steps.length - 1]?.silent ? 0 : fightFails + 1; };
         const attack = page.locator('#game-shell .gs-actions .gs-btn-attack:not([disabled])');
-        if (await attack.count() > 0) {
+        // Una acción por turno: tras atacar, la barra tarda en apagar «Atacar», y pulsarlo otra vez
+        // no abre nada. Se ataca una vez por turno y luego se anda o se acaba el turno.
+        const turnKey = `${v.fight.round}:${v.fight.who}`;
+        const barAttack = v.bar.find((/** @type {any} */ b) => /^Atacar$/.test(b.text));
+        const retry = walkedOn === turnKey && retriedOn !== turnKey;
+        if ((lastAttack !== turnKey || retry) && !barAttack?.off && await attack.count() > 0) {
             markDecision();
-            await press(attack);
-            await page.waitForTimeout(150);
-            await act(v, `atacar (${v.fight.who})`, () => press(page.locator('#game-shell .gs-targets .gs-target')), { module: 'combat' });
+            lastAttack = turnKey;
+            if (retry) retriedOn = turnKey;
+            // La barra nueva (combat-vtt/action-bar.js): «Atacar» abre y cierra su menú (`.gs-grimoire`),
+            // con el arma y debajo a quién llegas (`.gs-target`, apagado si no llegas). Si ya está
+            // abierto, no se pulsa otra vez (lo cerraría).
+            const targets = page.locator('#game-shell .gs-targets .gs-target:not([disabled])');
+            if (await targets.count() === 0) {
+                await press(attack);
+                await page.waitForTimeout(200);
+            }
+            tally(await act(v, `atacar (${v.fight.who})`, () => press(targets), { module: 'combat' }));
+            // Sin nadie a su alcance, el menú se queda abierto: se cierra para andar.
+            await press(page.locator('#game-shell .gs-targets-close:visible'), 500);
             return;
         }
         const auto = page.locator('#game-shell .gs-actions .gs-btn-auto');
         if (await auto.count() > 0) {
-            await act(v, `que actúe solo (${v.fight.who})`, () => press(auto), { module: 'combat' });
+            tally(await act(v, `que actúe solo (${v.fight.who})`, () => press(auto), { module: 'combat' }));
             return;
         }
         // Andar: hacia la casilla que pide el tablero («Salir por la ventana»), o hacia el
@@ -454,18 +638,20 @@ export function createBot(page, { fast = true, log = console.log, prefer = [] } 
         if (step && step.x === undefined) step = null;
         if (step) {
             markDecision();
-            await act(v, `andar a (${step.x + 1}, ${step.y + 1}) hacia (${step.goal.x + 1}, ${step.goal.y + 1})`,
-                () => press(page.locator(`.wm-highlight-clickable.wm-highlight-move[data-x="${step.x}"][data-y="${step.y}"]`)), { module: 'board-view.js' });
+            walkedOn = turnKey;
+            tally(await act(v, `andar a (${step.x + 1}, ${step.y + 1}) hacia (${step.goal.x + 1}, ${step.goal.y + 1})`,
+                () => press(page.locator(`.wm-highlight-clickable.wm-highlight-move[data-x="${step.x}"][data-y="${step.y}"]`)), { module: 'board-view.js' }));
             return;
         }
-        const end = page.locator('#game-shell .gs-actions .gs-btn:not([disabled])', { hasText: 'Fin de turno' });
-        await act(v, `fin de turno (${v.fight.who})`, async () => {
+        // «Fin de turno», en la barra de siempre o en la nueva (que va fuera de `.gs-actions`).
+        const end = page.locator('#game-shell .gs-actions .gs-btn:not([disabled]):visible, #game-shell button:not([disabled]):visible').filter({ hasText: /Fin de turno/ });
+        tally(await act(v, `fin de turno (${v.fight.who})`, async () => {
             const ok = await press(end);
             // Fin de turno con acción sin gastar pregunta antes.
             await page.waitForTimeout(200);
             await press(page.locator('dialog[open] .popup-button-ok'), 800);
             return ok;
-        }, { module: 'combat' });
+        }, { module: 'combat' }));
     };
 
     /** Una ficha de la fila (o de la caja de la novela) cuyo texto casa. */
@@ -547,6 +733,99 @@ export function createBot(page, { fast = true, log = console.log, prefer = [] } 
     };
 
     /**
+     * Si toca descansar, como lo haría quien juega con cabeza: con «Agotamiento 2 de 6» (hambre,
+     * sed o sueño) o con el héroe por debajo de la mitad de su vida. Una vez por día de campaña:
+     * si en unos pasos no encuentra dónde, lo apunta como atasco y sigue con la historia.
+     *
+     * @param {any} v
+     */
+    const wantsRest = (v) => {
+        if (v.fight || v.layer || !restNeed(v)) return false;
+        if (restDay !== v.day) {
+            restDay = v.day;
+            restTries = 0;
+        }
+        return restTries < 10;
+    };
+
+    /**
+     * Un paso hacia descansar: la habitación de la posada (o comer caliente, o la sala común);
+     * donde no hay posada, la tarjeta «Descansar» (acampar o el descanso largo); y si no, las
+     * fichas «Acampar aquí» o «Cazar y forrajear». Devuelve false si no hay nada de eso a la vista.
+     *
+     * @param {any} v
+     */
+    const tend = async (v) => {
+        restTries++;
+        const why = restNeed(v);
+        // Los botones de la posada y de «Descansar»: dentro de un sitio del pueblo (`gs-town-act`)
+        // o en la columna «Aquí mismo» de la pantalla del sitio (`gs-service-btn`).
+        const town = (/** @type {string} */ id) => page.locator(`#game-shell :is(.gs-town-act, .gs-service-btn)[data-action="${id}"]:not([disabled]):visible`);
+        const rested = async (/** @type {string} */ what, /** @type {any} */ button, /** @type {string} */ module) => {
+            counts.rests++;
+            markDecision();
+            const done = await act(v, `${what} (${why})`, () => press(button), { module, wait: 6000 });
+            if (done) restTries = 99;
+            return done;
+        };
+        const back = () => act(v, 'volver al pueblo', () => press(page.locator('#game-shell .gs-town-back')), { module: 'town-scene.js' });
+        // Lo que se ve ya: dormir (o comer) en la posada; si no hay, acampar o el descanso largo. El
+        // corto solo da de beber: solo si lo que falta es vida.
+        const beds = [['inn-room', 'dormir en una habitación'], ['inn-meal', 'comer caliente'], ['chip:camp', 'acampar'], ['clock:long', 'descanso largo'],
+            ['inn-common', 'dormir en la sala común'], ...(v.tired >= 2 ? [] : [['clock:short', 'descanso corto']])];
+        for (const [id, what] of beds) {
+            if (await town(id).count() > 0) return rested(what, town(id), id.startsWith('inn-') ? 'town.js (posada)' : 'game-shell.js (Descansar)');
+        }
+        if (v.town.inside) return back();
+        if (v.board) return toMap(v);
+        // La posada; si no hay, «Descansar»; y si tampoco, la plaza, que recoge lo que no tiene sitio
+        // propio (en el Castillo de Vane, el descanso largo está ahí). Cada uno, una vez al día.
+        const spot = ['posada', 'descanso', 'plaza'].map(id => v.town.places.find((/** @type {any} */ p) => p.id === id))
+            .find(p => p && !restLooked.has(`${v.day}:${v.location}:${p.id}`));
+        if (spot) {
+            restLooked.add(`${v.day}:${v.location}:${spot.id}`);
+            return act(v, `entrar en ${spot.id} para descansar (${why})`, () => press(page.locator(`#game-shell .gs-town-place[data-place="${spot.id}"]`)), { module: 'town-scene.js' });
+        }
+        // Mientras se lee no se ofrece descansar (J18.9): primero, a la pantalla del sitio.
+        if (v.scene !== 'exploration' && await toMap(v)) return true;
+        for (const [pattern, what] of /** @type {Array<[RegExp, string]>} */ ([[/^Acampar aquí$/, 'acampar aquí'], [/^Cazar y forrajear$/, 'cazar y forrajear']])) {
+            if (await tapChip(v, pattern, `${what} (${why})`, 'action-chips.js')) {
+                counts.rests++;
+                markDecision();
+                restTries = 99;
+                return true;
+            }
+        }
+        // Aún no se ve la pantalla del sitio (la caja de la novela a medio cambiar): otra vuelta.
+        if (v.scene !== 'exploration' || (v.town.places.length === 0 && v.places.length === 0)) {
+            return act(v, `esperar a ver el sitio para descansar (${why})`, async () => true, { quiet: true, wait: 1500 });
+        }
+        // Ni posada, ni «Descansar», ni acampar a la vista: se apunta y se sigue con la historia.
+        restTries = 99;
+        const key = `descanso:${v.location}`;
+        if (!oddSeen.has(key)) {
+            oddSeen.add(key);
+            oddities.push({ kind: 'descanso', n: steps.length, where: where(v), text: `hace falta descansar (${why}) y no se ve dónde: ni posada, ni «Descansar», ni «Acampar aquí»` });
+            log(`RARO  descanso #${steps.length} sin sitio para descansar (${why}) (${where(v)})`);
+        }
+        return false;
+    };
+
+    /**
+     * El combate nuevo (ENCARGO_COMBATE_VTT.md): al entrar en un tablero con gente, se colocan los
+     * tuyos en las casillas de salida y se confirma. La vuelta deja la colocación que viene y pulsa
+     * el botón que lo confirma (`v.start`).
+     *
+     * @param {any} v
+     */
+    const confirmStart = (v) => {
+        markDecision();
+        const said = String(v.start[0] || '');
+        return act(v, `«${said}» (colocados, a pelear)`, () => press(page.locator('#game-shell button:visible, #game-shell .menu_button:visible, .gs-root button:visible')
+            .filter({ hasText: new RegExp(`^\\s*${escape(said)}\\s*$`) })), { module: 'combate nuevo (colocar)', wait: 5000 });
+    };
+
+    /**
      * Un paso hacia lo que pide la historia. Devuelve false si no encuentra qué pulsar.
      *
      * @param {any} v
@@ -556,11 +835,24 @@ export function createBot(page, { fast = true, log = console.log, prefer = [] } 
         if (t.place && plain(v.location) !== plain(t.place)) return travelTo(v, t.place);
         if ((t.kind === 'win' || t.kind === 'defeat') && t.board) {
             if (plain(v.board) === plain(t.board)) {
+                if (v.start.length > 0) return confirmStart(v);
+                // La llegada al tablero se lee antes de pelear (el muelle del prólogo): «Continuar».
+                if (v.scene === 'dialogue' && v.vn.next && await chip(/^Continuar$/).count() > 0) {
+                    return act(v, '«Continuar» (antes de pelear)', () => press(chip(/^Continuar$/)), { module: 'game-shell.js' });
+                }
                 if (await tapChip(v, /^Iniciar combate/, 'iniciar el combate', 'action-chips.js')) return true;
+                if (await tapChip(v, /^(¡?A pelear!?|Pelear)$/, 'pelear', 'action-chips.js')) return true;
                 // Sin nadie a la vista, lo que duerme tras una puerta se despierta abriéndola.
                 if (await tapChip(v, /^Abrir la puerta/, 'abrir una puerta del tablero', 'action-chips.js')) return true;
                 const button = page.locator('#game-shell .wm-start-combat:visible, #game-shell .wm-fight-btn:visible');
                 if (await button.count() > 0) return act(v, 'iniciar el combate (botón del tablero)', () => press(button), { module: 'board-view.js' });
+                // El combate nuevo empieza solo al entrar: se espera un poco antes de darlo por atascado.
+                const waitKey = `${v.board}|${v.done.length}`;
+                const waited = startWaits.get(waitKey) ?? 0;
+                if (waited < 3) {
+                    startWaits.set(waitKey, waited + 1);
+                    return act(v, `esperar a que empiece la pelea (${t.board})`, async () => true, { quiet: true, wait: 3000 });
+                }
                 return false;
             }
             if (await tapChip(v, new RegExp(`^Entrar en ${escape(t.board)}$`), `entrar en ${t.board}`, 'action-chips.js')) return true;
@@ -599,8 +891,53 @@ export function createBot(page, { fast = true, log = console.log, prefer = [] } 
         return false;
     };
 
+    /**
+     * Mirar lo que se ve ahora por si algo se lee mal (lo llama `runCampaign` en cada paso).
+     *
+     * @param {any} v
+     * @param {{onDone?: Set<string>}} [how] onDone: los hitos cuya escena se juega al cumplirse (los
+     *   de «llegar a», que cuentan la llegada, y los que no piden nada): no llegan tarde si salen allí.
+     */
+    const inspect = (v, { onDone = new Set() } = {}) => {
+        const odd = (/** @type {'crudo'|'encima'|'tarde'|'portada'} */ kind, /** @type {string} */ key, /** @type {string} */ text) => {
+            if (oddSeen.has(`${kind}:${key}`)) return;
+            oddSeen.add(`${kind}:${key}`);
+            oddities.push({ kind, n: steps.length, where: where(v), text });
+            log(`RARO  ${kind} #${steps.length} ${text.slice(0, 200)} (${where(v)})`);
+        };
+        for (const id of v.done) {
+            if (!doneAt.has(id)) doneAt.set(id, { where: where(v), n: steps.length, location: v.location, day: v.day });
+        }
+        // J18.10: la etiqueta del motor, a la vista (en la caja de la novela o en una ventana).
+        for (const seen of [v.vn.text, v.layer?.text ?? '']) {
+            const hit = TAG.exec(seen);
+            if (hit) odd('crudo', seen.slice(Math.max(0, hit.index - 20), hit.index + 60), `se lee «${seen.slice(Math.max(0, hit.index - 20), hit.index + 140)}»`);
+        }
+        // La portada («DnD Coin», Jugar sin conexión…) a la vista con una partida ya empezada: al
+        // cargar una campaña desde el tablón se veía un momento.
+        if (v.scene === 'title' && v.world && v.menu.length > 0) {
+            odd('portada', v.world, `se ve la portada (${v.menu.slice(0, 3).join(', ')}…) con la partida ya empezada (${v.world})`);
+        }
+        // Una ventana encima de otra que espera un clic (una escena sobre un suceso a medias).
+        if (v.layer && v.under.some((/** @type {string} */ u) => /^(suceso|scene|dialogue|talk)/.test(u))) {
+            odd('encima', `${v.layer.kind} ${v.layer.id} / ${v.under.join(',')}`, `ventana «${v.layer.kind}» ${v.layer.id || v.layer.title} abierta encima de: ${v.under.join(', ')}`);
+        }
+        // La escena de un hito que ya se cumplió antes de salir ella (J9.2): llega tarde. Solo al
+        // abrirse: la escena que es la charla del hito (D-J39) lo cumple mientras está abierta.
+        const opening = v.layer?.kind === 'scene' && v.layer.id && !oddSeen.has(`abierta:${v.layer.id}`);
+        if (opening) oddSeen.add(`abierta:${v.layer.id}`);
+        // J9.1: la escena de una llegada sale al cumplirse (al llegar): allí y ese día no es tarde.
+        // Y la de un hito «llegar a» o sin nada que pedir (`onDone`) puede esperar a los sucesos de la
+        // llegada, que a veces se llevan un día: mientras siga en el mismo sitio, tampoco.
+        const arrival = (/** @type {any} */ was) => plain(was.location) === plain(v.location) && (was.day === v.day || onDone.has(String(v.layer?.id)));
+        if (opening && doneAt.has(v.layer.id) && !arrival(doneAt.get(v.layer.id))) {
+            const was = /** @type {any} */ (doneAt.get(v.layer.id));
+            odd('tarde', v.layer.id, `la escena del hito «${v.layer.id}» sale con el hito ya cumplido (paso ${was.n}, ${was.where})${plain(was.location) !== plain(v.location) ? ', y en otro sitio' : ''}`);
+        }
+    };
+
     return {
-        steps, silences, blocks, choices, counts,
+        steps, silences, blocks, choices, counts, slow, oddities, falls, inspect, wantsRest, tend, confirmStart,
         /** Cuándo se decidió algo por primera vez (una opción, un viaje, un golpe). */
         get firstDecisionAt() { return firstDecisionAt; },
         started,
@@ -634,14 +971,25 @@ export async function runCampaign(bot, { pack, stop, maxSteps = 900, log = conso
     const targetOf = targetsFromPack(pack);
     const goals = boardGoalsFromPack(pack);
     const side = new Set((pack.plot?.milestones ?? []).filter((/** @type {any} */ m) => m.hidden || m.opens?.kind === 'clock').map((/** @type {any} */ m) => String(m.id)));
+    // J9.1: la escena de un hito «llegar a» se juega al llegar (al cumplirse); la de uno que no pide
+    // nada, también: se cumple en cuanto se abre.
+    const onDone = new Set((pack.plot?.milestones ?? []).filter((/** @type {any} */ m) => ['arrive', 'none'].includes(String(m.asks?.kind || 'none'))).map((/** @type {any} */ m) => String(m.id)));
     let lastDone = -1;
     let sinceProgress = 0;
     let misses = 0;
     let rescues = 0;
+    // Lo repetido se mira solo en lo que se ha hecho desde aquí: lo de antes (el tablón, el gremio)
+    // no es de esta campaña.
+    const first = bot.steps.length;
     /** @type {any} */
     let v = await bot.observe();
     for (let i = 0; i < maxSteps; i++) {
-        v = await bot.observe();
+        // Al cargar una partida la página se rehace un momento: se mira otra vez.
+        v = await bot.observe().catch(async () => {
+            await bot.page.waitForTimeout(3000);
+            return bot.observe();
+        });
+        bot.inspect(v, { onDone });
         if (stop(v)) return { reached: true, gaveUp: '', view: v };
         if (v.done.length !== lastDone) {
             if (lastDone >= 0) log(`  hito: ${v.done[v.done.length - 1]} (${v.done.length} hechos) · ${bot.where(v)} · paso ${bot.steps.length}`);
@@ -650,14 +998,21 @@ export async function runCampaign(bot, { pack, stop, maxSteps = 900, log = conso
             rescues = 0;
         }
         sinceProgress++;
-        if (verbose) log(`  · ${bot.steps.length} ${bot.steps[bot.steps.length - 1]?.what ?? ''} · ${bot.where(v)}`);
+        if (verbose) log(`  · ${bot.steps.length} ${bot.steps[bot.steps.length - 1]?.what ?? ''} · ${bot.where(v)}${v.hero ? ` · ${v.hero.hp}/${v.hero.maxHp} PG${v.tired ? ` · agot. ${v.tired}` : ''}` : ''}`);
         else if (i % 40 === 39) log(`  · paso ${bot.steps.length}: ${bot.steps[bot.steps.length - 1]?.what ?? ''} · ${bot.where(v)}`);
+        // Ha caído el grupo entero y no hay punto guardado al que volver, ni partida que cargar (o ya
+        // se ha cargado tres veces): la vuelta acaba aquí.
+        if (v.layer?.kind === 'fallen' && await bot.page.locator('dialog[data-vuelta-top] .pf-back:visible').count() === 0
+            && (bot.falls.length >= 3 || await bot.page.locator('dialog[data-vuelta-top] .pf-load:visible').count() === 0)) {
+            await bot.handleLayer(v, { onHub, onEnd });
+            return { reached: false, gaveUp: `ha caído el grupo: ${v.layer.text.slice(0, 160)}`, view: v };
+        }
         const open = v.open.filter((/** @type {string} */ id) => !side.has(id));
         const main = order.find(id => open.includes(id)) ?? open[0] ?? '';
         const target = main ? targetOf(main) : { id: '', kind: 'none' };
         // Atascado: nada que pulsar, lo mismo una y otra vez, o muchos pasos sin cumplir nada.
         // Pasar dados, turnos y páginas de una escena se repite sin estar atascado.
-        const recent = bot.steps.slice(-12).map(s => s.what).filter(w => !/dados|turno enemigo|^atacar|fin de turno|^andar|^«(Seguir|Terminar)»$/.test(w));
+        const recent = bot.steps.slice(Math.max(first, bot.steps.length - 12)).map(s => s.what).filter(w => !/dados|turno enemigo|^atacar|fin de turno|^andar|^su turno, solo|^esperar a|^«(Seguir|Terminar)»/.test(w));
         const looping = recent.length >= 8 && new Set(recent).size <= 2;
         if (misses >= 3 || looping || sinceProgress > 150) {
             const why = misses >= 3 ? 'no se ve nada que pulsar para lo que pide la historia'
@@ -695,7 +1050,24 @@ export async function runCampaign(bot, { pack, stop, maxSteps = 900, log = conso
             await bot.fightTurn(v, goals.get(v.board) ?? null);
             continue;
         }
+        // El combate nuevo, a medio empezar (colocando a los tuyos): se confirma, sea o no el
+        // tablero que pide el hito (una pelea al llegar también empieza así).
+        if (v.board && v.start.length > 0) {
+            misses = 0;
+            await bot.confirmStart(v);
+            continue;
+        }
+        // Comer y dormir antes de que el hambre o las heridas maten (como quien lee el aviso).
+        if (bot.wantsRest(v) && await bot.tend(v)) {
+            misses = 0;
+            continue;
+        }
         if (!main) {
+            // Recién empezada la campaña, el hilo tarda un momento en abrir su primer hito.
+            if (v.done.length === 0 && i < 40) {
+                await bot.page.waitForTimeout(500);
+                continue;
+            }
             // Sin hito que seguir: lo que haya que leer, y si no hay nada, se acabó.
             if (v.scene === 'dialogue' && v.vn.next && await bot.chip(/^Continuar$/).count() > 0) {
                 await bot.act(v, '«Continuar»', () => bot.press(bot.chip(/^Continuar$/)), { module: 'game-shell.js' });
@@ -816,7 +1188,8 @@ export function boardGoalsFromPack(pack) {
     const quests = new Map((pack.quests ?? []).map((/** @type {any} */ q) => [String(q.id), q]));
     const goals = new Map();
     for (const board of pack.boards ?? []) {
-        const quest = quests.get(`q-${board.id}`) ?? (pack.quests ?? []).find((/** @type {any} */ q) => q.board === board.name || q.boardName === board.name);
+        // Strahd nombra el tablero de cada misión por su id (`boardId`).
+        const quest = quests.get(`q-${board.id}`) ?? (pack.quests ?? []).find((/** @type {any} */ q) => q.board === board.name || q.boardName === board.name || (q.boardId && String(q.boardId) === String(board.id)));
         const first = (quest?.objectives ?? []).find((/** @type {any} */ o) => o.type === 'reach_cell') ?? quest?.objectives?.[0];
         if (first) goals.set(String(board.name), { type: String(first.type), ...(first.cell ? { cell: { x: Number(first.cell.x), y: Number(first.cell.y) } } : {}) });
     }

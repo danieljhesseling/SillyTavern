@@ -5,12 +5,17 @@
  * pure: no DOM, no module state, no reads of the active encounter. That is what makes it
  * testable in Node, and the reason this slice was chosen first.
  *
+ * Una excepción (J12.7): en una pelea sin muertes se pega con los puños, así que el alcance y el
+ * daño de quien ataca miran la bandera del combate en curso (`state.js`, que no importa nada).
+ *
  * See wiki/ROADMAP.md, Bateria 2.
  */
 
 import { getAbilityModifier } from '../dnd-system.js';
 import { createEncounter, normalizeEncounter } from '../game-engine/combat/turn-machine.js';
 import { weaponDamage, weaponRange } from '../game-engine/rules/equipment.js';
+import { brawlOf, fistsFor, FIST_REACH_FEET } from '../game-engine/combat/brawl.js';
+import { combatEncounter } from './state.js';
 
 /** @typedef {import('./types.js').PartyMember} PartyMember */
 
@@ -196,6 +201,8 @@ export function buildReachableCells(originX, originY, remainingFeet, gridWidth, 
  * @param {PartyMember|null} member
  */
 export function getAttackRangeFeet(member) {
+    // J12.7: a puñetazos, solo a la casilla de al lado.
+    if (brawlOf(combatEncounter)) return FIST_REACH_FEET;
     const declared = weaponRange(member);
     if (declared > 0) return declared;
 
@@ -224,6 +231,8 @@ export function getAttackRangeFeet(member) {
  */
 export function getPlayerDamageFormula(member, rangeFeet) {
     const level = Number(member?.level) || 1;
+    // J12.7: en una pelea sin muertes, los puños (o la jarra que haya a mano).
+    if (brawlOf(combatEncounter)) return fistsFor(level);
 
     let base;
     if (rangeFeet > 5) base = level >= 5 ? '1d10' : '1d8';

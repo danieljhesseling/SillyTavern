@@ -131,6 +131,9 @@ describe('el viaje se cuenta', () => {
         // Sin «cómo» se salta esa frase; y «el gremio» se contrae.
         expect(journeyLine({ world: { name: '1387', journey: { days: 1 } } }))
             .toBe('Salís del gremio hacia 1387. Un día de camino.');
+        // J9.1: si el nombre no es un sitio, `journey.to` dice adónde se va.
+        expect(journeyLine({ world: { name: '1387', journey: { days: 4, to: 'el valle de Vane' } }, home: 'Puerto Alba' }))
+            .toBe('Salís de Puerto Alba hacia el valle de Vane. Cuatro días de camino.');
     });
 
     test('la vuelta dice cuánto se tardó y adónde se vuelve', () => {

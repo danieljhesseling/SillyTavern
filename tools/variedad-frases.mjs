@@ -75,7 +75,7 @@ const HEROES = ['Tessa', 'Bran', 'Gerd el Mellado', 'Nella'];
 const QUE = ['buscar huellas en el barro', 'abrir la cerradura', 'convencer al guardia', 'trepar el muro', 'pasar sin que os vean'];
 const TABLEROS = ['La bodega del gremio', 'El muelle de Puerto Alba', 'El claro de los lobos', 'La cripta'];
 const OBJETIVOS = ['acabar con las ratas', 'salir por la ventana', 'derrótalos a todos', 'que Ireena sobreviva'];
-const ENEMIGOS = ['Rata de bodega (2)', 'Ratero del muelle', 'Lobo famélico (3) y Bandido', 'Bruja Baroviana'];
+const ENEMIGOS = ['dos ratas de bodega', 'Ratero del muelle', 'tres lobos famélicos y Bandido', 'Bruja Baroviana'];
 const ACTITUD_TEXTO = { buena: ['cordial', 'amistosa'], neutra: ['neutral', 'prudente'], mala: ['recelosa', 'fría', 'hostil'] };
 
 /** @param {() => number} r @param {any[]} list */
@@ -309,6 +309,40 @@ const errors = [
     ...(gamesWithRepeat > 0 ? [`en ${gamesWithRepeat} de ${GAMES} partidas se repite una frase en diez llegadas: ${repeatSamples.join('; ')}`] : []),
     ...leftovers.map(line => `marca sin resolver: ${line}`),
 ];
+// --- La gente (J13.8): seguir una charla, cómo te mira y el saludo de quien atiende ------
+// No son del narrador: las elige `human-lines.js` por turnos. Se mide lo que pide J13.8: cada
+// clase con ocho o más, y quien ya te conoce, a cualquier hora y te mire como te mire, con
+// cuatro saludos o más y ninguno repetido antes de tres visitas.
+const human = await load('public/scripts/game-engine/campaign/human-lines.js');
+human.setPhraseBank(allRows);
+console.log('\nLa gente (J13.8):');
+for (const kind of human.HUMAN_KINDS) {
+    const n = allRows.filter(row => row.kind === kind).length;
+    console.log(`  ${pad(kind, 20)}${padStart(n, 6)}`);
+    if (n < MIN_VARIANTS) errors.push(`${kind} tiene ${n} frase(s); pide al menos ${MIN_VARIANTS}`);
+}
+const KEEPERS = [['gremio', 'Brunilda'], ['posada', 'Tomás'], ['herreria', 'Ramiro'], ['tienda', 'Marisa'], ['templo', 'Madre Elvira'],
+    ['posada', 'Alguien'], ['herreria', 'Alguien'], ['tienda', 'Alguien'], ['templo', 'Alguien'], ['gremio', 'Alguien']];
+let greetWorst = Infinity;
+let greetWhere = '';
+let greetRepeats = 0;
+for (const [kind, keeper] of KEEPERS) {
+    for (const slot of HORA) {
+        for (const attitude of [2, 0, -2]) {
+            const seen = Array.from({ length: 12 }, (_, turn) => human.townGreeting({
+                place: { kind, keeper: { name: keeper } }, slot, hero: { name: 'Tessa', gender: 'Mujer', class: 'Guerrero' },
+                met: true, attitude, seed: `${kind}${keeper}`, turn,
+            }));
+            const n = new Set(seen).size;
+            if (n < greetWorst) [greetWorst, greetWhere] = [n, `${keeper} (${kind}), ${slot}, actitud ${attitude}`];
+            greetRepeats += seen.filter((line, i) => seen.slice(Math.max(0, i - 3), i).includes(line)).length;
+        }
+    }
+}
+console.log(`  saludo de quien ya te conoce: peor caso ${greetWorst} frases (${greetWhere}); repetidas antes de tres visitas: ${greetRepeats}.`);
+if (greetWorst < 4) errors.push(`el saludo de ${greetWhere} solo tiene ${greetWorst} frase(s); pide al menos 4`);
+if (greetRepeats > 0) errors.push(`${greetRepeats} saludo(s) se repiten antes de tres visitas`);
+
 for (const line of errors) console.log(`ERROR  ${line}`);
 console.log(`\nDiez llegadas sin repetir frase: ${GAMES - gamesWithRepeat} de ${GAMES} partidas.`);
 

@@ -1,0 +1,75 @@
+/* ================================================================
+   J14.10 · El romance, opcional (public/scripts/party/romance.js y campaign/romance.js):
+   la respuesta con corazón en la quedada, el fundido a negro de la noche, «Pareja» junto al
+   vínculo y las parejas en el Salón de la fama. Los colores son los del juego (`--gs-*`).
+   ================================================================ */
+:root {
+    --rm-heart: #e07a8f;
+    --rm-heart-soft: rgba(224, 122, 143, 0.14);
+    --rm-heart-line: rgba(224, 122, 143, 0.55);
+}
+
+/* La respuesta romántica: un tono cálido, para que se vea a la primera que lo es. */
+.qd-chip.qd-chip-love {
+    border-color: var(--rm-heart-line);
+    background: var(--rm-heart-soft);
+}
+
+.qd-chip.qd-chip-love .qd-label {
+    color: #f3d6dc;
+}
+
+.qd-chip.qd-chip-love:hover,
+.qd-chip.qd-chip-love:focus-visible {
+    border-color: var(--rm-heart);
+    background: rgba(224, 122, 143, 0.24);
+}
+
+/* El fundido a negro: el sitio y quien te acompaña se apagan despacio; queda el texto,
+   y así se queda hasta cerrar. Nada explícito: lo demás, fuera de plano. */
+.qd-root.qd-fade .qd-backdrop,
+.qd-root.qd-fade .qd-portrait {
+    opacity: 0;
+    transition: opacity 2.4s ease-in;
+}
+
+.qd-root.qd-fade {
+    background: #000;
+    transition: background-color 2.4s ease-in;
+}
+
+.qd-root.qd-fade .qd-box {
+    background: rgba(8, 6, 6, 0.96);
+    border-color: rgba(224, 122, 143, 0.35);
+}
+
+.qd-root.qd-fade .qd-line.qd-then {
+    font-style: italic;
+    color: #d9c9c0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .qd-root.qd-fade,
+    .qd-root.qd-fade .qd-backdrop,
+    .qd-root.qd-fade .qd-portrait {
+        transition: none;
+    }
+}
+
+/* Junto al vínculo, en la ficha de un compañero: «♥ Pareja». */
+.cc-romance {
+    margin-top: 2px;
+    font-size: 0.82em;
+    color: var(--rm-heart);
+}
+
+/* El Salón de la fama: las parejas, con su corazón. */
+.hall-entry.hall-couple {
+    border-left: 2px solid var(--rm-heart-line);
+    padding-left: 8px;
+}
+
+/* En «El grupo»: cómo va, en su línea. */
+.pg-line.pg-romance {
+    color: var(--rm-heart);
+}

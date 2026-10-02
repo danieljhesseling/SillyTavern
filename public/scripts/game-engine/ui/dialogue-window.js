@@ -25,6 +25,8 @@ import { loadPixelManifest } from './pixel-art.js';
 import { portraitFor, backdropFor } from './meetup-scene.js';
 import { noReturnBadge, noReturnGuard } from './decision-warning.js';
 import { findOption } from '../campaign/companion-opinions.js';
+import { hearLine, introFor, knowsName, meetPerson, shownName, shownText } from './shown-names.js';
+import { humanNote } from '../campaign/human-lines.js';
 
 /** @param {any} value @returns {string} */
 const text = (value) => String(value ?? '').trim();
@@ -171,16 +173,19 @@ export function stepLines(state, from, notes = []) {
  * @param {string} [input.town] La localización, si el sitio no tiene dibujo.
  * @param {boolean} [input.night]
  * @param {HTMLElement|null} [input.mount]
+ * @param {boolean} [input.introduce] J13.7: si quien habla aún no se ha presentado, empieza diciendo
+ *   su nombre («Soy Ramiro, el herrero.»). Para cuando se va a hablar con alguien, no para una escena.
  * @returns {Promise<DialogueWindowResult>}
  */
 export async function openDialogueWindow({
     dialogue, hero, getWorld = () => ({}), memory = null, rollD20 = () => 1 + Math.floor(Math.random() * 20),
     applyEffects = () => [], onMemory = () => {}, onChoice = () => {}, opinionsFor = () => [], extras = [], pack = '', place = '', town = '', night = false, mount = null,
+    introduce = false,
 }) {
     await loadPixelManifest();
     const speaker = text(dialogue?.speaker) || 'Alguien';
     const dialog = /** @type {HTMLDialogElement} */ (el('dialog', 'qd-dialog dw-dialog'));
-    dialog.setAttribute('aria-label', `Conversación con ${speaker}`);
+    dialog.setAttribute('aria-label', `Conversación con ${shownName(speaker, 'el')}`);
     (mount ?? document.querySelector('.gs-root') ?? document.body).appendChild(dialog);
     dialog.showModal();
 
@@ -193,7 +198,8 @@ export async function openDialogueWindow({
     backdrop.hidden = !art;
     const portrait = el('div', 'qd-portrait dw-portrait');
     const box = el('div', 'qd-box dw-box');
-    const plate = el('div', 'qd-nameplate', speaker);
+    // J13.7: «Posadero» hasta que se presente; se pone en cada paso.
+    const plate = el('div', 'qd-nameplate', shownName(speaker));
     const head = el('div', 'qd-head');
     const title = el('span', 'qd-title', text(dialogue?.title));
     const mood = el('span', 'dw-attitude');
@@ -209,11 +215,15 @@ export async function openDialogueWindow({
     let state = startDialogue(dialogue, { memory, hero, world: getWorld() });
     let remembered = rememberDialogue(memory, state);
     let busy = false;
+    // J13.8: cuántas notas se han dicho en esta charla, para que no salga dos veces la misma.
+    let noteTurn = 0;
     // J11.1: lo que no tiene vuelta atrás se decide a la segunda pulsación.
     const guard = noReturnGuard(chips);
 
     return new Promise(resolve => {
         const close = (/** @type {boolean} */ ended, /** @type {string} */ extra = '') => {
+            // J13.7: después de una charla de verdad (la que se acaba), ya sabes cómo se llama.
+            if (ended && state.chosen.length > 0 && !knowsName(speaker)) meetPerson(speaker, 'charla');
             dialog.close();
             dialog.remove();
             resolve({ ended, state, memory: remembered, ...(extra ? { extra } : {}) });
@@ -223,13 +233,15 @@ export async function openDialogueWindow({
         const apply = async (/** @type {any[]} */ effects, /** @type {any} */ roll = null) => {
             // Con tirada se llama aunque no haya efectos: quien abrió la ventana la apunta en el registro de dados.
             if (effects.length === 0 && !roll) return [];
+            // J13.8: «Brunilda os mira mejor» se dice como lo diría quien mira. El registro, llano.
+            const human = (/** @type {string[]} */ lines) => lines.map(line => humanNote(line, { seed: dialogue.id, turn: noteTurn++ }));
             try {
                 const said = await applyEffects(effects, { dialogue, state, roll });
-                if (Array.isArray(said)) return said.map(text).filter(Boolean);
+                if (Array.isArray(said)) return human(said.map(text).filter(Boolean));
             } catch (error) {
                 console.error('[charla] no se pudo aplicar', error);
             }
-            return effects.map(describeDialogueEffect).filter(Boolean);
+            return human(effects.map(describeDialogueEffect).filter(Boolean));
         };
 
         const drawPortrait = (/** @type {string} */ face) => {
@@ -246,7 +258,7 @@ export async function openDialogueWindow({
             }
             const image = /** @type {HTMLImageElement} */ (el('img', 'pixel-art qd-pixel'));
             image.src = url;
-            image.alt = speaker;
+            image.alt = shownName(speaker);
             image.addEventListener('error', () => {
                 image.remove();
                 silhouette();
@@ -277,6 +289,12 @@ export async function openDialogueWindow({
         const draw = (/** @type {Array<{kind: string, text: string}>} */ said) => {
             const world = getWorld();
             const view = dialogueView(state, hero, world);
+            // J13.7: lo que dice enseña su nombre (si lo dice); la placa, después.
+            const node = state.dialogue.nodes.find(n => n.id === state.node);
+            for (const line of said) {
+                if (line.kind === 'say') hearLine({ who: speaker, text: line.text, presenta: /** @type {any} */ (node)?.presenta });
+            }
+            plate.textContent = shownName(speaker);
             drawPortrait(view.mood);
             const attitude = Number(world.attitude);
             mood.textContent = Number.isFinite(attitude) && world.attitude !== undefined ? `Os mira de forma ${describeAttitude(attitude)}` : '';
@@ -285,7 +303,7 @@ export async function openDialogueWindow({
                 const p = el('p', `qd-line qd-${line.kind === 'you' ? 'you' : line.kind === 'note' ? 'note' : 'say'} dw-${line.kind}`);
                 // La línea de la tirada ya trae su dado (`rollLine`): no se pone otro.
                 if (line.kind === 'you') p.appendChild(el('span', 'qd-who', 'Tú'));
-                p.appendChild(document.createTextNode(line.text));
+                p.appendChild(document.createTextNode(shownText(line.text, { mask: line.kind === 'note' })));
                 lines.appendChild(p);
             }
             lines.scrollTop = lines.scrollHeight;
@@ -315,7 +333,8 @@ export async function openDialogueWindow({
                 const body = el('span', 'dw-body');
                 const saying = el('span', 'dw-said');
                 if (option.tag) saying.appendChild(el('span', 'dw-tag', option.tag));
-                saying.appendChild(document.createTextNode(option.label));
+                // J13.7: lo que dices no nombra a quien aún no se ha presentado.
+                saying.appendChild(document.createTextNode(shownText(option.label, { mask: true })));
                 body.appendChild(saying);
                 if (option.locked) {
                     const why = el('span', 'dw-why');
@@ -408,7 +427,19 @@ export async function openDialogueWindow({
             try {
                 const notes = await apply(state.pending);
                 onMemory(remembered);
-                draw(stepLines(state, 0, notes));
+                // J13.7: si se va a hablar con alguien que aún no se ha presentado, lo primero que
+                // dice es su nombre (a no ser que lo diga ya su primera línea).
+                const first = stepLines(state, 0, notes);
+                const startNode = state.dialogue.nodes.find(n => n.id === state.node);
+                for (const line of first) {
+                    if (line.kind === 'say') hearLine({ who: speaker, text: line.text, presenta: /** @type {any} */ (startNode)?.presenta });
+                }
+                const hello = introduce ? introFor(speaker) : '';
+                if (hello) {
+                    hearLine({ who: speaker, text: hello });
+                    first.unshift({ kind: 'say', text: hello });
+                }
+                draw(first);
             } finally {
                 busy = false;
             }

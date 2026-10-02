@@ -282,7 +282,7 @@ try {
     await page.waitForTimeout(400);
     const redrawn = await page.evaluate(() => document.querySelector('.tl-list .tl-card.open .tl-card-note')?.textContent || '');
     check('tableros: la ficha enseña el tablero entero con sus pinceles; arrastrando se pinta, y «Dibujar otro» lo vuelve a tirar',
-        grid.w > 0 && grid.cells % grid.w === 0 && grid.cells >= 100 && grid.brushes.length === 10 && grid.starts > 0
+        grid.w > 0 && grid.cells % grid.w === 0 && grid.cells >= 100 && grid.brushes.length === 11 && grid.starts > 0
         && painted.water.every(t => t === 'agua') && /pintado a mano/.test(painted.note) && /tl-tab-changed/.test(painted.mark)
         && !/pintado a mano/.test(redrawn),
         JSON.stringify({ grid, painted, redrawn }));

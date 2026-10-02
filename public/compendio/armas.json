@@ -1,7 +1,7 @@
 {
   "version": 1,
   "domain": "armas",
-  "about": "De que forma tiene un arma. El material lo pone materiales.json: forma x material = arma. Tres campos deciden si sirve para algo y los tres los lee el combate: \"damageDice\" mueve el dano por la escalera de dados (el nivel dice de que dado partes, el arma te mueve desde ahi), \"hands\" a 2 quita el escudo, y \"rangeFeet\" es hasta donde llega -sin el, un arco es cuerpo a cuerpo-. \"weight\" es lo que pesa en el sorteo; lo que pesa de verdad es \"kg\".",
+  "about": "De que forma tiene un arma. El material lo pone materiales.json: forma x material = arma. Tres campos deciden si sirve para algo y los tres los lee el combate: \"damageDice\" mueve el dano por la escalera de dados (el nivel dice de que dado partes, el arma te mueve desde ahi), \"hands\" a 2 quita el escudo, y \"rangeFeet\" es hasta donde llega -sin el, un arco es cuerpo a cuerpo-. \"weight\" es lo que pesa en el sorteo; lo que pesa de verdad es \"kg\". \"mastery\" es su maestría de 2024 (vex, topple, sap, slow, push, graze, cleave o nick): lo que hace el arma de más en manos de quien la domina (rules/weapon-mastery.js).",
   "rows": [
     {
       "id": "forma-daga",
@@ -18,6 +18,7 @@
       "kg": 0.5,
       "damageDice": "1d4",
       "damageType": "perforante",
+      "mastery": "nick",
       "slot": "weapon",
       "hands": 1,
       "pattern": "{forma} de {material}",
@@ -38,6 +39,7 @@
       "kg": 1,
       "damageDice": "1d6",
       "damageType": "cortante",
+      "mastery": "vex",
       "slot": "weapon",
       "hands": 1,
       "pattern": "{forma} de {material}"
@@ -56,6 +58,7 @@
       "kg": 1.5,
       "damageDice": "1d8",
       "damageType": "cortante",
+      "mastery": "sap",
       "slot": "weapon",
       "hands": 1,
       "pattern": "{forma} de {material}"
@@ -74,6 +77,7 @@
       "kg": 2,
       "damageDice": "1d8",
       "damageType": "cortante",
+      "mastery": "topple",
       "slot": "weapon",
       "hands": 1,
       "pattern": "{forma} de {material}"
@@ -93,6 +97,7 @@
       "kg": 2,
       "damageDice": "1d6",
       "damageType": "contundente",
+      "mastery": "sap",
       "slot": "weapon",
       "hands": 1,
       "pattern": "{forma} de {material}"
@@ -111,6 +116,7 @@
       "kg": 3,
       "damageDice": "1d10",
       "damageType": "contundente",
+      "mastery": "push",
       "slot": "weapon",
       "hands": 2,
       "pattern": "{forma} de {material}"
@@ -129,6 +135,7 @@
       "kg": 1.5,
       "damageDice": "1d6",
       "damageType": "perforante",
+      "mastery": "sap",
       "slot": "weapon",
       "hands": 1,
       "pattern": "{forma} de {material}",
@@ -149,6 +156,7 @@
       "kg": 3,
       "damageDice": "1d10",
       "damageType": "cortante",
+      "mastery": "cleave",
       "slot": "weapon",
       "hands": 2,
       "pattern": "{forma} de {material}"
@@ -168,6 +176,7 @@
       "kg": 2,
       "damageDice": "1d6",
       "damageType": "contundente",
+      "mastery": "topple",
       "slot": "weapon",
       "hands": 2,
       "pattern": "{forma} de {material}"
@@ -187,6 +196,7 @@
       "kg": 1,
       "damageDice": "1d6",
       "damageType": "perforante",
+      "mastery": "vex",
       "slot": "weapon",
       "hands": 2,
       "pattern": "{forma} de {material}",
@@ -207,6 +217,7 @@
       "kg": 1,
       "damageDice": "1d8",
       "damageType": "perforante",
+      "mastery": "slow",
       "slot": "weapon",
       "hands": 2,
       "pattern": "{forma} de {material}",
@@ -227,6 +238,7 @@
       "kg": 2.5,
       "damageDice": "1d8",
       "damageType": "perforante",
+      "mastery": "slow",
       "slot": "weapon",
       "hands": 2,
       "pattern": "{forma} de {material}",
@@ -246,6 +258,7 @@
       "kg": 1.2,
       "damageDice": "1d8",
       "damageType": "perforante",
+      "mastery": "vex",
       "slot": "weapon",
       "hands": 1,
       "pattern": "{forma} de {material}"
@@ -264,6 +277,7 @@
       "kg": 1.2,
       "damageDice": "1d6",
       "damageType": "cortante",
+      "mastery": "nick",
       "slot": "weapon",
       "hands": 1,
       "pattern": "{forma} de {material}"
@@ -282,6 +296,7 @@
       "kg": 3.5,
       "damageDice": "2d6",
       "damageType": "cortante",
+      "mastery": "graze",
       "slot": "weapon",
       "hands": 2,
       "pattern": "{forma} de {material}"
@@ -301,6 +316,7 @@
       "kg": 0.4,
       "damageDice": "1d4",
       "damageType": "cortante",
+      "mastery": "nick",
       "slot": "weapon",
       "hands": 1,
       "pattern": "{forma} de {material}",
@@ -320,6 +336,7 @@
       "kg": 1,
       "damageDice": "1d6",
       "damageType": "cortante",
+      "mastery": "vex",
       "slot": "weapon",
       "hands": 1,
       "pattern": "{forma} de {material}",
@@ -339,6 +356,7 @@
       "kg": 3.5,
       "damageDice": "1d12",
       "damageType": "cortante",
+      "mastery": "cleave",
       "slot": "weapon",
       "hands": 2,
       "pattern": "{forma} de {material}"
@@ -357,6 +375,7 @@
       "kg": 2.5,
       "damageDice": "1d8",
       "damageType": "cortante",
+      "mastery": "topple",
       "slot": "weapon",
       "hands": 1,
       "pattern": "{forma} de {material}"
@@ -375,6 +394,7 @@
       "kg": 1,
       "damageDice": "1d4",
       "damageType": "contundente",
+      "mastery": "slow",
       "slot": "weapon",
       "hands": 1,
       "pattern": "{forma} de {material}"
@@ -393,6 +413,7 @@
       "kg": 2,
       "damageDice": "1d8",
       "damageType": "contundente",
+      "mastery": "sap",
       "slot": "weapon",
       "hands": 1,
       "pattern": "{forma} de {material}"
@@ -412,6 +433,7 @@
       "kg": 4.5,
       "damageDice": "2d6",
       "damageType": "contundente",
+      "mastery": "topple",
       "slot": "weapon",
       "hands": 2,
       "pattern": "{forma} de {material}"
@@ -430,6 +452,7 @@
       "kg": 8,
       "damageDice": "1d10",
       "damageType": "perforante",
+      "mastery": "push",
       "slot": "weapon",
       "hands": 2,
       "pattern": "{forma} de {material}"
@@ -448,6 +471,7 @@
       "kg": 2,
       "damageDice": "1d6",
       "damageType": "perforante",
+      "mastery": "topple",
       "slot": "weapon",
       "hands": 1,
       "pattern": "{forma} de {material}",
@@ -467,6 +491,7 @@
       "kg": 3,
       "damageDice": "1d10",
       "damageType": "cortante",
+      "mastery": "graze",
       "slot": "weapon",
       "hands": 2,
       "pattern": "{forma} de {material}"
@@ -485,6 +510,7 @@
       "kg": 0.2,
       "damageDice": "1d4",
       "damageType": "contundente",
+      "mastery": "slow",
       "slot": "weapon",
       "hands": 1,
       "pattern": "{forma} de {material}",
@@ -504,6 +530,7 @@
       "kg": 0.8,
       "damageDice": "1d6",
       "damageType": "perforante",
+      "mastery": "slow",
       "slot": "weapon",
       "hands": 1,
       "pattern": "{forma} de {material}",
@@ -524,6 +551,7 @@
       "kg": 1.5,
       "damageDice": "1d6",
       "damageType": "perforante",
+      "mastery": "vex",
       "slot": "weapon",
       "hands": 1,
       "pattern": "{forma} de {material}",
@@ -543,6 +571,7 @@
       "kg": 1.2,
       "damageDice": "1d8",
       "damageType": "perforante",
+      "mastery": "slow",
       "slot": "weapon",
       "hands": 2,
       "pattern": "{forma} de {material}",
@@ -562,6 +591,7 @@
       "kg": 0.3,
       "damageDice": "1d4",
       "damageType": "perforante",
+      "mastery": "vex",
       "slot": "weapon",
       "hands": 1,
       "pattern": "{forma} de {material}",

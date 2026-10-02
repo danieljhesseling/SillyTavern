@@ -80,7 +80,7 @@ import {
     currentSeason, ensureWorldData, hereLocation, lastCompendium, lastRumors, lastWorldNpcs, seedOfWorld,
     leaveMark, markedPrice, markedRumors, guildMemoryRumors, refusedHere, announceOpenedRoads, jailHere, jailRiskHere,
 } from './world.js';
-import { markStolen } from '../game-engine/campaign/jail.js';
+import { daysWord, markStolen } from '../game-engine/campaign/jail.js';
 import { goToJail } from './jail.js';
 import { getCurrentWorldFactions, nudgeRuler, rulerOf, shiftFactionStanding } from './factions.js';
 import {
@@ -95,6 +95,7 @@ import { partyPurse, payFromParty, renderPartyMembers, savePartyState } from './
 import { currentRecruits, favorsHere, hireRecruit, judgeDecision, meetRecruit } from './companions.js';
 import { startTalk } from './talk.js';
 import { countStat, showHelpSections } from './menus.js';
+import { brawlCardActions, runBrawlAction } from './brawl.js';
 
 /**
  * Como esta el mercado donde esta el grupo.
@@ -601,6 +602,8 @@ export function buildServiceCards() {
                 enabled: !combatEncounter.active && purse >= BETS[0], cost: 0,
             });
         }
+        // J12.7: quien te busca pelea, armarla tú y el duelo por dinero.
+        innCard.actions.push(...brawlCardActions());
     }
     // Idea 54: en los pueblos, quien enseña.
     if (hasMaster(location) && lastCompendium?.has?.('habilidades')) {
@@ -757,7 +760,7 @@ export function buildServiceCards() {
             shopActions.push({
                 id: `shop-steal:${cheapest.name}`, label: `Llevarse ${cheapest.name} sin pagar (Juego de manos, CD ${stealDC(String(location?.locationType ?? location?.type ?? ''))})`,
                 detail: jail > 0
-                    ? `Ya os pillaron aquí una vez: si os pillan otra, la guardia os lleva al calabozo ${jail === 1 ? 'un día' : `${jail} días`}.`
+                    ? `Ya os pillaron aquí una vez: si os pillan otra, la guardia os lleva al calabozo ${daysWord(jail)}.`
                     : 'Si os pillan, multa del doble y aquí se acuerdan. Si os vuelven a pillar, al calabozo.',
                 enabled: !combatEncounter.active, cost: 0, target: String(cheapest.price),
             });
@@ -872,7 +875,7 @@ export async function runService(actionId) {
     }
 
     if (actionId === 'inn-common') await takeRest('corto');
-    else if (actionId === 'inn-room') await takeRest('largo');
+    else if (actionId === 'inn-room') await takeRest('largo', { under: 'techo' });
     else if (actionId === 'inn-meal') {
         for (const member of partyMembers) {
             member.needs = relieve(member, 'ate');
@@ -974,6 +977,7 @@ export async function runService(actionId) {
         if (chat_metadata) chat_metadata[MOUNTS_KEY] = addMount(chat_metadata[MOUNTS_KEY], String(action.target));
         postCombatNarration(`🐴 [POSADA] En el establo: ${describeMounts(chat_metadata?.[MOUNTS_KEY])}.`);
     } else if (actionId === 'inn-dice') await playTavernDice();
+    else if (actionId.startsWith('brawl-')) await runBrawlAction(actionId);
     else if (actionId.startsWith('temple-respec:')) await respecMember(String(action.target));
     else if (actionId.startsWith('craft:')) craftAtSmith(actionId);
     else if (actionId.startsWith('learn:')) {

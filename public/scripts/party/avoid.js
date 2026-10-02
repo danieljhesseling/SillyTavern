@@ -4,9 +4,11 @@
  * El motor ya sabía hacerlo (`combat/avoid-fight.js` y `combat/parley.js`) y nadie lo llamaba.
  * Aquí se enchufa:
  *
- * - **Antes de pelear** (J12.2): la ficha «Evitar la pelea», junto a «Iniciar combate», abre la
- *   elección en una ventana de novela visual (`ui/avoid-scene.js`): quien manda de los que
- *   esperan, y hablar, pagar, huir o esconderse, cada una con su tirada. «Pelear» también está.
+ * - **Antes de pelear** (J12.2): la elección, en una ventana de novela visual (`ui/avoid-scene.js`):
+ *   quien manda de los que esperan, y hablar, pagar, huir o esconderse, cada una con su tirada.
+ *   «Pelear» también está. Desde la tanda 10 se abre sola al entrar en un tablero con enemigos
+ *   que os ven (`fight-entry.js`), sin «Todavía no»; las fichas «Iniciar combate» y «Evitar la
+ *   pelea» ya no existen.
  *   Si sale, el tablero queda pasado (la historia sigue, sin botín); huyendo, os vais y la pelea
  *   se queda ahí; si sale mal, se pelea, y a veces empiezan ellos.
  * - **En mitad de la pelea** (J8.5): el botón «Hablar» de la barra del combate abre las cuatro
@@ -44,6 +46,8 @@ import { getCurrentWorldFactions, shiftFactionStanding } from './factions.js';
 import { advanceCampaignDay } from './time.js';
 import { deliverTakenContract } from './contracts.js';
 import { noteRollInWindow, postCombatNarration, postForModel } from './narration.js';
+import { brawlOf } from '../game-engine/combat/brawl.js';
+import { brawlTalk } from './brawl.js';
 
 /** @param {any} value @returns {string} */
 const text = (value) => String(value ?? '').trim();
@@ -202,9 +206,13 @@ function passBoard(how, { contract = true } = {}) {
  * J12.2: la elección antes de pelear, en su ventana. Pelear, o una de las salidas del tablero
  * (las escritas, o las de siempre según quién espera).
  *
+ * Tanda 10: `auto`, abierta sola porque os han visto: sin «Todavía no» (Escape no la cierra), y
+ * lo que pasa al pelear lo decide `onFight` (colocarse antes de la iniciativa).
+ *
+ * @param {{auto?: boolean, onFight?: ((placements: Array<{name: string, x: number, y: number}>, how: {enemiesFirst?: boolean}) => void)|null}} [options]
  * @returns {Promise<string>} Lo que pasó: `pelear`, `pasado`, `fuera`, `pelea` o vacío (sin decidir).
  */
-export async function openAvoidChoice() {
+export async function openAvoidChoice({ auto = false, onFight = null } = {}) {
     if (!canAvoidHere()) return '';
     const board = getActiveBoardContext().board;
     if (!board) return '';
@@ -221,10 +229,12 @@ export async function openAvoidChoice() {
     let plan = null;
     /** Lo que pasó, para el registro (la nota corta) y para la novela (lo que se lee). */
     const told = { note: '', show: '' };
+    const fight = onFight ?? ((/** @type {any[]} */ awake, /** @type {{enemiesFirst?: boolean}} */ how) => startWaitingFight(awake, how));
     const { picked } = await openExitScene({
         title: text(board.name),
         speaker: leader,
-        intro: [avoidIntro(foes), 'Se puede pelear, o buscar otra salida.'],
+        intro: [avoidIntro(foes), auto ? 'Os han visto. Se puede pelear, o buscar otra salida.' : 'Se puede pelear, o buscar otra salida.'],
+        closable: !auto,
         choices: [
             { id: 'pelear', label: 'Pelear', icon: 'fa-hand-fist', text: 'Empezar la pelea', win: 'Si ganáis, os lleváis lo que lleven' },
             ...chips.map(chip => ({ id: chip.id, label: chip.label, icon: chip.icon, text: chip.text, check: chip.check, who: chip.who, cost: chip.cost, win: chip.win, locked: chip.locked })),
@@ -256,14 +266,14 @@ export async function openAvoidChoice() {
         },
     });
     if (picked === 'pelear') {
-        startWaitingFight(placements);
+        fight(placements, {});
         return 'pelear';
     }
     const done = /** @type {ReturnType<typeof exitPlan>|null} */ (plan);
     if (!done) return '';
     if (done.fight) {
         postCombatNarration(told.note);
-        startWaitingFight(placements, { enemiesFirst: done.enemiesFirst });
+        fight(placements, { enemiesFirst: done.enemiesFirst });
         return 'pelea';
     }
     // D-J45: lo que pasó se cuenta en la novela, y «Continuar» sigue el hilo como tras ganar.
@@ -309,6 +319,11 @@ function parleyEnemies() {
  */
 export async function openParleyChoice() {
     if (!canParleyNow()) return '';
+    // J12.7: en una pelea sin muertes se habla para rendirse o para pagar una ronda.
+    if (brawlOf(combatEncounter)) {
+        await brawlTalk();
+        return '';
+    }
     const board = getActiveBoardContext().board;
     const parley = readParley(board?.parley);
     const member = getCurrentActingMember();

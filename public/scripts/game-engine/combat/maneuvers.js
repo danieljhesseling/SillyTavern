@@ -312,6 +312,8 @@ export function attackEdge({ targetId, targetConditions = [], attackerConditions
     if (has(attackerConditions, 'Poisoned')) down.push('está envenenado');
     // R5: la mascota le ha distraído. R4: bendecido pega mejor; y un escudo arcano estorba.
     if (has(attackerConditions, 'Distraído')) down.push('le distrae la mascota');
+    // Tanda 10: Debilitar, la maestría de 2024 (una maza, una espada larga): pega peor.
+    if (has(attackerConditions, 'Debilitado')) down.push('va tocado del último golpe');
     if (has(attackerConditions, 'Bendecido')) up.push('va bendecido');
     if (has(targetConditions, 'Escudado')) down.push('tiene un escudo arcano delante');
     if (INCAPACITATED.some(c => has(targetConditions, c))) up.push('no puede defenderse');

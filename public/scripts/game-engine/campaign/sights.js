@@ -17,6 +17,10 @@
  *       { "verbo": "examinar", "text": "el hueco del roble", "skill": "investigation",
  *         "found": "Dentro hay una carta doblada en cuatro, sin firma." } ]
  *
+ * Una cosa puede ser de un sitio de dentro del pueblo (J3.11): con `place` («gremio», «posada»,
+ * «templo»…), sale al entrar en ese sitio, en «Mirar», y no en la fila de abajo. Así la sala del
+ * gremio tiene lo suyo y la plaza lo suyo. Si el pueblo no tiene ese sitio, sale en la fila.
+ *
  * Puro: de la localización, a filas con la forma de las de «mirar» del compendio.
  */
 
@@ -40,6 +44,7 @@ export const LOOKS_PER_DAY = 2;
  * @property {string} skill
  * @property {string} found Lo que se ve si la tirada sale bien; vacío si no se escribió.
  * @property {boolean} own Es del paquete, no del compendio.
+ * @property {string} [place] El sitio del pueblo donde está («gremio», «posada»…); sin él, la localización entera.
  */
 
 /** @param {any} value @returns {string} */
@@ -74,6 +79,7 @@ export function readSights(raw, place = '') {
         const what = typeof row === 'string' ? text(row) : text(row?.text);
         if (!what) return;
         const skill = text(row?.skill);
+        const inside = typeof row === 'string' ? '' : text(row?.place).toLowerCase();
         out.push({
             id: text(row?.id) || `${base}-${index + 1}`,
             kind: 'mirar',
@@ -82,9 +88,31 @@ export function readSights(raw, place = '') {
             skill: skill in SKILLS ? skill : DEFAULT_SIGHT_SKILL,
             found: text(row?.found),
             own: true,
+            ...(inside ? { place: inside } : {}),
         });
     });
     return out;
+}
+
+/**
+ * J3.11: las cosas de cada sitio de dentro del pueblo, por su clase, y las que quedan para la
+ * fila (las de la localización entera, y las de un sitio que este pueblo no tiene).
+ *
+ * @param {SightRow[]} sights
+ * @param {Iterable<string>} kinds Las clases de sitio que tiene el pueblo («gremio», «posada»…).
+ * @returns {{loose: SightRow[], byPlace: Record<string, SightRow[]>}}
+ */
+export function splitSights(sights, kinds) {
+    const here = new Set([...(kinds ?? [])].map(k => text(k).toLowerCase()));
+    /** @type {SightRow[]} */
+    const loose = [];
+    /** @type {Record<string, SightRow[]>} */
+    const byPlace = {};
+    for (const row of Array.isArray(sights) ? sights : []) {
+        if (row?.place && here.has(row.place)) (byPlace[row.place] ??= []).push(row);
+        else loose.push(row);
+    }
+    return { loose, byPlace };
 }
 
 /**

@@ -17,6 +17,7 @@
 import { searchDecided } from '../campaign/story-book.js';
 import { loadPixelManifest } from './pixel-art.js';
 import { backdropFor } from './meetup-scene.js';
+import { maskShown } from './shown-names.js';
 
 /** @typedef {import('../campaign/story-book.js').StoryBook} StoryBook */
 /** @typedef {import('../campaign/story-book.js').BookChapter} BookChapter */
@@ -536,6 +537,9 @@ export async function openStoryBook({ book, pack = '', notes = [], chronicle = [
         };
         const root = renderStoryBook(book, { pack, notes, chronicle, view, kicker, onClose: done });
         dialog.appendChild(root);
+        // J13.7: quien aún no se ha presentado sale por lo que es, también al pasar de página.
+        maskShown(root);
+        if (typeof MutationObserver === 'function') new MutationObserver(() => maskShown(root)).observe(root, { childList: true, subtree: true });
         dialog.addEventListener('cancel', (event) => {
             event.preventDefault();
             done();

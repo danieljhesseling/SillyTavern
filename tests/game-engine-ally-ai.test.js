@@ -162,3 +162,55 @@ test('sin enemigos, baja el arma', () => {
     expect(plan.action).toBe('none');
     expect(plan.destination).toEqual({ x: 5, y: 5 });
 });
+
+describe('M4: «a mi lado» sin nadie al lado', () => {
+    test('el héroe solo, con «Que actúe solo», va a por el enemigo lejano en vez de esperar', () => {
+        const plan = planAllyTurn({
+            actor: ally({ gridX: 1, gridY: 1 }),
+            leader: null,
+            enemies: [goblin({ gridX: 10, gridY: 10 })],
+            stance: 'cerca', terrain, gridWidth: W, gridHeight: H,
+        });
+        expect(plan.rationale).not.toBe('Se queda a tu lado, esperando.');
+        expect(feet(plan.destination, { gridX: 10, gridY: 10 })).toBeLessThan(feet({ x: 1, y: 1 }, { gridX: 10, gridY: 10 }));
+    });
+
+    test('malherido, en una esquina y con quien le dispara de lejos, va a por él en vez de cubrirse siempre', () => {
+        const plan = planAllyTurn({
+            actor: ally({ gridX: 0, gridY: 0, currentHp: 2 }),
+            leader: null,
+            enemies: [goblin({ gridX: 0, gridY: 8, attackRangeFeet: 60 })],
+            stance: 'cerca', terrain, gridWidth: W, gridHeight: H,
+        });
+        expect(plan.action).not.toBe('dodge');
+        expect(plan.rationale).toBe('Malherido y sin a dónde ir: se la juega.');
+        expect(feet(plan.destination, { gridX: 0, gridY: 8 })).toBeLessThan(40);
+    });
+
+    test('con el enemigo encima, o con su héroe en pie, se sigue cubriendo', () => {
+        const near = planAllyTurn({
+            actor: ally({ gridX: 0, gridY: 0, currentHp: 2, speedFeet: 0 }),
+            enemies: [goblin({ gridX: 1, gridY: 0 })],
+            stance: 'cerca', terrain, gridWidth: W, gridHeight: H,
+        });
+        expect(near.action).toBe('dodge');
+        const withHero = planAllyTurn({
+            actor: ally({ gridX: 0, gridY: 0, currentHp: 2 }),
+            leader: { gridX: 1, gridY: 1 },
+            enemies: [goblin({ gridX: 0, gridY: 8, attackRangeFeet: 60 })],
+            stance: 'cerca', terrain, gridWidth: W, gridHeight: H,
+        });
+        expect(withHero.action).toBe('dodge');
+    });
+
+    test('un mercenario malherido en su esquina, con su héroe lejos, también va a por él (la cripta)', () => {
+        const plan = planAllyTurn({
+            actor: ally({ gridX: 0, gridY: 0, currentHp: 2 }),
+            leader: { gridX: 9, gridY: 9 },
+            enemies: [goblin({ gridX: 0, gridY: 8, attackRangeFeet: 60 })],
+            stance: 'cerca', terrain, gridWidth: W, gridHeight: H,
+        });
+        expect(plan.action).not.toBe('dodge');
+        expect(plan.rationale).toBe('Malherido y sin a dónde ir: se la juega.');
+    });
+});

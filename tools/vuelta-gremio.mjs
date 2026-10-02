@@ -59,7 +59,8 @@ function startServer() {
     server = spawn(process.execPath, ['server.js', '--port', String(PORT), '--dataRoot', dataRoot], { cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'] });
     const child = server;
     return new Promise((resolve, reject) => {
-        const timer = setTimeout(() => reject(new Error('the server did not start in 180s')), 180000);
+        // Con muchas pruebas a la vez (e2e-todo.mjs), el servidor tarda en arrancar.
+        const timer = setTimeout(() => reject(new Error('the server did not start in 360s')), 360000);
         const watch = (/** @type {any} */ buffer) => {
             const text = String(buffer);
             if (text.includes(String(PORT)) || text.toLowerCase().includes('listening')) {
@@ -94,7 +95,7 @@ try {
         } catch { /* nada */ }
     });
 
-    await page.goto(`${BASE}/`, { waitUntil: 'domcontentloaded' });
+    await page.goto(`${BASE}/`, { waitUntil: 'domcontentloaded', timeout: 180000 });
     const bot = createBot(page, { log: (line) => console.log(line) });
     const clicked = await startOffline(page, { name: 'Tessa', gender: 'Mujer', race: 'Humano', klass: 'Guerrero' });
     const shoot = async (/** @type {string} */ what) => { if (SHOT) await page.screenshot({ path: `${SHOT.replace(/\.png$/i, '')}-${what}.png` }); };
@@ -130,7 +131,12 @@ try {
             boardCards = await cards.evaluateAll(list => list.map(c => c.getAttribute('data-campaign') || ''));
             const card = page.locator(`dialog[open] .hb-root [data-campaign="${wanted}"]`);
             if (await card.count() === 0) return false;
-            return bot.act(now, `empezar ${wanted} en el tablón`, () => bot.press(card), { module: 'hub-panel.js', wait: 8000 });
+            const was = now.world;
+            const done = await bot.act(now, `empezar ${wanted} en el tablón`, () => bot.press(card), { module: 'hub-panel.js', wait: 8000 });
+            // Cargar la campaña tarda: se espera a que cambie el mundo antes de volver a mirar,
+            // para no pulsar el tablón otra vez mientras carga.
+            await bot.until(async () => { const w = (await bot.observe()).world; return Boolean(w) && w !== was; }, 30000, 400);
+            return done;
         }
         return false;
     };
@@ -143,6 +149,7 @@ try {
     const fromGuild = async (chipText, reached) => {
         for (let i = 0; i < 40; i++) {
             const now = await bot.observe();
+            if (process.env.VUELTA_VER) console.log(`  · ${bot.steps.length} ${bot.steps[bot.steps.length - 1]?.what ?? ''} · ${bot.where(now)}${now.layer ? ` · ventana ${now.layer.kind} ${now.layer.title}` : ''}`);
             if (reached(now)) return true;
             if (await bot.handleLayer(now, { onHub })) continue;
             if (await bot.tapChip(now, chipText, `la ficha «${chipText.source.replace(/[\^$\\]/g, '')}»`, 'action-chips.js')) continue;
@@ -178,7 +185,8 @@ try {
     const home = await fromGuild(/^Volver al gremio$/, (now) => now.world === guildWorld && !now.layer);
     const back = await bot.observe();
     check('«Volver al gremio» lleva al pueblo del gremio, con el grupo entero (J4.4, J4.9)',
-        home && back.world === guildWorld && back.party.length === guild.party.length, JSON.stringify({ world: back.world, party: back.party }));
+        home && back.world === guildWorld && back.party.length === guild.party.length,
+        JSON.stringify({ home, guildWorld, world: back.world, party: back.party, sees: bot.describe(back).slice(0, 240) }));
 
     // --- 5. Otra campaña con la misma Tessa ---------------------------------------------------
     wanted = 'strahd';
@@ -188,7 +196,7 @@ try {
     check('desde el tablón empieza La Maldición de Strahd con la misma Tessa, con lo que ganó en 1387 (D-J4)',
         inStrahd && strahdStart.hero?.name === 'Tessa' && (strahdStart.hero?.xp ?? 0) >= (heroAtGuild?.xp ?? 0)
         && (strahdStart.hero?.xp ?? 0) > (heroAtGuild?.xp ?? 0) - 1 && strahdStart.party.length === guild.party.length,
-        JSON.stringify({ guild: heroAtGuild, strahd: strahdStart.hero, party: strahdStart.party }));
+        JSON.stringify({ guild: heroAtGuild, strahd: strahdStart.hero, party: strahdStart.party, board: boardCards }));
     const packStrahd = readJson('public/mundos/strahd.pack.json');
     const strahd = await runCampaign(bot, {
         pack: packStrahd,
@@ -202,15 +210,26 @@ try {
     // --- El recuento --------------------------------------------------------------------------
     const all = fixedNumbers(readJson);
     const notes = proseNotes(ROOT);
-    // J18.10 y J13.1: lo leído en la última campaña con la etiqueta del motor a la vista.
-    const raw = (await page.evaluate(() => (window.SillyTavern.getContext().chat || [])
+    // J18.10 y J13.1: las notas de la última campaña con su etiqueta del motor en el chat. La caja
+    // de la novela las limpia al pintarlas: lo que cuenta es lo que se VE (`oddities`, «crudo»).
+    const tagged = (await page.evaluate(() => (window.SillyTavern.getContext().chat || [])
         .map((/** @type {any} */ m) => String(m.extra?.display_text ?? m.mes ?? '')))).filter((/** @type {string} */ t) => RAW.test(t));
+    const raw = bot.oddities.filter(o => o.kind === 'crudo');
     console.log('\n--- los silencios ---');
     for (const s of bot.silences) console.log(`  #${s.n} ${s.where} · ${s.what}\n      se ve: ${s.sees.slice(0, 260)}${s.module ? `\n      módulo: ${s.module}` : ''}`);
     if (bot.silences.length === 0) console.log('  (ninguno)');
     console.log('\n--- los atascos ---');
     for (const b of bot.blocks) console.log(`  #${b.n} ${b.where} · ${b.goal}\n      se ve: ${b.sees.slice(0, 300)}\n      rescate: ${b.rescue}`);
     if (bot.blocks.length === 0) console.log('  (ninguno)');
+    console.log('\n--- lo que se ve mal (sin ser silencio ni atasco) ---');
+    for (const o of bot.oddities) console.log(`  #${o.n} ${o.where} · ${o.kind}: ${o.text.slice(0, 300)}`);
+    if (bot.oddities.length === 0) console.log('  (nada)');
+    console.log('\n--- el grupo ha caído (la tarjeta «ha muerto») ---');
+    for (const f of bot.falls) console.log(`  #${f.n} ${f.where} · ${f.text}\n      salidas: ${f.ways.join(' | ') || '(ninguna)'}`);
+    if (bot.falls.length === 0) console.log('  (nunca)');
+    console.log('\n--- los clics lentos (la página tarda más de 1,5 s en atenderlos) ---');
+    for (const s of bot.slow) console.log(`  ${s.ms} ms · ${s.what} · ${s.where}`);
+    if (bot.slow.length === 0) console.log('  (ninguno)');
     console.log('\n--- los números (sección 6 del plan) ---');
     number('Campañas en una misma partida', `${[in1387, inStrahd].filter(Boolean).length}, con el mismo gremio y la misma Tessa`);
     number('Campañas en el tablón', boardCards.length);
@@ -220,7 +239,14 @@ try {
     number('Pasos (clics)', bot.steps.length);
     number('Peleas, escenas con decisión, sucesos, charlas, viajes y tiradas',
         `${bot.counts.fights} · ${bot.counts.options} · ${bot.counts.sucesos} · ${bot.counts.talks} · ${bot.counts.travels} · ${bot.counts.checks}`);
-    number('Notas del juego con su versión en prosa', `${notes.prose} de ${notes.total} (en crudo a la vista en Strahd: ${raw.length})`);
+    number('Notas del juego con su versión en prosa', `${notes.prose} de ${notes.total} (etiqueta del motor a la vista en la vuelta: ${raw.length}; en el chat de Strahd, sin pintar: ${tagged.length})`);
+    number('Escenas del hilo que salen con su hito ya cumplido', bot.oddities.filter(o => o.kind === 'tarde').length);
+    number('Ventanas abiertas encima de otra a medias', bot.oddities.filter(o => o.kind === 'encima').length);
+    number('Veces que cae el grupo entero', `${bot.falls.length} (partidas cargadas después: ${bot.counts.loads})`);
+    number('Descansos (posada, acampar, cazar), al ver el agotamiento o media vida', bot.counts.rests);
+    number('«Otra salida» antes o en mitad de una pelea (la vuelta elige pelear)', bot.counts.exits);
+    number('Turnos del grupo jugados con el gancho (la barra de combate no respondía)', bot.counts.hooked);
+    number('Clics lentos (más de 1,5 s)', bot.slow.length ? `${bot.slow.length} (el peor, ${Math.max(...bot.slow.map(s => s.ms))} ms)` : 0);
     number('Filas del narrador (frases.json)', all.frases);
     number('Sucesos con decisión (sucesos.json)', all.sucesos);
     number('Charlas con ramas escritas (1387 y Strahd)', `${all.charlas1387} y ${all.charlasStrahd}`);

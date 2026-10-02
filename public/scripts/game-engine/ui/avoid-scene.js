@@ -17,6 +17,7 @@
 
 import { loadPixelManifest, firstArt } from './pixel-art.js';
 import { portraitFor, backdropFor } from './meetup-scene.js';
+import { shownName } from './shown-names.js';
 
 /** @param {any} value @returns {string} */
 const text = (value) => String(value ?? '').trim();
@@ -87,10 +88,12 @@ export function exitChips(choices) {
  * @param {boolean} [input.night]
  * @param {string} [input.kind] `avoid` (antes de pelear) o `parley` (en mitad): para las pruebas y el estilo.
  * @param {HTMLElement|null} [input.mount]
+ * @param {boolean} [input.closable] Tanda 10: si se puede cerrar sin elegir («Todavía no», Escape). La
+ *   que se abre sola al entrar en un tablero con enemigos que os ven, no: hay que decidir.
  * @returns {Promise<{picked: string, outcome: ExitOutcome|null}>} `picked` vacío si se cerró sin elegir.
  */
 export async function openExitScene({
-    title, speaker = '', intro, choices, onPick, pack = '', town = '', night = false, kind = 'avoid', mount = null,
+    title, speaker = '', intro, choices, onPick, pack = '', town = '', night = false, kind = 'avoid', mount = null, closable = true,
 }) {
     await loadPixelManifest().catch(() => null);
     const dialog = /** @type {HTMLDialogElement} */ (el('dialog', `qd-dialog dw-dialog ps-dialog ev-dialog ev-${kind}`));
@@ -100,6 +103,7 @@ export async function openExitScene({
 
     const root = el('div', 'qd-root dw-root ps-root ev-root');
     root.dataset.kind = kind;
+    if (!closable) dialog.classList.add('ev-must-choose');
     const backdrop = el('div', 'qd-backdrop');
     const art = backdropFor({ town, pack, night });
     if (art) backdrop.style.setProperty('--qd-backdrop', `url("${new URL(art, document.baseURI).href}")`);
@@ -119,7 +123,8 @@ export async function openExitScene({
 
     // La cara de quien manda: la de su paquete, o su dibujo de criatura; si no, la silueta.
     const who = text(speaker);
-    plate.textContent = who;
+    // J13.7: por lo que es hasta que se presente.
+    plate.textContent = shownName(who);
     plate.hidden = !who;
     portrait.hidden = !who;
     if (who) {
@@ -207,10 +212,12 @@ export async function openExitScene({
                 chips.appendChild(button);
             }
             foot.textContent = '';
-            const leave = chip('qd-leave ev-close', () => close());
-            leave.textContent = 'Todavía no';
-            leave.title = 'Cerrar sin decidir';
-            foot.appendChild(leave);
+            if (closable) {
+                const leave = chip('qd-leave ev-close', () => close());
+                leave.textContent = 'Todavía no';
+                leave.title = 'Cerrar sin decidir';
+                foot.appendChild(leave);
+            }
             /** @type {HTMLElement|null} */ (chips.querySelector('.dw-option:not(.dw-locked)'))?.focus();
         };
 
@@ -258,7 +265,8 @@ export async function openExitScene({
 
         dialog.addEventListener('cancel', (event) => {
             event.preventDefault();
-            if (!busy) close();
+            // Tanda 10: sin elegir, solo se cierra la que se puede dejar para luego; ya elegido, siempre.
+            if (!busy && (closable || result)) close();
         });
         dialog.addEventListener('keydown', (event) => {
             // Lo que se pulsa aquí es de la ventana, no del Modo Juego que hay detrás.

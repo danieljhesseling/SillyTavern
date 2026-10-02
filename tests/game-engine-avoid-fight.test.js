@@ -390,7 +390,11 @@ describe('J8.5: salir de una pelea hablando', () => {
 describe('lo que hace el juego con cada salida', () => {
     test('la primera línea: quién espera, en llano', () => {
         expect(avoidIntro(guards)).toBe('Alguacil Torres y dos más os cierran el paso.');
-        expect(avoidIntro([{ name: 'Ratero del muelle', cr: 0.125 }])).toBe('Ratero del muelle os cierra el paso.');
+        expect(avoidIntro([{ name: 'Ratero del muelle', cr: 0.125 }])).toBe('El ratero del muelle os cierra el paso.');
+        // Tanda 10: con su artículo si es lo que es; un nombre propio, tal cual.
+        expect(avoidIntro([{ name: 'Bruja del pantano', cr: 1 }])).toBe('La bruja del pantano os cierra el paso.');
+        expect(avoidIntro([{ name: 'Guardia de la puerta', cr: 1 }])).toBe('El guardia de la puerta os cierra el paso.');
+        expect(avoidIntro([{ name: 'Baba Lysaga', cr: 5 }])).toBe('Baba Lysaga os cierra el paso.');
         expect(avoidIntro(wolves)).toBe('Os han olido: Lobo famélico ×2, Lobo alfa.');
         expect(avoidIntro(dead)).toBe('Algo se mueve delante: Zombi de Strahd ×2.');
         expect(avoidIntro([])).toBe('');

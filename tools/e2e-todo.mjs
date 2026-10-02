@@ -62,8 +62,15 @@ const jobs = [
         { name: 'tablero grande', kind: 'e2e', args: ['tools/e2e-tablero-grande.mjs'] },
         // J12.2, J8.5, J12.6 y J4.6: evitar la pelea y salir de ella hablando, en la posada de 1387 (puerto 8190).
         { name: 'peleas evitables', kind: 'e2e', args: ['tools/e2e-peleas.mjs'] },
+        // J5.2, J5.3, J5.6 y J12.5: la campaña corta de tu Gem, añadida y jugada entera; y un tablero
+        // en imagen sin su mapa, con su trampa y su cofre (puerto 8262).
+        { name: 'campaña de tu Gem', kind: 'e2e', args: ['tools/e2e-campana-gem.mjs'] },
+        // J4.2: la partida es el gremio: Strahd y 1387 en la misma partida, el mismo gremio en las
+        // dos; y una partida de antes (un gremio en cada chat) que se abre sin perder nada (puerto 8386).
+        { name: 'gremio compartido', kind: 'e2e', args: ['tools/e2e-gremio-compartido.mjs'] },
         // J16.1, J16.2 y J16.4: las vueltas a clics, como quien juega: 1387 hasta un final y la del
         // gremio (prólogo, 1387, volver y Strahd). Sus números salen al final (puertos 8246 y 8247).
+        // Si la barra de combate no responde a sus clics, los turnos del grupo van con el gancho.
         { name: 'vuelta 1387 a clics', kind: 'e2e', args: ['tools/vuelta-1387.mjs'] },
         { name: 'vuelta del gremio a clics', kind: 'e2e', args: ['tools/vuelta-gremio.mjs'] },
         { name: 'vuelta 1-48', kind: 'e2e', args: ['tools/e2e-campaign.mjs', '--parte', 'a', '--port', '8126'] },

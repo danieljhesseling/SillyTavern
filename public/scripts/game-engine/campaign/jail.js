@@ -20,6 +20,7 @@
  */
 
 import { resolveGender } from './grammar.js';
+import { countedName } from './narration-notes.js';
 
 /** La multa del calabozo, como poco. Es pequeña: los días en la celda ya son el castigo. */
 export const JAIL_MIN_FINE = 5;
@@ -44,9 +45,6 @@ export function daysWord(days) {
     const n = Math.max(1, Math.floor(Number(days) || 1));
     return DAY_WORDS[n] ?? `${n} días`;
 }
-
-/** @param {string} line @returns {string} */
-const capital = (line) => (line ? `${line.charAt(0).toUpperCase()}${line.slice(1)}` : line);
 
 /**
  * La multa del calabozo: lo que valía lo que se intentó llevar, y como poco `JAIL_MIN_FINE`.
@@ -103,13 +101,27 @@ export function markStolen(item, town) {
 }
 
 /**
- * Una lista dicha: «el aceite, la cuerda y la vela».
+ * Lo que se lleva la guardia, dicho: «dos aceites afiladores y cuerda de cáñamo». Lo repetido,
+ * contado (antes salía «Aceite afilador y Aceite afilador»), y un nombre común en minúscula,
+ * como se diría en una frase; uno propio («Daga de Vane») se deja como está.
  *
  * @param {string[]} names
  * @returns {string}
  */
-function listed(names) {
-    const list = names.map(text).filter(Boolean);
+export function goodsWords(names) {
+    /** @type {Map<string, {name: string, n: number}>} */
+    const counts = new Map();
+    for (const name of names.map(text).filter(Boolean)) {
+        const key = fold(name);
+        const seen = counts.get(key);
+        if (seen) seen.n += 1;
+        else counts.set(key, { name, n: 1 });
+    }
+    const list = [...counts.values()].map(({ name, n }) => {
+        if (n > 1) return countedName(name, n);
+        const common = name.split(/\s+/).slice(1).every(word => word.charAt(0) === word.charAt(0).toLocaleLowerCase('es'));
+        return common ? `${name.charAt(0).toLocaleLowerCase('es')}${name.slice(1)}` : name;
+    });
     if (list.length <= 1) return list[0] ?? '';
     return `${list.slice(0, -1).join(', ')} y ${list[list.length - 1]}`;
 }
@@ -145,7 +157,7 @@ export function jailScene(facts) {
     const who = { heroe: hero ?? thief, ladron: thief, visita: visitor };
     const say = (/** @type {string} */ line) => resolveGender(line, who).replace(/\s+/g, ' ').trim();
     const time = daysWord(days);
-    const goods = listed(taken);
+    const goods = goodsWords(taken);
     const place = text(town) || 'el pueblo';
 
     /** @type {import('./plot-scenes.js').SceneBeat[]} */
@@ -154,33 +166,36 @@ export function jailScene(facts) {
         beats.push({ who: speaker, mood, text: say(line), decision: null });
     };
 
-    beat('', 'neutral', `${text(keeper) || 'Alguien'} grita «¡Al ladrón!» y la guardia de ${place} llega enseguida.`);
+    // D-J54: la escena la cuentan quienes están allí (la tienda, la guardia, el preso y quien le
+    // visita); el narrador solo dice cuándo se sale, en una línea corta.
+    const heroName = text(hero?.name) || name;
+    const loot = goods ? `Esto se queda con la guardia: ${goods}. ` : '';
+    beat(text(keeper) || 'Una voz', 'enfadado', '¡Al ladrón! ¡Guardia, aquí, deprisa!');
     beat(guard.name, 'enfadado', you
         ? 'Otra vez tú. Ya te avisaron la primera vez. Ahora vienes con nosotros.'
         : `Otra vez ${name}. Ya se le avisó la primera vez. Ahora viene con nosotros.`);
-    beat('', 'neutral', you
-        ? `Te quitan ${goods || 'lo que llevabas'} y te llevan al calabozo. ${capital(time)} a pan y agua, en una celda que huele a paja mojada.`
-        : `Le quitan ${goods || 'lo que llevaba'} a ${name} y se {ladron:lo|la} llevan al calabozo. ${capital(time)} a pan y agua, en una celda que huele a paja mojada.`);
+    beat(guard.name, 'neutral', you
+        ? `${loot}Y tú, al calabozo: ${time} a pan y agua.`
+        : `${loot}Y ${name}, al calabozo: ${time} a pan y agua.`);
     if (you && visitor) {
         beat(text(visitor.name), 'triste', `Te traigo pan y algo de queso. Los demás esperamos en la posada. Aguanta, que son ${time}.`);
     } else if (you) {
-        beat('', 'neutral', 'Nadie viene a verte. Las horas pasan despacio entre la paja y el frío.');
+        beat(heroName, 'triste', 'Paja mojada, pan duro y nadie que venga a verme. Las horas no pasan.');
     } else {
-        beat('', 'neutral', `Vas a ver a ${name} a la reja. No tiene buena cara.`);
+        beat(heroName, 'neutral', `${name}, te traigo pan. ¿Cómo lo llevas?`);
         beat(name, 'triste', 'No me mires así. Ya sé que me pillaron. Esto se pasa pronto.');
     }
+    beat('', 'neutral', `Al amanecer del día ${releaseDay}, se abre la celda.`);
+    const pricier = you ? 'En la tienda te volverán a vender, pero más caro unos días.' : 'En la tienda os volverán a vender, pero más caro unos días.';
     if (paid) {
         beat(guard.name, 'neutral', you
-            ? `Son ${fine} de oro de multa. Pagas y te vas. Si te vuelvo a ver robando aquí, será peor.`
-            : `Son ${fine} de oro de multa. Se paga y se va. Si {ladron:lo|la} vuelvo a ver robando aquí, será peor.`);
+            ? `Son ${fine} de oro de multa. Pagas y te vas. ${pricier} Si te vuelvo a ver robando aquí, será peor.`
+            : `Son ${fine} de oro de multa. Se paga y se va. ${pricier} Si {ladron:lo|la} vuelvo a ver robando aquí, será peor.`);
     } else {
         beat(guard.name, 'neutral', you
-            ? 'No llevas ni para la multa: los días de celda la pagan. Largo de aquí, y no vuelvas a robar.'
-            : `No lleváis ni para la multa: los días de celda la pagan. Llevaos a ${name}, y que no vuelva a robar aquí.`);
+            ? `No llevas ni para la multa: los días de celda la pagan. ${pricier} Largo de aquí, y no vuelvas a robar.`
+            : `No lleváis ni para la multa: los días de celda la pagan. ${pricier} Llevaos a ${name}, y que no vuelva a robar aquí.`);
     }
-    beat('', 'neutral', you
-        ? `Al amanecer del día ${releaseDay} sales a la calle. En la tienda te volverán a vender, pero unos días más caro.`
-        : `Al amanecer del día ${releaseDay}, ${name} sale a la calle. En la tienda os volverán a vender, pero unos días más caro.`);
 
     const title = `El calabozo de ${place}`;
     return {
@@ -190,7 +205,8 @@ export function jailScene(facts) {
         text: jailLine(facts),
         beats,
         dialogue: null,
-        backdrop: { place: '', town: text(town) },
+        // Detrás, la celda (`sitios/calabozo.png`); si no está dibujada, el escenario del pueblo.
+        backdrop: { place: 'calabozo', town: text(town) },
     };
 }
 
@@ -202,7 +218,7 @@ export function jailScene(facts) {
  */
 export function jailLine({ town, guard, thief, days, fine, paid, taken }) {
     const name = text(thief?.name) || 'Quien robó';
-    const goods = listed(taken);
+    const goods = goodsWords(taken);
     const watch = guard?.named ? `${text(guard.name)}, de la guardia de ${text(town) || 'el pueblo'},` : `La guardia de ${text(town) || 'el pueblo'}`;
     return [
         `${watch} se lleva a ${name} al calabozo por robar otra vez en la tienda: ${daysWord(days)}.`,

@@ -1,0 +1,257 @@
+/* ================================================================
+   J14.11 · Trabajos y ratos libres: servir mesas, la forja, las cartas, leer y pescar, como una
+   escena corta de novela visual (public/scripts/game-engine/ui/pastime-scene.js). La ventana es
+   la de las quedadas (.qd-*, quedadas.css); aquí va lo suyo: quién viene y la mesa de cartas.
+   Los colores son los del juego (`--gs-*`, game-shell.css). Todo cuelga de .pt-dialog.
+   ================================================================ */
+
+/* Quién viene: fichas que se encienden. */
+.pt-dialog .qd-chip-mate .pt-mate-box {
+    color: var(--SmartThemeQuoteColor, #b9a98a);
+}
+
+.pt-dialog .qd-chip-mate.pt-mate-on {
+    background: var(--gs-accent-gold-hover, rgba(226, 194, 122, 0.15));
+    border-color: var(--gs-accent-gold, #e2c27a);
+}
+
+.pt-dialog .qd-chip-mate.pt-mate-on .pt-mate-box {
+    color: var(--gs-accent-gold, #e2c27a);
+}
+
+.pt-dialog .qd-chip:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+/* Lo que te llevas: ganar en dorado, perder en rojo apagado. */
+.pt-dialog .pt-won {
+    color: var(--gs-accent-gold, #e2c27a);
+    font-weight: bold;
+}
+
+.pt-dialog .pt-lost {
+    color: var(--gs-danger-soft, #d08a86);
+    font-weight: bold;
+}
+
+/* La mesa de cartas. */
+.pt-table {
+    display: flex;
+    flex-direction: column;
+    gap: 0.7rem;
+}
+
+.pt-table[hidden] {
+    display: none;
+}
+
+.pt-felt {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 1.4rem;
+    padding: 0.8rem 1rem;
+    background: radial-gradient(ellipse at 30% 40%, rgba(46, 84, 58, 0.55), rgba(16, 30, 22, 0.75));
+    border: 1px solid rgba(214, 180, 106, 0.25);
+    border-radius: 10px;
+}
+
+.pt-shown,
+.pt-past {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.pt-past {
+    flex: 1;
+    min-width: 0;
+}
+
+.pt-shown-label {
+    font-size: 0.72rem;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--SmartThemeQuoteColor, #b9a98a);
+}
+
+.pt-strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+
+.pt-strip-none {
+    font-size: 0.85rem;
+    font-style: italic;
+    color: var(--SmartThemeQuoteColor, #b9a98a);
+}
+
+/* Una carta: el valor grande, el palo y el nombre. */
+.pt-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.2rem;
+    width: 88px;
+    height: 124px;
+    color: #2b2116;
+    background: linear-gradient(160deg, #f4ead2, #dccca4);
+    border: 2px solid #b79c62;
+    border-radius: 8px;
+    box-shadow: 0 6px 14px rgba(0, 0, 0, 0.6);
+    animation: pt-flip var(--gs-text-speed, 0.25s) ease-out both;
+}
+
+.pt-card-value {
+    font-family: Georgia, "Palatino Linotype", serif;
+    font-size: 2.2rem;
+    font-weight: bold;
+    line-height: 1;
+}
+
+.pt-card-suit {
+    font-size: 1.5rem;
+}
+
+.pt-card-name {
+    padding: 0 0.3rem;
+    font-size: 0.7rem;
+    text-align: center;
+    line-height: 1.15;
+}
+
+.pt-card-small {
+    width: 40px;
+    height: 56px;
+    gap: 0.1rem;
+    border-width: 1px;
+    border-radius: 5px;
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.5);
+    animation: none;
+}
+
+.pt-card-small .pt-card-value {
+    font-size: 1.05rem;
+}
+
+.pt-card-small .pt-card-suit {
+    font-size: 0.8rem;
+}
+
+.pt-suit-oros .pt-card-suit {
+    color: #b8860b;
+}
+
+.pt-suit-copas .pt-card-suit {
+    color: #a3262a;
+}
+
+.pt-suit-espadas .pt-card-suit {
+    color: #2f4f6f;
+}
+
+.pt-suit-bastos .pt-card-suit {
+    color: #3f6b2a;
+}
+
+.pt-pot {
+    font-size: 0.85rem;
+    letter-spacing: 0.5px;
+    color: var(--gs-accent-gold, #e2c27a);
+}
+
+/* Mayor o menor: dos botones anchos con lo que hay en juego. */
+.pt-sides {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.6rem;
+}
+
+.pt-side {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.6rem 0.9rem;
+    text-align: left;
+    color: var(--SmartThemeBodyColor, #e8e0d0);
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--gs-gold-line, rgba(214, 180, 106, 0.4));
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+}
+
+.pt-side:hover:not(:disabled),
+.pt-side:focus-visible {
+    background: var(--gs-accent-gold-hover, rgba(226, 194, 122, 0.15));
+    border-color: var(--gs-accent-gold, #e2c27a);
+    outline: none;
+}
+
+.pt-side:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.pt-side-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+
+.pt-side-label {
+    font-size: 1.05rem;
+    font-weight: bold;
+    color: var(--gs-accent-gold, #e2c27a);
+}
+
+.pt-side-odds {
+    font-size: 0.9rem;
+}
+
+.pt-side-pot,
+.pt-same {
+    font-size: 0.8rem;
+    color: var(--SmartThemeQuoteColor, #b9a98a);
+}
+
+/* Las cartas necesitan sitio: la caja crece y el texto se encoge un poco. */
+.pt-cards-root .qd-text {
+    max-height: 18vh;
+}
+
+@keyframes pt-flip {
+    from {
+        opacity: 0;
+        transform: rotateY(70deg);
+    }
+
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .pt-card {
+        animation: none;
+    }
+}
+
+@media (max-width: 600px) {
+    .pt-sides {
+        grid-template-columns: 1fr;
+    }
+
+    .pt-card {
+        width: 70px;
+        height: 100px;
+    }
+
+    .pt-card-value {
+        font-size: 1.7rem;
+    }
+}

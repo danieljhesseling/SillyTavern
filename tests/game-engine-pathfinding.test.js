@@ -30,10 +30,17 @@ describe('findPath', () => {
         expect(findPath(createEmptyTerrain(), 2, 2, 2, 2, 10, 10)).toEqual([{ x: 2, y: 2 }]);
     });
 
-    test('crosses open ground by the diagonal, since diagonals are free', () => {
+    test('crosses open ground by the diagonal; with every diagonal at 5 feet it costs as much as a straight line', () => {
+        const path = findPath(createEmptyTerrain(), 0, 0, 3, 3, 10, 10, { diagonals: 'todas-a-5' });
+        expect(path).toHaveLength(4);
+        expect(getPathCost(createEmptyTerrain(), path, { diagonals: 'todas-a-5' })).toBe(3);
+    });
+
+    test('tanda 10: with alternating diagonals (the default) the second one costs double', () => {
         const path = findPath(createEmptyTerrain(), 0, 0, 3, 3, 10, 10);
         expect(path).toHaveLength(4);
-        expect(getPathCost(createEmptyTerrain(), path)).toBe(3);
+        // 5 + 10 + 5 pies: cuatro casillas de movimiento.
+        expect(getPathCost(createEmptyTerrain(), path)).toBe(4);
     });
 
     test('includes both the start and the goal', () => {
@@ -79,14 +86,24 @@ describe('findPath', () => {
     });
 
     test('prefers plain ground over difficult ground', () => {
-        // Straight through costs 2+2+2; the detour below costs 1 per cell.
+        // With every diagonal at 5 feet, straight through costs 2+1; the detour below, 1+1.
+        const terrain = terrainFromMap([
+            '..~..',
+            '.....',
+        ]);
+        const path = findPath(terrain, 1, 0, 3, 0, 5, 2, { diagonals: 'todas-a-5' });
+        expect(asString(path)).not.toContain('2,0');
+        expect(getPathCost(terrain, path, { diagonals: 'todas-a-5' })).toBe(2);
+    });
+
+    test('tanda 10: with alternating diagonals the detour costs the same, and the straighter way wins', () => {
         const terrain = terrainFromMap([
             '..~..',
             '.....',
         ]);
         const path = findPath(terrain, 1, 0, 3, 0, 5, 2);
-        expect(asString(path)).not.toContain('2,0');
-        expect(getPathCost(terrain, path)).toBe(2);
+        expect(asString(path)).toBe('1,0 2,0 3,0');
+        expect(getPathCost(terrain, path)).toBe(3);
     });
 
     test('crosses difficult ground when there is no way round', () => {
@@ -195,9 +212,19 @@ describe('getPathCost', () => {
 });
 
 describe('getReachableCells', () => {
-    test('on open ground it matches the Chebyshev square', () => {
-        const cells = getReachableCells(createEmptyTerrain(), 10, 10, 30, 40, 40);
+    test('on open ground, with every diagonal at 5 feet, it matches the Chebyshev square', () => {
+        const cells = getReachableCells(createEmptyTerrain(), 10, 10, 30, 40, 40, { diagonals: 'todas-a-5' });
         expect(cells).toHaveLength(13 * 13); // radius 6
+    });
+
+    test('tanda 10: with alternating diagonals the 30-foot reach loses its corners', () => {
+        const cells = getReachableCells(createEmptyTerrain(), 10, 10, 30, 40, 40);
+        const byKey = new Map(cells.map(c => [`${c.gridX},${c.gridY}`, c.cost]));
+        expect(byKey.get('16,10')).toBe(6); // six straight
+        expect(byKey.get('14,14')).toBe(6); // four diagonals: 5 + 10 + 5 + 10
+        expect(byKey.has('15,15')).toBe(false); // five diagonals would be 35 feet
+        expect(byKey.has('16,16')).toBe(false);
+        expect(cells.length).toBeLessThan(13 * 13);
     });
 
     test('no movement means only the origin', () => {
@@ -240,7 +267,7 @@ describe('getReachableCells', () => {
     });
 
     test('reports the cost of reaching each cell', () => {
-        const cells = getReachableCells(createEmptyTerrain(), 0, 0, 15, 10, 10);
+        const cells = getReachableCells(createEmptyTerrain(), 0, 0, 15, 10, 10, { diagonals: 'todas-a-5' });
         const byKey = new Map(cells.map(c => [`${c.gridX},${c.gridY}`, c.cost]));
         expect(byKey.get('0,0')).toBe(0);
         expect(byKey.get('1,1')).toBe(1); // diagonals cost the same as straights

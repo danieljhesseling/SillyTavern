@@ -145,6 +145,9 @@ export function buildPackEntries(pack) {
                 initialBondPoints: Number(person.initialBondPoints) || 0,
                 confidant: true,
                 charClass: text(person.className),
+                // J13.7: su género y su id, para llamarle por lo que es hasta que se presente.
+                ...(text(person.id) ? { id: text(person.id) } : {}),
+                ...(text(person.gender) ? { gender: text(person.gender) } : {}),
                 motive: text(person.motive) === 'coin' ? 'coin' : 'bond',
                 // R4/R10: los conjuros que sabe, por su id del grimorio. Lo que no existe no entra.
                 ...(Array.isArray(person.spells) ? { abilities: person.spells.map(text).filter((/** @type {string} */ id) => spellById(id)) } : {}),
@@ -191,6 +194,12 @@ export function buildPackEntries(pack) {
                 voice: text(person.voice),
                 // Idea 59: la lengua que habla. Vacía es la común.
                 ...(text(person.language) ? { language: text(person.language) } : {}),
+                // J13.7: para llamarle por lo que es hasta que se presente («la posadera»), y su id
+                // para los `{npc:…}` de los textos.
+                ...(text(person.id) ? { id: text(person.id) } : {}),
+                ...(text(person.gender) ? { gender: text(person.gender) } : {}),
+                ...(text(person.stranger) ? { stranger: text(person.stranger) } : {}),
+                ...(person.famous === true ? { famous: true } : {}),
                 service: text(person.service),
                 mapPosition: { locationName: text(person.where), gridX: 0, gridY: 0 },
             },
@@ -334,7 +343,7 @@ export function buildImportPlan(raw, options = {}) {
         const inside = readPlaces(place.places, pack.npcs ?? []);
         // J10.2: lo que se puede examinar aquí, escrito para este sitio (`sights.js`).
         const sights = readSights(place.sights, name)
-            .map(s => ({ id: s.id, verbo: s.verbo, text: s.text, skill: s.skill, ...(s.found ? { found: s.found } : {}) }));
+            .map(s => ({ id: s.id, verbo: s.verbo, text: s.text, skill: s.skill, ...(s.found ? { found: s.found } : {}), ...(s.place ? { place: s.place } : {}) }));
         locations.set(name, {
             name,
             // D-J17: la sinopsis puede traer `{forma|forma}`; de relleno, sin llaves.

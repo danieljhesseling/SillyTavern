@@ -9,11 +9,11 @@
  */
 
 import { POPUP_TYPE, Popup } from '../popup.js';
-import { sendSystemMessage, system_message_types } from '../system-messages.js';
+import { getSystemMessageByType, sendSystemMessage, system_message_types } from '../system-messages.js';
 import {
     getThumbnailUrl, chat, chat_metadata, saveMetadata, eventSource, event_types, addOneMessage,
     saveChatConditional, substituteParams, system_avatar, online_status, setExtensionPrompt,
-    extension_prompt_types, extension_prompt_roles, characters as stCharacters, this_chid,
+    extension_prompt_types, extension_prompt_roles, characters as stCharacters, this_chid, setSendButtonState,
 } from '../../script.js';
 import { getMessageTimeStamp } from '../RossAscends-mods.js';
 import { getCurrentWorldLocationMaps, METADATA_KEY } from '../world-info.js';
@@ -31,6 +31,8 @@ import { SKILLS, rollCheck, DEFAULT_DC } from '../game-engine/rules/checks.js';
 import { buildRecap } from '../game-engine/campaign/guidance.js';
 import { splitModelNote } from '../game-engine/campaign/model-note.js';
 import { narrate as narrateMoment, rememberUsed, listNames } from '../game-engine/campaign/engine-narrator.js';
+import { countedName, sucesoProse } from '../game-engine/campaign/narration-notes.js';
+import { noteProse } from '../game-engine/campaign/narration-prose.js';
 import { resolveGender } from '../game-engine/campaign/grammar.js';
 import { readCases, cluesHere } from '../game-engine/campaign/cases.js';
 import { readTaggedLine, foldPlan, describeFold } from '../game-engine/campaign/chronicle.js';
@@ -79,6 +81,7 @@ import {
 import { getPlot } from './plot.js';
 import { savePartyState, partyPurse, payFromParty } from './roster.js';
 import { hearRumor, raiseFame, rumorsLeftHere } from './town.js';
+import { hearLine, shownText } from '../game-engine/ui/shown-names.js';
 
 /**
  * How strictly the engine polices dice the model writes.
@@ -162,10 +165,25 @@ export function postCombatNarration(text) {
     if (typeof text !== 'string' || !text.trim()) return;
     text = sayGendered(text);
     pushCombatLogLines(text);
-    sendSystemMessage(system_message_types.GENERIC, text.trim(), {
-        isSmallSys: true,
-        isNarrator: true,
-    });
+    // J13.1: sin modelo, lo que se lee es la nota contada («Le toca a Irene.», no «Turno de
+    // Irene (Jugador)»). El mensaje guarda la de siempre, con sus datos, para el modelo.
+    // Con el género otra vez, por si la frase contada trae «{solo|sola}».
+    const told = narratorMode() === 'motor' ? sayGendered(noteProse(text.trim(), { key: String(chat.length) })) : '';
+    if (!told || told === text.trim()) {
+        sendSystemMessage(system_message_types.GENERIC, text.trim(), {
+            isSmallSys: true,
+            isNarrator: true,
+        });
+    } else {
+        // La versión contada va en un `extra` propio: el de los mensajes de sistema es un solo
+        // objeto que comparten todos (`getSystemMessageByType`), y ponérsela ahí se la pondría
+        // a todas las notas del chat a la vez.
+        const message = getSystemMessageByType(system_message_types.GENERIC, text.trim(), { isSmallSys: true, isNarrator: true });
+        message.extra = { ...message.extra, display_text: told };
+        chat.push(message);
+        addOneMessage(message);
+        setSendButtonState(false);
+    }
     // R5: la mascota, a veces, dice algo de lo que acaba de pasar. Gratis: es del motor.
     petReact(text);
 }
@@ -308,20 +326,28 @@ async function showSuceso(card, random, names = {}) {
             result.append($('<div></div>').text(done.then || 'Hecho.'));
             if (said.length > 0) result.append($('<div class="su-effects"></div>').text(said.join(' · ')));
             result.show();
+            // J9.1: «Seguir» sale con lo que pasa, no cuando acaba de escribirse la nota del chat
+            // (con la partida cargada tardaba segundos, y la ventana se quedaba sin botón).
+            const go = $('<button type="button" class="menu_button su-go"></button>').text('Seguir');
+            go.on('click', () => { void popup?.completeAffirmative(); });
+            body.append(go);
             if (chat_metadata) {
                 chat_metadata[SUCESOS_KEY] = noteSuceso(readSucesoState(chat_metadata[SUCESOS_KEY]), { id: card.id, follow: done.follow, day: campaignDay() });
                 saveMetadata();
             }
-            const check = option.check ? ` (${SKILLS[/** @type {keyof typeof SKILLS} */ (option.check.skill)]?.label ?? option.check.skill}: ${success ? 'sale' : 'no sale'})` : '';
+            const skill = option.check ? SKILLS[/** @type {keyof typeof SKILLS} */ (option.check.skill)]?.label ?? option.check.skill : '';
+            const check = option.check ? ` (${skill}: ${success ? 'sale' : 'no sale'})` : '';
+            // J13.1: lo que se lee, en frases: «Elegís echarlos, y con Intimidación sale bien.»
+            const chose = `Elegís ${String(option.label).charAt(0).toLocaleLowerCase('es')}${String(option.label).slice(1)}${option.check ? (success ? `, y con ${skill} sale bien` : `, pero con ${skill} no sale`) : ''}.`;
             await postForModel(
                 `[SUCESO] ${card.text} Quien juega elige: ${option.label}${check}. ${done.then}${said.length > 0 ? ` (${said.join(', ')})` : ''} Si lo cuentas, en dos frases y sin cambiar lo que pasó.`,
-                { show: `🃏 [SUCESO] ${card.name}: ${option.label}${check}. ${done.then}${said.length > 0 ? ` (${said.join(', ')})` : ''}` },
+                {
+                    show: narratorMode() === 'motor' ? `🃏 [SUCESO] ${card.name}. ${chose} ${sucesoProse({ then: done.then, effects: said })}`
+                        : `🃏 [SUCESO] ${card.name}: ${option.label}${check}. ${done.then}${said.length > 0 ? ` (${said.join(', ')})` : ''}`,
+                },
             );
             savePartyState();
             if (isShellOpen()) refreshGameShell();
-            const go = $('<button type="button" class="menu_button su-go"></button>').text('Seguir');
-            go.on('click', () => { void popup?.completeAffirmative(); });
-            body.append(go);
         });
         list.append(button);
     }
@@ -408,7 +434,9 @@ function applySucesoEffects(effects, random, names = {}) {
             advanceCampaignDay();
             said.push('se pierde un día');
         } else if (kind === 'herida') {
-            const who = someone();
+            // J9.1: solo a quien sigue en pie. Con el grupo en el suelo, `someone()` daba al
+            // primero, y un golpe a quien tenía 0 le «subía» a 1 («−-1 de vida»).
+            const who = alive.length > 0 ? someone() : null;
             if (who) {
                 const before = Number(who.hp) || 0;
                 who.hp = Math.max(1, before - Math.max(1, amountOf(amount || '1')));
@@ -473,7 +501,9 @@ export function tellMoment(moment, facts) {
     // J1.4: con quién juega, para que «llegáis empapados» sea «empapadas» si toca. J13: y la
     // estación de hoy, en todos los momentos (la llegada, el viaje, el descanso…): una frase
     // escrita para el invierno (`when: {estacion: 'invierno'}`) solo sale en invierno.
-    const told = narrateMoment({ rows, moment, facts: { estacion: currentSeason(), ...facts, generos: whoPlays(facts) }, random, recent: chat_metadata?.[NARRATOR_RECENT_KEY] });
+    // J13.1: y si vas a solas, sin las frases que piden a varios («os miráis unos a otros»).
+    const solo = partyMembers.filter(m => !m.dead).length <= 1 ? 'sí' : 'no';
+    const told = narrateMoment({ rows, moment, facts: { estacion: currentSeason(), solo, ...facts, generos: whoPlays(facts) }, random, recent: chat_metadata?.[NARRATOR_RECENT_KEY] });
     if (chat_metadata && told.used.length > 0) chat_metadata[NARRATOR_RECENT_KEY] = rememberUsed(chat_metadata[NARRATOR_RECENT_KEY], told.used);
     return told.text;
 }
@@ -489,7 +519,8 @@ export async function postEngineLine(text) {
     if (typeof text !== 'string' || !text.trim()) return;
     const card = /** @type {any} */ (stCharacters)?.[/** @type {any} */ (this_chid)];
     const message = buildGameMessage({
-        text: sayGendered(text.trim()),
+        // J13.7: solo para quien juega: quien aún no se ha presentado sale por lo que es.
+        text: shownText(sayGendered(text.trim()), { mask: true }),
         channel: CHANNEL.PLAYER,
         name: String(card?.name || chat_metadata?.narrator_name || 'Narrador'),
         avatar: card?.avatar ? getThumbnailUrl('avatar', card.avatar) : system_avatar,
@@ -527,7 +558,8 @@ export function tellBoard(boardName) {
         const name = String(foe?.name || '').trim();
         if (name) count[name] = (count[name] ?? 0) + 1;
     }
-    const foes = Object.entries(count).map(([name, n]) => (n > 1 ? `${name} (${n})` : name));
+    // J13.1: «dos ratas de bodega», no «Rata de bodega (2)».
+    const foes = Object.entries(count).map(([name, n]) => countedName(name, n));
     const told = tellMoment('tablero', {
         tablero: boardName,
         objetivo: goal ? goal[0].toLocaleLowerCase('es') + goal.slice(1) : '',
@@ -578,7 +610,14 @@ export async function postForModel(text, options = {}) {
     // como una instrucción colada (ROADMAP_SIN_TOKENS, Z0).
     const { said } = splitModelNote(message.mes);
     // Z1: si cuenta el motor, lo que se ve es su prosa (el modelo sigue leyendo los hechos).
-    const shown = !modelNarrates() && typeof options?.show === 'string' && options.show.trim() ? sayGendered(options.show.trim()) : said;
+    const seen = !modelNarrates() && typeof options?.show === 'string' && options.show.trim() ? sayGendered(options.show.trim()) : said;
+    // J13.1: y sin modelo, contada, sin lo que quedaba de registro.
+    const told = narratorMode() === 'motor' ? sayGendered(noteProse(seen, { key: String(chat.length) })) : seen;
+    // J13.7: quien habla y dice su nombre se ha presentado; lo que se ve no nombra a quien aún no
+    // se conoce (sale por lo que es: «el posadero»). El modelo sigue leyendo los nombres.
+    // Del narrador, solo lo que alguien dice entre comillas («¡Gracias! Soy Tomás…»).
+    hearLine(speaker ? { who: speaker, text: told } : { who: '', text: told, quotes: true });
+    const shown = shownText(told, { mask: true });
     if (shown !== message.mes) /** @type {any} */ (message.extra).display_text = shown;
 
     chat.push(message);

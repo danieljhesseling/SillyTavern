@@ -19,6 +19,7 @@
 import { firstArt, openPack } from '../pixel-art.js';
 import { PLACE_KINDS, townPlaces, townNpcsFromEntries, greetingFor, describeWho, slotOf } from '../../campaign/town.js';
 import { hallSections, hallHeader } from '../../campaign/guild-hall.js';
+import { hearLine, knowsName, shownName, shownText } from '../shown-names.js';
 
 /**
  * @typedef {import('../../campaign/town.js').TownPlace} TownPlace
@@ -37,10 +38,12 @@ import { hallSections, hallHeader } from '../../campaign/guild-hall.js';
  * @property {ServiceCard[]} cards Las tarjetas de servicios de aquí.
  * @property {ActionChip[]} chips La fila de fichas: de ahí salen el gremio y las charlas.
  * @property {{location: any, npcs: any[], people?: YourPerson[], hall?: import('../../campaign/guild-hall.js').HallData|null, hubChips?: ActionChip[],
- *   greet?: (place: any, slot?: string) => {text: string, mood: string}}|null} [data]
+ *   greet?: (place: any, slot?: string) => {text: string, mood: string, remembered?: boolean}}|null} [data]
  *   Lo que da `getTown`, si lo da. `hubChips`: todas las fichas del gremio (la fila solo lleva cuatro).
  *   `greet`: J11.3 y J11.4, el saludo de quien atiende si recuerda lo que hicisteis (vacío si no),
- *   con la cara que pone (J13).
+ *   con la cara que pone (J13). J14.11: `pastimes(place)`, los trabajos y ratos libres de un sitio, y
+ *   `extraPlaces`, los sitios que añade el juego (el muelle de un puerto). J10.2: `looks`, lo que se
+ *   puede examinar dentro de cada sitio, por su clase (`placeLookChips` de `party/talk.js`).
  * @property {(actionId: string) => void} onService
  * @property {(chip: ActionChip) => void} onChip
  * @property {() => void} refresh Redibujar el Shell.
@@ -186,6 +189,10 @@ export function buildTown(ctx) {
     const hubChips = (ctx.data?.hubChips ?? ctx.chips ?? []).filter(c => String(c?.id ?? '').startsWith('hub-'));
     const guild = hubChips.some(c => c.id === 'hub-board' || c.id === 'hub-hire' || c.id === 'hub-skip');
     const { places, rest } = townPlaces({ location: source.location, npcs: source.npcs, cards: ctx.cards ?? [], guild });
+    // J14.11: los sitios que añade el juego (el muelle de un puerto, para pescar), si no están ya.
+    for (const extra of /** @type {any} */ (ctx.data)?.extraPlaces ?? []) {
+        if (extra?.id && extra?.kind && !places.some(p => p.kind === extra.kind)) places.push({ ...extra, people: [...(extra.people ?? [])], cards: [...(extra.cards ?? [])] });
+    }
     if (open.town !== ctx.here || !places.some(p => p.id === open.id)) open = { town: '', id: '' };
     return {
         here: ctx.here,
@@ -225,6 +232,35 @@ function spreadPeople(places, people) {
 const firstName = (name) => text(name).split(' ')[0] || text(name);
 
 /**
+ * J13.7: cómo se le llama aquí: por su primer nombre si se ha presentado; si no, por lo que es
+ * («el posadero», o «El posadero» al empezar una frase).
+ *
+ * @param {string} name
+ * @param {'el'|'El'|'placa'} [form]
+ * @returns {string}
+ */
+const calledHere = (name, form = 'el') => (knowsName(name) ? firstName(name) : shownName(name, form));
+
+/**
+ * J13.7: lo que dice alguien dentro de una frase del narrador: los trozos entre comillas, juntos.
+ *
+ * @param {string} said
+ * @returns {string}
+ */
+const quotedParts = (said) => [...String(said ?? '').matchAll(/«([^«»]*)»|“([^“”]*)”/g)].map(m => (m[1] ?? m[2] ?? '').trim()).filter(Boolean).join(' ');
+
+/**
+ * J13.7: el sitio como se ve: quien lo atiende o anda por él y no se ha presentado, por lo que es.
+ *
+ * @param {TownPlace} place
+ * @returns {TownPlace}
+ */
+function shownPlace(place) {
+    const keeper = place?.keeper && !knowsName(place.keeper.name) ? { ...place.keeper, name: shownName(place.keeper.name), trade: '' } : place?.keeper;
+    return { ...place, keeper, people: (place?.people ?? []).map(p => ({ ...p, name: shownName(p.name) })) };
+}
+
+/**
  * Las fichas de charlar y quedar con alguien, con la orden que ya hace la fila (`/charlar`,
  * `/quedar`).
  *
@@ -232,11 +268,11 @@ const firstName = (name) => text(name).split(' ')[0] || text(name);
  * @returns {{meet: ActionChip|null, talk: ActionChip|null}}
  */
 function personChips(person) {
-    const who = firstName(person.name);
+    const who = calledHere(person.name);
     return {
         meet: person.canMeet ? { id: `quedar:${person.key}`, label: `Quedar con ${who}`, icon: 'fa-mug-hot', source: 'motor', command: person.meet } : null,
         talk: person.canTalk ? {
-            id: `charlar:${person.key}`, label: person.waiting ? `${who} quiere decirte algo` : `Charlar con ${who}`, icon: 'fa-comments', source: 'motor', command: person.talk,
+            id: `charlar:${person.key}`, label: person.waiting ? `${calledHere(person.name, 'El')} quiere decirte algo` : `Charlar con ${who}`, icon: 'fa-comments', source: 'motor', command: person.talk,
         } : null,
     };
 }
@@ -254,11 +290,11 @@ function peopleBadges(people, pack) {
     for (const person of people.slice(0, 4)) {
         const badge = el('span', `gs-town-you${person.wantsToMeet ? ' gs-town-wants' : ''}`);
         badge.dataset.person = person.key;
-        badge.title = person.wantsToMeet ? `${person.name}: quiere quedar contigo` : `${person.name}, aquí ahora`;
+        badge.title = person.wantsToMeet ? `${shownName(person.name)}: quiere quedar contigo` : `${shownName(person.name)}, aquí ahora`;
         const face = faceOf(person.name, pack);
         if (face) badge.appendChild(pixelImage(face, 'gs-town-you-face', person.name));
-        else badge.appendChild(el('span', 'gs-town-you-initial', firstName(person.name).slice(0, 1)));
-        badge.appendChild(el('span', 'gs-town-you-name', firstName(person.name)));
+        else badge.appendChild(el('span', 'gs-town-you-initial', calledHere(person.name, 'placa').slice(0, 1)));
+        badge.appendChild(el('span', 'gs-town-you-name', calledHere(person.name, 'placa')));
         if (person.wantsToMeet) badge.appendChild(el('i', 'fa-solid fa-heart gs-town-you-heart'));
         row.appendChild(badge);
     }
@@ -357,7 +393,9 @@ function pixelImage(src, className, alt) {
  * @returns {ActionChip}
  */
 function talkChip(name) {
-    return { id: `talk-local:${name}`, label: `Hablar con ${name}`, icon: 'fa-comments', source: 'motor', draft: `Le digo a ${name}: ` };
+    // J13.7: «Hablar con el posadero» hasta que se presente.
+    const called = shownName(name, 'el');
+    return { id: `talk-local:${name}`, label: `Hablar con ${called}`, icon: 'fa-comments', source: 'motor', draft: `Le digo ${/^el\s/.test(called) ? `al ${called.slice(3)}` : `a ${called}`}: ` };
 }
 
 /**
@@ -395,7 +433,7 @@ export function renderTownSelector(town, ctx) {
         name.appendChild(el('i', `fa-solid ${place.icon}`));
         name.appendChild(el('span', '', place.name));
         body.appendChild(name);
-        body.appendChild(el('span', 'gs-town-place-who', describeWho(place)));
+        body.appendChild(el('span', 'gs-town-place-who', describeWho(shownPlace(place))));
         // J14.4: quién de tu gente está aquí a esta hora, y quién quiere quedar contigo.
         const yours = town.yours?.[place.id] ?? [];
         if (yours.length > 0) {
@@ -422,7 +460,7 @@ export function renderTownSelector(town, ctx) {
             if (!chip) continue;
             const go = button(`gs-town-act gs-town-extra-btn${person.wantsToMeet ? ' gs-town-wants' : ''}`);
             go.dataset.chip = chip.id;
-            go.title = person.wantsToMeet ? `${person.name} quiere quedar contigo` : `${person.name}, en ${person.placeLabel.toLowerCase()}`;
+            go.title = person.wantsToMeet ? `${shownName(person.name)} quiere quedar contigo` : `${shownName(person.name)}, en ${person.placeLabel.toLowerCase()}`;
             go.appendChild(el('i', `fa-solid ${person.wantsToMeet ? 'fa-heart' : chip.icon}`));
             go.appendChild(el('span', 'gs-btn-label', `${chip.label} (${person.placeLabel.toLowerCase()})`));
             go.addEventListener('click', () => ctx.onChip(chip));
@@ -521,8 +559,8 @@ function placeActs(place, town, ctx) {
             if (meet) {
                 acts.push({
                     id: meet.id, label: meet.label, icon: person.wantsToMeet ? 'fa-heart' : meet.icon,
-                    detail: person.wantsToMeet ? `${person.name} quiere quedar contigo: tiene algo que contarte. Gasta esta parte del día.`
-                        : `Pasas esta parte del día con ${person.name}. El vínculo sube.`,
+                    detail: person.wantsToMeet ? `${calledHere(person.name, 'El')} quiere quedar contigo: tiene algo que contarte. Gasta esta parte del día.`
+                        : `Pasas esta parte del día con ${calledHere(person.name)}. El vínculo sube.`,
                     enabled: true, cost: 0, run: () => ctx.onChip(meet),
                 });
             }
@@ -537,13 +575,33 @@ function placeActs(place, town, ctx) {
         if (acts.length > 0 && hallPeople) hallPeople.acts.push(...acts);
         else if (acts.length > 0) groups.splice(peopleAt, 0, { title: 'Tu gente', acts });
     }
+    // J14.11: los trabajos y ratos libres de aquí (servir mesas, la forja, las cartas…): gastan la parte del día.
+    const pastimes = /** @type {any} */ (ctx.data)?.pastimes?.(place) ?? [];
+    if (pastimes.length > 0) {
+        groups.push({
+            title: 'Trabajos y ratos libres',
+            acts: pastimes.map((/** @type {any} */ act) => ({
+                id: String(act.id), label: String(act.label), icon: String(act.icon), detail: String(act.detail ?? ''), enabled: Boolean(act.enabled), cost: 0, run: () => act.run(),
+            })),
+        });
+    }
+    // J3.11 y J10.2: lo que se puede examinar en este sitio (la sala del gremio, la capilla…), con su tirada.
+    const looks = /** @type {any} */ (ctx.data)?.looks?.[place.kind] ?? [];
+    if (looks.length > 0) {
+        groups.push({
+            title: 'Mirar',
+            acts: looks.map((/** @type {any} */ chip) => ({
+                id: String(chip.id), label: String(chip.label), icon: String(chip.icon), detail: String(chip.detail ?? ''), enabled: true, cost: 0, run: () => ctx.onChip(chip),
+            })),
+        });
+    }
     const people = [...(keeper ? [keeper] : []), ...place.people.map(p => p.name)].slice(0, 5);
     if (people.length > 0) {
         groups.push({
             title: 'Hablar',
             acts: people.map(name => {
                 const chip = talkChip(name);
-                return { id: chip.id, label: chip.label, icon: chip.icon, detail: `Lo que ${name} sabe y lo que quiere.`, enabled: true, cost: 0, run: () => ctx.onChip(chip) };
+                return { id: chip.id, label: chip.label, icon: chip.icon, detail: `Lo que ${shownName(name, 'el')} sabe y lo que quiere.`, enabled: true, cost: 0, run: () => ctx.onChip(chip) };
             }),
         });
     }
@@ -620,14 +678,22 @@ export function renderTownScene(panel, town, ctx) {
     }
     scene.appendChild(stage);
 
+    // J13.7: si quien atiende dice su nombre al saludar («Ramiro. Herrero.»), se ha presentado:
+    // se lee antes de poner la placa. Solo cuenta lo que dice entre comillas, no lo que cuenta el narrador.
+    const greeting = recalled || greetingFor({ place, town: town.here, slot: ctx.slot, hero: ctx.hero });
+    const spoken = quotedParts(greeting);
+    if (place.keeper?.name && spoken) hearLine({ who: place.keeper.name, text: spoken });
+
     const box = el('div', 'gs-town-box');
-    box.appendChild(el('div', 'gs-town-plate', place.keeper?.name || place.name));
+    box.appendChild(el('div', 'gs-town-plate', place.keeper?.name ? shownName(place.keeper.name) : place.name));
     const heading = el('div', 'gs-town-where');
     heading.appendChild(el('i', `fa-solid ${place.icon}`));
     heading.appendChild(el('span', '', place.keeper ? `${place.name} · ${place.keeper.trade || 'quien atiende'}` : place.name));
     box.appendChild(heading);
-    const hello = el('p', 'gs-town-line', recalled || greetingFor({ place, town: town.here, slot: ctx.slot, hero: ctx.hero }));
-    if (recalled) hello.classList.add('gs-town-line-remembered');
+    // J13.7: el saludo no nombra a quien aún no se ha presentado.
+    const hello = el('p', 'gs-town-line', shownText(greeting, { mask: true }));
+    // J13.8: el saludo de siempre, aunque venga con frase propia, no lleva la marca de «se acuerda».
+    if (recalled && remembered?.remembered !== false) hello.classList.add('gs-town-line-remembered');
     box.appendChild(hello);
     if (place.description) box.appendChild(el('p', 'gs-town-desc', place.description));
 
@@ -657,16 +723,19 @@ export function renderTownScene(panel, town, ctx) {
             const go = button('gs-town-act');
             go.dataset.action = act.id;
             go.appendChild(el('i', `fa-solid ${act.icon}`));
-            if (act.detail) {
+            // J13.7: ni la opción ni su explicación nombran a quien no se ha presentado (los trabajos dicen «que Ramiro os aprecie»).
+            const label = shownText(act.label, { mask: true });
+            const detail = act.detail ? shownText(act.detail, { mask: true }) : '';
+            if (detail) {
                 const stack = el('span', 'gs-btn-stack');
-                stack.appendChild(el('span', 'gs-btn-label', act.label));
-                stack.appendChild(el('span', 'gs-btn-detail', act.detail));
+                stack.appendChild(el('span', 'gs-btn-label', label));
+                stack.appendChild(el('span', 'gs-btn-detail', detail));
                 go.appendChild(stack);
             } else {
-                go.appendChild(el('span', 'gs-btn-label', act.label));
+                go.appendChild(el('span', 'gs-btn-label', label));
             }
             if (act.cost > 0) go.appendChild(el('span', 'gs-btn-cost', `${act.cost} oro`));
-            if (act.detail) go.title = act.detail;
+            if (detail) go.title = detail;
             go.disabled = !act.enabled;
             go.addEventListener('click', () => act.run());
             acts.appendChild(go);

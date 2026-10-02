@@ -126,9 +126,11 @@ export function gravesAt(raw, place) {
 
 /**
  * @typedef {{name: string, world: string, day: number, epitaph: string, when: string, mode?: string, iron?: boolean,
- *   kind?: 'campaign', ending?: string, party?: string[], fallen?: string[]}} HallEntry
+ *   kind?: 'campaign'|'couple', ending?: string, party?: string[], fallen?: string[]}} HallEntry
  *   J3.9: una campaña terminada también entra (`kind: 'campaign'`): `name` es la campaña,
  *   `ending` el final, `party` quién fue y `fallen` quién no volvió. `day`, cuánto duró.
+ *   J14.10: y una pareja (`kind: 'couple'`): `name` son los dos, `epitaph` su línea y `day`
+ *   el día en que lo fueron.
  */
 
 /** @param {any} value @returns {string[]} */
@@ -151,6 +153,8 @@ export function readHall(raw) {
             ...(e.iron === true ? { iron: true } : {}),
             // J3.9: una campaña terminada, con su final y su gente.
             ...(e.kind === 'campaign' ? { kind: /** @type {'campaign'} */ ('campaign'), ending: text(e.ending), party: names(e.party), fallen: names(e.fallen) } : {}),
+            // J14.10: una pareja.
+            ...(e.kind === 'couple' ? { kind: /** @type {'couple'} */ ('couple') } : {}),
         }))
         .slice(0, HALL_MAX);
 }
@@ -173,6 +177,12 @@ export function addToHall(raw, entry) {
         const known = (/** @type {HallEntry} */ e) => e.kind === 'campaign' && e.world === clean.world && e.ending === clean.ending;
         return hall.some(known)
             ? hall.map(e => (known(e) ? { ...e, name: clean.name } : e))
+            : [clean, ...hall].slice(0, HALL_MAX);
+    }
+    // J14.10: una pareja está una vez por partida, aunque se recargue y lo vuelva a ser.
+    if (clean.kind === 'couple') {
+        return hall.some(e => e.kind === 'couple' && e.name === clean.name && e.world === clean.world)
+            ? hall
             : [clean, ...hall].slice(0, HALL_MAX);
     }
     const same = (/** @type {HallEntry} */ e) => !e.kind && e.name === clean.name && e.world === clean.world && e.day === clean.day;
@@ -200,6 +210,8 @@ export function describeHallEntry(entry) {
         ].filter(Boolean).join(' ');
     }
     const where = [entry.world, entry.when ? entry.when.slice(0, 10) : '', entry.iron ? 'de hierro' : ''].filter(Boolean).join(' · ');
+    // J14.10: «♥ Iria y Nella Tresflechas, juntas desde el día 9…».
+    if (entry.kind === 'couple') return `♥ ${entry.epitaph || entry.name}${where ? ` (${where})` : ''}`;
     return `${entry.epitaph || entry.name}${where ? ` (${where})` : ''}`;
 }
 
@@ -212,9 +224,12 @@ export function describeHallEntry(entry) {
 export function describeHallCount(raw) {
     const hall = readHall(raw);
     const done = hall.filter(e => e.kind === 'campaign').length;
-    const fallen = hall.length - done;
+    const couples = hall.filter(e => e.kind === 'couple').length;
+    const fallen = hall.length - done - couples;
     return [
         done > 0 ? `${done} ${done === 1 ? 'campaña terminada' : 'campañas terminadas'}` : '',
         fallen > 0 ? `${fallen} ${fallen === 1 ? 'caído' : 'caídos'}` : '',
+        // J14.10: las parejas (si el romance está apagado, quien llama las quita antes).
+        couples > 0 ? `${couples} ${couples === 1 ? 'pareja' : 'parejas'}` : '',
     ].filter(Boolean).join(' · ');
 }

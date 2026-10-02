@@ -131,6 +131,8 @@ export function speedOf(member) {
     let speed = base;
     if (has('Acelerado')) speed += base;
     if (has('A la carrera')) speed += base;
+    // Tanda 10: Correr (la acción de 2024), lo suyo otra vez este turno.
+    if (has('Corriendo')) speed += base;
     if (has('Ralentizado')) speed -= 10;
     return Math.max(0, speed);
 }
@@ -267,7 +269,9 @@ export function getCurrentTurnEntry() {
 export function getLivingPartyMembers() {
     // B2: quien ha salido por una salida ya no está en la pelea: nadie le ataca.
     const left = combatEncounter.active ? readLeft(combatEncounter.left) : [];
-    return partyMembers.filter(member => (member.hp || 0) > 0 && !left.includes(String(member.id)));
+    // J9.1: quien ha muerto no está en pie aunque un suceso le haya subido la vida: sin esto,
+    // una pelea con todo el grupo muerto no se daba por perdida y los enemigos jugaban sin fin.
+    return partyMembers.filter(member => !member.dead && (member.hp || 0) > 0 && !left.includes(String(member.id)));
 }
 
 /**

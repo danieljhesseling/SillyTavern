@@ -85,6 +85,8 @@ El tablero elige un bioma y usa su pareja de suelo y muro:
 - `barricada.png` — una valla de troncos cruzados en aspa.
 - `cobertura-media.png` — una caja de madera grande con esquinas de hierro (cobertura baja).
 - `cobertura-tres-cuartos.png` — una columna de piedra alta y gruesa.
+- `trampa.png` — un cepo de hierro abierto, visto desde arriba (encima): va dentro del recuadro de una trampa ya descubierta (`hazardTile` en `pixel-art.js`).
+- `fuego.png` — un charco de aceite ardiendo con su llama (encima): el fuego que arde en el tablero. Se le quitó a mano un rizo de humo que parecía un «?».
 
 ## Costuras
 

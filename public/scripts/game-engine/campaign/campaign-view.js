@@ -102,7 +102,7 @@ export function buildCampaignView({ calendar, bonds, party = [] }) {
  * @returns {Array<{type: string, label: string, points: number}>}
  */
 export function getRecordableEvents() {
-    const hidden = new Set(['manual', 'combat_together', 'quest_together']);
+    const hidden = new Set(['manual', 'combat_together', 'quest_together', 'pastime_together']);
     return Object.entries(BOND_EVENTS)
         .filter(([type]) => !hidden.has(type))
         .map(([type, def]) => ({ type, label: def.label, points: def.points }))

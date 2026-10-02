@@ -28,6 +28,9 @@
  *   sin tablero recibe uno pequeño, sin pelea.
  * - **Quién lo cuenta** (J5.2): un hito con `pov` (o de un capítulo con `pov`) y sin escena
  *   jugada sale en boca de esa persona, con su retrato.
+ * - **Trampas** (J5.2): la que viene sin casilla, o en un tablero que se dibuja con la semilla (su
+ *   casilla era de otro mapa), se pone en el camino, lejos de donde empieza el grupo. El estado que
+ *   deja, escrito en castellano («derribado»), pasa a la clave del juego (`prone`).
  * - **Un dibujo sin mapa** (J12.5): un tablero con `image` que no trae `map` (y que
  *   `pack-maps.js` no ha podido leer) se dibuja con la semilla, sin el dibujo, que no casaría.
  *
@@ -50,10 +53,12 @@ import { walkable } from './board-draft.js';
 import { zoneCells } from '../board/zones.js';
 import { terrainFromAsciiMap } from '../board/terrain.js';
 import { floodFrom } from '../board/reachability.js';
+import { TRAP_CONDITIONS } from './campaign-pack-schema.js';
+import { STATUS_ICONS } from '../combat/initiative-tracker.js';
 
 /**
  * @typedef {Object} FillNote Una cosa que ha puesto el motor.
- * @property {'tablero'|'criatura'|'sitio'|'tipo'|'camino'|'texto'|'hilo'|'historia'|'final'|'aliado'|'sala'|'cofre'|'objeto'|'voz'|'mapa'|'puerta'} kind
+ * @property {'tablero'|'criatura'|'sitio'|'tipo'|'camino'|'texto'|'hilo'|'historia'|'final'|'aliado'|'sala'|'cofre'|'objeto'|'voz'|'mapa'|'puerta'|'trampa'} kind
  * @property {string} name Lo que se ha puesto: el tablero, el bicho, el sitio.
  * @property {string} detail Para qué, en una frase corta: «para la misión «Los lobos»».
  */
@@ -79,7 +84,24 @@ export const FILL_KINDS = {
     mapa: ['tablero leído de su dibujo', 'tableros leídos de su dibujo'],
     // J5.3: una sala cerrada con alguien dentro, con una puerta para llegar.
     puerta: ['puerta para entrar en una sala cerrada', 'puertas para entrar en salas cerradas'],
+    // J5.2: una trampa sin casilla, o de un tablero que se ha dibujado con la semilla.
+    trampa: ['trampa puesta en el camino', 'trampas puestas en el camino'],
 };
+
+/**
+ * El estado que deja una trampa, por su nombre en castellano y sin el género («derribada»,
+ * «envenenado»), a la clave del juego (`STATUS_ICONS`).
+ *
+ * @param {string} word
+ * @returns {string} La clave, o '' si no se entiende.
+ */
+function trapConditionKey(word) {
+    const stem = (/** @type {string} */ value) => plain(value).replace(/[ao]s?$/, '');
+    const wanted = stem(word);
+    if (!wanted) return '';
+    return TRAP_CONDITIONS.find(key => stem(key) === wanted
+        || stem(/** @type {Record<string, {label: string}>} */ (STATUS_ICONS)[key]?.label ?? '') === wanted) ?? '';
+}
 
 /** Qué clase de sitio es, por las palabras de su nombre. En orden: la primera que encaja. */
 const TYPE_WORDS = /** @type {Array<[string, RegExp]>} */ ([
@@ -659,6 +681,8 @@ export function fillPackGaps(raw, { compendium = null, seed = '' } = {}) {
         enemies.unshift(...leading);
         commitBred(enemies, place, biome);
         const board = { id, name, locationName: place, map, partyStart, enemies, seeded: true };
+        // A todo el que espera se llega: la semilla puede dejar un cofre tapando una puerta.
+        openWalledRooms(board, id, true);
         boards.push(board);
         boardIds.add(id);
         boardsByName.set(low(name), board);
@@ -705,7 +729,9 @@ export function fillPackGaps(raw, { compendium = null, seed = '' } = {}) {
         const inside = cells ? new Set(cells) : null;
         const fits = (/** @type {number} */ x, /** @type {number} */ y) => !inside || inside.has(`${x},${y}`);
         const enemies = list(board.enemies).filter(e => typeof e === 'object' && Number.isInteger(e?.x) && Number.isInteger(e?.y));
-        const used = new Set([...starts, ...enemies, ...chests].map(c => `${c.x},${c.y}`));
+        // Ni encima de una trampa: abrir el cofre no es pisarla.
+        const traps = list(board.traps).filter(t => Number.isInteger(t?.x) && Number.isInteger(t?.y));
+        const used = new Set([...starts, ...enemies, ...chests, ...traps].map(c => `${c.x},${c.y}`));
         /** @type {{x: number, y: number}|null} */
         let spot = null;
         for (let y = 0; y < map.length && !spot; y++) {
@@ -786,10 +812,15 @@ export function fillPackGaps(raw, { compendium = null, seed = '' } = {}) {
      * y se va en diagonal). El mapa sigue siendo el suyo: solo cambia esa casilla, y se dice.
      * Una pared de dos casillas de grueso no se abre: eso lo avisa el validador.
      *
+     * En un tablero de la semilla pasa sin que nadie lo escriba: un cofre o un barril justo
+     * detrás de la única puerta de una sala. Ahí se quita lo que estorba antes de abrir la pared,
+     * y no se dice: el mapa es del motor, no de la campaña.
+     *
      * @param {any} board
      * @param {string} id
+     * @param {boolean} [seeded] Si el mapa lo ha dibujado la semilla.
      */
-    const openWalledRooms = (board, id) => {
+    const openWalledRooms = (board, id, seeded = false) => {
         if (!readableMap(board?.map)) return;
         const starts = list(board.partyStart).filter(c => Number.isInteger(c?.x) && Number.isInteger(c?.y));
         const waiting = list(board.enemies).filter(e => typeof e === 'object' && Number.isInteger(e?.x) && Number.isInteger(e?.y));
@@ -806,21 +837,72 @@ export function fillPackGaps(raw, { compendium = null, seed = '' } = {}) {
             let best = null;
             for (let y = 1; y < map.length - 1; y++) {
                 for (let x = 1; x < map[y].length - 1; x++) {
-                    if (map[y][x] !== '#') continue;
+                    const wall = map[y][x] === '#';
+                    // Lo que estorba y no es muro (un cofre, un barril), solo en un mapa de la semilla.
+                    if (!wall && !(seeded && !walkable(map[y][x]) && !DOORS.has(map[y][x]))) continue;
                     const joins = [[1, 0], [0, 1]].some(([dx, dy]) => {
                         const a = `${x - dx},${y - dy}`;
                         const b = `${x + dx},${y + dy}`;
                         return (reached.has(a) && room.has(b)) || (reached.has(b) && room.has(a));
                     });
-                    const d = Math.abs(x - stuck.x) + Math.abs(y - stuck.y);
+                    const d = Math.abs(x - stuck.x) + Math.abs(y - stuck.y) + (seeded && wall ? 100 : 0);
                     if (joins && (!best || d < best.d)) best = { x, y, d };
                 }
             }
             if (!best) return;
             const at = best;
-            board.map = map.map((row, y) => (y === at.y ? `${row.slice(0, at.x)}D${row.slice(at.x + 1)}` : row));
+            const put = map[at.y][at.x] === '#' ? 'D' : '.';
+            board.map = map.map((row, y) => (y === at.y ? `${row.slice(0, at.x)}${put}${row.slice(at.x + 1)}` : row));
+            if (seeded) continue;
             note('puerta', text(board.name) || id, `para llegar a ${text(stuck.name) || 'quien espera'}, en la casilla (${at.x + 1}, ${at.y + 1})`);
         }
+    };
+
+    /**
+     * J5.2: las trampas de un tablero con mapa. La que no trae casilla (o toda la de un tablero
+     * que se ha dibujado con la semilla: su casilla era de otro mapa) se pone en el camino: suelo
+     * a medio camino de lo más lejos, sin tocar donde empieza el grupo, quien espera ni un cofre.
+     * El estado escrito en castellano pasa a su clave.
+     *
+     * @param {any} board
+     * @param {string} id
+     * @param {boolean} redrawn Si el mapa lo ha dibujado la semilla.
+     */
+    const fillTraps = (board, id, redrawn) => {
+        if (!Array.isArray(board?.traps) || board.traps.length === 0 || !readableMap(board.map)) return;
+        const map = board.map.map(String);
+        const starts = list(board.partyStart).filter(c => Number.isInteger(c?.x) && Number.isInteger(c?.y));
+        const at = (/** @type {any} */ c) => `${c?.x},${c?.y}`;
+        const taken = new Set([...starts, ...list(board.enemies).filter(e => typeof e === 'object'), ...list(board.chests)].map(at));
+        const kept = redrawn ? [] : board.traps.filter((/** @type {any} */ t) => Number.isInteger(t?.x) && Number.isInteger(t?.y));
+        for (const t of kept) taken.add(at(t));
+        const steps = starts.length > 0 ? stepsFrom(map, starts[0]) : new Map();
+        const far = Math.max(0, ...steps.values());
+        const random = randomOf('trampa', id);
+        const spots = [...steps.entries()]
+            .map(([key, d]) => ({ x: Number(key.split(',')[0]), y: Number(key.split(',')[1]), d }))
+            // Ni pegada a donde empieza el grupo: dos pasos como poco.
+            .filter(c => c.d >= 2 && map[c.y][c.x] === '.' && !taken.has(`${c.x},${c.y}`))
+            .map(c => ({ c, score: Math.abs(c.d - far / 2) + random() * 3 }))
+            .sort((a, b) => a.score - b.score)
+            .map(({ c }) => ({ x: c.x, y: c.y }));
+        /** @type {string[]} */
+        const moved = [];
+        board.traps = board.traps.map((/** @type {any} */ trap) => {
+            if (!trap || typeof trap !== 'object') return trap;
+            let out = trap;
+            const word = text(trap.condition);
+            if (word && !TRAP_CONDITIONS.includes(word)) {
+                const key = trapConditionKey(word);
+                if (key) out = { ...out, condition: key };
+            }
+            if (!redrawn && kept.includes(trap)) return out;
+            const spot = spots.shift();
+            if (!spot) return out;
+            moved.push(text(trap.name) || 'una trampa');
+            return { ...out, x: spot.x, y: spot.y };
+        });
+        if (moved.length > 0) note('trampa', text(board.name) || id, sayList(moved));
     };
 
     // J12.5: los tableros que la campaña trae. Sin mapa, se dibujan con la semilla; con mapa,
@@ -858,6 +940,7 @@ export function fillPackGaps(raw, { compendium = null, seed = '' } = {}) {
                 ? 'traía su dibujo pero no su mapa, y el dibujo no se ha podido leer: se ha dibujado con la semilla, sin él'
                 : 'venía sin mapa');
             placeChest(merged, null, loot, `el tesoro de «${merged.name}»`);
+            fillTraps(merged, id, true);
             continue;
         }
         if (!readableMap(board.map)) continue;
@@ -883,6 +966,7 @@ export function fillPackGaps(raw, { compendium = null, seed = '' } = {}) {
         if (changed) note('tablero', text(board.name) || id, 'traía mapa: se ha puesto dónde empieza el grupo y dónde espera cada uno');
         fillRooms(board, id);
         openWalledRooms(board, id);
+        fillTraps(board, id, false);
     }
 
     /**
@@ -1290,6 +1374,10 @@ export function buildRoomsExampleBoard() {
                 enemies: ['Esqueleto', 'Esqueleto'],
                 treasure: ['Cáliz de plata'],
             },
+        ],
+        // J5.2: una trampa, con su casilla y lo que se ve sin buscarla.
+        traps: [
+            { name: 'Losa suelta', x: 3, y: 2, tell: 'Al pie de la escalera, una losa baila bajo el polvo.', damage: '1d6', condition: 'prone', spotDC: 12 },
         ],
     };
 }

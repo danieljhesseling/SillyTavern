@@ -14,5 +14,7 @@ Un fondo por localización de `public/mundos/strahd.pack.json`. 320×180, sin tr
 - `guarida-de-los-hombres-lobo.png` — la entrada de la cueva tallada como una boca enorme con colmillos, sobre el lago y entre pinos.
 - `ruinas-de-berez.png` — el pueblo ahogado: casas hundidas en el agua del pantano, árboles muertos y la choza encima de un tocón enorme.
 - `colina-yester.png` — la colina de las tumbas: piedras negras en pie y, en lo alto, el muñeco gigante con forma de hombre.
+- `la-cascada-del-tser.png` — el salto de agua helada entre paredes de roca negra y pinos, con la espuma y la niebla abajo; detrás del agua cabe una cueva.
+- `el-nido-de-la-pluma.png` — el campanario solo en lo alto de una loma, en mitad del bosque con niebla, con una nube de cuervos dando vueltas encima.
 
 Retoques a mano: en `aldea-de-barovia.png` se borró una firma falsa de la esquina de abajo a la izquierda. En `campamento-del-estanque-tser.png` se rellenaron unas franjas negras finas arriba y abajo.

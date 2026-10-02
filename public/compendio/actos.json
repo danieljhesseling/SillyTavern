@@ -1,0 +1,1560 @@
+{
+  "version": 1,
+  "domain": "actos",
+  "about": "Las historias en tres actos que el juego escribe para una campaña sin hilo (J10.7 de ROADMAP_SIN_CONEXION): un mundo hecho con la semilla, o una campaña de tu Gem que solo trae sitios y gente. Lo lee campaign/act-grammar.js. Nueve clases de fila (KIND). TRAMA: el problema de la campaña, de principio a fin del acto 2: el gancho (GANCHO, una escena en BEATS; quien lo vio se presenta en ella: «Soy {testigo}.»), quién lo vio (TESTIGO), las tres pistas que buscar (PISTAS, cada COSA con su VERBO, su tirada SKILL y lo que se encuentra FOUND; con dos basta), la guarida (GUARIDA) y la pelea en ella (GOLPE, con el nombre de su tablero en BOARD y quien espera en él en SECUACES, con nombres del bestiario; sin nadie, salen los bichos del sitio). VILLANO es persona o bestia, y VILLANOS, sus nombres posibles; GUARIDAS y REFUGIOS, los sitios escondidos donde se juega el acto 2 y el acto 3, con su tipo. TAGS: los géneros para los que sale más (terror, epica, isekai, historico...). GIRO: lo que se descubre (VILLANO: para qué villano vale, persona o bestia) tras la pelea de la guarida y la decisión que abre (ENCRUCIJADA, con OPCIONES a y b), y lo que pide cada bando (BANDO_A, BANDO_B). DESENLACE: la escena del acto 3 según el bando (LADO a o b). FINAL: cómo acaba según el bando, o si se llega tarde (LADO tarde), con EPILOGOS y lo que el gremio recordará (LEGADO: TONO luz, gris o sombra, TITULO y SALUDO). PRESAGIO: una frase del principio que se cumple con un hito (HITO: pistas, golpe o encrucijada). CAPITULO: el nombre y el resumen de cada acto (ACTO 1, 2 o 3). ASOMA: el villano se deja ver al empezar el acto 2 o el 3 (ACTO). RUMOR: lo que se oye en el pueblo, con si es verdad (TRUTH: si, no o medias). OFICIO: los oficios de la gente que el juego pone (PAPEL: testigo, contacto-a, contacto-b, posada, tienda, herreria, templo), cada uno con su forma de hombre y de mujer (FORMAS), y lo que quiere, sabe y cómo habla (QUIERE, SABE, VOZ). Los huecos van entre llaves: {inicio} (donde empieza), {testigo}, {villano}, {guarida}, {refugio}, {pista1}, {pista2}, {pista3}, {contactoA}, {contactoB}, {sitioA}, {sitioB}, {bandoA}, {bandoB} (la facción de cada contacto, o su nombre si el mundo no tiene facciones) y {mundo}. Lo que concuerda con tu héroe va entre llaves con las dos formas, separadas por una barra: {listo|lista}.",
+  "rows": [
+    {
+      "id": "trama-desaparecidos",
+      "name": "Gente que desaparece de noche",
+      "kind": "trama",
+      "weight": 10,
+      "tags": [
+        "terror",
+        "horror",
+        "gotico",
+        "costa"
+      ],
+      "villano": "persona",
+      "villanos": [
+        "el Hombre del Farol",
+        "la Dama Gris",
+        "el Barquero",
+        "la Hilandera"
+      ],
+      "guaridas": [
+        {
+          "name": "La Cueva de las Jaulas",
+          "type": "dungeon"
+        },
+        {
+          "name": "El Molino Hundido",
+          "type": "ruins"
+        },
+        {
+          "name": "La Bodega del Ahogado",
+          "type": "dungeon"
+        }
+      ],
+      "refugios": [
+        {
+          "name": "La Capilla sin Campana",
+          "type": "ruins"
+        },
+        {
+          "name": "El Pozo de los Nombres",
+          "type": "dungeon"
+        }
+      ],
+      "gancho": {
+        "title": "Gente que falta en {inicio}",
+        "beats": [
+          {
+            "text": "En {inicio} falta gente. Primero fue un pastor; después, dos críos que salieron a por agua. Nadie los ha vuelto a ver."
+          },
+          {
+            "who": "{testigo}",
+            "mood": "triste",
+            "text": "Soy {testigo}. Anoche vi una luz por el camino. Iba despacio, como quien busca algo. O a alguien."
+          },
+          {
+            "text": "Las puertas se cierran antes de que anochezca. La gente te mira como se mira a quien puede hacer algo."
+          }
+        ]
+      },
+      "testigo": {
+        "title": "Lo que vio {testigo}",
+        "hint": "Habla con {testigo} en {inicio}: vio la luz de cerca.",
+        "scene": "{testigo} no quiere hablar delante de todos. Te espera en {inicio}, lejos de las ventanas."
+      },
+      "pistas": {
+        "title": "El rastro de los que faltan",
+        "hint": "Busca pistas en {pista1}, {pista2} y {pista3}. Con dos basta para saber adónde van.",
+        "beats": [
+          {
+            "who": "{testigo}",
+            "mood": "triste",
+            "text": "La luz iba hacia {pista1}. Y no es el único sitio: en {pista2} y en {pista3} también han visto cosas raras."
+          },
+          {
+            "who": "{testigo}",
+            "mood": "neutral",
+            "text": "Yo no me atrevo a ir. Tú sí, se te ve en la cara."
+          },
+          {
+            "text": "Tendrás que verlo con tus propios ojos: examina lo que haya en esos sitios."
+          }
+        ],
+        "cosas": [
+          {
+            "verbo": "examinar",
+            "text": "las huellas junto al camino",
+            "skill": "survival",
+            "found": "Son de botas pesadas y van siempre hacia el mismo sitio: {guarida}. Alguien arrastraba algo."
+          },
+          {
+            "verbo": "registrar",
+            "text": "el cobertizo abandonado",
+            "skill": "investigation",
+            "found": "Hay una cuerda cortada y un zapato pequeño. Bajo la paja, un farol con la mecha aún tibia y barro de {guarida}."
+          },
+          {
+            "verbo": "escuchar",
+            "text": "lo que se cuenta en voz baja",
+            "skill": "insight",
+            "found": "Una vieja jura que la luz sale de {guarida} y vuelve allí antes del alba. No miente: tiene demasiado miedo."
+          }
+        ]
+      },
+      "guarida": {
+        "title": "La luz de {guarida}",
+        "hint": "Ve a {guarida}.",
+        "scene": "Las pistas llevan a {guarida}. Desde lejos se ve el resplandor de un farol que nadie debería encender."
+      },
+      "golpe": {
+        "title": "Los que guardan {guarida}",
+        "hint": "Entra en {guarida} y vence a quienes esperan dentro.",
+        "scene": "Dentro hay jaulas vacías y gente armada que no esperaba visita. {villano} no está: ha dejado a los suyos para que nadie le siga.",
+        "board": "Las jaulas"
+      },
+      "secuaces": [
+        "Cultista",
+        "Cultista",
+        "Arquero"
+      ]
+    },
+    {
+      "id": "trama-robo",
+      "name": "Lo que robaron del pueblo",
+      "kind": "trama",
+      "weight": 10,
+      "tags": [
+        "epica",
+        "fantasia",
+        "historico",
+        "aventura"
+      ],
+      "villano": "persona",
+      "villanos": [
+        "el Zorro de Ceniza",
+        "Mano Negra",
+        "la Urraca",
+        "Siete Llaves"
+      ],
+      "guaridas": [
+        {
+          "name": "El Escondrijo de los Contrabandistas",
+          "type": "camp"
+        },
+        {
+          "name": "La Torre Desmochada",
+          "type": "ruins"
+        },
+        {
+          "name": "La Mina de los Ladrones",
+          "type": "dungeon"
+        }
+      ],
+      "refugios": [
+        {
+          "name": "El Paso de las Cabras",
+          "type": "wilderness"
+        },
+        {
+          "name": "El Fuerte Viejo",
+          "type": "ruins"
+        }
+      ],
+      "gancho": {
+        "title": "El robo de {inicio}",
+        "beats": [
+          {
+            "text": "Esta mañana {inicio} se ha despertado sin su reliquia: la caja de plata donde se guardaba el sello del pueblo. Sin el sello, nadie paga ni cobra nada."
+          },
+          {
+            "who": "{testigo}",
+            "mood": "enfadado",
+            "text": "Soy {testigo}. ¡La cerradura estaba bien! Quien entró tenía llave, o sabía muy bien lo que hacía."
+          },
+          {
+            "text": "Alguien grita que hay que colgar al primer forastero que pase. Y {el forastero|la forastera} de hoy eres tú."
+          }
+        ]
+      },
+      "testigo": {
+        "title": "Lo que sabe {testigo}",
+        "hint": "Habla con {testigo} en {inicio}: vio quién rondaba la caja.",
+        "scene": "{testigo} te hace una seña desde la puerta. Sabe más de lo que ha gritado."
+      },
+      "pistas": {
+        "title": "El rastro de la reliquia",
+        "hint": "Busca pistas en {pista1}, {pista2} y {pista3}. Con dos basta para dar con los ladrones.",
+        "beats": [
+          {
+            "who": "{testigo}",
+            "mood": "neutral",
+            "text": "Anoche vi a dos tipos con capa salir hacia {pista1}. Otros dicen que los vieron en {pista2} y en {pista3}."
+          },
+          {
+            "who": "{testigo}",
+            "mood": "enfadado",
+            "text": "Tráenos el sello y nadie volverá a hablar de colgar a nadie."
+          },
+          {
+            "text": "Te toca seguir el rastro: examina lo que haya en esos sitios."
+          }
+        ],
+        "cosas": [
+          {
+            "verbo": "examinar",
+            "text": "las marcas de cascos en el barro",
+            "skill": "survival",
+            "found": "Dos caballos cargados, a paso corto. El rastro se tuerce hacia {guarida}."
+          },
+          {
+            "verbo": "registrar",
+            "text": "la paja del establo",
+            "skill": "investigation",
+            "found": "Entre la paja hay un trozo de tela con hilo de plata, igual al forro de la caja. Huele al humo de {guarida}."
+          },
+          {
+            "verbo": "mirar",
+            "text": "a quien gasta más de la cuenta",
+            "skill": "perception",
+            "found": "Un mozo paga su ronda con una moneda que no es de aquí. Cuando le preguntas, se le escapa el nombre de {guarida}."
+          }
+        ]
+      },
+      "guarida": {
+        "title": "Los ladrones de {guarida}",
+        "hint": "Ve a {guarida}.",
+        "scene": "El rastro acaba en {guarida}. Hay humo y voces: los ladrones no se han molestado en esconderse."
+      },
+      "golpe": {
+        "title": "Recuperar lo robado",
+        "hint": "Entra en {guarida} y vence a los ladrones.",
+        "scene": "Los ladrones se reparten el botín. La caja está abierta y vacía: {villano} se ha llevado el sello y ha dejado aquí a los suyos.",
+        "board": "El reparto del botín"
+      },
+      "secuaces": [
+        "Bandido",
+        "Bandido",
+        "Arquero"
+      ]
+    },
+    {
+      "id": "trama-bestia",
+      "name": "La bestia que baja de noche",
+      "kind": "trama",
+      "weight": 10,
+      "tags": [
+        "terror",
+        "epica",
+        "fantasia",
+        "aventura"
+      ],
+      "villano": "bestia",
+      "villanos": [
+        "la Bestia Blanca",
+        "el Gran Lobo Gris",
+        "la Cosa del Pozo",
+        "el Devorador de Rebaños"
+      ],
+      "guaridas": [
+        {
+          "name": "El Barranco de los Huesos",
+          "type": "wilderness"
+        },
+        {
+          "name": "La Cueva del Aliento",
+          "type": "dungeon"
+        },
+        {
+          "name": "El Bosque Quemado",
+          "type": "wilderness"
+        }
+      ],
+      "refugios": [
+        {
+          "name": "La Madriguera Honda",
+          "type": "dungeon"
+        },
+        {
+          "name": "El Cubil de la Montaña",
+          "type": "dungeon"
+        }
+      ],
+      "gancho": {
+        "title": "Algo baja a {inicio} de noche",
+        "beats": [
+          {
+            "text": "Al amanecer, en {inicio} cuentan las ovejas y faltan cinco. Lo que queda de ellas está en el camino, y no lo ha hecho un lobo corriente."
+          },
+          {
+            "who": "{testigo}",
+            "mood": "triste",
+            "text": "Soy {testigo}. Lo oí respirar detrás del corral. Era más grande que una vaca. Y no tenía prisa."
+          },
+          {
+            "text": "Esta noche nadie dormirá tranquilo. Y la próxima vez puede que no se conforme con ovejas."
+          }
+        ]
+      },
+      "testigo": {
+        "title": "Lo que oyó {testigo}",
+        "hint": "Habla con {testigo} en {inicio}: lo tuvo a dos pasos.",
+        "scene": "{testigo} no ha pegado ojo. Si quieres saber qué baja de noche, es con quien hay que hablar."
+      },
+      "pistas": {
+        "title": "Seguir a la bestia",
+        "hint": "Busca su rastro en {pista1}, {pista2} y {pista3}. Con dos basta para saber dónde duerme.",
+        "beats": [
+          {
+            "who": "{testigo}",
+            "mood": "neutral",
+            "text": "Se fue hacia {pista1}. Los leñadores dicen que en {pista2} hay árboles arañados, y en {pista3} ha desaparecido un perro."
+          },
+          {
+            "who": "{testigo}",
+            "mood": "triste",
+            "text": "Si vas, ve de día. Y no vayas {solo|sola}."
+          },
+          {
+            "text": "Su rastro está ahí fuera: examina lo que haya en esos sitios."
+          }
+        ],
+        "cosas": [
+          {
+            "verbo": "seguir",
+            "text": "unas huellas enormes",
+            "skill": "survival",
+            "found": "Las huellas son más anchas que tu mano abierta y van hacia {guarida}. Alguien arrastró ahí una oveja entera."
+          },
+          {
+            "verbo": "examinar",
+            "text": "los arañazos en la corteza",
+            "skill": "perception",
+            "found": "Los arañazos están a la altura de tu cabeza. Hay pelo blanco enganchado y huele a {guarida}."
+          },
+          {
+            "verbo": "registrar",
+            "text": "los huesos limpios del camino",
+            "skill": "investigation",
+            "found": "Los huesos están roídos con calma, sin miedo a nada. Alguien los fue dejando por el camino de {guarida}."
+          }
+        ]
+      },
+      "guarida": {
+        "title": "El cubil de {guarida}",
+        "hint": "Ve a {guarida}.",
+        "scene": "El rastro acaba en {guarida}. El aire huele a carne vieja, y hay huesos por todas partes."
+      },
+      "golpe": {
+        "title": "Las crías de la bestia",
+        "hint": "Entra en {guarida} y vence a lo que vive allí.",
+        "scene": "En {guarida} no está {villano}, sino lo que se alimenta de sus sobras. Y no les gusta que entres en su casa.",
+        "board": "El fondo del cubil"
+      },
+      "secuaces": []
+    },
+    {
+      "id": "trama-veneno",
+      "name": "El agua envenenada",
+      "kind": "trama",
+      "weight": 8,
+      "tags": [
+        "historico",
+        "terror",
+        "fantasia",
+        "epica"
+      ],
+      "villano": "persona",
+      "villanos": [
+        "la Boticaria",
+        "el Hombre de la Sal",
+        "el Fraile Verde",
+        "Hiel"
+      ],
+      "guaridas": [
+        {
+          "name": "El Huerto de las Hierbas Malas",
+          "type": "ruins"
+        },
+        {
+          "name": "La Destilería Abandonada",
+          "type": "ruins"
+        },
+        {
+          "name": "La Gruta del Agua Negra",
+          "type": "dungeon"
+        }
+      ],
+      "refugios": [
+        {
+          "name": "La Casa del Boticario",
+          "type": "ruins"
+        },
+        {
+          "name": "El Manantial Cegado",
+          "type": "dungeon"
+        }
+      ],
+      "gancho": {
+        "title": "Los enfermos de {inicio}",
+        "beats": [
+          {
+            "text": "En {inicio} enferma la gente a puñados: fiebre, manchas negras en las uñas y una sed que no se quita. Hay tres muertos y la cosa no para."
+          },
+          {
+            "who": "{testigo}",
+            "mood": "enfadado",
+            "text": "Soy {testigo}. No es una peste. Mi perro bebió del pozo y cayó antes que nadie. Alguien le ha echado algo al agua."
+          },
+          {
+            "text": "Ya nadie bebe del pozo. Pero el agua del río tampoco sabe como antes."
+          }
+        ]
+      },
+      "testigo": {
+        "title": "Lo que sospecha {testigo}",
+        "hint": "Habla con {testigo} en {inicio}: sabe por qué no es una peste.",
+        "scene": "{testigo} hierve el agua tres veces antes de beberla, y no se fía de nadie. De ti, quizá un poco."
+      },
+      "pistas": {
+        "title": "De dónde sale el veneno",
+        "hint": "Busca pistas en {pista1}, {pista2} y {pista3}. Con dos basta para dar con quien lo prepara.",
+        "beats": [
+          {
+            "who": "{testigo}",
+            "mood": "neutral",
+            "text": "El agua baja desde {pista1}. Y en {pista2} y en {pista3} han visto a alguien llenar sacos de hojas por la noche."
+          },
+          {
+            "who": "{testigo}",
+            "mood": "triste",
+            "text": "Si encuentras quién es, no bebas nada que te ofrezca."
+          },
+          {
+            "text": "Te toca buscar el origen: examina lo que haya en esos sitios."
+          }
+        ],
+        "cosas": [
+          {
+            "verbo": "examinar",
+            "text": "el agua que baja turbia",
+            "skill": "investigation",
+            "found": "En el fondo hay un poso verde y unas hojas que no crecen por aquí. La corriente las trae desde {guarida}."
+          },
+          {
+            "verbo": "mirar",
+            "text": "las plantas que se han secado",
+            "skill": "perception",
+            "found": "Una franja de hierba seca, recta como un camino, va de la orilla hacia {guarida}."
+          },
+          {
+            "verbo": "escuchar",
+            "text": "a quien vende remedios",
+            "skill": "insight",
+            "found": "El vendedor se pone nervioso. Confiesa que le compra las hierbas a alguien que vive en {guarida}, y que paga en plata."
+          }
+        ]
+      },
+      "guarida": {
+        "title": "El taller de {guarida}",
+        "hint": "Ve a {guarida}.",
+        "scene": "Las pistas llevan a {guarida}. Huele a hierba hervida y a algo podrido debajo."
+      },
+      "golpe": {
+        "title": "Los que llenan los sacos",
+        "hint": "Entra en {guarida} y vence a quien prepara el veneno.",
+        "scene": "Hay calderos, sacos de hojas y gente que trabaja con trapos en la cara. {villano} se ha ido antes de que llegaras, pero ha dejado a los suyos.",
+        "board": "Los calderos"
+      },
+      "secuaces": [
+        "Cultista",
+        "Bandido"
+      ]
+    },
+    {
+      "id": "trama-asesinato",
+      "name": "Un muerto con muchos enemigos",
+      "kind": "trama",
+      "weight": 8,
+      "tags": [
+        "historico",
+        "epica",
+        "gotico",
+        "fantasia"
+      ],
+      "villano": "persona",
+      "villanos": [
+        "el Sin Cara",
+        "Siete Cuchillos",
+        "la Viuda del Puerto",
+        "el Cuervo"
+      ],
+      "guaridas": [
+        {
+          "name": "La Casa de los Postigos",
+          "type": "ruins"
+        },
+        {
+          "name": "Las Bodegas del Puente",
+          "type": "dungeon"
+        },
+        {
+          "name": "El Campamento de los Cuchillos",
+          "type": "camp"
+        }
+      ],
+      "refugios": [
+        {
+          "name": "La Torre del Vigía",
+          "type": "ruins"
+        },
+        {
+          "name": "Las Criptas del Señor",
+          "type": "dungeon"
+        }
+      ],
+      "gancho": {
+        "title": "El muerto de {inicio}",
+        "beats": [
+          {
+            "text": "Han encontrado al alcalde de {inicio} en su cama, con un cuchillo clavado y la puerta cerrada por dentro. Tenía muchos enemigos y ningún amigo."
+          },
+          {
+            "who": "{testigo}",
+            "mood": "triste",
+            "text": "Soy {testigo}. Yo le llevaba la cena. La ventana estaba abierta, y él nunca la abría: le tenía miedo al frío."
+          },
+          {
+            "text": "Cada uno culpa a quien más odia. Si nadie averigua la verdad, mañana habrá más muertos."
+          }
+        ]
+      },
+      "testigo": {
+        "title": "Lo que vio {testigo}",
+        "hint": "Habla con {testigo} en {inicio}: fue quien encontró el cuerpo.",
+        "scene": "{testigo} tiene las manos temblando. Encontró el cuerpo, y nadie le ha preguntado nada todavía."
+      },
+      "pistas": {
+        "title": "Quién mató al alcalde",
+        "hint": "Busca pistas en {pista1}, {pista2} y {pista3}. Con dos basta para saber quién fue.",
+        "beats": [
+          {
+            "who": "{testigo}",
+            "mood": "neutral",
+            "text": "Debajo de la ventana había huellas que iban hacia {pista1}. Y el cuchillo no es de aquí: dicen que en {pista2} y en {pista3} se venden así."
+          },
+          {
+            "who": "{testigo}",
+            "mood": "triste",
+            "text": "Ten cuidado con a quién preguntas. Quien lo hizo sigue cerca."
+          },
+          {
+            "text": "Te toca reunir las pruebas: examina lo que haya en esos sitios."
+          }
+        ],
+        "cosas": [
+          {
+            "verbo": "examinar",
+            "text": "el barro bajo la ventana",
+            "skill": "survival",
+            "found": "Las huellas son de alguien ligero, con botas de suela fina. Van derechas hacia {guarida}."
+          },
+          {
+            "verbo": "registrar",
+            "text": "el puesto del cuchillero",
+            "skill": "investigation",
+            "found": "El cuchillero lleva un libro de ventas. El mismo cuchillo se vendió hace una semana, y lo pagaron con monedas de {guarida}."
+          },
+          {
+            "verbo": "escuchar",
+            "text": "a quien bebe solo en un rincón",
+            "skill": "insight",
+            "found": "Un hombre borracho dice que le pagaron por dejar abierta una puerta. Se lo pagó alguien que se esconde en {guarida}."
+          }
+        ]
+      },
+      "guarida": {
+        "title": "Los asesinos de {guarida}",
+        "hint": "Ve a {guarida}.",
+        "scene": "Las pruebas llevan a {guarida}. Desde fuera parece vacía, pero hay luz detrás de los postigos."
+      },
+      "golpe": {
+        "title": "Los cuchillos de {guarida}",
+        "hint": "Entra en {guarida} y vence a los asesinos.",
+        "scene": "Dentro hay gente que cobra por matar, y esta noche alguien les ha pagado por ti. {villano} no está: solo ha dejado sus órdenes.",
+        "board": "Los cuartos de atrás"
+      },
+      "secuaces": [
+        "Bandido",
+        "Bandido",
+        "Arquero"
+      ]
+    },
+    {
+      "id": "trama-coleccionista",
+      "name": "Los que llegaron de fuera",
+      "kind": "trama",
+      "weight": 8,
+      "tags": [
+        "isekai",
+        "fantasia",
+        "magia"
+      ],
+      "villano": "persona",
+      "villanos": [
+        "el Coleccionista",
+        "la Archivera",
+        "el Hombre de los Números",
+        "la Tejedora"
+      ],
+      "guaridas": [
+        {
+          "name": "La Torre de los Registros",
+          "type": "ruins"
+        },
+        {
+          "name": "El Laboratorio Hundido",
+          "type": "dungeon"
+        },
+        {
+          "name": "La Biblioteca Cerrada",
+          "type": "ruins"
+        }
+      ],
+      "refugios": [
+        {
+          "name": "La Sala de las Barras",
+          "type": "dungeon"
+        },
+        {
+          "name": "El Observatorio Roto",
+          "type": "ruins"
+        }
+      ],
+      "gancho": {
+        "title": "Los huéspedes de {inicio}",
+        "beats": [
+          {
+            "text": "En {inicio} desaparecen los huéspedes, los que llegaron de otro mundo con números flotando sobre la cabeza. Tres en un mes. Sus camas siguen hechas."
+          },
+          {
+            "who": "{testigo}",
+            "mood": "triste",
+            "text": "Soy {testigo}. La última dejó una nota: «Alguien quiere mi barra». No sé qué quería decir, pero tenía miedo."
+          },
+          {
+            "text": "Si es verdad que alguien los colecciona, tú también tienes números. Puede que estés en la lista."
+          }
+        ]
+      },
+      "testigo": {
+        "title": "La nota de {testigo}",
+        "hint": "Habla con {testigo} en {inicio}: guarda la nota de la última que desapareció.",
+        "scene": "{testigo} guarda la nota en el bolsillo y no se la enseña a nadie. A ti, quizá sí."
+      },
+      "pistas": {
+        "title": "Quién se lleva a los huéspedes",
+        "hint": "Busca pistas en {pista1}, {pista2} y {pista3}. Con dos basta para saber adónde se los llevan.",
+        "beats": [
+          {
+            "who": "{testigo}",
+            "mood": "neutral",
+            "text": "La vieron por última vez camino de {pista1}. Y en {pista2} y en {pista3} hay quien jura haber visto una luz azul por la noche."
+          },
+          {
+            "who": "{testigo}",
+            "mood": "triste",
+            "text": "Si tus números bajan de golpe, sal corriendo. Eso decía ella."
+          },
+          {
+            "text": "Te toca seguir el rastro: examina lo que haya en esos sitios."
+          }
+        ],
+        "cosas": [
+          {
+            "verbo": "examinar",
+            "text": "las marcas quemadas en el suelo",
+            "skill": "investigation",
+            "found": "Son círculos perfectos, como sellos. Todos apuntan en la misma dirección: hacia {guarida}."
+          },
+          {
+            "verbo": "mirar",
+            "text": "la luz azul en el horizonte",
+            "skill": "perception",
+            "found": "La luz se enciende tres veces y se apaga. Sale de {guarida}, sin duda."
+          },
+          {
+            "verbo": "escuchar",
+            "text": "lo que cuentan los otros huéspedes",
+            "skill": "insight",
+            "found": "Un huésped joven confiesa que le ofrecieron dinero por sus números. Quien pagaba vivía en {guarida}."
+          }
+        ]
+      },
+      "guarida": {
+        "title": "Los registros de {guarida}",
+        "hint": "Ve a {guarida}.",
+        "scene": "Las pistas llevan a {guarida}. Por las ventanas se ve una luz azul que no viene de ningún fuego."
+      },
+      "golpe": {
+        "title": "Los guardianes de {guarida}",
+        "hint": "Entra en {guarida} y vence a sus guardianes.",
+        "scene": "Hay estanterías llenas de frascos con luces dentro, y guardianes que no parpadean. {villano} se ha ido con lo más valioso.",
+        "board": "Los estantes de luz"
+      },
+      "secuaces": [
+        "Golem de barro",
+        "Aprendiz de mago"
+      ]
+    },
+    {
+      "id": "giro-pagado",
+      "name": "Alguien pagaba al villano",
+      "kind": "giro",
+      "weight": 10,
+      "encrucijada": {
+        "title": "Lo que había en {guarida}",
+        "beats": [
+          {
+            "text": "Entre lo que dejaron los de {villano} hay un cofre pequeño. Dentro, cartas y una bolsa de monedas."
+          },
+          {
+            "text": "Las cartas no dejan dudas: alguien de {bandoB} pagaba a {villano}. Y {contactoB} lo sabe."
+          },
+          {
+            "text": "Ahora sabes demasiado. Con estas cartas puedes ir a {contactoA}, en {sitioA}, que quiere a {villano} colgado. O puedes ir a {contactoB}, en {sitioB}, que pagará bien para que esto no salga a la luz.",
+            "options": [
+              {
+                "id": "a",
+                "text": "Llevar las cartas a {contactoA}.",
+                "reply": {
+                  "text": "Guardas las cartas. {contactoA} sabrá qué hacer con ellas."
+                }
+              },
+              {
+                "id": "b",
+                "text": "Ir a ver qué ofrece {contactoB}.",
+                "reply": {
+                  "text": "Guardas las cartas. Primero vas a ver cuánto valen."
+                }
+              },
+              {
+                "id": "pensar",
+                "text": "Guardarlas y pensarlo con calma.",
+                "reply": {
+                  "text": "Las cartas pesan poco, pero no te las quitas de la cabeza."
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "bando_a": {
+        "title": "Las cartas, para {bandoA}",
+        "hint": "Habla con {contactoA} en {sitioA} y dale las cartas: así se irá a por {villano}.",
+        "scene": "{contactoA} lee las cartas dos veces. «Con esto, nadie podrá proteger a {villano}. Te diré dónde se esconde.»"
+      },
+      "bando_b": {
+        "title": "El precio de las cartas",
+        "hint": "Habla con {contactoB} en {sitioB}: paga bien por las cartas y por tu silencio.",
+        "scene": "{contactoB} pone una bolsa en la mesa sin contarla. «{villano} ya no nos sirve. Acaba con él, quema las cartas y aquí no ha pasado nada.»"
+      },
+      "villano": "persona"
+    },
+    {
+      "id": "giro-pariente",
+      "name": "El villano tiene quien lo proteja",
+      "kind": "giro",
+      "weight": 10,
+      "encrucijada": {
+        "title": "El sello de {guarida}",
+        "beats": [
+          {
+            "text": "En lo más hondo de {guarida} hay una capa doblada con cuidado. Lleva bordado el sello de {bandoB}."
+          },
+          {
+            "text": "{villano} no actúa sin ayuda: alguien de {bandoB} le esconde, le da de comer y mira hacia otro lado. Por eso nadie lo ha parado antes."
+          },
+          {
+            "text": "{contactoA}, en {sitioA}, daría lo que fuera por saber esto. {contactoB}, en {sitioB}, daría todavía más para que no lo supiera nadie.",
+            "options": [
+              {
+                "id": "a",
+                "text": "Contárselo a {contactoA}.",
+                "reply": {
+                  "text": "Te guardas la capa. {contactoA} tiene que verla."
+                }
+              },
+              {
+                "id": "b",
+                "text": "Ir a hablar con {contactoB} primero.",
+                "reply": {
+                  "text": "Te guardas la capa. Si hay quien protege a {villano}, también habrá quien pague por callar."
+                }
+              },
+              {
+                "id": "pensar",
+                "text": "Guardar la capa y decidir más tarde.",
+                "reply": {
+                  "text": "Te la guardas. La decisión puede esperar un poco, pero no mucho."
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "bando_a": {
+        "title": "Lo que tiene que saber {contactoA}",
+        "hint": "Habla con {contactoA} en {sitioA} y enséñale la capa: os ayudarán a acabar con {villano}.",
+        "scene": "{contactoA} reconoce el sello al momento. «Lo sospechaba. Ahora tengo con qué probarlo. Ve a por {villano}: los míos te cubrirán.»"
+      },
+      "bando_b": {
+        "title": "El silencio de {bandoB}",
+        "hint": "Habla con {contactoB} en {sitioB}: te pagará por acabar con {villano} sin que se sepa quién le protegía.",
+        "scene": "{contactoB} cierra la puerta antes de hablar. «Ese sello no debería estar ahí. Haz que {villano} desaparezca y olvida lo que has visto. Te irá bien.»"
+      },
+      "villano": "persona"
+    },
+    {
+      "id": "giro-botin",
+      "name": "Lo que guardaba el villano vale mucho",
+      "kind": "giro",
+      "weight": 8,
+      "encrucijada": {
+        "title": "El tesoro de {villano}",
+        "beats": [
+          {
+            "text": "Bajo una losa suelta de {guarida} hay un mapa y una lista de nombres. Algunos son de gente importante."
+          },
+          {
+            "text": "La lista vale más que todo el oro de {inicio}. En manos de {bandoB}, sirve para tener a esa gente en un puño; en manos de {bandoA}, para juzgarla."
+          },
+          {
+            "text": "Puedes llevársela a {contactoA}, en {sitioA}, o vendérsela a {contactoB}, en {sitioB}. El mapa marca dónde se esconde {villano}: los dos te ayudarán a llegar.",
+            "options": [
+              {
+                "id": "a",
+                "text": "La lista es para {contactoA}.",
+                "reply": {
+                  "text": "Doblas la lista y la guardas bien. {contactoA} la usará como se debe."
+                }
+              },
+              {
+                "id": "b",
+                "text": "A ver cuánto paga {contactoB}.",
+                "reply": {
+                  "text": "Doblas la lista. Hay cosas que valen más vendidas que contadas."
+                }
+              },
+              {
+                "id": "pensar",
+                "text": "Guardarla y pensarlo.",
+                "reply": {
+                  "text": "La guardas. Pesa más de lo que parece."
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "bando_a": {
+        "title": "La lista, para {bandoA}",
+        "hint": "Habla con {contactoA} en {sitioA} y dale la lista: te dirá cómo llegar hasta {villano}.",
+        "scene": "{contactoA} recorre los nombres con el dedo y aprieta los dientes. «Esto acaba hoy. Ve a por {villano}; del resto me encargo yo.»"
+      },
+      "bando_b": {
+        "title": "La lista, vendida",
+        "hint": "Habla con {contactoB} en {sitioB}: paga la lista en oro y te pide que acabes con {villano}.",
+        "scene": "{contactoB} sonríe al ver la lista. «Buen trabajo. Ahora termina lo que empezaste: {villano} sabe demasiado para seguir vivo.»"
+      },
+      "villano": "persona"
+    },
+    {
+      "id": "giro-traicion",
+      "name": "El testigo no lo contó todo",
+      "kind": "giro",
+      "weight": 6,
+      "encrucijada": {
+        "title": "Un nombre conocido",
+        "beats": [
+          {
+            "text": "En {guarida} hay una lista de pagos. Uno de los nombres te suena: alguien de {inicio} avisaba a {villano} de quién salía de noche."
+          },
+          {
+            "text": "Los pagos salen de {bandoB}. Usaban a {villano} para asustar a la gente y quedarse con lo que dejaban."
+          },
+          {
+            "text": "Si se lo cuentas a {contactoA}, en {sitioA}, habrá juicio y alguien de {inicio} acabará en la horca. Si vas a {contactoB}, en {sitioB}, todo se arreglará en silencio.",
+            "options": [
+              {
+                "id": "a",
+                "text": "Que haya juicio: ir a {contactoA}.",
+                "reply": {
+                  "text": "Guardas la lista. Lo que se ha hecho, que se pague."
+                }
+              },
+              {
+                "id": "b",
+                "text": "Mejor en silencio: ir a {contactoB}.",
+                "reply": {
+                  "text": "Guardas la lista. A veces la verdad hace más daño que el silencio."
+                }
+              },
+              {
+                "id": "pensar",
+                "text": "Pensarlo antes.",
+                "reply": {
+                  "text": "Guardas la lista. Ya decidirás."
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "bando_a": {
+        "title": "Un juicio en {sitioA}",
+        "hint": "Habla con {contactoA} en {sitioA} y enséñale la lista: después, a por {villano}.",
+        "scene": "{contactoA} escucha sin interrumpirte. «Habrá juicio para todos. Pero primero, {villano}. Sé dónde ir a buscarle.»"
+      },
+      "bando_b": {
+        "title": "Un arreglo con {bandoB}",
+        "hint": "Habla con {contactoB} en {sitioB}: te paga por acabar con {villano} y quemar la lista.",
+        "scene": "{contactoB} no se sorprende. «Nadie tiene por qué saberlo. Acaba con {villano}, quema esa lista y no volverás a pasar hambre.»"
+      },
+      "villano": "persona"
+    },
+    {
+      "id": "giro-cebo",
+      "name": "Alguien ceba a la bestia",
+      "kind": "giro",
+      "villano": "bestia",
+      "weight": 10,
+      "encrucijada": {
+        "title": "El cebo de {guarida}",
+        "beats": [
+          {
+            "text": "En {guarida} hay algo que no cuadra: restos de reses degolladas con cuchillo, y sacos de sal vacíos. A {villano} alguien le da de comer."
+          },
+          {
+            "text": "Los sacos llevan la marca de {bandoB}. Ceban a {villano} cerca de {inicio} para que la gente se asuste y deje sus tierras."
+          },
+          {
+            "text": "{contactoA}, en {sitioA}, querrá saberlo para pararles los pies. {contactoB}, en {sitioB}, pagará para que no lo sepa nadie.",
+            "options": [
+              {
+                "id": "a",
+                "text": "Contárselo a {contactoA}.",
+                "reply": {
+                  "text": "Te guardas un saco con la marca. {contactoA} tiene que verlo."
+                }
+              },
+              {
+                "id": "b",
+                "text": "Ir a ver qué ofrece {contactoB}.",
+                "reply": {
+                  "text": "Te guardas un saco con la marca. A ver cuánto vale."
+                }
+              },
+              {
+                "id": "pensar",
+                "text": "Guardar el saco y pensarlo.",
+                "reply": {
+                  "text": "Te lo guardas. Ya decidirás a quién se lo enseñas."
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "bando_a": {
+        "title": "La marca, para {bandoA}",
+        "hint": "Habla con {contactoA} en {sitioA} y enséñale el saco: te ayudarán a acabar con {villano}.",
+        "scene": "{contactoA} reconoce la marca y se le endurece la cara. «Así que eran ellos. Acaba con {villano}; de los demás me encargo yo.»"
+      },
+      "bando_b": {
+        "title": "El precio de la marca",
+        "hint": "Habla con {contactoB} en {sitioB}: te paga por acabar con {villano} y olvidar el saco.",
+        "scene": "{contactoB} empuja una bolsa hacia ti. «La cosa se nos ha ido de las manos. Mata a {villano}, quema ese saco y no se hable más.»"
+      }
+    },
+    {
+      "id": "giro-cadenas",
+      "name": "La bestia se escapó de alguien",
+      "kind": "giro",
+      "villano": "bestia",
+      "weight": 8,
+      "encrucijada": {
+        "title": "Las cadenas de {guarida}",
+        "beats": [
+          {
+            "text": "En {guarida} hay cadenas rotas, gruesas como un brazo, y un collar de hierro partido en dos. {villano} no nació aquí: alguien lo trajo."
+          },
+          {
+            "text": "El hierro lleva el sello de {bandoB}. Lo querían para sus peleas, o para algo peor, y se les escapó."
+          },
+          {
+            "text": "Si se lo cuentas a {contactoA}, en {sitioA}, habrá que pedir cuentas a {bandoB}. Si vas a {contactoB}, en {sitioB}, te pagarán para que esto quede entre vosotros.",
+            "options": [
+              {
+                "id": "a",
+                "text": "Ir a {contactoA} con el collar.",
+                "reply": {
+                  "text": "Te llevas el collar. Pesa lo suyo, pero vale la pena."
+                }
+              },
+              {
+                "id": "b",
+                "text": "Ir a {contactoB} a negociar.",
+                "reply": {
+                  "text": "Te llevas el collar. A veces un secreto se vende mejor que se cuenta."
+                }
+              },
+              {
+                "id": "pensar",
+                "text": "Llevarte el collar y pensarlo.",
+                "reply": {
+                  "text": "Te lo llevas. La decisión puede esperar un poco."
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "bando_a": {
+        "title": "El collar, para {bandoA}",
+        "hint": "Habla con {contactoA} en {sitioA} y enséñale el collar: después, a por {villano}.",
+        "scene": "{contactoA} pasa los dedos por el sello. «Lo pagarán. Pero primero hay que acabar con {villano}, antes de que mate a alguien más.»"
+      },
+      "bando_b": {
+        "title": "El collar, vendido",
+        "hint": "Habla con {contactoB} en {sitioB}: te paga por acabar con {villano} y devolver el collar.",
+        "scene": "{contactoB} cuenta las monedas despacio. «Devuélveme el collar y acaba con {villano}. Nadie tiene que saber de dónde salió.»"
+      }
+    },
+    {
+      "id": "desenlace-a-1",
+      "name": "Con la ayuda del bando justo",
+      "kind": "desenlace",
+      "lado": "a",
+      "weight": 10,
+      "title": "{villano}, en {refugio}",
+      "hint": "Ve a {refugio} y acaba con {villano}. La gente de {contactoA} vigila los caminos.",
+      "scene": "{contactoA} cumple su palabra: su gente vigila los caminos. A {villano} solo le queda un sitio donde esconderse: {refugio}."
+    },
+    {
+      "id": "desenlace-a-2",
+      "name": "La última cacería",
+      "kind": "desenlace",
+      "lado": "a",
+      "weight": 10,
+      "title": "La caza de {villano}",
+      "hint": "Ve a {refugio}: allí espera {villano}, y no tiene adónde huir.",
+      "scene": "Con lo que sabe {contactoA}, la red se cierra. {villano} ha huido a {refugio}, y esta vez no hay nadie que le esconda."
+    },
+    {
+      "id": "desenlace-b-1",
+      "name": "El trabajo sucio",
+      "kind": "desenlace",
+      "lado": "b",
+      "weight": 10,
+      "title": "El encargo de {contactoB}",
+      "hint": "Ve a {refugio} y acaba con {villano}, como pide {contactoB}.",
+      "scene": "{contactoB} te ha dicho dónde pasará la noche {villano}: en {refugio}. Lo que pase allí no lo sabrá nadie."
+    },
+    {
+      "id": "desenlace-b-2",
+      "name": "Sin testigos",
+      "kind": "desenlace",
+      "lado": "b",
+      "weight": 10,
+      "title": "Sin testigos, en {refugio}",
+      "hint": "Ve a {refugio}: {villano} te espera allí, y {contactoB} quiere que no salga.",
+      "scene": "El oro ya está en tu bolsa. Solo falta lo que has prometido: {villano}, en {refugio}, sin testigos."
+    },
+    {
+      "id": "final-a-1",
+      "name": "Justicia",
+      "kind": "final",
+      "lado": "a",
+      "weight": 10,
+      "title": "Justicia en {inicio}",
+      "scene": "{villano} ya no volverá a {inicio}. Con las pruebas que llevaste, {contactoA} no deja que nadie mire hacia otro lado. No te hace {rico|rica}, pero cuando cruzas el pueblo la gente te saluda por tu nombre.",
+      "epilogos": [
+        {
+          "who": "{bandoA}",
+          "text": "Su palabra pesa más en la comarca. Durante un tiempo, al menos, las cosas se hacen como se debe."
+        },
+        {
+          "who": "{bandoB}",
+          "text": "Sus amigos se esfuman. Nadie olvida lo que se hizo con su dinero."
+        },
+        {
+          "who": "{testigo}",
+          "text": "Vuelve a dormir con la ventana abierta. Cuenta a quien quiera oírlo que fue quien te puso sobre la pista."
+        }
+      ],
+      "legado": {
+        "tono": "luz",
+        "titulo": "quienes hicieron justicia en {inicio}",
+        "saludo": "Dicen que en {inicio} todavía brindan por vosotros."
+      }
+    },
+    {
+      "id": "final-a-2",
+      "name": "Lo que se paga",
+      "kind": "final",
+      "lado": "a",
+      "weight": 10,
+      "title": "Las cuentas claras",
+      "scene": "Con {villano} vencido y las pruebas en manos de {contactoA}, los que miraban hacia otro lado tienen que dar la cara. En {inicio} vuelven a abrir las puertas al caer la noche.",
+      "epilogos": [
+        {
+          "who": "{bandoA}",
+          "text": "El respeto del pueblo es suyo. Nadie sabe cuánto durará."
+        },
+        {
+          "who": "{bandoB}",
+          "text": "Lo que se hizo con su dinero se paga, y se paga caro."
+        },
+        {
+          "who": "{testigo}",
+          "text": "Cada vez que pasas por {inicio}, te invita a comer. Dice que es lo menos que puede hacer."
+        }
+      ],
+      "legado": {
+        "tono": "luz",
+        "titulo": "quienes acabaron con {villano}",
+        "saludo": "En {inicio} aún cuentan cómo acabasteis con {villano}."
+      }
+    },
+    {
+      "id": "final-b-1",
+      "name": "El precio del silencio",
+      "kind": "final",
+      "lado": "b",
+      "weight": 10,
+      "title": "El precio del silencio",
+      "scene": "{villano} ya no hará más daño, y nadie sabrá nunca quién estaba detrás. {contactoB} cumple: tu bolsa pesa más que nunca. Pero cuando te cruzas con {testigo}, no te mira a los ojos.",
+      "epilogos": [
+        {
+          "who": "{bandoB}",
+          "text": "Nada les salpica. Te deben un favor, y tú sabes demasiado."
+        },
+        {
+          "who": "{bandoA}",
+          "text": "Sin pruebas, no hay nada que hacer. La sospecha se queda."
+        },
+        {
+          "who": "{testigo}",
+          "text": "No vuelve a hablarte. Algo se ha roto, y no sabe decir qué."
+        }
+      ],
+      "legado": {
+        "tono": "gris",
+        "titulo": "quienes cobran por callar",
+        "saludo": "Hay quien dice que en {inicio} os pagaron bien, y no solo por pelear."
+      }
+    },
+    {
+      "id": "final-b-2",
+      "name": "Un trato cumplido",
+      "kind": "final",
+      "lado": "b",
+      "weight": 10,
+      "title": "Un trato es un trato",
+      "scene": "{villano} ha caído y las pruebas arden en la chimenea de {contactoB}. En {inicio} dicen que se acabó el mal, y es verdad a medias. Tú te vas con oro y con un secreto.",
+      "epilogos": [
+        {
+          "who": "{bandoB}",
+          "text": "Todo sigue como siempre, con un poco más de cuidado."
+        },
+        {
+          "who": "{bandoA}",
+          "text": "Lo que pasó de verdad no llega a sus oídos."
+        },
+        {
+          "who": "{testigo}",
+          "text": "Prefiere no hacer preguntas, como todo {inicio}."
+        }
+      ],
+      "legado": {
+        "tono": "gris",
+        "titulo": "quienes saben guardar un secreto",
+        "saludo": "De lo que pasó en {inicio} no se habla. Vosotros sabréis por qué."
+      }
+    },
+    {
+      "id": "final-tarde-1",
+      "name": "Llegasteis tarde",
+      "kind": "final",
+      "lado": "tarde",
+      "weight": 10,
+      "title": "Demasiado tarde",
+      "scene": "Mientras buscabas, nadie paró los planes de {bandoB}, y ahora es tarde. {villano} se esfumó con lo suyo y nadie le pedirá cuentas. En {inicio} cierran las puertas al caer la noche, y ya no esperan que nadie venga a ayudar.",
+      "epilogos": [
+        {
+          "who": "{bandoB}",
+          "text": "Todo es suyo. Nadie se atreve a decir nada."
+        },
+        {
+          "who": "{testigo}",
+          "text": "Se marcha de {inicio} una mañana, sin despedirse."
+        }
+      ],
+      "legado": {
+        "tono": "sombra",
+        "titulo": "quienes llegaron tarde a {inicio}",
+        "saludo": "De {inicio} llegan malas noticias. Ya sabéis por qué."
+      }
+    },
+    {
+      "id": "final-tarde-2",
+      "name": "El mundo no espera",
+      "kind": "final",
+      "lado": "tarde",
+      "weight": 10,
+      "title": "El mundo no esperó",
+      "scene": "Nadie paró a tiempo los planes de {bandoB}. De {villano} solo quedan rumores. {inicio} aprende a vivir con miedo, que es lo que mejor sabe hacer.",
+      "epilogos": [
+        {
+          "who": "{bandoB}",
+          "text": "La comarca es suya."
+        },
+        {
+          "who": "{bandoA}",
+          "text": "Sin pruebas, nada que hacer."
+        }
+      ],
+      "legado": {
+        "tono": "sombra",
+        "titulo": "quienes llegaron tarde a {inicio}",
+        "saludo": "En {inicio} no os esperan con los brazos abiertos."
+      }
+    },
+    {
+      "id": "presagio-pistas-1",
+      "name": "Las huellas",
+      "kind": "presagio",
+      "hito": "pistas",
+      "weight": 10,
+      "text": "Dos huellas bastan para encontrar el camino que nadie quiere andar."
+    },
+    {
+      "id": "presagio-pistas-2",
+      "name": "Lo que se esconde",
+      "kind": "presagio",
+      "hito": "pistas",
+      "weight": 10,
+      "text": "Lo que se esconde siempre deja algo atrás: busca bien y lo encontrarás."
+    },
+    {
+      "id": "presagio-golpe-1",
+      "name": "La casa vacía",
+      "kind": "presagio",
+      "hito": "golpe",
+      "weight": 10,
+      "text": "Cuando por fin llegues a su casa, no estará esperándote."
+    },
+    {
+      "id": "presagio-golpe-2",
+      "name": "Los suyos",
+      "kind": "presagio",
+      "hito": "golpe",
+      "weight": 10,
+      "text": "Antes de verle la cara, tendrás que pasar por encima de los suyos."
+    },
+    {
+      "id": "presagio-encrucijada-1",
+      "name": "Dos puertas",
+      "kind": "presagio",
+      "hito": "encrucijada",
+      "weight": 10,
+      "text": "Llegará un momento en que la verdad tenga precio, y tendrás que decidir si la vendes."
+    },
+    {
+      "id": "presagio-encrucijada-2",
+      "name": "Dos bolsas",
+      "kind": "presagio",
+      "hito": "encrucijada",
+      "weight": 10,
+      "text": "Te ofrecerán justicia o te ofrecerán oro. Las dos cosas a la vez, nunca."
+    },
+    {
+      "id": "capitulo-1-a",
+      "name": "Acto 1, el problema",
+      "kind": "capitulo",
+      "acto": 1,
+      "weight": 10,
+      "title": "Lo que pasa en {inicio}",
+      "summary": "En {inicio} pasa algo que nadie sabe parar. Habla con quien lo vio y busca pistas."
+    },
+    {
+      "id": "capitulo-1-b",
+      "name": "Acto 1, las pistas",
+      "kind": "capitulo",
+      "acto": 1,
+      "weight": 10,
+      "title": "Las pistas de {inicio}",
+      "summary": "Algo va mal en {inicio}. Quien lo vio te dirá dónde buscar; con dos pistas sabrás adónde ir."
+    },
+    {
+      "id": "capitulo-2-a",
+      "name": "Acto 2, la guarida",
+      "kind": "capitulo",
+      "acto": 2,
+      "weight": 10,
+      "title": "La guarida de {villano}",
+      "summary": "Las pistas llevan a {guarida}. Lo que encuentres allí lo cambia todo, y tendrás que elegir bando."
+    },
+    {
+      "id": "capitulo-2-b",
+      "name": "Acto 2, el giro",
+      "kind": "capitulo",
+      "acto": 2,
+      "weight": 10,
+      "title": "Lo que había detrás",
+      "summary": "En {guarida} descubres que {villano} no actuaba sin ayuda. Ahora te toca decidir a quién se lo cuentas."
+    },
+    {
+      "id": "capitulo-3-a",
+      "name": "Acto 3, el final",
+      "kind": "capitulo",
+      "acto": 3,
+      "weight": 10,
+      "title": "El último paso",
+      "summary": "{villano} se esconde en {refugio}. Ve a por {villano} y acaba con esto."
+    },
+    {
+      "id": "capitulo-3-b",
+      "name": "Acto 3, las cuentas",
+      "kind": "capitulo",
+      "acto": 3,
+      "weight": 10,
+      "title": "Cuentas pendientes",
+      "summary": "Has elegido bando. Queda lo más difícil: encontrar a {villano} en {refugio} y terminar lo que empezaste."
+    },
+    {
+      "id": "asoma-2-loma",
+      "name": "Te vigila al salir de la guarida",
+      "kind": "asoma",
+      "acto": 2,
+      "weight": 10,
+      "text": "Al salir de {guarida}, ves a alguien en lo alto de una loma, quieto, mirándote. Cuando vuelves a mirar, ya no está. Es {villano}, y ahora sabe tu cara."
+    },
+    {
+      "id": "asoma-2-marca",
+      "name": "Deja una marca",
+      "kind": "asoma",
+      "acto": 2,
+      "weight": 10,
+      "text": "Esta mañana hay una marca en tu puerta, hecha con barro y con prisa. Es la señal de {villano}: sabe que le buscas."
+    },
+    {
+      "id": "asoma-3-aviso",
+      "name": "Un aviso",
+      "kind": "asoma",
+      "acto": 3,
+      "weight": 10,
+      "text": "Un crío te trae un trapo atado con un cordel. Dentro hay un mechón de pelo y tres palabras: «Vete de aquí». Lo manda {villano}."
+    },
+    {
+      "id": "asoma-3-sombra",
+      "name": "Una sombra en el camino",
+      "kind": "asoma",
+      "acto": 3,
+      "weight": 10,
+      "text": "De camino, algo te sigue entre los árboles, sin acercarse. Cuando te paras, se para. {villano} te espera en {refugio}, y quiere que lo sepas."
+    },
+    {
+      "id": "rumor-forastero",
+      "name": "Alguien de fuera",
+      "kind": "rumor",
+      "weight": 10,
+      "text": "En {pista2} han visto a alguien que no es de por aquí. Siempre de noche, y sin compañía.",
+      "truth": "si"
+    },
+    {
+      "id": "rumor-empezo",
+      "name": "Dónde empezó todo",
+      "kind": "rumor",
+      "weight": 10,
+      "text": "Hay quien dice que todo empezó cerca de {pista3}, y que allí todavía se encuentran cosas.",
+      "truth": "si"
+    },
+    {
+      "id": "rumor-castigo",
+      "name": "Un castigo",
+      "kind": "rumor",
+      "weight": 6,
+      "text": "Las viejas de {inicio} dicen que es un castigo por algo que se hizo hace muchos años. Nadie sabe decir qué.",
+      "truth": "no"
+    },
+    {
+      "id": "rumor-camino",
+      "name": "El camino de noche",
+      "kind": "rumor",
+      "weight": 8,
+      "text": "De noche no conviene andar por el camino de {pista1}. Quien lo hace vuelve callado, o no vuelve.",
+      "truth": "medias"
+    },
+    {
+      "id": "oficio-testigo",
+      "name": "Oficios de quien lo vio",
+      "kind": "oficio",
+      "papel": "testigo",
+      "weight": 10,
+      "formas": [
+        [
+          "Pastor",
+          "Pastora"
+        ],
+        [
+          "Leñador",
+          "Leñadora"
+        ],
+        [
+          "Lavandero",
+          "Lavandera"
+        ],
+        [
+          "Mozo de cuadra",
+          "Moza de cuadra"
+        ],
+        [
+          "Pescador",
+          "Pescadora"
+        ],
+        [
+          "Sereno",
+          "Serena"
+        ]
+      ],
+      "quiere": "Que alguien haga algo antes de que vuelva a pasar.",
+      "sabe": "Lo que vio aquella noche, y lo que no se atreve a contar delante de todos.",
+      "voz": "Baja y deprisa. Mira a la puerta cada vez que alguien entra."
+    },
+    {
+      "id": "oficio-contacto-a",
+      "name": "Oficios de quien quiere justicia",
+      "kind": "oficio",
+      "papel": "contacto-a",
+      "weight": 10,
+      "formas": [
+        [
+          "Capitán de la guardia",
+          "Capitana de la guardia"
+        ],
+        [
+          "Juez",
+          "Jueza"
+        ],
+        [
+          "Alguacil",
+          "Alguacila"
+        ],
+        [
+          "Prior",
+          "Priora"
+        ]
+      ],
+      "quiere": "Que {villano} pague por lo que ha hecho, sea quien sea quien le proteja.",
+      "sabe": "Quién manda de verdad en la comarca, y a quién no le conviene que se sepa.",
+      "voz": "Seca y directa. No le gusta repetir las cosas."
+    },
+    {
+      "id": "oficio-contacto-b",
+      "name": "Oficios de quien ofrece un trato",
+      "kind": "oficio",
+      "papel": "contacto-b",
+      "weight": 10,
+      "formas": [
+        [
+          "Prestamista",
+          "Prestamista"
+        ],
+        [
+          "Mercader",
+          "Mercader"
+        ],
+        [
+          "Mayordomo",
+          "Mayordoma"
+        ],
+        [
+          "Contrabandista",
+          "Contrabandista"
+        ]
+      ],
+      "quiere": "Que no se hagan preguntas. Paga bien a quien no las hace.",
+      "sabe": "Cuánto vale cada secreto de la comarca.",
+      "voz": "Suave y amable. Nunca dice que no a la primera."
+    },
+    {
+      "id": "oficio-posada",
+      "name": "Quien lleva la posada",
+      "kind": "oficio",
+      "papel": "posada",
+      "weight": 10,
+      "formas": [
+        [
+          "Posadero",
+          "Posadera"
+        ]
+      ],
+      "quiere": "Que el negocio siga abierto, pase lo que pase.",
+      "sabe": "Quién entra y quién sale, y quién debe dinero.",
+      "voz": "Cansada pero amable."
+    },
+    {
+      "id": "oficio-tienda",
+      "name": "Quien lleva la tienda",
+      "kind": "oficio",
+      "papel": "tienda",
+      "weight": 10,
+      "formas": [
+        [
+          "Tendero",
+          "Tendera"
+        ]
+      ],
+      "quiere": "Que el negocio siga abierto, pase lo que pase.",
+      "sabe": "Quién entra y quién sale, y quién debe dinero.",
+      "voz": "Cansada pero amable."
+    },
+    {
+      "id": "oficio-herreria",
+      "name": "Quien lleva la herrería",
+      "kind": "oficio",
+      "papel": "herreria",
+      "weight": 10,
+      "formas": [
+        [
+          "Herrero",
+          "Herrera"
+        ]
+      ],
+      "quiere": "Que el negocio siga abierto, pase lo que pase.",
+      "sabe": "Quién entra y quién sale, y quién debe dinero.",
+      "voz": "Fuerte, para que se oiga por encima del martillo."
+    },
+    {
+      "id": "oficio-templo",
+      "name": "Quien cuida el templo",
+      "kind": "oficio",
+      "papel": "templo",
+      "weight": 10,
+      "formas": [
+        [
+          "Sacerdote",
+          "Sacerdotisa"
+        ]
+      ],
+      "quiere": "Que la gente vuelva a rezar sin miedo.",
+      "sabe": "Quién entra y quién sale, y quién debe dinero.",
+      "voz": "Cansada pero amable."
+    }
+  ]
+}

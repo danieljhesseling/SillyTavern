@@ -43,6 +43,7 @@ import { readAttitudes, ATTITUDE } from './attitudes.js';
 import { readRumors } from './rumors.js';
 import { readPlotState } from './plot.js';
 import { PLACE_KINDS } from './town.js';
+import { beatVariant, checkBeatAlts } from './human-lines.js';
 
 /**
  * Lo que se aconseja al escribir una escena: de 3 a 8 líneas y una o dos decisiones. Por
@@ -67,6 +68,7 @@ const NARRATOR_CHECK = '\u0000narrador';
  * @property {string} who  Quien habla; vacío, el narrador (sin retrato).
  * @property {string} mood Uno de `MOODS`.
  * @property {string} text Con el género ya puesto.
+ * @property {string|string[]|boolean} [presenta] J13.7: quién se da a conocer en ella (`true`: quien habla).
  */
 
 /**
@@ -136,7 +138,8 @@ function readLines(raw, voice) {
     return (Array.isArray(raw) ? raw : raw == null ? [] : [raw])
         .map(entry => (typeof entry === 'string' ? { text: entry } : entry))
         .filter(isObject)
-        .map(entry => ({ who: text(entry.who), mood: moodOf(entry.mood), text: voice(text(entry.text)) }))
+        // J13.7: `presenta` (quién se da a conocer en la línea) pasa tal cual.
+        .map(entry => ({ who: text(entry.who), mood: moodOf(entry.mood), text: voice(text(entry.text)), ...(entry.presenta != null ? { presenta: entry.presenta } : {}) }))
         .filter(line => line.text);
 }
 
@@ -230,21 +233,25 @@ function readDecision(raw, id, voice) {
  * @param {string} [input.id] El del hito, para los ids de sus decisiones.
  * @param {any} [input.hero]
  * @param {any[]} [input.party]
+ * @param {string[]} [input.chose] J13.8: lo elegido en escenas anteriores, para las versiones (`alt`).
  * @returns {SceneBeat[]}
  */
-export function readSceneBeats(raw, { id = '', hero = null, party = [] } = {}) {
+export function readSceneBeats(raw, { id = '', hero = null, party = [], chose = [] } = {}) {
     const who = { heroe: hero, ...(Array.isArray(party) && party.length > 0 ? { grupo: party } : {}) };
     const voice = (/** @type {string} */ said) => resolveGender(said, who);
     /** @type {SceneBeat[]} */
     const beats = [];
     (Array.isArray(raw) ? raw : []).forEach((entry, index) => {
-        const source = typeof entry === 'string' ? { text: entry } : entry;
+        // J13.8: la versión de la línea para quien juega y lo que ya ha hecho, en el mismo sitio.
+        const source = beatVariant(typeof entry === 'string' ? { text: entry } : entry, { hero, chose });
         if (!isObject(source) || !text(source.text)) return;
         beats.push({
             who: text(source.who),
             mood: moodOf(source.mood),
             text: voice(text(source.text)),
             decision: readDecision(source, `escena:${text(id) || 'hito'}:${index + 1}`, voice),
+            // J13.7: quién se da a conocer en esta línea, si el paquete lo dice.
+            ...(source.presenta != null ? { presenta: source.presenta } : {}),
         });
     });
     return beats;
@@ -295,9 +302,10 @@ function asDialogue(raw) {
  * @param {string[]} [input.played] Los hitos cuya escena ya se jugó.
  * @param {any} [input.hero] Para el género de lo que se dice.
  * @param {any[]} [input.party]
+ * @param {string[]} [input.chose] J13.8: lo elegido en escenas anteriores.
  * @returns {PlotScene}
  */
-export function milestoneScene(milestone, { state = null, dialogues = [], played = [], hero = null, party = [] } = {}) {
+export function milestoneScene(milestone, { state = null, dialogues = [], played = [], hero = null, party = [], chose = [] } = {}) {
     const id = text(milestone?.id);
     const who = { heroe: hero, ...(Array.isArray(party) && party.length > 0 ? { grupo: party } : {}) };
     const said = resolveGender(text(milestone?.scene), who);
@@ -311,7 +319,7 @@ export function milestoneScene(milestone, { state = null, dialogues = [], played
     const asText = { ...base, kind: /** @type {'text'|'none'} */ (said ? 'text' : 'none') };
     if (listOf(played).includes(id)) return asText;
 
-    const beats = readSceneBeats(milestone.beats, { id, hero, party });
+    const beats = readSceneBeats(milestone.beats, { id, hero, party, chose });
     const wanted = text(milestone.sceneDialogue);
     const dialogue = wanted
         ? (Array.isArray(dialogues) ? dialogues : []).map(asDialogue).find(d => d && d.id === wanted) ?? null
@@ -330,14 +338,31 @@ export function milestoneScene(milestone, { state = null, dialogues = [], played
  * @param {string[]} [input.played]
  * @param {any} [input.hero]
  * @param {any[]} [input.party]
- * @returns {Array<{milestone: any, scene: PlotScene}>}
+ * @param {string[]} [input.chose] J13.8: lo elegido en escenas anteriores.
+ * @returns {Array<{milestone: any, scene: PlotScene, when: 'done'|'opened'}>}
  */
-export function stepScenes(step, { dialogues = [], played = [], hero = null, party = [] } = {}) {
+export function stepScenes(step, { dialogues = [], played = [], hero = null, party = [], chose = [] } = {}) {
     const found = (step?.done ?? []).filter(m => m?.hidden);
-    const opened = (step?.opened ?? []).filter(m => !m?.hidden);
-    return [...found, ...opened]
-        .map(milestone => ({ milestone, scene: milestoneScene(milestone, { state: step?.state, dialogues, played, hero, party }) }))
-        .filter(entry => entry.scene.kind !== 'none');
+    // J9.1: la escena de un hito «llegar a» cuenta la llegada; se juega al llegar (al cumplirse),
+    // no al abrirse. Antes salía en cuanto se abría («Llegas a las puertas del castillo…») y
+    // luego había que hacer el viaje igual. Si ya se jugó (una partida de antes), no se repite.
+    const arrived = (step?.done ?? []).filter(m => !m?.hidden && isArrival(m) && !listOf(played).includes(text(m?.id)));
+    const opened = (step?.opened ?? []).filter(m => !m?.hidden && !isArrival(m));
+    const scene = (/** @type {any} */ milestone) => milestoneScene(milestone, { state: step?.state, dialogues, played, hero, party, chose });
+    return [
+        ...[...found, ...arrived].map(milestone => ({ milestone, scene: scene(milestone), when: /** @type {'done'} */ ('done') })),
+        ...opened.map(milestone => ({ milestone, scene: scene(milestone), when: /** @type {'opened'} */ ('opened') })),
+    ].filter(entry => entry.scene.kind !== 'none');
+}
+
+/**
+ * J9.1: si un hito pide llegar a un sitio: su escena es la de la llegada.
+ *
+ * @param {any} milestone
+ * @returns {boolean}
+ */
+export function isArrival(milestone) {
+    return text(milestone?.asks?.kind) === 'arrive';
 }
 
 /**
@@ -668,7 +693,7 @@ export function checkPlotScenes(plot, { people = [], rumors = [], items = [], di
         markers(raw.text, `${path}.text`);
         const who = text(raw.who);
         if (who && !known.has(fold(who))) {
-            warnings.push({ path: `${path}.who`, message: `"${who}" no está entre la gente (\`npcs\`) ni los compañeros (\`confidants\`): saldrá sin retrato.` });
+            warnings.push({ path: `${path}.who`, message: `"${who}" no está entre la gente (\`npcs\`), los compañeros (\`confidants\`) ni el bestiario: saldrá sin retrato.` });
         }
         if (raw.mood !== undefined && !MOODS.includes(fold(raw.mood))) {
             warnings.push({ path: `${path}.mood`, message: `"${text(raw.mood)}" no es un gesto: se verá neutral. Los que hay: ${MOODS.join(', ')}.` });
@@ -726,6 +751,13 @@ export function checkPlotScenes(plot, { people = [], rumors = [], items = [], di
         milestone.beats.forEach((/** @type {any} */ beat, b) => {
             const beatPath = `${path}.beats[${b}]`;
             checkLine(beat, beatPath);
+            // J13.8: sus otras versiones (`alt`), con su texto, su condición y sus marcas.
+            if (isObject(beat) && beat.alt !== undefined) {
+                const alts = checkBeatAlts(beat.alt, `${beatPath}.alt`);
+                errors.push(...alts.errors);
+                warnings.push(...alts.warnings);
+                if (Array.isArray(beat.alt)) beat.alt.forEach((/** @type {any} */ alt, a) => { if (isObject(alt)) markers(alt.text, `${beatPath}.alt[${a}].text`); });
+            }
             if (!isObject(beat) || beat.options === undefined) return;
             if (!Array.isArray(beat.options)) {
                 errors.push({ path: `${beatPath}.options`, message: 'Las opciones de una decisión van en una lista.' });

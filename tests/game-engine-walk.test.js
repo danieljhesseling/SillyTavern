@@ -124,10 +124,19 @@ describe('ir de aquí a allí', () => {
         expect(blocked.allowed).toBe(false);
     });
 
-    test('demasiado lejos para un tirón se dice con números', () => {
+    test('tanda 10: sin tope, fuera de combate se anda lo que haga falta', () => {
         const slow = lyra({ speed: 5 });
         const plan = planWalk({
             member: slow, to: { x: 8, y: 3 }, terrain: opened(), gridWidth: 10, gridHeight: 5,
+        });
+        expect(plan.allowed).toBe(true);
+        expect(plan.costFeet).toBeGreaterThan(strideOf(slow));
+    });
+
+    test('con un tope, demasiado lejos para un tirón se dice con números', () => {
+        const slow = lyra({ speed: 5 });
+        const plan = planWalk({
+            member: slow, to: { x: 8, y: 3 }, terrain: opened(), gridWidth: 10, gridHeight: 5, maxFeet: strideOf(slow),
         });
         expect(plan.allowed).toBe(false);
         expect(plan.reason).toMatch(/demasiado lejos/);

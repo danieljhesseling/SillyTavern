@@ -31,7 +31,7 @@ import { attackEdge, readManeuvers } from '../game-engine/combat/maneuvers.js';
 import { perkBonus } from '../game-engine/rules/level-perks.js';
 import { sightFeetFor } from '../game-engine/world/visibility.js';
 import { describeForecast } from '../game-engine/combat/forecast.js';
-import { canWalk, strideOf } from '../game-engine/board/walk.js';
+import { canWalk } from '../game-engine/board/walk.js';
 import { visibleHazards } from '../game-engine/board/hazards.js';
 import { buildTracker, describeTurn } from '../game-engine/combat/initiative-tracker.js';
 import { hasAction } from '../game-engine/combat/turn-machine.js';
@@ -45,6 +45,8 @@ import { createCombatLogPanel, setRound, renderLogFilters, logFilterOf } from '.
 import { usesLeft, canUseAbility, describeAbility } from '../game-engine/rules/abilities.js';
 import { findOpportunityAttacks } from '../game-engine/combat/opportunity.js';
 import { isShellOpen, refreshGameShell } from '../game-engine/ui/shell/game-shell.js';
+import { buildInitiative } from '../game-engine/ui/combat-vtt/initiative.js';
+import { buildSummary } from '../game-engine/ui/combat-vtt/summary.js';
 import { LOCATION_MAPS_MANUAL_HIDDEN_KEY } from './keys.js';
 import {
     combatBoardSelection, combatEncounter, combatLogEntries, currentBoardName, currentLocationName, partyMembers,
@@ -60,7 +62,7 @@ import {
 import { paintCombatLog } from './combat-log.js';
 import { planFor } from './enemy-turn.js';
 import {
-    judgeCurrentScenario, restoreChatPlaceholder, startWaitingFight, waitingSummary, controlChoices, chooseControlOf,
+    judgeCurrentScenario, restoreChatPlaceholder, controlChoices, chooseControlOf,
 } from './combat-flow.js';
 import { CONTROL_LABELS } from './spell-turn.js';
 import {
@@ -75,7 +77,9 @@ import {
 } from './board.js';
 import { saveCurrentLocation, saveCurrentBoard, getLocationBoards } from './world.js';
 import { getCampaignBonds } from './time.js';
-import { canAvoidHere, openAvoidChoice } from './avoid.js';
+import {
+    noticeBoardFight, placementHighlight, placementCellClick, placementTokenClick, placementDrop, placingNow,
+} from './fight-entry.js';
 
 /** @type {boolean} */
 export let locationMapsManuallyHidden = false;
@@ -113,23 +117,22 @@ export function setLocationMapsHidden(hidden) {
  * @param {number} gridHeight
  */
 function getCombatBoardHighlightState(gridWidth, gridHeight) {
-    // J20.2 (y J12.4): fuera de combate también se elige una ficha y se ve hasta dónde anda de
-    // una vez; a toques es la única forma de moverla, porque con el dedo no se arrastra.
+    // Tanda 10: antes de la iniciativa, el grupo se coloca: se encienden las casillas de salida.
+    const placing = placementHighlight();
+    if (placing) return placing;
+    // J20.2 (y J12.4): fuera de combate también se elige una ficha y se ve a dónde puede ir; a
+    // toques es la única forma de moverla, porque con el dedo no se arrastra. Tanda 10: sin
+    // enemigos alrededor se anda libre, sin tope de pies.
     const walker = combatEncounter.active ? null : selectedWalker();
     if (walker) {
         const pos = walker.mapPosition || { gridX: 0, gridY: 0, locationName: '' };
-        const stride = strideOf(walker);
-        const occupied = new Set(partyMembers
-            .filter(m => Number(m.id) !== Number(walker.id) && !m.dead)
-            .map(m => `${Number(m.mapPosition?.gridX) || 0},${Number(m.mapPosition?.gridY) || 0}`));
-        // J12.3: las trampas ya vistas no se encienden: el camino las rodea.
-        for (const key of knownTrapsHere()) occupied.add(key);
+        const occupied = walkBlockers(walker);
         return {
             selectedTokenId: walker.id,
             highlightedTokenIds: [],
-            highlightedCells: getReachableCells(getActiveBoardTerrain(), pos.gridX || 0, pos.gridY || 0, stride, gridWidth, gridHeight, { occupied })
+            highlightedCells: getReachableCells(getActiveBoardTerrain(), pos.gridX || 0, pos.gridY || 0, Infinity, gridWidth, gridHeight, { occupied })
                 .filter(cell => cell.gridX !== (pos.gridX || 0) || cell.gridY !== (pos.gridY || 0)),
-            overlayLegend: `${walker.name} · Anda hasta ${stride} pies de una vez · Pulsa una casilla encendida para ir`,
+            overlayLegend: `${walker.name} · Pulsa una casilla encendida para ir`,
         };
     }
     const entry = getCurrentTurnEntry();
@@ -162,6 +165,24 @@ function getCombatBoardHighlightState(gridWidth, gridHeight) {
         highlightedCells: [...movementCells, ...attackCells],
         overlayLegend,
     };
+}
+
+/**
+ * Fuera de combate, lo que no se pisa al andar: los demás del grupo, las trampas ya vistas
+ * (J12.3: el camino las rodea) y, tanda 10, los enemigos que esperan quietos en el tablero.
+ *
+ * @param {any} walker
+ * @returns {Set<string>}
+ */
+function walkBlockers(walker) {
+    const occupied = new Set(partyMembers
+        .filter(m => Number(m.id) !== Number(walker.id) && !m.dead)
+        .map(m => cellKey(Number(m.mapPosition?.gridX) || 0, Number(m.mapPosition?.gridY) || 0)));
+    for (const key of knownTrapsHere()) occupied.add(key);
+    if (lastWaiting.board === currentBoardName) {
+        for (const foe of lastWaiting.placements) occupied.add(cellKey(Number(foe.x) || 0, Number(foe.y) || 0));
+    }
+    return occupied;
 }
 
 /**
@@ -266,6 +287,9 @@ let terrainEditing = false;
  * @returns {import('../world-map-renderer.js').HighlightCell[]}
  */
 function buildDragHighlightCells(tokenId, tentGX, tentGY, gridW, gridH) {
+    // Tanda 10: arrastrando al colocarse, las casillas de salida siguen encendidas.
+    const placing = placementHighlight();
+    if (placing) return placing.highlightedCells;
     if (!combatEncounter.active) return [];
     const member = partyMembers.find(m => m.id === tokenId);
     if (!member) return [];
@@ -301,43 +325,9 @@ function activeFocus() {
 }
 
 /**
- * El boton de empezar el combate que el tablero ya tiene dibujado.
- *
- * Un libro de mazmorras coloca a sus monstruos en el mapa; hasta ahora, para pelear con
- * ellos habia que escribir `/fight` con su nombre y su cuenta, y el tablero ya sabia
- * ambas cosas. Solo cuenta lo que esta en una sala revelada: lo que duerme tras una
- * puerta cerrada sigue durmiendo.
- *
- * @param {any} board
- * @param {Array<{name: string, x: number, y: number}>} awake
- * @returns {JQuery<HTMLElement>}
- */
-function buildStartCombatButton(board, awake) {
-    const row = $('<div class="sc-row"></div>');
-    row.append($('<div class="sc-what"></div>').text(`En el tablero: ${waitingSummary(awake)}`));
-
-    const button = $('<button class="menu_button sc-btn" type="button"></button>');
-    button.append('<i class="fa-solid fa-swords"></i>');
-    button.append($('<span></span>').text(' Iniciar combate'));
-    button.on('click', () => startWaitingFight(awake));
-    row.append(button);
-    // J12.2: al lado, otra salida: hablar, pagar, huir o esconderse, en su ventana.
-    if (canAvoidHere()) {
-        const other = $('<button class="menu_button sc-btn sc-avoid" type="button"></button>');
-        other.append('<i class="fa-solid fa-comments"></i>');
-        other.append($('<span></span>').text(' Evitar la pelea'));
-        other.attr('title', 'Hablar, pagar, huir o esconderse: cada cosa con su tirada');
-        other.on('click', () => { void openAvoidChoice(); });
-        row.append(other);
-    }
-    return row;
-}
-
-/**
  * Los que el grupo ve esperando en el tablero abierto, tal y como los dibujó el último
- * repintado (con niebla y salas ya contadas). La ficha de «Iniciar combate» sale de aquí:
- * en la escena de diálogo el botón del tablero no se ve, y quien empezaba en la bodega del
- * gremio no tenía cómo pelear.
+ * repintado (con niebla y salas ya contadas). Tanda 10: con alguno, la pelea se abre sola
+ * (`fight-entry.js`); antes salía de aquí la ficha de «Iniciar combate».
  *
  * @type {{board: string, placements: Array<{name: string, x: number, y: number}>}}
  */
@@ -581,19 +571,18 @@ function initiativeFace(entry) {
  * @returns {{cells: Array<{gridX: number, gridY: number}>, feet: number, ok: boolean, provokes: string[]}|null}
  */
 function previewMovement(gridX, gridY) {
-    // Fuera de combate, la ficha elegida: el mismo camino que andará y lo que anda de una vez.
+    // Tanda 10: mientras se coloca al grupo no hay ruta que enseñar: se pone, no se anda.
+    if (placingNow()) return null;
+    // Fuera de combate, la ficha elegida: el mismo camino que andará (sin tope de pies).
     const walker = combatEncounter.active ? null : selectedWalker();
     if (walker) {
         const { terrain, gridWidth: w, gridHeight: h } = getActiveBoardContext();
         const origin = walker.mapPosition || { gridX: 0, gridY: 0 };
-        const occupied = new Set(partyMembers
-            .filter(m => Number(m.id) !== Number(walker.id) && !m.dead)
-            .map(m => `${Number(m.mapPosition?.gridX) || 0},${Number(m.mapPosition?.gridY) || 0}`));
-        for (const key of knownTrapsHere()) occupied.add(key);
+        const occupied = walkBlockers(walker);
         const path = findPath(terrain, origin.gridX || 0, origin.gridY || 0, gridX, gridY, w, h, { occupied });
         if (!path || path.length === 0) return null;
         const feet = getPathCost(terrain, path) * 5;
-        return { cells: path.slice(1).map(cell => ({ gridX: cell.x, gridY: cell.y })), feet, ok: feet <= strideOf(walker), provokes: [] };
+        return { cells: path.slice(1).map(cell => ({ gridX: cell.x, gridY: cell.y })), feet, ok: true, provokes: [] };
     }
     const member = getCurrentActingMember();
     if (!combatEncounter.active || !member) return null;
@@ -638,8 +627,10 @@ function previewMovement(gridX, gridY) {
  * @param {string} kind
  */
 function handleBoardCellClick(gridX, gridY, kind) {
+    // Tanda 10: colocándose antes de la pelea, el clic coloca (o elige a quien está ahí).
+    if (placementCellClick(gridX, gridY)) return;
     // Fuera de combate: la ficha elegida anda hasta ahí, por la misma puerta que al arrastrarla
-    // (hace falta camino y un tirón), y sigue elegida para el paso siguiente.
+    // (hace falta camino), y sigue elegida para el paso siguiente.
     const walker = combatEncounter.active ? null : selectedWalker();
     // J12.4: con quien abre el grupo elegido, un clic lleva al grupo entero (los demás le siguen
     // y se ponen detrás, `group-move.js`); con otro elegido, solo anda ese, para colocarlo.
@@ -674,8 +665,10 @@ function handleBoardCellClick(gridX, gridY, kind) {
  * @param {number} tokenId
  */
 function handleCombatTokenClick(tokenId) {
+    // Tanda 10: colocándose antes de la pelea, pulsar a uno de los tuyos lo elige para colocarlo.
+    if (placementTokenClick(tokenId)) return;
     // Fuera de combate, pulsar una ficha tuya la elige (y otra vez, la suelta): se encienden
-    // las casillas a las que llega de una vez.
+    // las casillas a las que puede ir.
     if (!combatEncounter.active) {
         if (!currentBoardName || tokenId < 0 || !getControlledMemberIds().some(own => Number(own) === Number(tokenId))) return;
         const chosen = combatBoardSelection.tokenId === tokenId
@@ -946,6 +939,144 @@ function buildCombatSection(board) {
     return section;
 }
 
+// ---- Tanda 10: el tablero como una mesa virtual (wiki/maquetas/ENCARGO_COMBATE_VTT.md) ----
+// Dentro del Modo Juego el tablero ocupa toda la pantalla de juego y lo de alrededor flota encima,
+// en islas: arriba a la derecha la iniciativa y el resumen del combate (que sustituye a la franja
+// del registro de abajo); arriba a la izquierda, volver y el sitio; abajo a la izquierda, la cámara
+// y el minimapa (world-map-renderer.js). Fuera del Modo Juego (el cajón de SillyTavern), lo de antes.
+
+/**
+ * La ficha del tablero de una fila de la iniciativa: la de un enemigo (id negativo, por su sitio
+ * en el combate, como la dibuja `buildEnemyTokens`), la de uno del grupo o la de una invocación.
+ *
+ * @param {any} entry
+ * @returns {number|null}
+ */
+function tokenIdOfEntry(entry) {
+    if (!entry) return null;
+    if (entry.isEnemy) {
+        const index = combatEncounter.enemies.findIndex(e => String(e.instanceId) === String(entry.id));
+        return index >= 0 ? -(index + 1) : null;
+    }
+    const member = /** @type {any} */ (getPartyMemberByTurnEntry(entry));
+    return member ? Number(member.id) : null;
+}
+
+/**
+ * Las casillas a las que llega en tu turno una ficha tuya, con lo que te queda de movimiento,
+ * para encenderlas al pasar el ratón por encima. Nada si no es tuya o no le toca, y nada fuera
+ * de combate: ahí se anda libre, sin tope de pies, y encender el tablero entero no dice nada.
+ *
+ * @param {number|string} tokenId
+ * @param {number} gridWidth
+ * @param {number} gridHeight
+ * @returns {Array<{gridX: number, gridY: number}>|null}
+ */
+function reachOfToken(tokenId, gridWidth, gridHeight) {
+    if (!combatEncounter.active) return null;
+    const entry = getCurrentTurnEntry();
+    const member = /** @type {any} */ (getCurrentActingMember());
+    if (!entry || entry.isEnemy || !member || String(member.id) !== String(tokenId)) return null;
+    const occupied = new Set([...occupiedCellsFor(member), ...knownTrapsHere()]);
+    const x = Number(member.mapPosition?.gridX) || 0;
+    const y = Number(member.mapPosition?.gridY) || 0;
+    return getReachableCells(getActiveBoardTerrain(), x, y, getRemainingMovementFeet(member), gridWidth, gridHeight, { occupied })
+        .filter(cell => cell.gridX !== x || cell.gridY !== y);
+}
+
+/**
+ * Lo que necesita la mesa virtual del combate de ahora: quién tiene el turno (Espacio y la cámara
+ * van a su ficha), qué turno es, y qué enemigos llevan marcador de borde si no se ven, con su
+ * distancia en pies. Solo los que el grupo ve: un marcador no chiva a nadie tras la niebla.
+ *
+ * @param {Set<string>|null} visible Las casillas a la vista, con niebla; sin niebla, nada.
+ * @param {number} gridWidth
+ * @param {number} gridHeight
+ * @returns {import('../world-map-renderer.js').VttOptions}
+ */
+function vttOptionsNow(visible, gridWidth, gridHeight) {
+    const fighting = Boolean(combatEncounter.active);
+    const entry = fighting ? getCurrentTurnEntry() : null;
+    const acting = entry && !entry.isEnemy ? getCurrentActingMember() : null;
+    // La distancia se cuenta desde quien juega su turno; en el de un enemigo, desde tu héroe.
+    const from = acting ?? partyMembers.find(m => !m.dead && (Number(m.hp) || 0) > 0) ?? null;
+    const fromX = Number(from?.mapPosition?.gridX) || 0;
+    const fromY = Number(from?.mapPosition?.gridY) || 0;
+    const edgeTargets = fighting
+        ? getAliveEnemies()
+            .filter(enemy => !visible || visible.has(cellKey(Number(enemy.gridX) || 0, Number(enemy.gridY) || 0)))
+            .map(enemy => ({
+                id: -(combatEncounter.enemies.indexOf(enemy) + 1),
+                name: String(enemy.name),
+                feet: from ? getDistanceInFeet(fromX, fromY, Number(enemy.gridX) || 0, Number(enemy.gridY) || 0) : undefined,
+            }))
+        : [];
+    return {
+        combat: fighting,
+        activeTokenId: entry ? tokenIdOfEntry(entry) : null,
+        turnKey: entry ? `${Number(combatEncounter.round) || 1}:${String(entry.id)}` : '',
+        yours: Boolean(acting),
+        edgeTargets,
+        reachOf: (tokenId) => reachOfToken(tokenId, gridWidth, gridHeight),
+    };
+}
+
+/**
+ * Pone las islas de la mesa virtual: volver, arriba a la izquierda; y en combate, la iniciativa y
+ * el resumen arriba a la derecha. El resumen es ahora el registro del combate (`combatLogPanel`).
+ *
+ * @param {import('../world-map-renderer.js').VttHandle} view
+ * @param {JQuery} backBtn
+ * @returns {JQuery} La fila de botones de arriba a la izquierda, donde va también el del terreno.
+ */
+function mountVttHud(view, backBtn) {
+    const tools = $('<div class="vtt-tools vtt-island"></div>').append(backBtn);
+    $(view.hud.topLeft).prepend(tools);
+    if (!combatEncounter.active) return tools;
+
+    const tracker = buildTracker({
+        turnOrder: combatEncounter.turnOrder,
+        currentTurnIndex: combatEncounter.currentTurnIndex,
+        round: combatEncounter.round,
+        // J19.5: las invocaciones tienen su fila, con su vida y lo que llevan encima.
+        party: [...partyMembers, ...activeSummons()],
+        enemies: combatEncounter.enemies,
+    });
+    if (tracker.entries.length > 0) {
+        const scenario = judgeCurrentScenario();
+        view.hud.topRight.appendChild(buildInitiative({
+            tracker,
+            faceOf: (entry) => initiativeFace(entry),
+            onPick: (entry) => {
+                const id = tokenIdOfEntry(entry);
+                if (id !== null) view.centerOnToken(id, true);
+            },
+            youId: String(partyMembers[0]?.id ?? ''),
+            controls: controlChoices(),
+            controlLabels: CONTROL_LABELS,
+            onControl: (id, next) => { chooseControlOf(id, next); },
+            objectives: scenario?.rows ?? [],
+        }));
+    }
+
+    const summary = $(buildSummary());
+    view.hud.topRight.appendChild(summary[0]);
+    combatLogPanel = summary;
+    // Idea 20: de quién y de qué, como en el registro de antes.
+    summary.attr('data-kind', combatLogFilter.kind).attr('data-who', combatLogFilter.who);
+    const people = [...partyMembers.map(m => String(m.name)), ...combatEncounter.enemies.map((/** @type {any} */ e) => String(e.name))]
+        .filter((name, index, all) => name && all.indexOf(name) === index);
+    const repaint = () => {
+        combatLogFilter = logFilterOf(summary);
+        renderLogFilters(summary, people, repaint);
+        paintCombatLog();
+    };
+    renderLogFilters(summary, people, repaint);
+    paintCombatLog();
+    setRound(summary, Number(combatEncounter.round) || 1);
+    return tools;
+}
+
 /**
  * Volver a dibujar el tablero. Para las pruebas y las herramientas que cambian el terreno
  * desde fuera: el juego ya redibuja solo cuando algo suyo lo cambia.
@@ -1118,7 +1249,12 @@ function drawLocationMapsPreview() {
             renderLocationMapsPreview();
         });
         const boardPanel = $('<div data-map-root></div>');
-        contentRoot.append(backBtn, boardPanel);
+        // Tanda 10: dentro del Modo Juego, la mesa virtual: el tablero a toda la pantalla de juego y
+        // lo demás en islas encima (volver va en la de arriba a la izquierda, `mountVttHud`).
+        const vttOn = isShellOpen();
+        contentRoot.toggleClass('wm-vtt', vttOn);
+        if (vttOn) contentRoot.append(boardPanel);
+        else contentRoot.append(backBtn, boardPanel);
 
         const boardTokens = /** @type {import('../world-map-renderer.js').TokenData[]} */ (buildTokens(currentLocationName));
         // Merge enemy tokens if combat is active on this board
@@ -1184,7 +1320,9 @@ function drawLocationMapsPreview() {
             : (selectedWalker() ?? partyMembers.find(m => !m.dead
                 && (!m.mapPosition?.locationName || m.mapPosition.locationName === currentLocationName)) ?? null);
         const room = followed ? roomOf(followed) : null;
-        renderLocationView(boardPanel, {
+        const vttView = renderLocationView(boardPanel, {
+            // Tanda 10: la cámara de la mesa virtual, sus marcadores de borde y el alcance al pasar.
+            vtt: vttOn ? vttOptionsNow(fogOn ? fogState.visible : null, boardGridW, boardGridH) : null,
             name: room ? `${selectedBoard.name} · ${room.name}` : selectedBoard.name,
             imageUrl: selectedBoard.url,
             description: room?.note ?? '',
@@ -1232,6 +1370,8 @@ function drawLocationMapsPreview() {
             onTokenDragging: (tokenId, tentGX, tentGY) =>
                 buildDragHighlightCells(tokenId, tentGX, tentGY, boardGridW, boardGridH),
             onTokenMove: (tokenId, gx, gy) => {
+                // Tanda 10: colocándose antes de la pelea, soltar una ficha la coloca.
+                if (placementDrop(tokenId, gx, gy)) return;
                 if (tokenId < 0) {
                     handleEnemyTokenMove(tokenId, gx, gy);
                     return;
@@ -1255,6 +1395,10 @@ function drawLocationMapsPreview() {
                 handleTokenMove(tokenId, gx, gy, currentLocationName);
             },
         });
+        // Tanda 10: las islas de la mesa virtual (volver; en combate, la iniciativa y el resumen).
+        const vttTools = vttView ? mountVttHud(vttView, backBtn) : null;
+        /** Donde va el pincel del terreno: en la mesa virtual, junto a «Volver». */
+        const brushSlot = vttTools ?? boardPanel;
 
         // ---- Terrain editor (wiki/ROADMAP.md, Fase A6) ----
         // Con una pelea encima no se ofrece: mover un muro a mitad de un turno cambia
@@ -1268,13 +1412,16 @@ function drawLocationMapsPreview() {
         }
 
         if (heldBrush) {
+            // En la mesa virtual, en combate, ni apagado: la barra de arriba es para volver.
             const lockedBtn = $('<button class="wm-terrain-edit-btn menu_button" disabled></button>');
             lockedBtn.attr('title', heldBrush);
             lockedBtn.append('<i class="fa-solid fa-draw-polygon"></i>');
             lockedBtn.append($('<span></span>').text(' Terreno'));
-            boardPanel.append(lockedBtn);
+            if (!vttTools) boardPanel.append(lockedBtn);
         } else if (terrainEditing) {
-            boardPanel.append(buildTerrainPalette(selectedBoard, () => renderLocationMapsPreview(), fogOn));
+            const palette = buildTerrainPalette(selectedBoard, () => renderLocationMapsPreview(), fogOn);
+            if (vttView) $(vttView.hud.topLeft).append(palette.addClass('vtt-island'));
+            else boardPanel.append(palette);
         } else {
             const editButton = $('<button class="wm-terrain-edit-btn menu_button" title="Pintar muros, cobertura y puertas"></button>');
             editButton.append('<i class="fa-solid fa-draw-polygon"></i>');
@@ -1284,21 +1431,22 @@ function drawLocationMapsPreview() {
                 activeTerrainBrush = 'wall';
                 renderLocationMapsPreview();
             });
-            boardPanel.append(editButton);
+            brushSlot.append(editButton);
         }
 
 
-        // ---- Iniciar combate (wiki/archivo/ROADMAP_JUEGO_SIN_COMANDOS.md, K2) ----
-        // Solo con lo que el grupo **ve de verdad**. `awakePlacements` esconde a los de
-        // una sala sin revelar, pero un tablero sin salas no esconde nada — y entonces el
-        // boton anunciaba al Carcelero de Hierro antes de que nadie lo hubiera visto. Un
-        // boton que te chiva lo que hay detras de la puerta es lo contrario de un juego.
-        if (waiting.length > 0) contentRoot.append(buildStartCombatButton(selectedBoard, waiting));
+        // ---- La pelea empieza sola (tanda 10, `fight-entry.js`) ----
+        // Ya no hay botón de «Iniciar combate»: si los que esperan os ven, la pelea se abre
+        // sola (la decisión, si tiene otras salidas, y colocarse antes de la iniciativa). Solo
+        // con lo que el grupo **ve de verdad**: `awakePlacements` esconde a los de una sala sin
+        // revelar, y la niebla al resto.
+        noticeBoardFight();
 
         // ---- Combat log (wiki/ROADMAP.md, Fase B4) ----
         // Beside the real board now, not only inside /sandbox. It appears once there is
         // something to show, so a quiet board is not covered by an empty panel.
-        if (combatEncounter.active || combatLogEntries.length > 0) {
+        // Tanda 10: en la mesa virtual, el registro es el resumen de arriba a la derecha (`mountVttHud`).
+        if (!vttView && (combatEncounter.active || combatLogEntries.length > 0)) {
             const logPanel = createCombatLogPanel({ title: 'Registro de combate' });
             contentRoot.append(logPanel);
             combatLogPanel = logPanel;
@@ -1317,7 +1465,9 @@ function drawLocationMapsPreview() {
         }
 
         // ---- Combat UI section ----
-        if (combatEncounter.active) {
+        // Tanda 10: en la mesa virtual no va: la iniciativa, los objetivos y quién mueve a cada uno
+        // están en la isla de la iniciativa, y el turno y sus botones, en la barra de abajo.
+        if (combatEncounter.active && !vttView) {
             const combatSection = buildCombatSection(selectedBoard);
             contentRoot.append(combatSection);
         }

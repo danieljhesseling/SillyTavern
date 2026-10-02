@@ -2109,6 +2109,19 @@ body.game-colorblind .pg-down .pg-fill {
     background: radial-gradient(circle, rgba(255, 140, 40, 0.55), rgba(200, 40, 0, 0.25));
 }
 
+/* Con su dibujo en pixel (`tablero/trampa.png`, `tablero/fuego.png`) dentro del recuadro. */
+.wm-hazard.wm-hazard-drawn {
+    background-color: rgba(230, 180, 60, 0.12);
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+    background-position: center;
+    image-rendering: pixelated;
+}
+
+.wm-hazard-fire.wm-hazard-drawn {
+    background-color: rgba(255, 110, 40, 0.18);
+}
+
 /* Idea 189: quien cae al precipicio, se ve caer. */
 .wm-token.wm-token-falling {
     animation: wm-fall 0.85s ease-in forwards;

@@ -2,7 +2,7 @@
 title: Instrucciones para el Gem — el paquete de una campaña
 tags: [gem, gemini, campanas, importar, contrato, seeding]
 created: 2026-09-22
-updated: 2026-09-30
+updated: 2026-10-01
 author: generado por tools/gem-instructions.mjs
 ---
 
@@ -49,10 +49,12 @@ Lo que un módulo cuenta y el paquete sabe guardar:
 - **Puntos de vista** (`pov` de un hito o de un capítulo): quién cuenta esa escena; sale con su retrato.
 - **Nivel y viaje** (`world.levels`, `world.journey`): para qué nivel es y a cuántos días queda del gremio; salen en el tablón.
 - **Mapas en imagen** (`image` y `grid` de un tablero): si no trae `map`, el juego lo lee del dibujo al añadirla.
+- **Trampas** (`traps` de un tablero): una losa, unos dardos, un cepo, cada una con lo que se ve sin buscarla (`tell`) y lo que hace (`damage`, `condition`). Se buscan, se desarman o se pisan.
 
 Lo que el juego pone si falta (y lo dice al añadirla):
 
 - **Tableros**: el de cada misión que no lo trae, dibujado con la semilla; y una puerta en la sala cerrada donde espera alguien sin forma de entrar.
+- **Trampas**: la que no dice su casilla (o la de un tablero sin `map`) va en el camino; el estado que deja se puede escribir en castellano («derribado»).
 - **Bichos**: los que nadie describe salen del bestiario del juego si se llaman igual; si no, con los números de su desafío.
 - **Textos**: la descripción de un sitio, el texto de una misión, la escena de un hito y el final, con las frases del narrador.
 - **El hilo**: sin `plot`, y con las misiones en varios actos, sale de ellas, una detrás de otra; el sitio escondido lo descubre la misión de antes; la última lleva a un final.
@@ -133,7 +135,7 @@ Las dos se ensamblan igual: un solo bloque ```json. Da igual que lleve la cabece
 
 # Contrato del paquete de campaña
 
-Versión 1. Generado desde el motor el 2026-09-30.
+Versión 1. Generado desde el motor el 2026-10-01.
 
 Devuelve **solo JSON válido** que cumpla este esquema. Una sección por respuesta si el
 libro es largo; el orden recomendado es: world → locations → confidants → npcs → bestiary → items → boards → quests → heroes → dialogues → plot.
@@ -488,6 +490,23 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
         "text": {
           "type": "string",
           "description": "De una a tres frases llanas, sin acertijos. Con {forma|forma} donde se habla a quien juega."
+        },
+        "presenta": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            {
+              "type": "boolean"
+            }
+          ],
+          "description": "Opcional: quién se da a conocer en esta línea, por su id o su nombre (true: quien la dice). Hace falta solo si el nombre no sale en la línea: «Es la capitana de la guardia», y desde ahí sale con su nombre."
         }
       }
     },
@@ -756,6 +775,20 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
                 "found": {
                   "type": "string",
                   "description": "Lo que se ve si la tirada sale bien: una o dos frases llanas."
+                },
+                "place": {
+                  "type": "string",
+                  "enum": [
+                    "gremio",
+                    "posada",
+                    "herreria",
+                    "tienda",
+                    "templo",
+                    "tablon",
+                    "plaza",
+                    "muelle"
+                  ],
+                  "description": "Si está dentro de un sitio del pueblo (`places`): «gremio», «posada», «templo»… Sale al entrar en ese sitio, en «Mirar», y no en la fila. Sin él, vale para toda la localización."
                 }
               }
             }
@@ -796,7 +829,7 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
             "items": {
               "type": "string"
             },
-            "description": "Filas de la misma longitud, entre 8 y 40 columnas y entre 6 y 30 filas. Borde exterior siempre de muro. Solo estos caracteres: '.' suelo transitable, '#' muro, 'D' puerta cerrada, 'L' puerta cerrada con llave (se abre con una llave, con maña o a golpes; el jefe del tablero suelta la llave), 'o' puerta abierta, '~' terreno difícil, 'c' cobertura media, 'C' cobertura de tres cuartos, 'v' precipicio (no se anda; a quien empujan dentro, cae), '>' escalera al nivel siguiente, 'w' agua poco honda (cuesta el doble; el frío la hiela), 'i' hielo (el trueno lo quiebra, el fuego lo funde), 'b' maleza (cuesta el doble, y arde), 'T' barril (cubre; con fuego, revienta), 'k' cofre (se abre estando al lado), '^' en alto (subir cuesta el doble; desde arriba se ataca con ventaja): torres, escalones, la empalizada, 'x' salida (quien la pisa puede irse de la pelea; con un objetivo «alcanzar» encima, salir es ganar): la ventana, la trampilla, 'P' palanca (no se pisa; estando al lado, abre todas las puertas con llave del tablero): la reja del fondo, '=' barricada (corta el paso, no la vista; cubre a quien está detrás y a golpes se rompe: 15 de vida). Sin map, el juego lo lee del dibujo si hay image, o dibuja uno con la semilla."
+            "description": "Filas de la misma longitud, entre 8 y 40 columnas y entre 6 y 30 filas. Borde exterior siempre de muro. Solo estos caracteres: '.' suelo transitable, '#' muro, 'D' puerta cerrada, 'L' puerta cerrada con llave (se abre con una llave, con maña o a golpes; el jefe del tablero suelta la llave), 'o' puerta abierta, '~' terreno difícil, 'c' cobertura media, 'C' cobertura de tres cuartos, 'v' precipicio (no se anda; a quien empujan dentro, cae), '>' escalera al nivel siguiente, 'w' agua poco honda (cuesta el doble; el frío la hiela), 'W' agua honda (no se cruza andando; se ve a través): el mar, un río profundo, 'i' hielo (el trueno lo quiebra, el fuego lo funde), 'b' maleza (cuesta el doble, y arde), 'T' barril (cubre; con fuego, revienta), 'k' cofre (se abre estando al lado), '^' en alto (subir cuesta el doble; desde arriba se ataca con ventaja): torres, escalones, la empalizada, 'x' salida (quien la pisa puede irse de la pelea; con un objetivo «alcanzar» encima, salir es ganar): la ventana, la trampilla, 'P' palanca (no se pisa; estando al lado, abre todas las puertas con llave del tablero): la reja del fondo, '=' barricada (corta el paso, no la vista; cubre a quien está detrás y a golpes se rompe: 15 de vida). Sin map, el juego lo lee del dibujo si hay image, o dibuja uno con la semilla."
           },
           "partyStart": {
             "type": "array",
@@ -1385,6 +1418,67 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
                 "description": "Las formas que aquí no valen."
               }
             }
+          },
+          "traps": {
+            "type": "array",
+            "description": "Las trampas del tablero: una losa que se hunde, dardos en la pared, un cepo. Se buscan, se desarman o se pisan. Cada una en una casilla de suelo, fuera de donde empieza el grupo; sin x e y (o en un tablero sin map), el juego la pone en el camino.",
+            "items": {
+              "type": "object",
+              "required": [
+                "name",
+                "tell"
+              ],
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "description": "Lo que es, en pocas palabras: «Losa hundida»."
+                },
+                "x": {
+                  "type": "integer"
+                },
+                "y": {
+                  "type": "integer"
+                },
+                "tell": {
+                  "type": "string",
+                  "description": "Lo que se ve sin buscar: «Una losa está más baja que las demás». Sin aviso, pisarla no es culpa de nadie."
+                },
+                "damage": {
+                  "type": "string",
+                  "description": "El daño al pisarla, en dados: \"1d10\" o \"2d6\". Va esto o condition, o las dos."
+                },
+                "condition": {
+                  "type": "string",
+                  "enum": [
+                    "prone",
+                    "restrained",
+                    "poisoned",
+                    "blinded",
+                    "deafened",
+                    "frightened",
+                    "grappled",
+                    "stunned",
+                    "paralyzed",
+                    "incapacitated",
+                    "bleeding",
+                    "ralentizado"
+                  ],
+                  "description": "Cómo deja a quien la pisa: prone (derribado), restrained (apresado), poisoned (envenenado), blinded (cegado), frightened (asustado), grappled (agarrado), stunned (aturdido), bleeding (sangrando)."
+                },
+                "spotDC": {
+                  "type": "integer",
+                  "description": "Lo difícil de ver (Percepción), de 5 a 30. Sin ella, 13."
+                },
+                "disarmDC": {
+                  "type": "integer",
+                  "description": "Lo difícil de desarmar, de 5 a 30. Sin ella, 13."
+                },
+                "once": {
+                  "type": "boolean",
+                  "description": "Si salta una vez y se acaba (unos dardos). Sin decirlo, vuelve a armarse (una losa)."
+                }
+              }
+            }
           }
         }
       }
@@ -1623,7 +1717,27 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
           },
           "trade": {
             "type": "string",
-            "description": "Su oficio, corto: «Molinero», «Posadera»."
+            "description": "Su oficio, corto: «Molinero», «Posadera». Hasta que se presenta, sale así: «la posadera»."
+          },
+          "id": {
+            "type": "string",
+            "description": "Corto, en minúsculas y sin espacios («tomas»): es el de {npc:tomas} en los textos."
+          },
+          "gender": {
+            "type": "string",
+            "enum": [
+              "Mujer",
+              "Hombre"
+            ],
+            "description": "Si su oficio no lo dice («Guardia»), para llamarle bien hasta que se presente."
+          },
+          "stranger": {
+            "type": "string",
+            "description": "Opcional: cómo se le llama sin conocerle, con su artículo («una mujer con capucha»). Sin él, su oficio."
+          },
+          "famous": {
+            "type": "boolean",
+            "description": "Su nombre lo sabe todo el mundo (el señor del valle): sale con él desde el principio."
           },
           "wants": {
             "type": "string",
@@ -1885,6 +1999,23 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
                   "type": "string",
                   "description": "Lo que dice si ya os lo había dicho: más corto."
                 },
+                "presenta": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    {
+                      "type": "boolean"
+                    }
+                  ],
+                  "description": "Opcional: quién se da a conocer en esta línea, por su id o su nombre (true: quien la dice). Hace falta solo si el nombre no sale en la línea: «Es la capitana de la guardia», y desde ahí sale con su nombre."
+                },
                 "mood": {
                   "type": "string",
                   "enum": [
@@ -2097,6 +2228,23 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
                       "type": "string",
                       "description": "De una a tres frases llanas, sin acertijos. Con {forma|forma} donde se habla a quien juega."
                     },
+                    "presenta": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        {
+                          "type": "boolean"
+                        }
+                      ],
+                      "description": "Opcional: quién se da a conocer en esta línea, por su id o su nombre (true: quien la dice). Hace falta solo si el nombre no sale en la línea: «Es la capitana de la guardia», y desde ahí sale con su nombre."
+                    },
                     "options": {
                       "type": "array",
                       "description": "Una decisión, tras esta línea: lo que puede decir o hacer quien juega. Como las opciones de una charla, pero sin next: la escena sigue. Los efectos sin who son con quien dice la línea; si la dice el narrador, attitude y bond llevan who.",
@@ -2218,6 +2366,23 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
               "sceneDialogue": {
                 "type": "string",
                 "description": "El id de una charla de dialogues que se abre al acabar la escena."
+              },
+              "presenta": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  {
+                    "type": "boolean"
+                  }
+                ],
+                "description": "Opcional: quién se da a conocer en el texto de este hito (su scene), por su id o su nombre. Solo si el hito no trae beats y su scene dice el nombre de alguien que aún no se ha presentado."
               },
               "pov": {
                 "type": "string",
@@ -2589,14 +2754,16 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
 14. Cada tablero mide entre 8×6 y 40×30 casillas. Uno de 14×10 ya da una escena; por encima de 24×18 se juega lento.
 15. Desde donde empieza el grupo tiene que poderse llegar a toda casilla de suelo, abriendo puertas. Un enemigo en una sala incomunicada es un error; una sala vacía incomunicada, un aviso.
 16. Los nombres de `items` tampoco se repiten, y su `rarity` es una de las cuatro que conocen las tablas de botín: una rareza inventada nunca cae.
-17. Solo un tablero hecho de un mapa dibujado lleva `image` y `grid`. Si tienes su `map` (lo escribe `tools/mapa-a-tablero.mjs` a partir de la imagen), mide lo mismo que la cuadrícula; si no, déjalo fuera y el juego lo lee del dibujo al añadir la campaña. Sin imagen, no escribas ninguno de los dos. Las `zones` (las salas con nombre) sí valen en cualquier tablero.
-18. Cada tablero con enemigos trae en `avoid` una a tres formas de no pelear que encajen con quién espera: `hablar` con la gente (convencer, engañar o espantar a una bestia con `intimidation`), `pagar` a quien se deja comprar, `huir` o `esconderse`. A los muertos y a las cosas sin mente no se les habla ni se les paga. Si salir de otra forma sigue la historia de otra manera, dilo en `success` con sus efectos; lo que pasa después del tablero tiene que seguir cuadrando.
-19. En `dialogues`, el `speaker` de cada charla es alguien de `npcs` o de `confidants`, cada `next` lleva a un nudo que existe, y a todos los nudos se llega desde el de inicio. Un hito, un rumor o un objeto de una condición o de un efecto se nombra como está en el paquete (el hito y el rumor, por su id).
-20. En una charla, lo que depende de quién eres (`species`, `class`, `background`, `gender`) solo le sale a quien encaja, con su etiqueta delante: «[Enano] …». Cada tirada lleva `success` y `failure`; `partial` es opcional. Las líneas son de una a tres frases llanas, sin acertijos, con `{forma|forma}` donde se habla a quien juega.
-21. En `plot`, cada `opens.milestone`, `changes.open` y `changes.close` nombra un hito del hilo por su id, cada `asks.board` un tablero por su `name`, y cada `changes.ending` un final de `endings`. El primer hito se abre con `start`: es la mecha de la campaña.
-22. Los hitos importantes traen su escena en `beats`: de 3 a 8 líneas, cada una de alguien de `npcs` o `confidants` (sin `who`, del narrador), y una o dos decisiones que cambien algo: cómo os mira alguien, un rumor, un objeto o un hito. `scene` sigue haciendo falta: es lo que lee el narrador. `sceneDialogue` nombra una charla de `dialogues` por su id.
-23. Cada final de `plot.endings` trae sus `epilogues`: qué fue de 3 a 5 personas o facciones que pesaron en la historia, una línea cada una. El `who` de cada uno es un nombre de `npcs`, `confidants` o `world.factions`, letra por letra.
-24. Donde se le habla a quien juega —la sinopsis, la `description` de un compañero y sus escenas, las del hilo y sus finales, los epílogos, las charlas, los rumores, las misiones y el `twist` de un encargo—, lo que concuerda con su género lleva sus dos formas entre llaves: «Eres {un mercenario|una mercenaria}»; al grupo, en plural: «estáis {hechos|hechas}». Solo dos formas: quien es no binario elige si el texto le habla en masculino o en femenino. En los demás campos (la gente, los objetos, el resto de un encargo), escribe sin nada que concuerde con quien juega. Nunca «cansado/a».
+17. Cada trampa de `traps` cae en una casilla de suelo del mapa, fuera de `partyStart`, y trae su `tell`: lo que se ve sin buscarla («una losa está más baja que las demás»). Hace daño (`damage`, en dados), deja a quien la pisa de alguna forma (`condition`) o las dos. Si no sabes la casilla, deja fuera `x` e `y`: el juego la pone en el camino.
+18. Solo un tablero hecho de un mapa dibujado lleva `image` y `grid`. Si tienes su `map` (lo escribe `tools/mapa-a-tablero.mjs` a partir de la imagen), mide lo mismo que la cuadrícula; si no, déjalo fuera y el juego lo lee del dibujo al añadir la campaña. Sin imagen, no escribas ninguno de los dos. Las `zones` (las salas con nombre) sí valen en cualquier tablero.
+19. Cada tablero con enemigos trae en `avoid` una a tres formas de no pelear que encajen con quién espera: `hablar` con la gente (convencer, engañar o espantar a una bestia con `intimidation`), `pagar` a quien se deja comprar, `huir` o `esconderse`. A los muertos y a las cosas sin mente no se les habla ni se les paga. Si salir de otra forma sigue la historia de otra manera, dilo en `success` con sus efectos; lo que pasa después del tablero tiene que seguir cuadrando.
+20. En `dialogues`, el `speaker` de cada charla es alguien de `npcs` o de `confidants`, cada `next` lleva a un nudo que existe, y a todos los nudos se llega desde el de inicio. Un hito, un rumor o un objeto de una condición o de un efecto se nombra como está en el paquete (el hito y el rumor, por su id).
+21. En una charla, lo que depende de quién eres (`species`, `class`, `background`, `gender`) solo le sale a quien encaja, con su etiqueta delante: «[Enano] …». Cada tirada lleva `success` y `failure`; `partial` es opcional. Las líneas son de una a tres frases llanas, sin acertijos, con `{forma|forma}` donde se habla a quien juega.
+22. En `plot`, cada `opens.milestone`, `changes.open` y `changes.close` nombra un hito del hilo por su id, cada `asks.board` un tablero por su `name`, y cada `changes.ending` un final de `endings`. El primer hito se abre con `start`: es la mecha de la campaña.
+23. Los hitos importantes traen su escena en `beats`: de 3 a 8 líneas, cada una de alguien de `npcs` o `confidants` (sin `who`, del narrador), y una o dos decisiones que cambien algo: cómo os mira alguien, un rumor, un objeto o un hito. `scene` sigue haciendo falta: es lo que lee el narrador. `sceneDialogue` nombra una charla de `dialogues` por su id.
+24. Quien juega solo sabe el nombre de quien se ha presentado: hasta entonces, el juego le llama por su oficio («el posadero»). Que la gente diga su nombre al conocerse («Tomás. Llevo la posada.»), o que otro lo diga en voz alta. Antes de eso, ni una opción de quien juega ni el narrador le nombran: el narrador dice «el posadero». En las líneas, las opciones y las respuestas de las escenas y las charlas, `{npc:id}` sale como su nombre si ya se sabe y como «el posadero» si no. El título de un hito sale antes de su escena: no nombres en él a quien se presenta en ella.
+25. Cada final de `plot.endings` trae sus `epilogues`: qué fue de 3 a 5 personas o facciones que pesaron en la historia, una línea cada una. El `who` de cada uno es un nombre de `npcs`, `confidants` o `world.factions`, letra por letra.
+26. Donde se le habla a quien juega —la sinopsis, la `description` de un compañero y sus escenas, las del hilo y sus finales, los epílogos, las charlas, los rumores, las misiones y el `twist` de un encargo—, lo que concuerda con su género lleva sus dos formas entre llaves: «Eres {un mercenario|una mercenaria}»; al grupo, en plural: «estáis {hechos|hechas}». Solo dos formas: quien es no binario elige si el texto le habla en masculino o en femenino. En los demás campos (la gente, los objetos, el resto de un encargo), escribe sin nada que concuerde con quien juega. Nunca «cansado/a».
 
 ## Sobre los mapas
 
@@ -2615,6 +2782,7 @@ crear cobertura y rutas, y no dibujes una sala vacía.
 - `v` precipicio (no se anda; a quien empujan dentro, cae)
 - `>` escalera al nivel siguiente
 - `w` agua poco honda (cuesta el doble; el frío la hiela)
+- `W` agua honda (no se cruza andando; se ve a través): el mar, un río profundo
 - `i` hielo (el trueno lo quiebra, el fuego lo funde)
 - `b` maleza (cuesta el doble, y arde)
 - `T` barril (cubre; con fuego, revienta)
@@ -3129,9 +3297,9 @@ para qué nivel es, los capítulos, quién cuenta la primera escena (`pov`) y el
 
 ## Muestra de un tablero por salas
 
-Como lo cuenta un módulo: quién espera en cada sala (`enemies`) y qué tesoro guarda (`treasure`).
-El juego pone a cada uno en su sala (tras una puerta cerrada, duermen hasta que se abre) y el tesoro
-en un cofre. No hace falta repetir a los de las salas en `enemies` del tablero.
+Como lo cuenta un módulo: quién espera en cada sala (`enemies`), qué tesoro guarda (`treasure`) y sus
+trampas (`traps`). El juego pone a cada uno en su sala (tras una puerta cerrada, duermen hasta que se
+abre) y el tesoro en un cofre. No hace falta repetir a los de las salas en `enemies` del tablero.
 
 ```json
 {
@@ -3184,6 +3352,17 @@ en un cofre. No hace falta repetir a los de las salas en `enemies` del tablero.
       "treasure": [
         "Cáliz de plata"
       ]
+    }
+  ],
+  "traps": [
+    {
+      "name": "Losa suelta",
+      "x": 3,
+      "y": 2,
+      "tell": "Al pie de la escalera, una losa baila bajo el polvo.",
+      "damage": "1d6",
+      "condition": "prone",
+      "spotDC": 12
     }
   ]
 }
@@ -3455,6 +3634,20 @@ que ya está en el bloque de instrucciones; se ofrecen sueltos porque un libro n
             "found": {
               "type": "string",
               "description": "Lo que se ve si la tirada sale bien: una o dos frases llanas."
+            },
+            "place": {
+              "type": "string",
+              "enum": [
+                "gremio",
+                "posada",
+                "herreria",
+                "tienda",
+                "templo",
+                "tablon",
+                "plaza",
+                "muelle"
+              ],
+              "description": "Si está dentro de un sitio del pueblo (`places`): «gremio», «posada», «templo»… Sale al entrar en ese sitio, en «Mirar», y no en la fila. Sin él, vale para toda la localización."
             }
           }
         }
@@ -3540,7 +3733,27 @@ que ya está en el bloque de instrucciones; se ofrecen sueltos porque un libro n
       },
       "trade": {
         "type": "string",
-        "description": "Su oficio, corto: «Molinero», «Posadera»."
+        "description": "Su oficio, corto: «Molinero», «Posadera». Hasta que se presenta, sale así: «la posadera»."
+      },
+      "id": {
+        "type": "string",
+        "description": "Corto, en minúsculas y sin espacios («tomas»): es el de {npc:tomas} en los textos."
+      },
+      "gender": {
+        "type": "string",
+        "enum": [
+          "Mujer",
+          "Hombre"
+        ],
+        "description": "Si su oficio no lo dice («Guardia»), para llamarle bien hasta que se presente."
+      },
+      "stranger": {
+        "type": "string",
+        "description": "Opcional: cómo se le llama sin conocerle, con su artículo («una mujer con capucha»). Sin él, su oficio."
+      },
+      "famous": {
+        "type": "boolean",
+        "description": "Su nombre lo sabe todo el mundo (el señor del valle): sale con él desde el principio."
       },
       "wants": {
         "type": "string",
@@ -3758,7 +3971,7 @@ que ya está en el bloque de instrucciones; se ofrecen sueltos porque un libro n
         "items": {
           "type": "string"
         },
-        "description": "Filas de la misma longitud, entre 8 y 40 columnas y entre 6 y 30 filas. Borde exterior siempre de muro. Solo estos caracteres: '.' suelo transitable, '#' muro, 'D' puerta cerrada, 'L' puerta cerrada con llave (se abre con una llave, con maña o a golpes; el jefe del tablero suelta la llave), 'o' puerta abierta, '~' terreno difícil, 'c' cobertura media, 'C' cobertura de tres cuartos, 'v' precipicio (no se anda; a quien empujan dentro, cae), '>' escalera al nivel siguiente, 'w' agua poco honda (cuesta el doble; el frío la hiela), 'i' hielo (el trueno lo quiebra, el fuego lo funde), 'b' maleza (cuesta el doble, y arde), 'T' barril (cubre; con fuego, revienta), 'k' cofre (se abre estando al lado), '^' en alto (subir cuesta el doble; desde arriba se ataca con ventaja): torres, escalones, la empalizada, 'x' salida (quien la pisa puede irse de la pelea; con un objetivo «alcanzar» encima, salir es ganar): la ventana, la trampilla, 'P' palanca (no se pisa; estando al lado, abre todas las puertas con llave del tablero): la reja del fondo, '=' barricada (corta el paso, no la vista; cubre a quien está detrás y a golpes se rompe: 15 de vida). Sin map, el juego lo lee del dibujo si hay image, o dibuja uno con la semilla."
+        "description": "Filas de la misma longitud, entre 8 y 40 columnas y entre 6 y 30 filas. Borde exterior siempre de muro. Solo estos caracteres: '.' suelo transitable, '#' muro, 'D' puerta cerrada, 'L' puerta cerrada con llave (se abre con una llave, con maña o a golpes; el jefe del tablero suelta la llave), 'o' puerta abierta, '~' terreno difícil, 'c' cobertura media, 'C' cobertura de tres cuartos, 'v' precipicio (no se anda; a quien empujan dentro, cae), '>' escalera al nivel siguiente, 'w' agua poco honda (cuesta el doble; el frío la hiela), 'W' agua honda (no se cruza andando; se ve a través): el mar, un río profundo, 'i' hielo (el trueno lo quiebra, el fuego lo funde), 'b' maleza (cuesta el doble, y arde), 'T' barril (cubre; con fuego, revienta), 'k' cofre (se abre estando al lado), '^' en alto (subir cuesta el doble; desde arriba se ataca con ventaja): torres, escalones, la empalizada, 'x' salida (quien la pisa puede irse de la pelea; con un objetivo «alcanzar» encima, salir es ganar): la ventana, la trampilla, 'P' palanca (no se pisa; estando al lado, abre todas las puertas con llave del tablero): la reja del fondo, '=' barricada (corta el paso, no la vista; cubre a quien está detrás y a golpes se rompe: 15 de vida). Sin map, el juego lo lee del dibujo si hay image, o dibuja uno con la semilla."
       },
       "partyStart": {
         "type": "array",
@@ -4345,6 +4558,67 @@ que ya está en el bloque de instrucciones; se ofrecen sueltos porque un libro n
               "type": "string"
             },
             "description": "Las formas que aquí no valen."
+          }
+        }
+      },
+      "traps": {
+        "type": "array",
+        "description": "Las trampas del tablero: una losa que se hunde, dardos en la pared, un cepo. Se buscan, se desarman o se pisan. Cada una en una casilla de suelo, fuera de donde empieza el grupo; sin x e y (o en un tablero sin map), el juego la pone en el camino.",
+        "items": {
+          "type": "object",
+          "required": [
+            "name",
+            "tell"
+          ],
+          "properties": {
+            "name": {
+              "type": "string",
+              "description": "Lo que es, en pocas palabras: «Losa hundida»."
+            },
+            "x": {
+              "type": "integer"
+            },
+            "y": {
+              "type": "integer"
+            },
+            "tell": {
+              "type": "string",
+              "description": "Lo que se ve sin buscar: «Una losa está más baja que las demás». Sin aviso, pisarla no es culpa de nadie."
+            },
+            "damage": {
+              "type": "string",
+              "description": "El daño al pisarla, en dados: \"1d10\" o \"2d6\". Va esto o condition, o las dos."
+            },
+            "condition": {
+              "type": "string",
+              "enum": [
+                "prone",
+                "restrained",
+                "poisoned",
+                "blinded",
+                "deafened",
+                "frightened",
+                "grappled",
+                "stunned",
+                "paralyzed",
+                "incapacitated",
+                "bleeding",
+                "ralentizado"
+              ],
+              "description": "Cómo deja a quien la pisa: prone (derribado), restrained (apresado), poisoned (envenenado), blinded (cegado), frightened (asustado), grappled (agarrado), stunned (aturdido), bleeding (sangrando)."
+            },
+            "spotDC": {
+              "type": "integer",
+              "description": "Lo difícil de ver (Percepción), de 5 a 30. Sin ella, 13."
+            },
+            "disarmDC": {
+              "type": "integer",
+              "description": "Lo difícil de desarmar, de 5 a 30. Sin ella, 13."
+            },
+            "once": {
+              "type": "boolean",
+              "description": "Si salta una vez y se acaba (unos dardos). Sin decirlo, vuelve a armarse (una losa)."
+            }
           }
         }
       }
@@ -4940,6 +5214,23 @@ que ya está en el bloque de instrucciones; se ofrecen sueltos porque un libro n
               "type": "string",
               "description": "Lo que dice si ya os lo había dicho: más corto."
             },
+            "presenta": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "boolean"
+                }
+              ],
+              "description": "Opcional: quién se da a conocer en esta línea, por su id o su nombre (true: quien la dice). Hace falta solo si el nombre no sale en la línea: «Es la capitana de la guardia», y desde ahí sale con su nombre."
+            },
             "mood": {
               "type": "string",
               "enum": [
@@ -5282,6 +5573,23 @@ que ya está en el bloque de instrucciones; se ofrecen sueltos porque un libro n
         "text": {
           "type": "string",
           "description": "De una a tres frases llanas, sin acertijos. Con {forma|forma} donde se habla a quien juega."
+        },
+        "presenta": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            {
+              "type": "boolean"
+            }
+          ],
+          "description": "Opcional: quién se da a conocer en esta línea, por su id o su nombre (true: quien la dice). Hace falta solo si el nombre no sale en la línea: «Es la capitana de la guardia», y desde ahí sale con su nombre."
         }
       }
     },
@@ -5506,6 +5814,23 @@ que ya está en el bloque de instrucciones; se ofrecen sueltos porque un libro n
                   "type": "string",
                   "description": "De una a tres frases llanas, sin acertijos. Con {forma|forma} donde se habla a quien juega."
                 },
+                "presenta": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    {
+                      "type": "boolean"
+                    }
+                  ],
+                  "description": "Opcional: quién se da a conocer en esta línea, por su id o su nombre (true: quien la dice). Hace falta solo si el nombre no sale en la línea: «Es la capitana de la guardia», y desde ahí sale con su nombre."
+                },
                 "options": {
                   "type": "array",
                   "description": "Una decisión, tras esta línea: lo que puede decir o hacer quien juega. Como las opciones de una charla, pero sin next: la escena sigue. Los efectos sin who son con quien dice la línea; si la dice el narrador, attitude y bond llevan who.",
@@ -5627,6 +5952,23 @@ que ya está en el bloque de instrucciones; se ofrecen sueltos porque un libro n
           "sceneDialogue": {
             "type": "string",
             "description": "El id de una charla de dialogues que se abre al acabar la escena."
+          },
+          "presenta": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              {
+                "type": "boolean"
+              }
+            ],
+            "description": "Opcional: quién se da a conocer en el texto de este hito (su scene), por su id o su nombre. Solo si el hito no trae beats y su scene dice el nombre de alguien que aún no se ha presentado."
           },
           "pov": {
             "type": "string",

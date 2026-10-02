@@ -53,6 +53,7 @@ import { changeAttitude, offerPersonalQuests } from './companions.js';
 import { partyPurse, payFromParty } from './roster.js';
 import { postCombatNarration } from './narration.js';
 import { festivalHere } from './town.js';
+import { romanceMeetup, romanceAfterMeetup, romanceWantsFor, romanceLabelFor, packRomance, unpackRomance } from './romance.js';
 
 /** @typedef {import('../game-engine/campaign/whereabouts.js').Here} Here */
 
@@ -224,8 +225,9 @@ export function peopleHere() {
         hirelings: lastHub && !trial ? HIRELINGS.filter(h => !inParty.has(keyOf(h.name))).map(h => ({ ...h })) : [],
         data,
         wantsOf: wantsOfMember,
+        // J14.10: una cita pendiente (o la noche, de noche) también es «quiere quedar contigo».
         wants: (here) => (here.canMeet
-            ? wantsToMeet({ person: personFor(here), rank: rankOf(bondKeyForHere(here)), data, social, campaign })
+            ? romanceWantsFor(here.name, slotNow().id) ?? wantsToMeet({ person: personFor(here), rank: rankOf(bondKeyForHere(here)), data, social, campaign })
             : false),
         day: campaignDay(),
         festival: festivalName(),
@@ -421,7 +423,8 @@ export async function meetSomeone(name = '', place = '') {
                 return {
                     ...p,
                     placeLabel: placeLabel(p.place, location),
-                    rankLabel: `Vínculo ${rankOf(bondKeyForHere(p))}`,
+                    // J14.10: y cómo va el romance, si hay («Pareja»).
+                    rankLabel: [`Vínculo ${rankOf(bondKeyForHere(p))}`, romanceLabelFor(p.name)].filter(Boolean).join(' · '),
                     className: card?.className || text(p.source?.className || p.source?.charClass),
                     gender: card?.gender || text(p.source?.gender),
                 };
@@ -456,7 +459,10 @@ async function playMeetup(who, place) {
         person: personFor(who), rank: rankOf(bondKey), data, talkRows: socialRows().talk, social: getSocial(),
         random: seeded('quedada', who.key, elapsedNow()), place, slot: slot.id, campaign: campaignId(), hero, party: partyMembers,
     });
-    const scene = renderScene(picked.scene, { hero, party: partyMembers });
+    // J14.10: si toca, la quedada es de romance (la señal, una cita o la noche), o el rato lleva
+    // una frase de pareja. Apagado en las opciones, nada.
+    const love = romanceMeetup({ name: who.name, rank: rankOf(bondKey), picked: picked.scene, slot: slot.id });
+    const scene = renderScene(love?.scene ?? picked.scene, { hero, party: partyMembers });
     const card = personOf(data, who.name);
     const location = hereLocation();
     /** @type {string[]} */
@@ -476,6 +482,8 @@ async function playMeetup(who, place) {
             if (outcome.gold < 0) payFromParty(Math.min(-outcome.gold, partyPurse()));
             saveSocial(recordMeetup(picked.social, { name: who.name, scene, elapsed: elapsedNow(), unlocks: applied.unlocks }));
             told = meetupSummary({ name: who.name, result: applied, outcome });
+            // J14.10: lo que cambia en el romance (empezáis, una cita más, sois pareja).
+            told = [...told, ...romanceAfterMeetup({ name: who.name, love, scene, choices })];
             return told;
         },
     });
@@ -563,7 +571,7 @@ export function townPeople() {
  * cada quince segundos (así las muertes se ven al momento). Y J14.4: quién de tu gente está dónde.
  *
  * @returns {{location: any, npcs: any[], people: TownPerson[], hall?: import('../game-engine/campaign/guild-hall.js').HallData|null,
- *   hubChips?: Array<{id: string, label: string, icon: string, command: string}>, greet?: (place: any, slot?: string) => {text: string, mood: string}}|null}
+ *   hubChips?: Array<{id: string, label: string, icon: string, command: string}>, greet?: (place: any, slot?: string) => {text: string, mood: string, remembered?: boolean}}|null}
  */
 export function townNow() {
     const location = hereLocation();
@@ -614,13 +622,15 @@ export function bondFavors() {
  * Lo de tu gente, al salir de un chat: sus vínculos y lo social, con el grupo que sale.
  *
  * @param {any[]} party
- * @returns {{bonds: any, social: any, party: any[]}}
+ * @returns {{bonds: any, social: any, party: any[], romance?: any}}
  */
 export function packPeople(party) {
     return {
         bonds: JSON.parse(JSON.stringify(getCampaignBonds())),
         social: getSocial(),
         party: (Array.isArray(party) ? party : []).map(m => ({ id: m?.id, name: m?.name })),
+        // J14.10: los romances viajan con el grupo, como lo demás de tu gente.
+        romance: packRomance(),
     };
 }
 
@@ -628,7 +638,7 @@ export function packPeople(party) {
  * Y al llegar al otro: los vínculos pasan por el nombre (`carryBonds`), y lo social se junta.
  * Lo de cada chat (su día, la última charla, cuándo se quedó) se queda en el suyo.
  *
- * @param {{bonds: any, social: any, party: any[]}} carried
+ * @param {{bonds: any, social: any, party: any[], romance?: any}} carried
  */
 export function unpackPeople(carried) {
     if (!chat_metadata || !carried) return;
@@ -645,6 +655,7 @@ export function unpackPeople(carried) {
         seen: lists(here.seen, there.seen),
         opened: lists(here.opened, there.opened),
     });
+    unpackRomance(carried.romance);
 }
 
 /**

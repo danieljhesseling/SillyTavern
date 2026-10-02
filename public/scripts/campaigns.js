@@ -12,6 +12,7 @@ import { Popup, POPUP_TYPE, POPUP_RESULT } from './popup.js';
 import { buildNewCampaignCta, createCampaign } from './game-engine/ui/campaign-wizard.js';
 import { openCampaignBuilder, loadDndCatalog, setPartyFromWorldEntries, beginCampaignPlot, adoptVeteranGear, giveStartingGear, applyCampaignRuleset, applyModeExtras, adoptPet, partySnapshot, adoptCarriedParty, giveStartingPurse, plotEndingTitle, postJourney, postHomecoming, recordFinishedCampaign, seatPartyHero, memberFromEntry, getCombatEncounter, campaignChronicle, scheduleGuildVisitor, settleCampaignCompanions, welcomeGuildCompanions, sayHomecomings } from './party.js';
 import { isCampaignWorld, getStartingPoint, uniqueWorldName } from './game-engine/campaign/campaign-worlds.js';
+import { syncGameState, holdGameSync } from './party/game-state.js';
 import {
     HUB_KEY, HUB_HOME_KEY, HUB_CAMPAIGN_KEY, HUB_PACK, HUB_WORLD_NAME, HUB_START_GOLD, HUB_NEXT_HERO_GOLD, HUB_NARRATOR,
     readHub, isHubWorld, hubHomeOf, withHubChat, withHubCampaign, answersForWorld, hubCampaignWorldName, journeyLine,
@@ -55,6 +56,8 @@ import { spellsForClass, spellById } from './game-engine/rules/grimoire.js';
 import { startingSpells } from './game-engine/rules/spell-picks.js';
 import { casterOf } from './game-engine/rules/spell-slots.js';
 import { normalizeSpell, findSpell } from './game-engine/rules/spell-catalogue.js';
+// H10 de las vueltas: sin portada a medio pasar del gremio a una campaña.
+import { beginChatSwitch, endChatSwitch } from './game-engine/ui/shell/chat-switch.js';
 
 /**
  * Fetches recent chats with metadata from the cross-character API.
@@ -1617,6 +1620,8 @@ export async function startHubGame() {
         toastr.error(String(error?.message || error), 'No se pudo crear la partida');
     } finally {
         wizardRunning = false;
+        // J4.2: el almacén de la partida nace con el gremio (al abrir su chat aún no sabía de qué mundo era).
+        void syncGameState();
     }
 }
 
@@ -1747,6 +1752,9 @@ async function rideFromStable(guild, riders) {
 export async function playHubCampaign(id) {
     if (wizardRunning) return;
     wizardRunning = true;
+    // J4.2: el gremio de la partida lo pone al día el viaje, en su orden: al salir y al llegar.
+    holdGameSync(true);
+    beginChatSwitch();
 
     try {
         const homeWorld = String(chat_metadata?.[METADATA_KEY] || '');
@@ -1765,6 +1773,8 @@ export async function playHubCampaign(id) {
         const guildNow = chat_metadata?.guild ?? null;
         const road = (/** @type {any} */ row) => journeyWithStable(row, guildNow, carried.length);
         const entries = carriedEntries(home, carried);
+        // J4.2: lo que ha cambiado del gremio aquí, al almacén de la partida antes de salir.
+        await syncGameState({ force: true });
         await saveMetadata();
         // El gremio sabe siempre dónde está su chat: es por donde se vuelve.
         await updateWorld(homeWorld, meta => { meta[HUB_KEY] = withHubChat(meta[HUB_KEY], openChat()); });
@@ -1773,6 +1783,8 @@ export async function playHubCampaign(id) {
         const record = readHub(home.metadata[HUB_KEY]).campaigns[id];
         if (record?.chat) {
             if (await openHubChat(record.chat, record.worldName)) {
+                // J4.2: al llegar, el gremio de la partida: el mismo que se ha dejado en casa.
+                await syncGameState({ force: true });
                 const { uids } = await ensureHubEntries(record.worldName, entries);
                 adoptCarriedParty(carried, { worldName: record.worldName, uids });
                 const board = await boardWorld(id, home.metadata[HUB_KEY]);
@@ -1792,12 +1804,16 @@ export async function playHubCampaign(id) {
         }
 
         const world = await boardWorld(id, home.metadata[HUB_KEY]);
-        if (!world?.pack) throw new Error('Esa campaña no está en el tablón.');
-        const pack = await readMundo(String(world.pack)).catch(error => {
+        // J10.7: una de semilla no trae paquete: se hace con su semilla.
+        const { isSeedWorld, campaignPackWithStory } = await import('./party/seed-campaign.js');
+        if (!world?.pack && !isSeedWorld(world)) throw new Error('Esa campaña no está en el tablón.');
+        const written = !world.pack ? null : await readMundo(String(world.pack)).catch(error => {
             // J5.4: el archivo de una campaña añadida vive entre los tuyos, y se puede borrar.
             if (world.imported) throw new Error('No encuentro el archivo de esa campaña. Vuelve a añadirla desde el tablón, con «Añadir una campaña»');
             throw error;
         });
+        // J10.7: y sin hilo escrito, el juego le pone una historia en tres actos.
+        const pack = await campaignPackWithStory(world, written);
         const found = validatePack(pack);
         if (!found.ok) throw new Error(`La campaña está rota: ${found.errors?.[0]?.message ?? 'no se puede leer'}.`);
 
@@ -1840,6 +1856,8 @@ export async function playHubCampaign(id) {
             narratorAvatar,
         });
         if (!opened) return;
+        // J4.2: una campaña nueva no trae gremio propio: tiene el de la partida.
+        await syncGameState({ force: true });
         // D-J19: cómo se llama en el tablón. Es el nombre con el que entra en el salón de la fama.
         chat_metadata[HUB_BOARD_NAME_KEY] = String(world.name || id);
         await saveMetadata();
@@ -1859,6 +1877,10 @@ export async function playHubCampaign(id) {
         toastr.error(String(error?.message || error), 'No se pudo abrir la campaña');
     } finally {
         wizardRunning = false;
+        holdGameSync(false);
+        endChatSwitch();
+        // J4.2: y lo que haya cambiado al llegar, al almacén.
+        void syncGameState();
     }
 }
 
@@ -1870,6 +1892,9 @@ export async function playHubCampaign(id) {
 export async function returnToHub() {
     if (wizardRunning) return;
     wizardRunning = true;
+    // J4.2: el gremio de la partida lo pone al día el viaje, en su orden: al salir y al llegar.
+    holdGameSync(true);
+    beginChatSwitch();
 
     try {
         const worldName = String(chat_metadata?.[METADATA_KEY] || '');
@@ -1895,6 +1920,8 @@ export async function returnToHub() {
         // D-J12: el día al que se llegó aquí. Lo vivido en la campaña también pasa en el gremio.
         const day = normalizeCalendar(chat_metadata?.calendar).day;
         const here = openChat();
+        // J4.2: lo que ha cambiado del gremio en esta campaña, al almacén de la partida antes de salir.
+        await syncGameState({ force: true });
         await saveMetadata();
 
         if (!hub.chat) throw new Error('No encuentro la partida del gremio.');
@@ -1937,6 +1964,8 @@ export async function returnToHub() {
         });
 
         if (!await openHubChat(hub.chat, homeWorld)) throw new Error('No se pudo abrir la partida del gremio.');
+        // J4.2: en casa, el gremio con lo ganado fuera (el renombre, el almacén, el banquillo).
+        await syncGameState({ force: true });
         const { uids } = await ensureHubEntries(homeWorld, entries);
         adoptCarriedParty(carried, { worldName: homeWorld, uids });
         // J7.2: quien se vino y no cabe en el grupo espera en casa; y se dice quién es ya del gremio.
@@ -1960,6 +1989,10 @@ export async function returnToHub() {
         toastr.error(String(error?.message || error), 'No se pudo volver al gremio');
     } finally {
         wizardRunning = false;
+        holdGameSync(false);
+        endChatSwitch();
+        // J4.2: y lo que haya cambiado al llegar (quien se quedó en casa), al almacén.
+        void syncGameState();
     }
 }
 

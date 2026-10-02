@@ -13,6 +13,7 @@ import { removeItemFromInventory } from '../dnd-system.js';
 import { settleGuards } from '../game-engine/campaign/crime.js';
 import { guardOf, jailFine, jailLine, jailScene, stolenHere } from '../game-engine/campaign/jail.js';
 import { openPlotScene } from '../game-engine/ui/plot-scene.js';
+import { shownName } from '../game-engine/ui/shown-names.js';
 import { closeTownPlace } from '../game-engine/ui/shell/town-scene.js';
 import { isShellOpen, refreshGameShell } from '../game-engine/ui/shell/game-shell.js';
 import { WANTED_KEY } from './keys.js';
@@ -61,7 +62,8 @@ export async function goToJail({ thief, attempted, price, days }) {
     const facts = {
         town,
         guard: guardOf({ npcs: lastWorldNpcs, town }),
-        keeper: lastWorldNpcs.find(n => !n.dead && n.service === 'tienda' && n.where.toLowerCase() === String(town).toLowerCase())?.name ?? '',
+        // J13.7: por lo que es («La tendera del mercado») si aún no se ha presentado.
+        keeper: shownName(lastWorldNpcs.find(n => !n.dead && n.service === 'tienda' && n.where.toLowerCase() === String(town).toLowerCase())?.name ?? '', 'El'),
         thief,
         hero,
         // Si la guardia se lleva a quien juega, va a verle alguien de su gente; si se lleva a

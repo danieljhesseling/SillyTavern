@@ -27,10 +27,12 @@ import { visibilityPenalties } from '../game-engine/world/visibility.js';
 import { getAbilityModifier } from '../dnd-system.js';
 import { lockBonus } from '../game-engine/rules/field-uses.js';
 import { hasLeft } from '../game-engine/board/exits.js';
+import { isWatching } from '../game-engine/combat/brawl.js';
 import { hitBarricade, pullLever } from '../game-engine/board/interactables.js';
 import { isIndoors, carriesLight, combatVisibility } from '../game-engine/world/visibility.js';
 import { stairsReached, nextLevel } from '../game-engine/board/dungeon-levels.js';
 import { planWalk, canWalk } from '../game-engine/board/walk.js';
+import { fireCellsOf } from '../game-engine/board/pathfinding.js';
 import { planGroupMove, describeGroupMove } from '../game-engine/board/group-move.js';
 export { walkFrames, hoverOf } from '../game-engine/board/group-move.js';
 import { enterCell, describeHazard, passiveSpot } from '../game-engine/board/hazards.js';
@@ -57,7 +59,7 @@ import { applyFall, wakeRoomEnemies } from './combat-flow.js';
 import { applyTimedCondition, fieldLightOn } from './magic.js';
 import { openChest } from './loot.js';
 import { partyTabSetter } from './main.js';
-import { renderLocationMapsPreview } from './board-view.js';
+import { lastWaiting, renderLocationMapsPreview } from './board-view.js';
 import { saveCurrentLocation, saveCurrentBoard, getLocationBoards, hereLocation, weatherHere } from './world.js';
 import { getCurrentSlotLabel } from './time.js';
 import { getPlot } from './plot.js';
@@ -275,7 +277,10 @@ function overlayOf(terrain, board) {
             if (flags.blocksSight) blindCells.push(key);
         }
     }
-    return withOverlay(terrain, { elevation: normalizeElevation(board?.elevation), slowCells, blindCells });
+    // Tanda 8: el fuego a la vista (lo que arde en el tablero y las zonas de fuego), que el
+    // camino rodea si hay por dónde.
+    const hotCells = fireCellsOf({ hazards: board?.hazards, zones });
+    return withOverlay(terrain, { elevation: normalizeElevation(board?.elevation), slowCells, blindCells, hotCells });
 }
 
 /**
@@ -755,7 +760,8 @@ export function buildTokens(locationFilter) {
     // Los muertos no andan por el tablero: están en su tumba (idea 36).
     for (const m of partyMembers.filter(member => !member.dead)) {
         // B2: quien salió por una salida ya no está en este tablero mientras dure la pelea.
-        if (combatEncounter.active && hasLeft(combatEncounter.left, m.id)) continue;
+        // J12.7: los que miran un duelo sí se ven, en la pared.
+        if (combatEncounter.active && hasLeft(combatEncounter.left, m.id) && !isWatching(combatEncounter, m.id)) continue;
         const pos = m.mapPosition || { locationName: '', gridX: 0, gridY: 0 };
         if (locationFilter && pos.locationName !== locationFilter) continue;
         result.push({
@@ -794,9 +800,9 @@ export function handleTokenMove(tokenId, gridX, gridY, locationName) {
     const member = partyMembers.find(m => m.id === tokenId);
     if (!member) return;
 
-    // Dentro de un tablero, andar tiene reglas: hace falta camino, hay un alcance y quien
-    // esta atado no se mueve. Fuera —en el mapa de la localidad, que es un plano y no una
-    // rejilla de combate— colocarse sigue siendo libre.
+    // Dentro de un tablero, andar tiene reglas: hace falta camino y quien esta atado no se
+    // mueve (tanda 10: sin enemigos alrededor, sin tope de pies). Fuera —en el mapa de la
+    // localidad, que es un plano y no una rejilla de combate— colocarse sigue siendo libre.
     if (currentBoardName) {
         const { terrain, gridWidth, gridHeight } = getActiveBoardContext();
         // J12.3: una trampa ya vista no se pisa a sabiendas; el camino la rodea.
@@ -817,6 +823,8 @@ export function handleTokenMove(tokenId, gridX, gridY, locationName) {
                     .filter(m => Number(m.id) !== Number(member.id))
                     .map(m => ({ x: Number(m.mapPosition?.gridX) || 0, y: Number(m.mapPosition?.gridY) || 0 })),
                 ...[...traps].map(key => parseCellKey(key)).filter(cell => cell !== null),
+                // Tanda 10: y los enemigos que esperan quietos: no se anda por encima de nadie.
+                ...waitingFoes(),
             ],
         });
 
@@ -842,6 +850,17 @@ export function handleTokenMove(tokenId, gridX, gridY, locationName) {
     savePartyState();
     // J12.11: si ha entrado en una sala con nombre, lo que se ve en ella.
     if (currentBoardName) noteZoneEntry(member, from, { x: gridX, y: gridY });
+}
+
+/**
+ * Tanda 10: las casillas de los enemigos que esperan quietos en el tablero abierto (los que el
+ * grupo ve). Hasta que empieza la pelea no se mueven, y no se anda por encima de ellos.
+ *
+ * @returns {Array<{x: number, y: number}>}
+ */
+function waitingFoes() {
+    if (combatEncounter.active || lastWaiting.board !== currentBoardName) return [];
+    return lastWaiting.placements.map(p => ({ x: Number(p.x) || 0, y: Number(p.y) || 0 }));
 }
 
 /**
@@ -873,7 +892,7 @@ export function groupMoveTo(gridX, gridY) {
     }));
     if (members.length === 0) return null;
 
-    const enemies = getAliveEnemies().map(e => ({ x: Number(e.gridX) || 0, y: Number(e.gridY) || 0 }));
+    const enemies = [...getAliveEnemies().map(e => ({ x: Number(e.gridX) || 0, y: Number(e.gridY) || 0 })), ...waitingFoes()];
     const formation = getPartyFormation();
     const order = formation?.order || [];
     // J12.3: las trampas ya vistas no se pisan: la marcha las rodea, como a quien estorba.

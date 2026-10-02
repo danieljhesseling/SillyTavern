@@ -344,18 +344,28 @@ try {
         await clearDice();
         return armed;
     };
-    /** Cómo se ve una casilla con la niebla: `unknown`, `explored` o `visible`. */
-    const fogAt = (/** @type {number} */ gx, /** @type {number} */ gy) => page.evaluate(({ sel, gx, gy }) => {
-        for (const el of document.querySelectorAll(`${sel} .wm-fog-cell`)) {
+    /**
+     * Cómo se ve una casilla con la niebla: `unknown`, `explored` o `visible`. J20.6: la niebla va
+     * en rectángulos (una sala sin ver es una caja): se mira cuál cubre la casilla, con el tamaño
+     * de una casilla sacado de la capa (su ancho entre las columnas).
+     */
+    const fogAt = (/** @type {number} */ gx, /** @type {number} */ gy) => page.evaluate(({ sel, gx, gy, cols, rows }) => {
+        const layer = document.querySelector(`${sel} .wm-fog-layer`);
+        if (!(layer instanceof HTMLElement)) return 'visible';
+        const cw = (parseFloat(layer.style.width) || 1) / cols;
+        const ch = (parseFloat(layer.style.height) || 1) / rows;
+        for (const el of layer.querySelectorAll('.wm-fog-cell')) {
             if (!(el instanceof HTMLElement)) continue;
-            const w = parseFloat(el.style.width) || 1;
-            const h = parseFloat(el.style.height) || 1;
-            if (Math.round(parseFloat(el.style.left) / w) === gx && Math.round(parseFloat(el.style.top) / h) === gy) {
+            const x0 = Math.round(parseFloat(el.style.left) / cw);
+            const y0 = Math.round(parseFloat(el.style.top) / ch);
+            const x1 = x0 + Math.round(parseFloat(el.style.width) / cw);
+            const y1 = y0 + Math.round(parseFloat(el.style.height) / ch);
+            if (gx >= x0 && gx < x1 && gy >= y0 && gy < y1) {
                 return el.classList.contains('wm-fog-unknown') ? 'unknown' : 'explored';
             }
         }
         return 'visible';
-    }, { sel: BOARD, gx, gy });
+    }, { sel: BOARD, gx, gy, cols: COLS, rows: ROWS });
     const hazardAt = (/** @type {number} */ gx, /** @type {number} */ gy) => page.evaluate(({ sel, gx, gy }) => [...document.querySelectorAll(`${sel} .wm-hazard`)].some(el => {
         if (!(el instanceof HTMLElement)) return false;
         const w = parseFloat(el.style.width) || 1;
@@ -419,7 +429,7 @@ try {
     check('empezarla deja a la maga en la cripta, en su escena de tablero', started && onBoard && scene === 'combat', JSON.stringify({ scene, state: await state() }));
 
     // 3. J12.8 y J12.13: sobre el dibujo limpio, por partes y con niebla.
-    const look = await page.evaluate(({ sel, cols }) => {
+    const look = await page.evaluate(({ sel, cols, rows }) => {
         const content = document.querySelector(`${sel} .wm-content`)?.getBoundingClientRect();
         const view = document.querySelector(`${sel} .wm-container`)?.getBoundingClientRect();
         return {
@@ -427,9 +437,17 @@ try {
             overImage: Boolean(document.querySelector(`${sel} .wm-terrain-layer.wm-terrain-over-image`)),
             cellPx: content ? Math.round((content.width / cols) * 10) / 10 : 0,
             wider: Boolean(content && view && content.width > view.width + 10),
-            unknown: document.querySelectorAll(`${sel} .wm-fog-cell.wm-fog-unknown`).length,
+            // Las casillas sin ver, no las cajas: J20.6 junta las iguales en rectángulos.
+            unknown: (() => {
+                const layer = document.querySelector(`${sel} .wm-fog-layer`);
+                const cw = (parseFloat(layer instanceof HTMLElement ? layer.style.width : '') || 1) / cols;
+                const ch = (parseFloat(layer instanceof HTMLElement ? layer.style.height : '') || 1) / rows;
+                return [...document.querySelectorAll(`${sel} .wm-fog-cell.wm-fog-unknown`)]
+                    .reduce((sum, el) => sum + Math.round(parseFloat(/** @type {HTMLElement} */ (el).style.width) / cw) * Math.round(parseFloat(/** @type {HTMLElement} */ (el).style.height) / ch), 0);
+            })(),
+            boxes: document.querySelectorAll(`${sel} .wm-fog-cell`).length,
         };
-    }, { sel: BOARD, cols: COLS });
+    }, { sel: BOARD, cols: COLS, rows: ROWS });
     check('el tablero es el dibujo, con el terreno marcado encima sin taparlo (J12.8)', /e2e-grande\/cripta\.png$/.test(look.image) && look.overImage, JSON.stringify(look));
     check('un tablero de 40 × 28 se ve por partes, con casillas que se leen (28 px o más) (J12.13)', look.wider && look.cellPx >= 27.5, JSON.stringify(look));
     check('con niebla: lo que aún no se ha visto está tapado, como la sala del fondo (J12.13)', look.unknown > 100 && await fogAt(36, 14) === 'unknown', JSON.stringify({ unknown: look.unknown, far: await fogAt(36, 14) }));
@@ -449,6 +467,10 @@ try {
         afterTrap.x === 9 && afterTrap.y === 14 && afterTrap.hp < before.hp && await chatHas(/Losa hundida salta bajo Nadia/)
         && trapToasts.some(t => /¡Una trampa!/.test(t)), JSON.stringify({ before, afterTrap, trapToasts }));
     check('y ya se ve en el tablero (J12.3)', await hazardAt(9, 14));
+    // Tanda 9, arte de lo nuevo: dentro del recuadro, su dibujo en pixel (el cepo de `tablero/trampa.png`).
+    const trapArt = await page.evaluate((sel) => [...document.querySelectorAll(`${sel} .wm-hazard.wm-hazard-drawn`)]
+        .map(el => (el instanceof HTMLElement ? el.style.backgroundImage : '')), BOARD);
+    check('la trampa vista lleva su dibujo en pixel, no solo el recuadro (tablero/trampa.png)', trapArt.some(b => /tablero\/trampa\.png/.test(b)), JSON.stringify(trapArt));
     check('la cámara sigue a la maga (J12.13)', await heroInView());
     await shot('2-losa');
 
@@ -517,9 +539,14 @@ try {
             token: Boolean(token),
             crown: Boolean(token?.querySelector('.wm-token-boss-mark')),
             meta: (token?.querySelector('.wm-token-tooltip-meta')?.textContent || '').trim(),
+            art: token?.querySelector('img.wm-token-avatar[data-pixel]')?.getAttribute('src') || '',
+            skull: Boolean(token?.querySelector('.wm-token-unknown')),
         };
     }, BOARD);
     check('el jefe que espera en B1 se ve, con su corona (arte del tablero)', boss.token && boss.crown && /^Jefe · /.test(boss.meta), JSON.stringify(boss));
+    // Tanda 9, arte de lo nuevo: un jefe propio de la campaña, sin dibujo ni arquetipo, sale de sombra, no de calavera.
+    check('el jefe sin dibujo propio lleva la sombra encapuchada (bestias/enemigo-sin-dibujo.png), no la calavera',
+        /bestias\/enemigo-sin-dibujo\.png$/.test(boss.art) && !boss.skull, JSON.stringify(boss));
     await shot('4-b1');
 
     const serious = problems.filter(p => !/favicon|ResizeObserver loop/.test(p));

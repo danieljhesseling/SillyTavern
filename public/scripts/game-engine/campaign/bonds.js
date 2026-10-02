@@ -36,6 +36,8 @@ export const BOND_EVENTS = {
     gift_disliked: { points: -2, label: 'Regalo desafortunado' },
     confidant_scene: { points: 3, label: 'Escena de confidente' },
     shared_downtime: { points: 2, label: 'Tiempo libre compartido' },
+    // J14.11: venir contigo a un trabajo o a un rato (servir mesas, las cartas, pescar). Poco.
+    pastime_together: { points: 1, label: 'Un rato juntos, trabajando o jugando' },
     saved_their_life: { points: 6, label: 'Le salvaste la vida' },
     let_them_fall: { points: -5, label: 'Le dejaste caer' },
     betrayed: { points: -12, label: 'Traición' },

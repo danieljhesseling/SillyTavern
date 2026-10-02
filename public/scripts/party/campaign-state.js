@@ -19,7 +19,9 @@ import {
     normalizeBondState, recordBondEvent, resetDailyPerks, BOND_EVENTS,
 } from '../game-engine/campaign/bonds.js';
 import { completeLocation, normalizeCampaignMap } from '../game-engine/campaign/campaign-map.js';
-import { planShortRest, planLongRest, describeRest, getHitDice } from '../game-engine/rules/rest.js';
+import { planShortRest, planLongRest, describeRest, getHitDice, conditionsAfterRest } from '../game-engine/rules/rest.js';
+import { noteProse } from '../game-engine/campaign/narration-prose.js';
+import { stripEngineTags } from '../game-engine/ui/shell/engine-tags.js';
 import { restoreAbilityUses } from '../game-engine/rules/abilities.js';
 import { relieve } from '../game-engine/rules/needs.js';
 import { buildPersonalWeapon } from '../game-engine/combat/bond-perks.js';
@@ -243,6 +245,8 @@ export function createCampaignState(deps) {
             const member = party.find(m => String(m.id) === entry.id);
             if (!member) continue;
             member.hp = entry.hpAfter;
+            // M4: quien se levanta ya no está inconsciente (si no, en la revancha no actuaba).
+            member.activeConditions = conditionsAfterRest(member);
             const dice = getHitDice(member, hitDieByClass);
             member.hitDiceSpent = Math.max(0, Math.min(dice.total, dice.spent + entry.diceSpent - entry.diceRegained));
         }
@@ -268,14 +272,25 @@ export function createCampaignState(deps) {
         // qué día amanece, así que la línea de «Amanece…» sobra.
         const told = kind === 'largo' ? (deps.tellRest?.(kind) ?? '') : '';
         if (kind === 'corto') advanceSlotOfDay();
-        else advanceDay(Boolean(told));
+        else {
+            advanceDay(Boolean(told));
+            // J9.1 (H8 de las vueltas): pasar el día suma sus 24 h a todo. La noche entera es
+            // la que se ha dormido, comido y bebido: se amanece a cero, no con un día de sed.
+            for (const member of party) {
+                member.needs = relieve({ ...member, needs: relieve({ ...member, needs: relieve(member, 'ate') }, 'drank') }, 'slept');
+            }
+            deps.saveParty();
+        }
         const after = told ? '' : (deps.tellRest?.(kind) ?? '');
         if (told || after) deps.narrate(`🌙 [DESCANSO] ${told || after}`);
 
         const lines = describeRest(kind, plan);
         deps.narrate(`[DESCANSO] ${lines.join('\n')}`);
         deps.renderParty();
-        toastr.success(lines.slice(1).join('\n') || 'Nadie necesitaba descansar.', `Descanso ${kind}`, { timeOut: 9000 });
+        // J13.1: el aviso, contado como la nota («Irene no tenía heridas que curar.», no «Irene:
+        // 34 → 34 PG.»), sin la etiqueta ni el «Descanso largo.» que ya dice su título.
+        const toldRest = stripEngineTags(noteProse(`[DESCANSO] ${lines.join('\n')}`)).replace(/^Descanso (?:corto|largo)\.\s*/u, '');
+        toastr.success(toldRest || 'Nadie necesitaba descansar.', `Descanso ${kind}`, { timeOut: 9000 });
         return lines.join(' ');
     }
 

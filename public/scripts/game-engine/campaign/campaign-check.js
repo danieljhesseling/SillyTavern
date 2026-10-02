@@ -115,6 +115,9 @@ export function plainLine(line, pack) {
         const row = (Array.isArray(rows) ? rows : []).find(r => text(r?.id) === id);
         return text(row?.[field]) || id;
     };
+    // Sin ningún hito no hay historia que no arranque: es una campaña de sitios sueltos.
+    const noStory = !(Array.isArray(pack?.plot?.milestones) && pack.plot.milestones.length > 0);
+    if (noStory && /^El hilo no tiene mecha: /.test(text(line))) return 'No trae historia: se juega como sitios sueltos, sin hilo que seguir ni final';
     return text(line)
         .replace(/^El hilo no tiene mecha: /, 'La historia no arranca: ')
         .replace(/^Hito (\S+?)(:?) /, (all, id, colon) => `El hito «${titleOf(pack?.plot?.milestones, id, 'title')}»${colon} `)

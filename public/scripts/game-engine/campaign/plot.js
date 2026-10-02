@@ -100,6 +100,7 @@ const SIMPLE_ASKS = ['arrive', 'win', 'defeat', 'talk', 'check', 'contract'];
  *   (`plot-scenes.js`). Sin ella, se cuenta `scene`.
  * @property {string} [sceneDialogue] J9.2: la charla del paquete que se abre al acabar la escena.
  * @property {string} [backdrop] J9.2: dónde pasa la escena, para el fondo.
+ * @property {any} [presenta] J13.7: en un hito de texto, quién se da a conocer en él.
  * @property {boolean|string} [irreversible] J11.1: se avisa antes de cumplirlo, aunque no cierre
  *   nada: «Esto no tiene vuelta atrás» (o el aviso escrito).
  */
@@ -248,6 +249,8 @@ function readMilestone(raw, index, ceiling = 3) {
         ...(Array.isArray(raw.beats) && raw.beats.length > 0 ? { beats: raw.beats } : {}),
         ...(text(raw.sceneDialogue) ? { sceneDialogue: text(raw.sceneDialogue) } : {}),
         ...(text(raw.backdrop) ? { backdrop: text(raw.backdrop) } : {}),
+        // J13.7: en un hito de texto, quién se da a conocer en él (no tiene líneas donde ponerlo).
+        ...(raw.presenta != null && raw.presenta !== '' ? { presenta: raw.presenta } : {}),
     };
 }
 

@@ -47,6 +47,8 @@ export const BRUSHES = [
     { id: 'C', label: 'Cobertura alta' },
     { id: '~', label: 'Terreno difícil' },
     { id: 'w', label: 'Agua' },
+    // Tanda 10: el agua honda (el mar, un río profundo) no se cruza andando.
+    { id: 'W', label: 'Agua honda' },
     { id: 'T', label: 'Barril' },
     { id: 'x', label: 'Salida' },
     { id: START_BRUSH, label: 'Empieza el grupo' },
@@ -59,7 +61,7 @@ export const BRUSHES = [
  */
 export const CELL_NAMES = {
     '.': 'suelo', '#': 'muro', 'D': 'puerta', 'L': 'puerta', 'o': 'puerta', '~': 'dificil',
-    'c': 'cobertura', 'C': 'cobertura-alta', 'v': 'sima', '>': 'escalera', 'w': 'agua', 'i': 'hielo',
+    'c': 'cobertura', 'C': 'cobertura-alta', 'v': 'sima', '>': 'escalera', 'w': 'agua', 'W': 'agua-honda', 'i': 'hielo',
     'b': 'maleza', 'T': 'barril', 'k': 'cofre', '^': 'alto', 'x': 'salida', 'P': 'palanca', '=': 'barricada',
 };
 
@@ -71,7 +73,7 @@ export const CELL_NAMES = {
 export const CELL_LABELS = {
     '.': 'Suelo', '#': 'Muro', 'D': 'Puerta', 'L': 'Puerta cerrada con llave', 'o': 'Puerta abierta',
     '~': 'Terreno difícil', 'c': 'Cobertura', 'C': 'Cobertura alta', 'v': 'Sima', '>': 'Escalera',
-    'w': 'Agua', 'i': 'Hielo', 'b': 'Maleza', 'T': 'Barril', 'k': 'Cofre', '^': 'En alto', 'x': 'Salida',
+    'w': 'Agua', 'W': 'Agua honda', 'i': 'Hielo', 'b': 'Maleza', 'T': 'Barril', 'k': 'Cofre', '^': 'En alto', 'x': 'Salida',
     'P': 'Palanca', '=': 'Barricada',
 };
 

@@ -47,6 +47,9 @@ export const STATUS_ICONS = {
     ralentizado: { icon: 'fa-snowflake', label: 'Ralentizado', effect: 'se mueve 10 pies menos' },
     acelerado: { icon: 'fa-forward-fast', label: 'Acelerado', effect: 'el doble de rápido y +2 a la CA' },
     'a la carrera': { icon: 'fa-person-running', label: 'A la carrera', effect: 'anda el doble este turno' },
+    // Tanda 10: Correr (la acción de 2024) y Debilitar (la maestría de una maza o una espada larga).
+    corriendo: { icon: 'fa-person-running', label: 'Corriendo', effect: 'anda el doble este turno' },
+    debilitado: { icon: 'fa-heart-crack', label: 'Debilitado', effect: 'su siguiente ataque va con desventaja' },
 };
 
 /** Shown for a condition the rule pack has but this table does not. */

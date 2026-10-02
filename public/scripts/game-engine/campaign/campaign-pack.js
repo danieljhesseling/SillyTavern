@@ -21,7 +21,7 @@
  * Pure. See wiki/archivo/ROADMAP_INGESTA_CAMPANAS_LIBROS.md (G2) · wiki/POR_HACER.md.
  */
 
-import { CAMPAIGN_PACK_VERSION, OBJECTIVE_FIELDS, LOCATION_TYPES } from './campaign-pack-schema.js';
+import { CAMPAIGN_PACK_VERSION, OBJECTIVE_FIELDS, LOCATION_TYPES, TRAP_CONDITIONS } from './campaign-pack-schema.js';
 import { OBJECTIVE_TYPES } from './scenarios.js';
 import { ASCII_TERRAIN } from '../board/terrain.js';
 import { getProfileOptions, DEFAULT_PROFILE } from '../combat/enemy-ai.js';
@@ -39,6 +39,7 @@ import { SKILLS } from '../rules/checks.js';
 import { DEFAULT_SIGHT_SKILL } from './sights.js';
 import { checkCampaignSucesos } from './suceso-triggers.js';
 import { gateWarnings } from '../world/route-gates.js';
+import { checkIntroductions } from './known-people.js';
 
 /**
  * @typedef {Object} Issue
@@ -352,6 +353,66 @@ function checkDrawnBoard(board, path, size, errors, warnings) {
 }
 
 /**
+ * J5.2: las trampas de un tablero (`traps`), como las lee `trapsFromPack`. Cada una en una
+ * casilla de suelo del mapa y fuera de donde empieza el grupo; lo demás son avisos, porque una
+ * trampa a medias se juega igual.
+ *
+ * `pack-fill.js` ya ha puesto en su sitio las que venían sin casilla (o en un tablero sin mapa)
+ * y ha pasado a clave el estado escrito en castellano: lo que llega aquí sin casilla es que no
+ * había dónde.
+ *
+ * @param {any} board
+ * @param {string} path
+ * @param {{width: number, height: number}} size
+ * @param {Issue[]} errors
+ * @param {Issue[]} warnings
+ */
+function checkTraps(board, path, size, errors, warnings) {
+    if (board.traps === undefined) return;
+    if (!Array.isArray(board.traps)) {
+        errors.push({ path: `${path}.traps`, message: 'Las trampas van en una lista: [{"name": "Losa hundida", "x": 3, "y": 2, "tell": "…", "damage": "1d6"}].' });
+        return;
+    }
+    const starts = new Set(board.partyStart.map((/** @type {any} */ c) => `${c?.x},${c?.y}`));
+    const seen = new Set();
+    board.traps.forEach((/** @type {any} */ trap, /** @type {number} */ i) => {
+        const tPath = `${path}.traps[${i}]`;
+        if (!trap || typeof trap !== 'object') {
+            errors.push({ path: tPath, message: 'Cada trampa es un objeto con su nombre, su casilla y su aviso.' });
+            return;
+        }
+        const name = text(trap.name) || 'La trampa';
+        const state = cellState(board.map, size, trap);
+        if (state === 'outside') {
+            errors.push({ path: tPath, message: `«${name}» en (${trap.x},${trap.y}) cae fuera del mapa, que mide ${size.width}x${size.height}.` });
+        } else if (state === 'blocked') {
+            errors.push({ path: tPath, message: `«${name}» en (${trap.x},${trap.y}) cae sobre un muro: nadie la pisaría.` });
+        } else if (starts.has(`${trap.x},${trap.y}`)) {
+            errors.push({ path: tPath, message: `«${name}» está donde empieza el grupo: saltaría antes de jugar.` });
+        } else if (seen.has(`${trap.x},${trap.y}`)) {
+            warnings.push({ path: tPath, message: `«${name}» comparte casilla con otra trampa: solo salta una.` });
+        }
+        seen.add(`${trap.x},${trap.y}`);
+        if (!text(trap.name)) warnings.push({ path: `${tPath}.name`, message: 'Sin nombre: se llamará «Algo».' });
+        if (!text(trap.tell)) warnings.push({ path: `${tPath}.tell`, message: `«${name}» no tiene aviso (tell): no se ve nada antes de pisarla, y eso no es culpa de nadie.` });
+        const dice = text(trap.damage ?? trap.damageDice);
+        if (dice && !/^\d*d\d+([+-]\d+)?$|^\d+$/i.test(dice.replace(/\s+/g, ''))) {
+            warnings.push({ path: `${tPath}.damage`, message: `«${dice}» no son dados: se escribe "1d6" o "2d8+1".` });
+        }
+        const condition = text(trap.condition);
+        if (condition && !TRAP_CONDITIONS.includes(condition)) {
+            warnings.push({ path: `${tPath}.condition`, message: `«${condition}» no es un estado que el juego conozca: pisarla no dejaría así a nadie. Valen: ${TRAP_CONDITIONS.join(', ')}.` });
+        }
+        if (!dice && !condition) warnings.push({ path: tPath, message: `«${name}» no hace daño (damage) ni deja a nadie de ninguna forma (condition): pisarla no pasaría de un susto.` });
+        for (const key of ['spotDC', 'disarmDC']) {
+            if (trap[key] === undefined) continue;
+            const dc = Number(trap[key]);
+            if (!Number.isInteger(dc) || dc < 5 || dc > 30) warnings.push({ path: `${tPath}.${key}`, message: `«${name}»: ${key === 'spotDC' ? 'lo difícil de verla' : 'lo difícil de desarmarla'} (${key}) va de 5 a 30, y "${trap[key]}" se sale.` });
+        }
+    });
+}
+
+/**
  * D-J18: los finales del hilo y sus epílogos.
  *
  * - Cada final lleva `title` y `scene`: sin escena, el final no cuenta nada.
@@ -652,6 +713,7 @@ export function validatePack(raw) {
         boardSizes.set(board.id, { ...size, map: board.map });
         if (size.width === 0) return;
         checkDrawnBoard(board, path, size, errors, warnings);
+        checkTraps(board, path, size, errors, warnings);
         // J12.2 y J8.5: las otras salidas de su pelea, si las trae.
         for (const found of [
             checkAvoid(board.avoid, { path: `${path}.avoid`, rumors: new Set(pack.rumors.map((/** @type {any} */ r) => text(r?.id))) }),
@@ -785,7 +847,9 @@ export function validatePack(raw) {
     // que en una charla: sus efectos, sus condiciones y sus tiradas.
     if (pack.plot && Array.isArray(pack.plot.milestones)) {
         const scenes = checkPlotScenes(pack.plot, {
-            people: [...pack.npcs, ...pack.confidants].map((/** @type {any} */ p) => text(p?.name)).filter(Boolean),
+            // M4: el malo también habla en las escenas (Strahd en su cena y en su cripta), con
+            // su retrato o el de su ficha del bestiario.
+            people: [...pack.npcs, ...pack.confidants, ...pack.bestiary].map((/** @type {any} */ p) => text(p?.name)).filter(Boolean),
             rumors: pack.rumors.map((/** @type {any} */ r) => text(r?.id)).filter(Boolean),
             items: pack.items.map((/** @type {any} */ i) => text(i?.name)).filter(Boolean),
             dialogues: pack.dialogues.map((/** @type {any} */ d) => text(d?.id)).filter(Boolean),
@@ -793,6 +857,13 @@ export function validatePack(raw) {
         });
         errors.push(...scenes.errors);
         warnings.push(...scenes.warnings);
+    }
+
+    // J13.7: nadie llama a nadie por un nombre que todavía no sabe. No para la importación: lo
+    // que se escape sale por su oficio en pantalla, pero se avisa para escribirlo bien.
+    if (pack.plot && Array.isArray(pack.plot.milestones)) {
+        const names = checkIntroductions(pack);
+        warnings.push(...names.errors, ...names.warnings);
     }
 
     // D-J18: los finales y lo que fue de la gente en cada uno.

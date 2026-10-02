@@ -102,3 +102,35 @@ export function judgeScenario(objectives, board) {
 export function hasScenario(board) {
     return normalizeObjectives(board?.objectives).length > 0;
 }
+
+/**
+ * M4: lo que queda por hacer cuando ya no hay nadie en pie y el tablero aún no se ha ganado.
+ * Sin esto, tras el último enemigo la pelea seguía ronda tras ronda sin decir por qué: en el
+ * taller del ataudero o en el comedor del conde lo que falta es abrir un cofre.
+ *
+ * Vacío si queda algún enemigo, si ya está todo hecho o si no hay misión.
+ *
+ * @param {Array<any>} objectives
+ * @param {import('../campaign/scenarios.js').BoardState} board
+ * @returns {string}
+ */
+export function leftToDo(objectives, board) {
+    const list = normalizeObjectives(objectives);
+    if (list.length === 0 || (board?.enemies ?? []).some(e => (Number(e?.currentHp) || 0) > 0)) return '';
+    const { status, results } = evaluateScenario(list, board);
+    if (status !== 'active') return '';
+    const byId = new Map(list.map(o => [o.id, o]));
+    const round = Number(board?.round) || 1;
+    const parts = results
+        .filter(r => !r.optional && r.status === 'pending' && r.type !== 'protect')
+        .map(r => {
+            const o = /** @type {any} */ (byId.get(r.id));
+            const cell = o?.cell ? ` (${Number(o.cell.x) + 1}, ${Number(o.cell.y) + 1})` : '';
+            if (o.type === 'loot') return `${o.label}: está en un cofre del tablero; id a su lado y pulsadlo.`;
+            if (o.type === 'reach_cell') return `${o.label}: id a la casilla${cell}.`;
+            if (o.type === 'escort') return `${o.label}: llevadle hasta la casilla${cell}.`;
+            if (o.type === 'survive_rounds') return `${o.label}: aguantad hasta la ronda ${o.rounds ?? round} (vais por la ${round}); pasad turno.`;
+            return `${o.label}.`;
+        });
+    return parts.length > 0 ? `Ya no queda nadie en pie, pero aún falta: ${parts.join(' ')}` : '';
+}

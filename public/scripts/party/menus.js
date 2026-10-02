@@ -46,7 +46,7 @@ import { newPerson, newPlace } from '../game-engine/campaign/director.js';
 import { describeInjuries } from '../game-engine/rules/injuries.js';
 import { describeNeeds } from '../game-engine/rules/needs.js';
 import { describeMode as describeGameMode } from '../game-engine/rules/modes.js';
-import { readGraves, readHall, describeHallEntry } from '../game-engine/campaign/legacy.js';
+import { readGraves, describeHallEntry } from '../game-engine/campaign/legacy.js';
 import { describeFame } from '../game-engine/campaign/fame.js';
 import { SKILLS } from '../game-engine/rules/checks.js';
 import { buildJournal, buildHelp } from '../game-engine/campaign/guidance.js';
@@ -98,6 +98,8 @@ import { openFormationPanel, partyMorale, personalQuestJournal } from './compani
 import { neighbourPlaces } from './travel.js';
 import { buildServiceCards, runService } from './town.js';
 import { buildShellChips, runShellChip } from './shell.js';
+import { hallShown, romanceGlanceLine } from './romance.js';
+import { knownPeopleJournal } from './known-people.js';
 
 /** Ideas 69 y 70: el mapa en texto, con niebla y con notas. */
 export async function openTextMap() {
@@ -204,6 +206,9 @@ export function openPartyGlance() {
         const weapon = heldWeapon(member);
         box.append($('<div class="pg-line pg-weapon"></div>').text(weapon ? `Lleva: ${weapon.name}${weapon.damageDice ? ` (${weapon.damageDice})` : ''}` : 'Pelea con las manos'));
         for (const line of row.lines) box.append($('<div class="pg-line"></div>').text(line));
+        // J14.10: cómo va el romance, si hay (y si está encendido).
+        const love = romanceGlanceLine(member);
+        if (love) box.append($('<div class="pg-line pg-romance"></div>').text(love));
         // Idea 57: su historia, de lo que el motor ya apunto.
         const story = $('<button type="button" class="menu_button pg-story"></button>').text('Su historia');
         story.on('click', () => openHeroStory(member));
@@ -365,6 +370,9 @@ function openJournal() {
     // J8.6: lo que os han contado en las charlas escritas.
     const told8 = dialogueJournal(chat_metadata?.[DIALOGUE_MEMORY_KEY]);
     if (told8.length > 0) sections.push({ title: 'Lo que os han contado', items: told8 });
+    // J13.7: la gente que conoces por su nombre, y cómo lo supiste.
+    const met = knownPeopleJournal();
+    if (met.length > 0) sections.push({ title: 'La gente que conoces', items: met });
     // Idea 110: lo que sabéis de la gente.
     const pried = describeSecrets(chat_metadata?.[SECRETS_KEY]);
     if (pried.length > 0) sections.push({ title: 'Lo que sabéis de la gente', items: pried });
@@ -1068,17 +1076,23 @@ export async function exportCampaignPack() {
  * Idea 199: el salón de la fama. Los caídos de todas las partidas, el más reciente arriba.
  */
 export function openHallOfFame() {
-    const hall = readHall(/** @type {any} */ (extension_settings).partyHall);
+    // J14.10: con el romance apagado, las parejas no salen.
+    const hall = hallShown(/** @type {any} */ (extension_settings).partyHall);
     const body = $('<div class="jr-root hall-root"></div>');
     body.append($('<h3></h3>').text('Salón de la fama'));
-    // J3.9: arriba, las campañas terminadas; debajo, los caídos.
+    // J3.9: arriba, las campañas terminadas; J14.10, las parejas; debajo, los caídos.
     const done = hall.filter(entry => entry.kind === 'campaign');
-    const fallen = hall.filter(entry => entry.kind !== 'campaign');
+    const couples = hall.filter(entry => entry.kind === 'couple');
+    const fallen = hall.filter(entry => !entry.kind);
     if (done.length > 0) {
         body.append($('<h4 class="hall-head"></h4>').text('Campañas terminadas'));
         for (const entry of done) body.append($('<div class="jr-item hall-entry hall-campaign"></div>').text(describeHallEntry(entry)));
-        body.append($('<h4 class="hall-head"></h4>').text('Los caídos'));
     }
+    if (couples.length > 0) {
+        body.append($('<h4 class="hall-head"></h4>').text('Parejas'));
+        for (const entry of couples) body.append($('<div class="jr-item hall-entry hall-couple"></div>').text(describeHallEntry(entry)));
+    }
+    if (done.length > 0 || couples.length > 0) body.append($('<h4 class="hall-head"></h4>').text('Los caídos'));
     if (fallen.length === 0) body.append($('<div class="jr-item"></div>').text('Todavía no ha caído nadie.'));
     for (const entry of fallen) body.append($('<div class="jr-item hall-entry"></div>').text(describeHallEntry(entry)));
     void new Popup(body[0], POPUP_TYPE.TEXT, '', { okButton: 'Cerrar', allowVerticalScrolling: true, leftAlign: true }).show();

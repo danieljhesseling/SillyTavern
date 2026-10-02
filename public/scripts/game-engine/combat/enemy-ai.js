@@ -464,12 +464,20 @@ export function planEnemyTurn({ actor, targets, allies = [], terrain, gridWidth,
     const reachable = getReachableCells(
         terrain, actor.gridX, actor.gridY, speedOf(actor), gridWidth, gridHeight, { occupied },
     );
+    // M4: lo cerca que queda cada casilla **andando** hasta el objetivo, no en línea recta.
+    // Tras una pared, la más cercana en línea recta era quedarse donde estaba: el lobo que se
+    // metía en la tienda de Madam Eva se quedaba dentro, «No puede acercarse más», ronda tras
+    // ronda. A campo abierto sale lo mismo que antes.
+    const fromTarget = new Map(getReachableCells(
+        terrain, target.gridX, target.gridY, gridWidth * gridHeight * 10, gridWidth, gridHeight, {},
+    ).map(cell => [cellKey(cell.gridX, cell.gridY), cell.cost]));
     const closest = reachable
         .map(cell => ({
             cell,
+            walk: fromTarget.get(cellKey(cell.gridX, cell.gridY)) ?? Infinity,
             distance: chebyshevFeet(cell.gridX, cell.gridY, target.gridX, target.gridY),
         }))
-        .sort((a, b) => a.distance - b.distance || a.cell.cost - b.cell.cost || compareCells(a.cell, b.cell))[0];
+        .sort((a, b) => a.walk - b.walk || a.distance - b.distance || a.cell.cost - b.cell.cost || compareCells(a.cell, b.cell))[0];
 
     if (!closest || (closest.cell.gridX === actor.gridX && closest.cell.gridY === actor.gridY)) {
         return standStill(actor, 'No puede acercarse más.', target.id);

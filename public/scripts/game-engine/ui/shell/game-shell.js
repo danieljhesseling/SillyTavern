@@ -22,16 +22,22 @@ import {
     directScene, isSceneAvailable, describeScene, sceneForShortcut, labelFor, continueScene,
 } from './scene-director.js';
 import { cleanNovelCopy, markEngineTags } from './engine-tags.js';
+import { noteProse } from '../../campaign/narration-prose.js';
 import { playForScene, stopSceneAudio } from './scene-audio.js';
 import { SHORTCUTS, actionForKey } from './shortcuts.js';
 import { firstArt, isPlainFace, loadPixelManifest, openPack } from '../pixel-art.js';
 import { faceElement } from '../hero-face.js';
 import { buildTown, closeTownPlace, countTownPlaces, renderTownScene, renderTownSelector } from './town-scene.js';
 import { deadlineBadge } from '../story-book.js';
+import { shownName, shownText } from '../shown-names.js';
+// H10 de las vueltas: sin portada mientras se pasa del gremio a una campaña (y de vuelta).
+import { isChatSwitching, onChatSwitchEnd } from './chat-switch.js';
 // J15.5: el juego con el teclado solo (flechas, Tab en círculo, el foco que vuelve) y J20.6: las
 // animaciones que pide el aparato.
-import { captureFocus, closeTopOverlay, holdFocus, installKeyboard, restoreFocus, topDialog } from '../keyboard-nav.js';
+import { captureFocus, closeTopOverlay, focusList, holdFocus, installKeyboard, nameIconButtons, restoreFocus, topDialog } from '../keyboard-nav.js';
 import { applyMotion, watchMotion } from '../motion.js';
+// Tanda 10: la barra de acciones de D&D 2024, flotando sobre el tablero.
+import { renderCombatActionBar, releaseCombatActionBar } from '../combat-vtt/action-bar.js';
 
 /**
  * @typedef {import('./scene-director.js').SceneName} SceneName
@@ -85,6 +91,9 @@ import { applyMotion, watchMotion } from '../motion.js';
  * @property {() => void} onMainMenu Leave the campaign, without leaving the game.
  * @property {() => void} renderStage Redraw the panel that lives on the stage.
  * @property {(name: string) => void} onAttack
+ * @property {() => {bar: import('../combat-vtt/action-menus.js').BarView, menu: (id: string, filter?: string) => import('../combat-vtt/action-menus.js').MenuView|null}} [getActionBar]
+ *   Tanda 10: la barra de D&D 2024 y sus menús (`party/combat-bar.js`).
+ * @property {(pick: string) => ({keepOpen?: string}|void)} [onBarPick] Tanda 10: lo que pasa al pulsar algo de ella.
  * @property {() => void} onEndTurn
  * @property {() => void} onFlee
  * @property {() => void} [onParley] J8.5: salir de la pelea hablando (entregarse, sobornar, convencer o engañar).
@@ -95,9 +104,10 @@ import { applyMotion, watchMotion } from '../motion.js';
  * @property {(limit?: number) => import('./action-chips.js').ActionChip[]} [getChips] Lo que se puede hacer sin
  *   escribirlo; con `limit`, cuántas caben (`Infinity`, todas).
  * @property {(chip: import('./action-chips.js').ActionChip) => void} [onChip]
- * @property {(next: SceneName) => (SceneName|null|void)} [onContinue] D-J45: «Continuar» tras ganar
+ * @property {(next: SceneName, seen?: GameSituation) => (SceneName|null|void)} [onContinue] D-J45: «Continuar» tras ganar
  *   una pelea sigue el hilo; lo que haga falta antes (salir del tablero) lo hace el juego, que
- *   dice a qué escena se va (sin decirlo, a `next`).
+ *   dice a qué escena se va (sin decirlo, a `next`). `seen`: lo que la pantalla tenía en cuenta
+ *   al ofrecerlo (con los sitios del pueblo, que el juego no cuenta).
  * @property {(memberId: string) => void} [onCompanion] Abrir la ficha de un companero.
  * @property {() => void} [onNewCampaign] Empezar una partida desde el menu principal.
  * @property {() => void} [onOffline] J4: jugar sin conexión, una partida nueva en un gremio.
@@ -630,6 +640,8 @@ function toggleAbilities(footer, abilities) {
     }
 
     footer.appendChild(list);
+    // J15.5: el foco, a la primera; al cerrarla, vuelve a «Habilidades».
+    focusList(list);
 }
 
 /**
@@ -680,6 +692,7 @@ function toggleManeuvers(footer, maneuvers) {
     }
 
     footer.appendChild(list);
+    focusList(list);
 }
 
 /**
@@ -729,7 +742,7 @@ function renderActionChips(row, place = {}) {
             // botón de salir, sobre todo en el móvil.
             document.querySelectorAll('.vs-card').forEach(card => card.remove());
             // D-J45: el juego decide con lo de ahora (la escena de después puede haber acabado).
-            setScene(options?.onContinue?.(next) || next);
+            setScene(options?.onContinue?.(next, place.situation) || next);
         });
         row.appendChild(go);
     }
@@ -819,12 +832,13 @@ function renderFocus(slot, tools = null) {
     slot.classList.toggle('gs-focus-empty', !focus);
     if (focus) {
         slot.appendChild(el('i', 'fa-solid fa-compass'));
-        slot.appendChild(el('span', 'gs-focus-title', focus.title));
-        if (focus.hint) slot.appendChild(el('span', 'gs-focus-hint', focus.hint));
+        // J13.7: sin nombrar a quien aún no se ha presentado.
+        slot.appendChild(el('span', 'gs-focus-title', shownText(focus.title, { mask: true })));
+        if (focus.hint) slot.appendChild(el('span', 'gs-focus-hint', shownText(focus.hint, { mask: true })));
         // J9.5: si tiene plazo, cuánto queda, junto a lo que tenéis entre manos.
         const clock = focus.clock ? deadlineBadge(focus.clock) : null;
         if (clock) slot.appendChild(clock);
-        slot.title = `Acto ${focus.act}`;
+        slot.title = focus.act ? `Acto ${focus.act}` : '';
     }
     // Siempre a mano, aunque la fila de fichas este llena: el diario y la ayuda.
     const buttons = el('span', 'gs-guide');
@@ -868,6 +882,10 @@ function renderFocus(slot, tools = null) {
         const count = options?.getNoticeCount?.() ?? 0;
         tray.appendChild(el('span', 'gs-tray-count', count > 0 ? String(count) : ''));
         tray.title = 'Los últimos avisos, para no perderlos';
+        // J15.5: con solo la campana y un número, el lector de pantalla decía «4».
+        tray.setAttribute('aria-label', count > 0 ? `Avisos: ${count}` : 'Avisos');
+        // Y el número cambia al leerlos: el foco lo reconoce por esto al redibujar (keyboard-nav).
+        tray.dataset.guide = 'tray';
         tray.addEventListener('click', () => options?.onTray?.());
         buttons.appendChild(tray);
     }
@@ -875,6 +893,7 @@ function renderFocus(slot, tools = null) {
         const dice = makeButton('gs-guide-btn gs-dice');
         dice.appendChild(el('i', 'fa-solid fa-dice-d20'));
         dice.title = 'El historial de dados: ¿el dado me odia?';
+        dice.setAttribute('aria-label', 'Historial de dados');
         dice.addEventListener('click', () => options?.onDice?.());
         buttons.appendChild(dice);
     }
@@ -968,6 +987,19 @@ function renderClock(clock) {
  * @param {CombatBar} bar
  */
 function renderActionBar(footer, bar) {
+    // Tanda 10: en plena pelea, la barra de D&D 2024 que flota abajo, con sus menús de grimorio
+    // (`combat-vtt/action-bar.js`). La de abajo de este archivo queda para cuando no la hay.
+    if (bar.active && options?.getActionBar && options.onBarPick) {
+        const pick = options.onBarPick;
+        renderCombatActionBar(footer, options.getActionBar(), {
+            onPick: (id) => pick(id),
+            onEndTurn: () => options?.onEndTurn(),
+            onFlee: () => options?.onFlee(),
+            ...(options.onAutoTurn ? { onAutoTurn: () => options?.onAutoTurn?.() } : {}),
+        });
+        return;
+    }
+    releaseCombatActionBar(footer);
     footer.textContent = '';
 
     if (!bar.active) {
@@ -1013,7 +1045,7 @@ function renderActionBar(footer, bar) {
         buttons.appendChild(auto);
     }
 
-    const endTurn = makeButton('gs-btn');
+    const endTurn = makeButton('gs-btn gs-btn-end');
     endTurn.appendChild(el('i', 'fa-solid fa-forward'));
     endTurn.appendChild(el('span', '', ' Fin de turno'));
     endTurn.disabled = !bar.isPlayerTurn;
@@ -1102,6 +1134,7 @@ function toggleTargets(footer, bar) {
         list.appendChild(row);
     }
     footer.appendChild(list);
+    focusList(list);
 }
 
 
@@ -1129,7 +1162,7 @@ function renderDialogue(scene, view) {
         speaker.appendChild(portrait);
 
         const who = el('div', 'gs-speaker-who');
-        who.appendChild(el('div', 'gs-speaker-name', view.speaker.name));
+        who.appendChild(el('div', 'gs-speaker-name', shownName(view.speaker.name)));
         if (view.speaker.rankLabel) {
             who.appendChild(el('div', 'gs-speaker-rank', view.speaker.rankLabel));
         }
@@ -1161,6 +1194,11 @@ const NOVEL_LINES = 4;
 
 /** J0.4: lo que ya salió en la caja, para que al redibujar solo entre lo nuevo. */
 let novelShown = new Set();
+
+/** J20.6: si la caja ya tiene pedido bajar hasta lo último en el siguiente fotograma, y cuál. */
+let novelScrollPending = false;
+/** @type {HTMLElement|null} */
+let novelScrollTarget = null;
 
 /**
  * Los botones que cuelgan de la caja: el registro entero y esconderla para ver la escena.
@@ -1195,6 +1233,27 @@ function buildNovelControls() {
 }
 
 /**
+ * J13.1: una nota del motor (`postCombatNarration`) que se guardó sin su versión contada
+ * (`extra.display_text`), contada para la caja con `noteProse`. Nada si ya se lee como prosa.
+ *
+ * @param {Element} node El `.mes` del chat.
+ * @returns {Element|null}
+ */
+function engineNoteCopy(node) {
+    const message = /** @type {any} */ (globalThis).SillyTavern?.getContext?.()?.chat?.[Number(node.getAttribute('mesid'))];
+    if (!message || message.is_user || !message.is_system || message.extra?.display_text) return null;
+    const said = String(message.mes ?? '').trim();
+    const told = noteProse(said);
+    if (!told || told === said) return null;
+    const copy = document.createElement('div');
+    told.split('\n').forEach((line, i) => {
+        if (i > 0) copy.appendChild(document.createElement('br'));
+        copy.appendChild(document.createTextNode(line));
+    });
+    return copy;
+}
+
+/**
  * La novela visual (J18.3, J18.4): quien habla en grande, su nombre en la placa y lo último
  * que se ha dicho en la caja. Se lee del chat, que sigue siendo el registro: aquí no se
  * escribe nada que el chat no tenga.
@@ -1226,7 +1285,9 @@ function renderNovel(scene, view, place = '') {
     const said = (/** @type {Element} */ node) => {
         const body = node.querySelector('.mes_text');
         if (!body || !(body.textContent || '').trim()) return false;
-        const copy = /** @type {Element} */ (body.cloneNode(true));
+        // J13.1: sin conexión, una nota del motor guardada sin su versión contada (de una partida
+        // de antes) se cuenta aquí.
+        const copy = (offline && engineNoteCopy(node)) || /** @type {Element} */ (body.cloneNode(true));
         if (!cleanNovelCopy(copy)) return false;
         copies.set(node, copy);
         return true;
@@ -1251,12 +1312,17 @@ function renderNovel(scene, view, place = '') {
     const people = lines.filter(m => m.getAttribute('is_system') !== 'true');
     const last = people[people.length - 1] ?? null;
     const speakerName = (last?.getAttribute('ch_name') || '').trim();
+    // «La figura del narrador sobra» (Daniel, 2026-10-01): lo que cuenta quien narra sale sin
+    // placa y sin su nombre delante; solo el texto.
+    const narratorNow = String(options?.narratorName?.() || '').trim();
+    // «Narrador» a secas es el nombre de relleno de lo que cuenta el motor sin ficha delante.
+    const isNarrator = (/** @type {string} */ name) => Boolean(name && (name === narratorNow || name === 'Narrador'));
     for (const line of lines) {
         const system = line.getAttribute('is_system') === 'true';
         const who = (line.getAttribute('ch_name') || '').trim();
         const block = el('div', `gs-vn-line${system ? ' gs-vn-note' : ''}`);
-        // Cuando en la caja habla más de uno, cada frase dice de quién es.
-        if (!system && who && who !== speakerName) block.appendChild(el('span', 'gs-vn-who', who));
+        // Cuando en la caja habla más de uno, cada frase dice de quién es (menos el narrador).
+        if (!system && who && who !== speakerName && !isNarrator(who)) block.appendChild(el('span', 'gs-vn-who', shownName(who)));
         const body = copies.get(line);
         if (body) block.appendChild(body);
         // Lo nuevo aparece con la velocidad de las opciones (J0.4), una frase tras otra.
@@ -1268,11 +1334,16 @@ function renderNovel(scene, view, place = '') {
         text.appendChild(block);
     }
     novelShown = new Set(lines.map(keyOf));
-    text.scrollTop = text.scrollHeight;
-
-    const plate = /** @type {HTMLElement} */ (scene.querySelector('.gs-vn-nameplate'));
-    plate.textContent = speakerName;
-    plate.hidden = !speakerName;
+    // J20.6: hasta lo último, justo antes de pintar. Medir `scrollHeight` aquí obligaba a colocar
+    // la página entera a mitad de cada redibujo, y una acción redibuja varias veces.
+    novelScrollTarget = text;
+    if (!novelScrollPending) {
+        novelScrollPending = true;
+        requestAnimationFrame(() => {
+            novelScrollPending = false;
+            if (novelScrollTarget) novelScrollTarget.scrollTop = novelScrollTarget.scrollHeight;
+        });
+    }
 
     const portrait = /** @type {HTMLElement} */ (scene.querySelector('.gs-vn-portrait'));
     portrait.textContent = '';
@@ -1282,8 +1353,13 @@ function renderNovel(scene, view, place = '') {
     const plain = isPlainFace(avatar);
     // El narrador no se pinta: cuenta, no está en la escena. Tampoco lo que cuenta el juego
     // con la cara de sistema de SillyTavern, que es su logo (J0.3).
-    const narrator = Boolean(options?.narratorName?.() && speakerName && options.narratorName() === speakerName)
+    const narrator = Boolean(speakerName && isNarrator(speakerName))
         || /(^|\/)img\/five\.png$/i.test(avatar);
+
+    const plate = /** @type {HTMLElement} */ (scene.querySelector('.gs-vn-nameplate'));
+    // J13.7: «Posadero» hasta que se presente. Y el narrador, sin placa: solo su texto.
+    plate.textContent = narrator ? '' : shownName(speakerName);
+    plate.hidden = !speakerName || narrator;
     portrait.hidden = !speakerName || narrator;
     if (portrait.hidden) return;
     const silhouette = () => portrait.appendChild(el('i', 'fa-solid fa-user-secret gs-vn-silhouette'));
@@ -1475,13 +1551,13 @@ function setPaused(next) {
         });
     }
     if (options.onEditCampaign) {
-        item('Editar la campana', 'fa-map-location-dot', () => {
+        item('Editar la campaña', 'fa-map-location-dot', () => {
             setPaused(false);
             options?.onEditCampaign?.();
         });
     }
     if (options.onExport) {
-        item('Exportar campana', 'fa-file-export', () => {
+        item('Exportar la campaña', 'fa-file-export', () => {
             setPaused(false);
             options?.onExport?.();
         });
@@ -1856,6 +1932,9 @@ function renderExploration(panel, view) {
     panel.scrollTop = scroll;
 }
 
+// H10: acabado el cambio de chat, la pantalla se pone al día con el chat nuevo.
+onChatSwitchEnd(() => { if (isShellOpen()) refreshGameShell(); });
+
 /**
  * Redraw the shell's own chrome from the engine. The stage redraws itself: the panel on
  * it is the real one, so whatever the game renders there is already current.
@@ -1867,6 +1946,10 @@ export function refreshGameShell() {
     const kept = captureFocus(root);
 
     const engine = options.getSituation();
+    // H10: a medio cambiar de chat (del gremio a una campaña, o de vuelta) no hay partida un
+    // momento; la pantalla se queda como estaba en vez de enseñar la portada. Al acabar el
+    // cambio se redibuja (`onChatSwitchEnd`, abajo).
+    if (!engine?.hasChat && isChatSwitching() && root.dataset.scene && root.dataset.scene !== SCENE.TITLE) return;
     // J18.7 y J18.8: una partida sin conexión se juega sin caja de escribir y sin pestañas; lo
     // que se cuenta de nuevo lleva a la novela (`story`).
     offline = Boolean(engine?.hasChat && engine.offline);
@@ -1945,11 +2028,13 @@ export function refreshGameShell() {
 
     renderSwitcher(/** @type {HTMLElement} */ (root.querySelector('.gs-scenes')), situation, scene);
     const actions = /** @type {HTMLElement} */ (root.querySelector('.gs-actions'));
+    // Tanda 10: fuera de la pelea, el pie deja de flotar.
+    if (!(scene === SCENE.COMBAT && bar.active)) releaseCombatActionBar(actions);
     if (scene === SCENE.COMBAT && offline && !bar.active) {
-        // J18.8: en el tablero sin pelea, lo que se puede hacer, al pie. Salir y empezar la pelea
-        // tienen su botón en el propio tablero.
+        // J18.8: en el tablero sin pelea, lo que se puede hacer, al pie. Salir tiene su botón en
+        // el propio tablero; la pelea empieza sola (tanda 10, `party/fight-entry.js`).
         actions.textContent = '';
-        renderFooterChips(actions, chip => chip.id === 'leave' || chip.id === 'fight-board' || chip.id === 'avoid-board');
+        renderFooterChips(actions, chip => chip.id === 'leave');
         if (actions.childElementCount === 0) renderActionBar(actions, bar);
     } else if (scene === SCENE.COMBAT) {
         renderActionBar(actions, bar);
@@ -1968,8 +2053,10 @@ export function refreshGameShell() {
         // it would only be a row of disabled buttons.
         actions.textContent = '';
     }
-    // J15.5: redibujado todo, el foco al mismo botón (o a lo principal, si ese ya no está).
+    // J15.5: redibujado todo, el foco al mismo botón (o a lo principal, si ese ya no está); y
+    // los botones que son solo un icono, con su nombre para el lector de pantalla.
     restoreFocus(root, kept);
+    nameIconButtons(root);
 }
 
 /**
@@ -2126,6 +2213,7 @@ export function openGameShell(shellOptions) {
     head.appendChild(pause);
     const close = makeButton('gs-close');
     close.title = 'Salir del Modo Juego (Esc)';
+    close.setAttribute('aria-label', 'Salir del Modo Juego');
     close.appendChild(el('i', 'fa-solid fa-xmark'));
     close.addEventListener('click', () => closeGameShell());
     head.appendChild(close);
@@ -2197,6 +2285,13 @@ export function openGameShell(shellOptions) {
 
     keyHandler = handleKey;
     document.addEventListener('keydown', keyHandler);
+    // J15.5: el teclado del juego (flechas en las listas, Tab en círculo en las ventanas, el foco
+    // que vuelve) y las animaciones según el aparato y «reducir movimiento».
+    keyboardOff?.();
+    keyboardOff = installKeyboard(document);
+    applyMotion();
+    motionOff?.();
+    motionOff = watchMotion();
 
     refreshGameShell();
     // El arte en pixel: el índice se lee una vez y, al llegar, se redibuja con él.
@@ -2224,6 +2319,10 @@ export function closeGameShell() {
         document.removeEventListener('keydown', keyHandler);
         keyHandler = null;
     }
+    keyboardOff?.();
+    keyboardOff = null;
+    motionOff?.();
+    motionOff = null;
 
     root?.remove();
     root = null;

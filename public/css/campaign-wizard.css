@@ -700,8 +700,10 @@ i.hc-card-icon-img {
     transition: opacity 0.2s;
 }
 
+/* J15.5: apagado, pero que se lea (con 0.5, «FUE» y «Te quedan 3» no llegaban al contraste de la
+   WCAG; con 0.8 sí). */
 .hc-stats-waiting {
-    opacity: 0.5;
+    opacity: 0.8;
 }
 
 .hc-section-title {

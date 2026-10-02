@@ -140,7 +140,10 @@ export function planAllyTurn({ actor, leader = null, enemies, allies = [], stanc
     // A la carga es el comportamiento de siempre: la máquina de los enemigos, sin más.
     // Pero solo mientras aguanta; malherido se retira como todos.
     const wounded = healthFraction(actor) < FLEE_HP_FRACTION;
-    if (chosen === 'carga' && !wounded) {
+    // M4: «a mi lado» sin nadie a cuyo lado estar (es el tuyo, o el tuyo ha caído) no es
+    // esperar: va a por el más cercano. Antes el héroe solo, con «Que actúe solo», se quedaba
+    // quieto ronda tras ronda mientras el enemigo no se acercara.
+    if ((chosen === 'carga' || (chosen === 'cerca' && !leader)) && !wounded) {
         // A la carga, pero hacia quien prefiere: si hay alguno de esos, va a por el.
         const first = byPreference(living, prefer, here)[0];
         const preferred = prefer === DEFAULT_PREFERENCE || !first ? living : [first];
@@ -198,6 +201,22 @@ export function planAllyTurn({ actor, leader = null, enemies, allies = [], stanc
             || a.cost - b.cost || a.y - b.y || a.x - b.x)[0];
 
         const moves = safest && (safest.x !== here.x || safest.y !== here.y) && nearestEnemy(safest) > nearestEnemy(here);
+        // M4: malherido, sin a dónde ir, sin nadie encima y sin nadie a cuyo lado estar: cubrirse
+        // no acaba nunca. En el molino, la saga disparaba de lejos ronda tras ronda y el héroe
+        // solo se cubría hasta la ronda 30. Ahí va a por ellos: es su única salida.
+        // Lo mismo un mercenario con su héroe lejos: en la cripta, los dos se cubrían en su
+        // esquina mientras Strahd disparaba de lejos, y la pelea no acababa nunca.
+        const besideLeader = Boolean(leader) && feet(here.x, here.y, leader.gridX, leader.gridY) <= 5;
+        if (!moves && wounded && !hemmedIn && !besideLeader) {
+            const plan = planEnemyTurn({ actor: { ...actor, profile: 'aggressive' }, targets: living, allies, terrain, gridWidth, gridHeight });
+            return {
+                destination: plan.destination,
+                path: plan.path,
+                action: plan.action === 'attack' ? 'attack' : 'none',
+                targetId: plan.targetId,
+                rationale: 'Malherido y sin a dónde ir: se la juega.',
+            };
+        }
         if (!moves) {
             // No hay a dónde ir. Malherido, se cubre; si no, pega a quien tenga delante.
             const target = targetFrom(here);

@@ -346,6 +346,9 @@ describe('J5.6: comprobar una campaña antes de jugarla, dicho en llano', () => 
         expect(plainLine('PNJ con nombre: 0, y las del juego tienen 22.', pack)).toBe('Gente con nombre: 0, y las del juego tienen 22.');
         expect(plainLine('Tipos de objetivo en los combates: eliminate_all, eliminate, y las del juego tienen 4.', pack))
             .toBe('Tipos de objetivo en los combates: limpiar el tablero, derrotar a alguien, y las del juego tienen 4.');
+        // Sin ningún hito no hay historia que no arranque: son sitios sueltos.
+        expect(plainLine('El hilo no tiene mecha: ningún hito se abre al empezar', { locations: [{ name: 'El molino viejo' }] }))
+            .toBe('No trae historia: se juega como sitios sueltos, sin hilo que seguir ni final');
     });
 
     test('el informe de la corta no llama «cosa rara» a lo que puso el juego ni enseña ids', () => {
@@ -356,5 +359,83 @@ describe('J5.6: comprobar una campaña antes de jugarla, dicho en llano', () => 
         expect(all).not.toMatch(/Ninguna misi[oó]n lleva/);
         expect(all).not.toMatch(/eliminate_all|PNJ/);
         expect(report.check?.groups.find(g => g.key === 'relleno')?.items.length).toBeGreaterThan(3);
+    });
+});
+
+describe('J5.2: las trampas de un tablero (traps)', () => {
+    const questFor = (/** @type {string} */ boardId) => [{ id: 'q', name: 'La capilla', boardId, objectives: [{ type: 'eliminate_all', label: 'Limpiar la capilla' }] }];
+
+    test('la que trae casilla se queda; la que no, va en el camino; el estado en castellano pasa a su clave', () => {
+        const board = buildRoomsExampleBoard();
+        board.traps = [
+            { name: 'Losa suelta', x: 3, y: 2, tell: 'Una losa baila.', damage: '1d6', condition: 'derribada' },
+            { name: 'Dardos', tell: 'Agujeros en la pared.', damage: '1d4', once: true },
+        ];
+        const { pack, filled } = fillPackGaps(packWith({ boards: [board], quests: questFor(board.id) }), { compendium: compendium() });
+        const [losa, dardos] = pack.boards[0].traps;
+        expect(losa).toMatchObject({ x: 3, y: 2, condition: 'prone' });
+        const out = pack.boards[0];
+        expect(out.map[dardos.y][dardos.x]).toBe('.');
+        const busy = [...out.partyStart, ...out.enemies, ...(out.chests ?? []), losa].map((/** @type {any} */ c) => `${c.x},${c.y}`);
+        expect(busy).not.toContain(`${dardos.x},${dardos.y}`);
+        expect(filled.filter(f => f.kind === 'trampa').map(f => f.detail)).toEqual(['Dardos']);
+        expect(validatePack(pack).ok).toBe(true);
+        expect(fillPackGaps(pack, { compendium: compendium() }).filled).toEqual([]);
+    });
+
+    test('en un tablero sin mapa, sus trampas se ponen en el que dibuja la semilla', () => {
+        const board = { id: 'pasillo', name: 'El pasillo', locationName: 'La cripta', traps: [{ name: 'Cepo', x: 40, y: 40, tell: 'Hojas amontonadas.', condition: 'apresado' }] };
+        const { pack } = fillPackGaps(packWith({ boards: [board], quests: questFor('pasillo') }), { compendium: compendium() });
+        const out = pack.boards.find((/** @type {any} */ b) => b.id === 'pasillo');
+        const [cepo] = out.traps;
+        expect(out.seeded).toBe(true);
+        expect(cepo.condition).toBe('restrained');
+        expect(out.map[cepo.y][cepo.x]).toBe('.');
+        expect(validatePack(pack).ok).toBe(true);
+    });
+
+    test('el validador: sobre un muro o donde empieza el grupo no; sin aviso, sin dados o con un estado inventado, se avisa', () => {
+        const board = buildRoomsExampleBoard();
+        board.traps = [
+            { name: 'En el muro', x: 0, y: 0, tell: 'Nada.', damage: '1d4' },
+            { name: 'En la salida', x: 1, y: 5, tell: 'Nada.', damage: '1d4' },
+            { name: 'Muda', x: 3, y: 3, damage: 'mucho', condition: 'triste' },
+        ];
+        const report = validatePack(fillPackGaps(packWith({ boards: [board], quests: questFor(board.id) }), { compendium: compendium() }).pack);
+        expect(report.ok).toBe(false);
+        expect(report.errors.map(e => e.message).join('\n')).toMatch(/«En el muro».*muro[\s\S]*«En la salida» está donde empieza el grupo/);
+        const warned = report.warnings.filter(w => /traps\[2\]/.test(w.path)).map(w => w.message).join('\n');
+        expect(warned).toMatch(/no tiene aviso/);
+        expect(warned).toMatch(/«mucho» no son dados/);
+        expect(warned).toMatch(/«triste» no es un estado/);
+    });
+
+    test('el contrato las trae, y la muestra por salas lleva una', () => {
+        const trap = getSectionSchema('boards').items.properties.traps;
+        expect(trap.items.required).toEqual(['name', 'tell']);
+        expect(Object.keys(trap.items.properties)).toEqual(expect.arrayContaining(['x', 'y', 'tell', 'damage', 'condition', 'spotDC', 'disarmDC', 'once']));
+        expect(buildRoomsExampleBoard().traps).toHaveLength(1);
+        const imported = buildImportPlan(fillPackGaps(packWith({ boards: [buildRoomsExampleBoard()], quests: questFor('cripta_capilla') }), { compendium: compendium() }).pack);
+        expect(JSON.stringify(imported)).toMatch(/Losa suelta/);
+    });
+});
+
+describe('J5.3: un tablero de la semilla siempre se puede jugar', () => {
+    test('un cofre de la semilla tapando la única puerta de una sala no deja a nadie encerrado', () => {
+        // «La cripta de prueba 24» ponía un cofre justo detrás de la puerta de la sala del fondo:
+        // el esqueleto de dentro no se alcanzaba, y la campaña no se podía añadir.
+        const book = compendium();
+        for (let i = 0; i < 30; i++) {
+            const raw = {
+                version: 1,
+                world: { name: `La cripta de prueba ${i}`, synopsis: 'x' },
+                locations: [{ name: 'La cripta', type: 'dungeon' }],
+                boards: [{ id: 'pasillo', name: `El pasillo ${i}`, locationName: 'La cripta' }],
+                quests: [{ id: 'q', name: 'La capilla', boardId: 'pasillo', objectives: [{ type: 'eliminate_all', label: 'L' }] }],
+            };
+            const { pack, filled } = fillPackGaps(raw, { compendium: book });
+            expect(validatePack(pack).errors).toEqual([]);
+            expect(filled.some(f => f.kind === 'puerta')).toBe(false);
+        }
     });
 });

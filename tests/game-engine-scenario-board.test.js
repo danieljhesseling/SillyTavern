@@ -3,6 +3,7 @@ import {
     buildBoardState,
     judgeScenario,
     hasScenario,
+    leftToDo,
 } from '../public/scripts/game-engine/combat/scenario-board.js';
 
 /** A live encounter, shaped the way party.js holds it. */
@@ -163,5 +164,32 @@ describe('what the panel draws', () => {
         for (const value of [null, undefined, 'matar', [{ type: 'inventado' }]]) {
             expect(judgeScenario(value, board).status).toBe('none');
         }
+    });
+});
+
+describe('M4: leftToDo, lo que falta sin nadie en pie', () => {
+    const board = (over = {}) => ({ round: 3, enemies: [{ id: 'e1', currentHp: 0, gridX: 1, gridY: 1 }], allies: [{ id: 'h', currentHp: 10, gridX: 2, gridY: 2 }], collectedTreasures: [], ...over });
+
+    test('con el tesoro en un cofre, lo dice: id a su lado y pulsadlo', () => {
+        const line = leftToDo([{ type: 'loot', label: 'Recuperar los huesos', treasureIds: ['Huesos'] }], board());
+        expect(line).toMatch(/^Ya no queda nadie en pie/);
+        expect(line).toMatch(/Recuperar los huesos: está en un cofre/);
+    });
+
+    test('aguantar rondas y llegar a una casilla, con la ronda y la casilla', () => {
+        const line = leftToDo([
+            { type: 'survive_rounds', label: 'Sobrevivir', rounds: 6 },
+            { type: 'reach_cell', label: 'Llegar a la puerta', cell: { x: 8, y: 1 } },
+        ], board());
+        expect(line).toMatch(/ronda 6 \(vais por la 3\)/);
+        expect(line).toMatch(/casilla \(9, 2\)/);
+    });
+
+    test('nada que decir si queda alguien en pie, si ya está hecho o si no hay misión', () => {
+        expect(leftToDo([{ type: 'loot', label: 'X', treasureIds: ['T'] }], board({ enemies: [{ id: 'e1', currentHp: 3, gridX: 0, gridY: 0 }] }))).toBe('');
+        expect(leftToDo([{ type: 'loot', label: 'X', treasureIds: ['T'] }], board({ collectedTreasures: ['T'] }))).toBe('');
+        expect(leftToDo([], board())).toBe('');
+        // Lo opcional no se pide.
+        expect(leftToDo([{ type: 'loot', label: 'X', treasureIds: ['T'], optional: true }, { type: 'eliminate_all', label: 'Todos' }], board())).toBe('');
     });
 });

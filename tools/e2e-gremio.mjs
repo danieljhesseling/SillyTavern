@@ -25,6 +25,7 @@ import { createRequire } from 'node:module';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { entrarEnLaPelea } from './e2e-entrar-pelea.mjs';
 
 
 /**
@@ -373,9 +374,10 @@ try {
     check('el texto concuerda con Tessa: «cansada del viaje», sin marcas ni «o/a» (J1.4)', genderOk(arrival, /cansada del viaje/, /cansado del viaje/),
         (arrival.match(/.{0,60}(\{[^{}\n]*\||cansad[oa] del viaje|o\/a).{0,40}/i) ?? [''])[0]);
     const hubChips = await chips();
-    // D-J28: el tablón y los mercenarios, escondidos hasta que acabe la prueba; saltarla, sí.
-    check('al llegar, la fila ofrece saltar la prueba, y todavía no el tablón ni contratar (D-J28)',
-        hubChips.some(c => /^Saltar la prueba$/.test(c)) && !hubChips.some(c => /Tablón de campañas|Contratar mercenarios/.test(c)), JSON.stringify(hubChips));
+    // D-J28: el tablón y los mercenarios, escondidos hasta que acabe la prueba. Tanda 10: y en el
+    // tablero del muelle, saltarla tampoco: en un tablero solo sale lo que es de ahí.
+    check('al llegar al muelle, la fila no ofrece el tablón ni contratar (D-J28), ni saltar la prueba: es de fuera del tablero (tanda 10)',
+        !hubChips.some(c => /^Saltar la prueba$|Tablón de campañas|Contratar mercenarios/.test(c)), JSON.stringify(hubChips));
     // Al crear, los avisos son cortos: el equipo y los números ya se vieron en la creación.
     const heroToasts = await page.evaluate(() => /** @type {string[]} */ (/** @type {any} */ (window).__heroToasts || []));
     check('al crear, «Tu personaje» es un aviso corto, sin repetir el equipo',
@@ -425,9 +427,10 @@ try {
 
     // 2b. J2.1: el prólogo. Se llega al muelle y un ratero le quita la bolsa a Tomás: la primera
     // pelea, pequeña y con un solo enemigo, enseña a andar y a atacar (J2.2).
-    const canPier = await until(async () => (await chips()).some(c => /^Iniciar combate \(Ratero del muelle\)/.test(c)), 15000);
-    check('en el muelle, la fila ofrece pelear con el ratero, y saltar la prueba para quien ya sabe jugar (J2.1, J2.3)',
-        canPier && (await chips()).some(c => /^Saltar la prueba$/.test(c)), JSON.stringify(await chips()));
+    // Tanda 10: ya no hay «Iniciar combate»: al ver el tablero, la pelea con el ratero empieza sola.
+    const pierRow = await chips();
+    check('en el muelle, la fila no ofrece «Iniciar combate» ni «Saltar la prueba»: la pelea empieza sola al ver el tablero (J2.1, tanda 10)',
+        !pierRow.some(c => /^Iniciar combate|^Saltar la prueba$/.test(c)), JSON.stringify(pierRow));
     const pierBox = await novelBox();
     check('la llegada se lee en la caja de la novela visual, con lo que toca ahora (J2.1)',
         /Al ladrón/.test(pierBox.text) && /ratero/i.test(pierBox.focus), JSON.stringify(pierBox));
@@ -441,8 +444,10 @@ try {
     await page.waitForTimeout(300);
     check('las teclas 1, 2 y 3 no cambian de escena sin conexión (J18.8)', beforeKeys === 'dialogue' && await sceneNow() === 'dialogue', beforeKeys);
     if (SHOT) await page.screenshot({ path: `${SHOT}.muelle.png` });
+    // «Continuar» al tablero: la decisión (Pelear, Hablar…), colocarse y «Empezar».
+    const canPier = await entrarEnLaPelea(page);
+    check('al ir al tablero del muelle, la pelea con el ratero empieza sola: decidir, colocarse y empezar (tanda 10)', canPier, JSON.stringify(await state()));
     if (canPier) {
-        await clickChip(/^Iniciar combate \(Ratero/);
         await until(async () => (await state()).fighting, 10000);
         await clearDice();
         // Las casillas del muelle: hierba y peñascos de exterior, y el agua del puerto.
@@ -460,14 +465,17 @@ try {
         if (SHOT) await page.screenshot({ path: `${SHOT}.muelle-pelea.png` });
         // El panel del combate, en tu turno: en castellano y sin comandos. Y sin caja de escribir:
         // la pelea se juega con la barra de abajo (J18.7).
+        // Tanda 10: el panel del combate es ahora la iniciativa del HUD, arriba a la derecha.
         const inFight = await page.evaluate(() => ({
-            panel: (document.querySelector('.wm-combat-section')?.textContent || '').replace(/\s+/g, ' ').trim(),
+            panel: (document.querySelector('#game-shell .vtt-init')?.textContent || '').replace(/\s+/g, ' ').trim(),
+            enemies: document.querySelectorAll('#game-shell .vtt-init .wm-init-row.enemy').length,
             scene: document.querySelector('#game-shell')?.getAttribute('data-scene') || '',
             bar: [...document.querySelectorAll('#game-shell .gs-actions .gs-btn')].map(b => (b.textContent || '').trim()),
+            buttons: [...document.querySelectorAll('#game-shell .gs-actions button')].map(b => (b.textContent || '').replace(/\s+/g, ' ').trim()),
         }));
         const fightChrome = await offlineChrome();
-        check('en la pelea, el panel dice «En combate», «Enemigos» y «Te toca», sin inglés; se juega con la barra, sin caja de escribir (J18.7)',
-            /En combate/.test(inFight.panel) && /Enemigos/.test(inFight.panel) && /Te toca/.test(inFight.panel) && /Fin de turno/.test(inFight.panel)
+        check('en la pelea, la iniciativa dice la ronda, de quién es el turno y quién pelea, sin inglés; se juega con la barra (con «Fin de turno»), sin caja de escribir (J18.7)',
+            /Ronda \d/.test(inFight.panel) && /Turno de/.test(inFight.panel) && inFight.enemies >= 1 && inFight.buttons.some(b => /Fin de turno/.test(b))
             && !/Combat Active|Your turn|Enemies|Action used|End Turn|Movement left/.test(inFight.panel)
             && inFight.scene === 'combat' && inFight.bar.some(b => /Atacar/.test(b)) && offlineOk(fightChrome), JSON.stringify({ inFight, fightChrome }));
         await page.evaluate(async () => {
@@ -501,6 +509,13 @@ try {
         await page.waitForSelector('.tk-root', { state: 'detached', timeout: 5000 }).catch(() => {});
         await page.waitForTimeout(500);
     };
+    // Tanda 10: en el tablero no se habla con la gente del pueblo: «Continuar» lleva fuera (D-J45).
+    await until(async () => {
+        if ((await state()).board === '') return true;
+        await page.evaluate(() => /** @type {HTMLElement|null} */ (document.querySelector('#game-shell .gs-chip-continue'))?.click());
+        return false;
+    }, 10000);
+    if ((await state()).board !== '') await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/leave'));
     const withTomas = await talkWith('Tomás');
     const talkTips = await tipsUntil(/^Pulsa un tema/, 10000);
     await page.locator('.popup:visible .tk-root .tk-topic[data-topic="rumor"]').first().click({ timeout: 5000 }).catch(() => {});
@@ -541,16 +556,19 @@ try {
     await page.waitForTimeout(700);
     const toCellar = await until(async () => (await chips()).some(c => /^Entrar en La bodega del gremio$/.test(c)), 10000);
     check('fuera del muelle, la fila lleva a la bodega, que es lo que pide la historia (J2.1)', toCellar, JSON.stringify(await chips()));
+    check('y también saltar la prueba, para quien ya sabe jugar: fuera del tablero (J2.3, tanda 10)', (await chips()).some(c => /^Saltar la prueba$/.test(c)), JSON.stringify(await chips()));
     await clickChip(/^Entrar en La bodega del gremio$/);
     await until(async () => (await state()).board === 'La bodega del gremio', 10000);
 
-    // 3. La prueba: las ratas de la bodega. La pelea se empieza desde la fila de fichas: en
-    // la escena de diálogo el botón del tablero no se ve.
-    const canFight = await until(async () => (await chips()).some(c => /^Iniciar combate \(Rata de bodega x2\)/.test(c)), 15000);
-    check('en la bodega, la fila ofrece pelear con las dos ratas', canFight, JSON.stringify(await chips()));
-    check('y también saltar la prueba, para quien ya sabe jugar (J2.3)', (await chips()).some(c => /^Saltar la prueba$/.test(c)), JSON.stringify(await chips()));
+    // 3. La prueba: las ratas de la bodega. Tanda 10: la pelea empieza sola al ver el tablero
+    // (la decisión, colocarse y «Empezar»); ninguna ficha la empieza.
+    const ratsWaiting = await until(async () => page.evaluate(async () => (await import('/scripts/party/board-view.js')).lastWaiting.placements
+        .filter((/** @type {any} */ p) => p.name === 'Rata de bodega').length === 2), 15000);
+    const cellarRow = await chips();
+    check('en la bodega esperan las dos ratas, y la fila no ofrece «Iniciar combate» ni «Saltar la prueba»', ratsWaiting && !cellarRow.some(c => /^Iniciar combate|^Saltar la prueba$/.test(c)), JSON.stringify(cellarRow));
+    const canFight = await entrarEnLaPelea(page);
+    check('en la bodega, la pelea con las ratas empieza sola', canFight, JSON.stringify(await state()));
     if (canFight) {
-        await clickChip(/^Iniciar combate/);
         await until(async () => (await state()).fighting, 10000);
         // Los dados, en castellano: mientras rueda y cuando se pueden pasar.
         const diceText = () => page.evaluate(() => ({
@@ -578,17 +596,17 @@ try {
         check('en el tablero, las dos ratas salen con su dibujo, Tessa con su retrato de relleno y las casillas en pixel (arte en pixel)',
             ratsDrawn && tokenArt.some(s => /^heroes\/(raza-humano-)?guerrero-mujer\.png$/.test(s)) && tiles.floor === 'mazmorra' && tiles.walls > 0,
             JSON.stringify({ tokenArt, tiles }));
-        // Las mismas caras fuera del tablero: en la fila de la iniciativa y en las tarjetas de
-        // «Enemigos», el dibujo de la rata y el retrato de Tessa; ni iniciales ni calaveras.
+        // Las mismas caras fuera del tablero: en la fila de la iniciativa (tanda 10: las tarjetas de
+        // «Enemigos» ya no van; su cara está aquí y en la tarjeta de objetivo, abajo), el dibujo de
+        // la rata y el retrato de Tessa; ni iniciales ni calaveras.
         const faces = await page.evaluate(() => ({
             init: [...document.querySelectorAll('.wm-init-row img.wm-init-face')].map(i => (i.getAttribute('src') || '').split('/').slice(-2).join('/')),
             initials: document.querySelectorAll('.wm-init-row .wm-init-initial').length,
-            cards: [...document.querySelectorAll('.wm-combat-enemy-card img')].map(i => (i.getAttribute('src') || '').split('/').slice(-2).join('/')),
-            skulls: document.querySelectorAll('.wm-combat-enemy-card .fa-skull').length,
+            skulls: document.querySelectorAll('#game-shell .vtt-init .fa-skull').length,
         }));
-        check('la iniciativa y las tarjetas de enemigo llevan el dibujo de la rata y el retrato de Tessa, sin iniciales ni calaveras (arte en pixel)',
+        check('la iniciativa lleva el dibujo de las dos ratas y el retrato de Tessa, sin iniciales ni calaveras (arte en pixel)',
             faces.init.filter(s => s === 'bestias/rata-de-bodega.png').length === 2 && faces.init.some(s => /^heroes\//.test(s)) && faces.initials === 0
-            && faces.cards.filter(s => s === 'bestias/rata-de-bodega.png').length === 2 && faces.skulls === 0, JSON.stringify(faces));
+            && faces.skulls === 0, JSON.stringify(faces));
         // Y la tarjeta de una rata, al pulsarla en tu turno: su dibujo junto al nombre.
         const tessaTurn = await until(async () => {
             await clearDice();
@@ -957,10 +975,12 @@ try {
     // Strahd se juega: la bruja de la Taberna, y ganar abre la Mansión y el Sótano.
     const where = await partyOnFloor();
     check('en la Taberna, cada uno en su casilla de salida, ninguno en un muro', where.every(m => m.cell !== 'wall') && new Set(where.map(m => `${m.x},${m.y}`)).size === where.length, JSON.stringify(where));
-    const bruja = await until(async () => (await chips()).some(c => /^Iniciar combate \(Bruja Baroviana\)$/.test(c)), 15000);
-    check('en la Taberna espera la bruja; el zombi de la cocina, no, que está tras la puerta', bruja, JSON.stringify(await chips()));
+    /** Tanda 10: quien espera a la vista en el tablero abierto (lo que abre la pelea sola). */
+    const waitingNames = () => page.evaluate(async () => (await import('/scripts/party/board-view.js')).lastWaiting.placements.map((/** @type {any} */ p) => String(p.name)));
+    const bruja = await until(async () => (await waitingNames()).join(',') === 'Bruja Baroviana', 15000);
+    check('en la Taberna espera la bruja; el zombi de la cocina, no, que está tras la puerta', bruja, JSON.stringify(await waitingNames()));
     if (SHOT) await page.screenshot({ path: `${SHOT}.taberna.png` });
-    await clickChip(/^Iniciar combate/);
+    await entrarEnLaPelea(page);
     await winFight();
     const mansion = await until(() => chatHas(/asedian la mansión del burgomaestre/), 15000);
     check('ganar la Taberna abre el hilo: el asedio de la mansión', mansion);
@@ -969,9 +989,9 @@ try {
     const outside = await chips();
     check('fuera, la fila ofrece entrar en la Mansión y en el Sótano', outside.some(c => /Entrar en Mansión del Burgomaestre/.test(c)) && outside.some(c => /Entrar en Sótano de la Iglesia/.test(c)), JSON.stringify(outside));
     await clickChip(/Entrar en Mansión del Burgomaestre/);
-    const zombis = await until(async () => (await chips()).some(c => /^Iniciar combate \(Zombi de Strahd x3\)$/.test(c)), 15000);
+    const zombis = await until(async () => (await waitingNames()).filter(n => n === 'Zombi de Strahd').length === 3, 15000);
     const inside = await partyOnFloor();
-    check('en la Mansión, el grupo en el salón y los tres zombis fuera, esperando', zombis && inside.every(m => m.cell !== 'wall'), JSON.stringify({ chips: await chips(), inside }));
+    check('en la Mansión, el grupo en el salón y los tres zombis fuera, esperando', zombis && inside.every(m => m.cell !== 'wall'), JSON.stringify({ waiting: await waitingNames(), inside }));
     if (SHOT) await page.screenshot({ path: `${SHOT}.mansion.png` });
 
     // La palanca del Sótano abre la celda y despierta al engendro. Antes la reja se abría y
@@ -1017,8 +1037,11 @@ try {
     const pulled = await page.locator('.wm-terrain-lever').filter({ visible: true }).first().click({ timeout: 6000 }).then(() => 'ok')
         .catch((/** @type {any} */ e) => String(e?.message || e).split(/\r?\n/)
             .filter(l => /intercept|not stable|outside|visible/.test(l)).slice(0, 3).join(' | '));
-    const woke = await until(() => chatHas(/Se despierta lo que dormia en la sala: Engendro hambriento/), 10000);
-    check('en el Sótano, tirar de la palanca abre la celda y despierta al engendro', woke && (await state()).fighting, JSON.stringify({ lever, over, pulled }));
+    const woke = await until(() => chatHas(/Se despierta lo que dorm[ií]a en la sala: Engendro hambriento/), 10000);
+    // Tanda 10: es una emboscada: sin decisión, directo a colocarse, y «Empezar».
+    const ambushed = await page.evaluate(async () => (await import('/scripts/party/fight-entry.js')).fightEntryState());
+    await entrarEnLaPelea(page);
+    check('en el Sótano, tirar de la palanca abre la celda y despierta al engendro: emboscada, a colocarse y a pelear', woke && ambushed.placing && ambushed.ambush && (await state()).fighting, JSON.stringify({ lever, over, pulled, ambushed }));
     await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/combat-stop'));
     await page.waitForTimeout(800);
     await clearDice();

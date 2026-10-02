@@ -1,7 +1,7 @@
 {
     "version": 1,
     "domain": "ecos",
-    "about": "El mundo se acuerda (J11.3 de ROADMAP_SIN_CONEXION): lo que hicisteis en un pueblo cambia cómo os tratan allí. Cada fila es una reacción. WHEN.hecho es lo que se hizo (robo, robo-oculto, multa, huida, calabozo, nigromancia, caso-resuelto, caso-fallido); WHEN.sitio, quién reacciona (tienda, posada, herreria, templo, gremio, plaza, o * para cualquiera del pueblo); WHEN.en, dónde se hizo (sin él, en cualquier sitio del pueblo). VECES: cuántas veces tiene que haber pasado (sin él, una). DURA: los días que se acuerdan desde la última vez. Lo que cambia: PRECIO (1.3 es un 30 % más caro; 0.9, un 10 % más barato) con su MOTIVO, que se lee en la tienda; NIEGA: quien atiende no os atiende, y dice esto; SALUDO: lo que os dice al entrar (se elige uno por día); RUMOR: lo que se cuenta en el pueblo; TRATO: cómo os mira quien atiende donde pasó (-1 o +1, una vez); CALABOZO: los días que la guardia os encierra cuando esta reacción se enciende (D-J47: a la segunda vez que os pillan robando en la tienda, mientras se acuerdan de la primera). Lo que se hace otra vez mientras se acuerdan lo refresca todo; lo de antes de un olvido ya no cuenta. Huecos: {quien} es quien atiende, {pueblo} el pueblo y {hola} el saludo de la hora con tu nombre. GÉNERO: lo que te dicen a ti va con sus dos formas, {listo|lista}.",
+    "about": "El mundo se acuerda (J11.3 de ROADMAP_SIN_CONEXION): lo que hicisteis en un pueblo cambia cómo os tratan allí. Cada fila es una reacción. WHEN.hecho es lo que se hizo (robo, robo-oculto, multa, huida, calabozo, nigromancia, caso-resuelto, caso-fallido; y de las peleas de taberna y los duelos: pelea, la que armasteis vosotros; pelea-ganada, la que os buscaron y ganasteis; duelo-ganado, duelo-perdido y reto-rechazado); WHEN.sitio, quién reacciona (tienda, posada, herreria, templo, gremio, plaza, o * para cualquiera del pueblo); WHEN.en, dónde se hizo (sin él, en cualquier sitio del pueblo). VECES: cuántas veces tiene que haber pasado (sin él, una). DURA: los días que se acuerdan desde la última vez. Lo que cambia: PRECIO (1.3 es un 30 % más caro; 0.9, un 10 % más barato) con su MOTIVO, que se lee en la tienda; NIEGA: quien atiende no os atiende, y dice esto; SALUDO: lo que os dice al entrar (se elige uno por día); RUMOR: lo que se cuenta en el pueblo; TRATO: cómo os mira quien atiende donde pasó (-1 o +1, una vez); CALABOZO: los días que la guardia os encierra cuando esta reacción se enciende (D-J47: a la segunda vez que os pillan robando en la tienda, mientras se acuerdan de la primera). Lo que se hace otra vez mientras se acuerdan lo refresca todo; lo de antes de un olvido ya no cuenta. Huecos: {quien} es quien atiende, {pueblo} el pueblo y {hola} el saludo de la hora con tu nombre. GÉNERO: lo que te dicen a ti va con sus dos formas, {listo|lista}.",
     "rows": [
         {
             "id": "robo-tienda-otra-vez",
@@ -165,6 +165,83 @@
             ],
             "rumor": [
                 "Dicen que acusaron a quien no era, y que en {pueblo} alguien lo pagó caro."
+            ]
+        },
+        {
+            "id": "pelea-posada-otra-vez",
+            "name": "Armasteis dos peleas en la taberna",
+            "kind": "eco",
+            "when": { "hecho": "pelea", "sitio": "posada", "en": "posada" },
+            "veces": 2,
+            "dura": 7,
+            "trato": -1,
+            "saludo": [
+                "{quien} deja el trapo sobre la barra y no te quita el ojo de encima: «{hola}. Siéntate, bebe y paga. Pero si se rompe una silla más, te echo yo mismo.»"
+            ]
+        },
+        {
+            "id": "pelea-posada",
+            "name": "Armasteis una pelea en la taberna",
+            "kind": "eco",
+            "when": { "hecho": "pelea", "sitio": "posada", "en": "posada" },
+            "dura": 7,
+            "trato": -1,
+            "saludo": [
+                "{quien} señala con la barbilla la silla que todavía cojea: «{hola}. Mira lo que dejaste. Aquí se viene a beber, no a romperme los muebles.»",
+                "{quien} te sirve sin sonreír: «{hola}. La próxima vez que tengas ganas de pegarte con alguien, hazlo en la calle.»"
+            ],
+            "rumor": [
+                "En la taberna de {pueblo} todavía se habla de la pelea que armó gente de fuera."
+            ]
+        },
+        {
+            "id": "pelea-ganada-posada",
+            "name": "Pusisteis en su sitio a unos camorristas",
+            "kind": "eco",
+            "when": { "hecho": "pelea-ganada", "sitio": "posada", "en": "posada" },
+            "dura": 10,
+            "trato": 1,
+            "saludo": [
+                "{quien} te pone la jarra delante antes de que la pidas: «{hola}. Desde que echaste a aquellos, aquí se bebe tranquilo. Esta va por la casa… bueno, la mitad.»"
+            ],
+            "rumor": [
+                "Dicen que en la taberna de {pueblo} unos forasteros pusieron en su sitio a los que siempre buscan pelea."
+            ]
+        },
+        {
+            "id": "duelo-ganado",
+            "name": "Ganasteis un duelo en el pueblo",
+            "kind": "eco",
+            "when": { "hecho": "duelo-ganado", "sitio": "*" },
+            "dura": 14,
+            "saludo": [
+                "{quien} te mira de arriba abajo: «{hola}. Así que eres tú quien ganó el duelo. Pues no pareces gran cosa.»"
+            ],
+            "rumor": [
+                "En {pueblo} se cuenta que alguien de fuera ganó un duelo a puñetazos delante de todos."
+            ]
+        },
+        {
+            "id": "duelo-perdido",
+            "name": "Perdisteis un duelo en el pueblo",
+            "kind": "eco",
+            "when": { "hecho": "duelo-perdido", "sitio": "*" },
+            "dura": 7,
+            "rumor": [
+                "En {pueblo} se ríen todavía del duelo que perdió alguien de fuera."
+            ]
+        },
+        {
+            "id": "reto-rechazado",
+            "name": "No aceptasteis un reto",
+            "kind": "eco",
+            "when": { "hecho": "reto-rechazado", "sitio": "*" },
+            "dura": 10,
+            "saludo": [
+                "{quien} sonríe de medio lado al verte: «{hola}. Me han dicho que te retaron y que te diste la vuelta. Bien hecho, supongo. Así sigues con todos los dientes.»"
+            ],
+            "rumor": [
+                "Se dice en {pueblo} que alguien de fuera no aceptó un reto, y que se fue con la cabeza gacha."
             ]
         }
     ]

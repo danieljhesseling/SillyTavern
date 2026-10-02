@@ -775,10 +775,31 @@ export function checkAvoid(raw, { path = 'avoid', rumors = undefined, milestones
 /** Los números que se dicen con letra, para «Alguacil Torres y dos más». */
 const NUMBER_WORDS = ['cero', 'uno', 'dos', 'tres', 'cuatro', 'cinco', 'seis', 'siete', 'ocho', 'nueve', 'diez'];
 
+/** Las que acaban en -a y son de él: «el guardia», «el pirata». */
+const MASCULINE_A = new Set(['guardia', 'pirata', 'centinela', 'espia', 'contrabandista', 'sectario', 'jefe', 'cabecilla', 'vigia']);
+
+/**
+ * Tanda 10: un nombre que es lo que alguien es («Ratero del muelle», «Bruja del pantano»), con
+ * su artículo al empezar la frase: «El ratero del muelle», «La bruja del pantano». Un nombre
+ * propio («Torres», «Baba Lysaga», «Alguacil Torres») se queda como está.
+ *
+ * @param {string} name
+ * @returns {string}
+ */
+export function withArticle(name) {
+    const said = text(name);
+    const words = said.split(/\s+/);
+    // Solo la primera en mayúscula, y más de una palabra: es una descripción, no un nombre.
+    if (words.length < 2 || words.slice(1).some(w => /^\p{Lu}/u.test(w))) return said;
+    const first = fold(words[0]);
+    const feminine = first.endsWith('a') && !MASCULINE_A.has(first);
+    return `${feminine ? 'La' : 'El'} ${said.charAt(0).toLocaleLowerCase('es')}${said.slice(1)}`;
+}
+
 /**
  * La primera línea de la elección, antes de pelear: quién espera y cómo, en llano.
  *
- * - Gente: «Alguacil Torres y dos más os cierran el paso.»
+ * - Gente: «Alguacil Torres y dos más os cierran el paso.» «El ratero del muelle os cierra el paso.»
  * - Bestias: «Os han olido: Lobo famélico ×3.»
  * - Muertos o cosas: «Algo se mueve delante: Zombi de Strahd ×3.»
  *
@@ -790,7 +811,7 @@ export function avoidIntro(foes) {
     if (list.length === 0) return '';
     const minds = new Set(list.map(mindOf));
     if (minds.has('gente')) {
-        const leader = leaderOf(list);
+        const leader = withArticle(leaderOf(list));
         const others = list.length - 1;
         if (others === 0) return `${leader} os cierra el paso.`;
         return `${leader} y ${NUMBER_WORDS[others] ?? others} más os cierran el paso.`;

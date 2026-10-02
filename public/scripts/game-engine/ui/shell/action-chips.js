@@ -47,7 +47,8 @@ const MAX_CHIPS = 7;
  * @param {number} [input.rumors] Los rumores que quedan por oir aqui.
  * @param {boolean} [input.explore] Si se puede explorar los alrededores.
  * @param {boolean} [input.forage] Si se puede cazar y forrajear aqui (idea 68).
- * @param {Array<{name: string}>} [input.people] La gente del sitio con quien se puede hablar (idea 151).
+ * @param {Array<{name: string, label?: string}>} [input.people] La gente del sitio con quien se puede hablar (idea 151).
+ *   `label`: J13.7, cómo se le llama si aún no se ha presentado («el posadero»).
  * @param {Array<{id: string, label: string, icon: string, command: string}>} [input.prisoners] Lo que se
  *   puede hacer con los prisioneros (idea 7), ya decidido.
  * @param {number} [input.limit] Cuántas caben en la fila; las demás van en «+N más» (idea 169).
@@ -66,9 +67,6 @@ const MAX_CHIPS = 7;
  * @param {string[]} [input.thread] Los tableros de aquí que pide la historia ahora: sus fichas van delante.
  * @param {string} [input.board] El tablero abierto, si se sabe cuál. Con él, el que pide la historia
  *   se ofrece también desde otro tablero de aquí (J2.1: del muelle a la bodega, sin salir antes).
- * @param {string} [input.fight] Los que esperan en el tablero para pelear, dicho corto («Rata de bodega x3»). La
- *   ficha de empezar va delante: en la escena de diálogo el botón del tablero no se ve.
- * @param {boolean} [input.avoid] J12.2: con `fight`, la ficha «Evitar la pelea» va a su lado.
  * @param {Array<{id: string, label: string, icon: string, command: string}>} [input.hub] El gremio (J4): el tablón de
  *   campañas y los mercenarios, o volver a él desde una campaña. Van delante: es a lo que se viene.
  * @param {Array<{id: string, label: string, icon: string, command: string}>} [input.social] Tu gente (J14): la charla
@@ -85,8 +83,8 @@ const MAX_CHIPS = 7;
 export function buildActionChips({
     fighting = false, hasBoard = false, doors = [], companions = [], mentioned = [],
     places = [], boards = [], hurt = false, hitDice = 0, rumors = 0, explore = false, proposals = [], requests = [], forage = false,
-    people = [], prisoners = [], limit = MAX_CHIPS, typed = [], replies = [], extras = [], camp = false, stairs = false, hub = [], fight = '', thread = [],
-    board = '', social = [], magic = [], heal = '', avoid = false, traps = [],
+    people = [], prisoners = [], limit = MAX_CHIPS, typed = [], replies = [], extras = [], camp = false, stairs = false, hub = [], thread = [],
+    board = '', social = [], magic = [], heal = '', traps = [],
 } = {}) {
     if (fighting) return [];
 
@@ -110,10 +108,8 @@ export function buildActionChips({
         });
     }
 
-    // Los que esperan en el tablero: empezar la pelea.
-    if (fight) chips.push({ id: 'fight-board', label: `Iniciar combate (${fight})`, icon: 'fa-hand-fist', source: 'motor' });
-    // J12.2: y al lado, otra salida: hablar, pagar, huir o esconderse (su ventana lo ofrece).
-    if (fight && avoid) chips.push({ id: 'avoid-board', label: 'Evitar la pelea', icon: 'fa-comments', source: 'motor' });
+    // Tanda 10: ya no hay ficha de «Iniciar combate» ni de «Evitar la pelea». Con enemigos que
+    // os ven, la pelea empieza sola, con su decisión y colocarse (`party/fight-entry.js`).
 
     // J4: el gremio. Detrás de la conversación en marcha y delante de todo lo demás. Caben
     // cuatro: saltar la prueba (J2.3), el tablón, contratar y el salón de la fama (J3.9).
@@ -224,12 +220,13 @@ export function buildActionChips({
         .filter(p => p && String(p.name).trim() && !ours.has(String(p.name).toLowerCase()))
         .sort((a, b) => Number(named.has(String(b.name).toLowerCase())) - Number(named.has(String(a.name).toLowerCase())));
     for (const person of locals.slice(0, 2)) {
+        const called = String(person.label || person.name);
         chips.push({
             id: `talk-local:${person.name}`,
-            label: `Hablar con ${person.name}`,
+            label: `Hablar con ${called}`,
             icon: 'fa-comments',
             source: named.has(String(person.name).toLowerCase()) ? 'sabor' : 'motor',
-            draft: `Le digo a ${person.name}: `,
+            draft: `Le digo ${/^el\s/i.test(called) ? `al ${called.slice(3)}` : `a ${called}`}: `,
         });
     }
 

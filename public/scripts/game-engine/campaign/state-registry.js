@@ -16,6 +16,11 @@
  * `tools/check-state-keys.mjs` falla si el código usa una clave que no está aquí. Es lo que
  * impide que la lista vuelva a quedarse corta.
  *
+ * J4.2 (la partida es el gremio): algunas claves dicen además **de dónde son** (`scope`). Las
+ * de `partida` (el gremio, su almacén, quien espera en casa y la mascota) son una sola para el
+ * gremio y todas sus campañas: viven en el almacén del mundo del gremio (`game-state.js`) y el
+ * chat de cada campaña lleva una copia de trabajo. Las demás son de cada chat, como siempre.
+ *
  * Lo que vive en el **mundo** (sitios, facciones, dónde está cada persona) no está en los
  * metadatos del chat sino en el lorebook; `WORLD_PARTS` dice qué parte cambia jugando.
  *
@@ -27,11 +32,19 @@
 /** @typedef {'juego'|'ajuste'|'registro'|'puntos'|'sistema'} StateKind */
 
 /**
+ * J4.2: de dónde es una clave. `partida`: una para el gremio y todas sus campañas. Sin
+ * `scope`, de cada chat.
+ *
+ * @typedef {'partida'} StateScope
+ */
+
+/**
  * @typedef {Object} StateEntry
  * @property {string} key La clave en los metadatos del chat.
  * @property {StateKind} kind
  * @property {string} owner Quién la escribe.
  * @property {string} what Qué es, para quien juega.
+ * @property {StateScope} [scope] J4.2: si es de la partida entera y no de cada chat.
  */
 
 /** @type {StateEntry[]} */
@@ -46,18 +59,22 @@ export const STATE_KEYS = [
     { key: 'social', kind: 'juego', owner: 'campaign/social.js', what: 'Tu gente (J14): las charlas oídas, las quedadas jugadas, lo que ha abierto cada vínculo y en qué se fue cada parte del día' },
     { key: 'campaignMap', kind: 'juego', owner: 'party/campaign-state.js', what: 'El mapa de la campaña y lo explorado' },
     { key: 'mounts', kind: 'juego', owner: 'party.js', what: 'Las monturas del grupo' },
-    { key: 'bench', kind: 'juego', owner: 'party.js', what: 'Quién se quedó en el gremio (banquillo)' },
+    { key: 'bench', kind: 'juego', owner: 'party.js', what: 'Quién se quedó en el gremio (banquillo)', scope: 'partida' },
     // J7.4: se lee con `readFormation` (campaign/formation.js); la guarda `party/companions.js`.
     { key: 'party_formation', kind: 'juego', owner: 'party/companions.js', what: 'El orden de marcha y quién cura, habla, guía, vigila y caza' },
     // J14.7 y J14.8: lo guarda `party/travel.js` con `recordNight` (campaign/nights.js).
     { key: 'noches', kind: 'juego', owner: 'party/travel.js', what: 'Lo que ya pasó de noche: quién llegó, las rondas y las charlas de pareja ya oídas' },
     // J14.9: lo guarda `party/companions.js` (campaign/companion-quests.js).
     { key: 'misionesPersonales', kind: 'juego', owner: 'party/companions.js', what: 'Las misiones personales de tus compañeros: en qué paso van y cómo acabaron' },
+    // J14.11: lo guarda `party/pastimes.js` (campaign/pastimes.js).
+    { key: 'pastimes', kind: 'juego', owner: 'party/pastimes.js', what: 'Los trabajos y ratos libres: los días de forja que lleva cada herrero para mejoraros un arma' },
+    // J14.10: lo guarda `party/romance.js` (campaign/romance.js); viaja con el grupo, como lo social.
+    { key: 'romances', kind: 'juego', owner: 'party/romance.js', what: 'Los romances: con quién, en qué cita vais y si sois pareja' },
     { key: 'dispatches', kind: 'juego', owner: 'party.js', what: 'Quién está fuera haciendo un encargo sin el héroe' },
     { key: 'cases', kind: 'juego', owner: 'party.js', what: 'El caso abierto, sus pistas encontradas y los ya cerrados' },
     { key: 'duels', kind: 'juego', owner: 'party.js', what: 'Con quién se habló ya hoy (un duelo de palabras por persona y día)' },
     { key: 'visited', kind: 'juego', owner: 'party.js', what: 'Dónde habéis estado' },
-    { key: 'pet', kind: 'juego', owner: 'party.js', what: 'La mascota del héroe: quién es, su carácter y su vínculo (R5)' },
+    { key: 'pet', kind: 'juego', owner: 'party.js', what: 'La mascota del héroe: quién es, su carácter y su vínculo (R5)', scope: 'partida' },
     { key: 'nemeses', kind: 'juego', owner: 'party.js', what: 'Los que escaparon y pueden volver: la némesis (R7)' },
     { key: 'gone', kind: 'juego', owner: 'party.js', what: 'Los compañeros que se fueron, con su ficha, por si vuelven (R8)' },
     { key: 'petPetted', kind: 'juego', owner: 'party.js', what: 'El día en que se acarició a la mascota por última vez' },
@@ -69,8 +86,12 @@ export const STATE_KEYS = [
     // --- El dinero y el gremio
     { key: 'upkeepDueDay', kind: 'juego', owner: 'party.js', what: 'Cuándo vence la cuenta de la semana' },
     { key: 'debt', kind: 'juego', owner: 'party.js', what: 'La deuda con un patrón' },
-    { key: 'guild', kind: 'juego', owner: 'party.js', what: 'El gremio: reputación, edificios y plantilla' },
-    { key: 'guildStorage', kind: 'juego', owner: 'party.js', what: 'El almacén del gremio' },
+    { key: 'guild', kind: 'juego', owner: 'party.js', what: 'El gremio: reputación, edificios y plantilla', scope: 'partida' },
+    { key: 'guildStorage', kind: 'juego', owner: 'party.js', what: 'El almacén del gremio', scope: 'partida' },
+    // J4.2: la guarda `party/game-state.js`. Es de juego para que un punto de retorno la devuelva
+    // con lo demás: uno de antes del último viaje deja al chat por detrás del almacén, y el gremio
+    // se vuelve a traer de él (no se deshace lo que se hizo en otra campaña).
+    { key: 'hubStateRev', kind: 'juego', owner: 'party/game-state.js', what: 'Qué versión del gremio compartido tiene esta campaña' },
     { key: 'hubCampaignName', kind: 'juego', owner: 'campaigns.js', what: 'Cómo se llama en el tablón la campaña que se juega (D-J19)' },
     { key: 'contractBoard', kind: 'juego', owner: 'party.js', what: 'El tablón de encargos' },
     { key: 'contractTaken', kind: 'juego', owner: 'party.js', what: 'El encargo aceptado' },
@@ -78,6 +99,7 @@ export const STATE_KEYS = [
     { key: 'writtenDone', kind: 'juego', owner: 'party.js', what: 'Los encargos escritos ya cumplidos' },
     { key: 'haggle', kind: 'juego', owner: 'party.js', what: 'Los regateos de hoy' },
     { key: 'tavernDice', kind: 'juego', owner: 'party.js', what: 'Las partidas de dados en cada posada' },
+    { key: 'tavernBrawls', kind: 'juego', owner: 'party/brawl.js', what: 'Las peleas de taberna y los duelos: quién os buscó pelea, cuáles armasteis y quién os retó' },
     { key: 'itemOffers', kind: 'juego', owner: 'party.js', what: 'Lo que el narrador ofrece y aún no se ha cogido' },
     // --- El hilo
     { key: 'plot', kind: 'juego', owner: 'party.js', what: 'El hilo de la campaña' },
@@ -105,11 +127,16 @@ export const STATE_KEYS = [
     { key: 'gatesOpen', kind: 'juego', owner: 'party/world.js', what: 'Los caminos con puerta que ya se habían abierto, para avisar una vez del que se abre' },
     { key: 'wanted', kind: 'juego', owner: 'party.js', what: 'Dónde os buscan' },
     { key: 'attitudes', kind: 'juego', owner: 'party.js', what: 'Cómo os mira cada persona' },
+    // J13.7: lo guarda `party/known-people.js` (campaign/known-people.js).
+    { key: 'knownPeople', kind: 'juego', owner: 'party/known-people.js', what: 'A quién conoces por su nombre: quién se presentó, quién te lo dijo y qué día' },
     { key: 'npcSecrets', kind: 'juego', owner: 'party.js', what: 'Los secretos ya sonsacados' },
     { key: 'rumorsHeard', kind: 'juego', owner: 'party.js', what: 'Los rumores ya oídos' },
     { key: 'rumorsHeardOn', kind: 'juego', owner: 'party.js', what: 'Qué día se oyó cada rumor' },
     // J8.6: se lee y se escribe con `readDialogueMemory` y `rememberDialogue` (campaign/dialogues.js).
     { key: 'dialogues', kind: 'juego', owner: 'party.js', what: 'Las charlas con ramas: lo ya dicho y lo que os contaron' },
+    // J13.8: lo guarda `party/greetings.js` (campaign/human-lines.js).
+    { key: 'greetings', kind: 'juego', owner: 'party/greetings.js', what: 'Quién te ha visto ya en su sitio y cuántas veces has entrado: te saluda distinto la primera vez' },
+    { key: 'sceneChoices', kind: 'juego', owner: 'party/greetings.js', what: 'Lo que elegiste en las escenas de la historia, para que la gente se acuerde' },
     { key: 'newsPending', kind: 'juego', owner: 'party.js', what: 'Las noticias que esperan a que lleguéis' },
     { key: 'arrivalsHeard', kind: 'juego', owner: 'party.js', what: 'Lo que ya se contó al llegar a cada sitio' },
     { key: 'letters', kind: 'juego', owner: 'party.js', what: 'Las cartas que esperan en la posada' },
@@ -174,6 +201,15 @@ export function entryOf(key) {
 /** @returns {string[]} Las claves que vuelven con un punto de retorno. */
 export function checkpointKeys() {
     return STATE_KEYS.filter(entry => entry.kind === 'juego').map(entry => entry.key);
+}
+
+/**
+ * J4.2: las claves de la partida entera: una para el gremio y todas sus campañas.
+ *
+ * @returns {string[]}
+ */
+export function gameScopeKeys() {
+    return STATE_KEYS.filter(entry => entry.scope === 'partida').map(entry => entry.key);
 }
 
 /**

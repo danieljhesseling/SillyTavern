@@ -191,6 +191,19 @@ export function planLongRest({ party = [], hitDieByClass = {} }) {
 }
 
 /**
+ * M4: lo que le queda encima a quien se levanta al descansar. Caer a 0 PG deja *Unconscious*;
+ * al despertar con 1 PG no se quitaba, y tras perder una pelea y dormir en la posada el héroe
+ * perdía todos sus turnos de la revancha («dormido»), para siempre.
+ *
+ * @param {any} member Con sus `hp` ya después del descanso.
+ * @returns {string[]}
+ */
+export function conditionsAfterRest(member) {
+    const conditions = Array.isArray(member?.activeConditions) ? member.activeConditions.map(String) : [];
+    return (Number(member?.hp) || 0) > 0 ? conditions.filter(c => c !== 'Unconscious') : conditions;
+}
+
+/**
  * The rest, in the words the log and the chat use.
  *
  * @param {'corto'|'largo'} kind

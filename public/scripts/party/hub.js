@@ -23,7 +23,8 @@ import {
 import { HUB_CHRONICLES_KEY, readChronicles } from '../game-engine/campaign/story-book.js';
 import { HUB_HEROES_KEY, hubHeroCards, readRestingHeroes, seatHero, swapLine } from '../game-engine/campaign/hub-heroes.js';
 import { isIronRun, modeOf, modeLabel } from '../game-engine/rules/modes.js';
-import { readGraves, addToHall, readHall } from '../game-engine/campaign/legacy.js';
+import { readGraves, addToHall } from '../game-engine/campaign/legacy.js';
+import { hallShown } from './romance.js';
 import { retireTo, upgradeCost, describeGuild } from '../game-engine/campaign/guild.js';
 import { isShellOpen, refreshGameShell } from '../game-engine/ui/shell/game-shell.js';
 import { HALL_CHIPS } from '../game-engine/campaign/guild-hall.js';
@@ -217,7 +218,8 @@ export function hubChips() {
                 { id: 'hub-hire', label: 'Contratar mercenarios', icon: 'fa-coins', command: '/contratar' },
             ]),
             // J3.9: el salón de la fama, en cuanto hay alguien (o alguna campaña) en él.
-            ...(readHall(/** @type {any} */ (extension_settings).partyHall).length > 0
+            // J14.10: con el romance apagado, las parejas no cuentan.
+            ...(hallShown(/** @type {any} */ (extension_settings).partyHall).length > 0
                 ? [{ id: 'hub-hall', label: 'Salón de la fama', icon: 'fa-monument', command: '/salon' }] : []),
             // J3.1: las partes de la sala (encargos, tus personajes, el cofre, el patio, los
             // edificios) y J11.4, lo que recuerda el gremio. Detrás de las de siempre: la fila de
@@ -1133,7 +1135,7 @@ export async function sleepInGuild() {
         toastr.warning('No mientras peleáis.', 'Dormir');
         return '';
     }
-    const said = await takeRest('largo');
+    const said = await takeRest('largo', { under: 'techo' });
     if (!said) return '';
     // Guardar va después del descanso: la ranura se queda con la mañana y el grupo curado.
     const { onGuildSleep } = await import('../guardar-partida.js');

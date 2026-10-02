@@ -8,7 +8,8 @@
  *    cabecera) está en otro tablero o en otra localización, se sale del tablero y se ve el
  *    sitio, desde donde se va. En el gremio no: no es una campaña.
  * 3. **Si no, a donde estabas**: al tablero en el que se ha peleado (o al sitio, si ya no hay
- *    tablero), como hasta ahora (J18.8).
+ *    tablero), como hasta ahora (J18.8). Tanda 8: si al tablero ya no le queda nada (nadie más
+ *    con quien pelear, nada por explorar ni nada que coger, `board/leftovers.js`), al sitio.
  *
  * Puro: dice a dónde y con qué palabras. Salir del tablero y cambiar de escena lo hace quien
  * llama (`party/combat-flow.js`).
@@ -59,9 +60,10 @@ export function whereItAsks(asks) {
  * @param {{title?: string, place?: string, board?: string}|null} [input.next] Lo que toca en
  *   la campaña (el hito de la cabecera), con dónde está.
  * @param {{place?: string, board?: string}} [input.here] Dónde se ha ganado.
+ * @param {boolean} [input.boardDone] Tanda 8: si al tablero ya no le queda nada (`boardLeftovers`).
  * @returns {AfterFightStep}
  */
-export function afterFightStep({ story = false, inCampaign = false, next = null, here = {} } = {}) {
+export function afterFightStep({ story = false, inCampaign = false, next = null, here = {}, boardDone = false } = {}) {
     const place = text(here?.place);
     const board = text(here?.board);
     if (story) return { kind: 'story', title: 'Sigue la historia' };
@@ -80,6 +82,8 @@ export function afterFightStep({ story = false, inCampaign = false, next = null,
         return { kind: 'next', title: `Lo siguiente: ${title}${where ? `, en ${where}` : ''}`, next: title };
     }
 
-    if (board) return { kind: 'board', title: `Volver al tablero: ${board}` };
+    if (board && !boardDone) return { kind: 'board', title: `Volver al tablero: ${board}` };
+    // Tanda 8: a un tablero vacío no se vuelve: se sale al sitio.
+    if (board) return { kind: 'place', title: place ? `En ${board} ya no queda nada: seguir en ${place}` : `En ${board} ya no queda nada` };
     return { kind: 'place', title: place ? `Seguir en ${place}` : 'Seguir' };
 }

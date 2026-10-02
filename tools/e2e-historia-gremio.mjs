@@ -683,25 +683,38 @@ try {
     }
     check('J11.4: días después de volver, alguien viene al gremio por cómo acabó Strahd', Boolean(visitor), JSON.stringify({ visitor, expected: reached?.visitor }));
 
-    // === 12. J11.3: a la segunda vez que os pillan robando, en la tienda no os atienden ==========
+    // === 12. D-J47: a la segunda vez que os pillan robando, al calabozo; luego la tienda vende =======
+    // Desde el robo del paso 6 ha pasado más de una semana (Strahd y las noches en la taberna): si
+    // Marisa ya lo ha olvidado, la primera vez vuelve a ser la primera y hace falta otra.
+    /** @type {any[]} */
+    let jailFrames = [];
+    let stealAgain = null;
+    for (let tries = 0; tries < 2 && jailFrames.length === 0; tries++) {
+        await enterPlace('tienda');
+        stealAgain = (await placeScene()).acts.find(a => a.id.startsWith('shop-steal:') && a.enabled) ?? null;
+        await loadedDice('mal');
+        await page.locator(`#game-shell .gs-town-scene .gs-town-act[data-action="${stealAgain?.id ?? 'shop-steal:'}"]`).click({ timeout: 5000 }).catch(() => {});
+        if (await until(async () => (await story())?.id === 'calabozo', 6000)) {
+            await shoot('calabozo');
+            jailFrames = await playScene();
+        }
+        await clearDice();
+        await loadedDice('');
+        await dropToasts();
+        await carryOn('exploration');
+    }
+    check('D-J47: a la segunda vez que os pillan robando, la guardia os lleva al calabozo (una escena corta)',
+        Boolean(stealAgain) && jailFrames.length >= 5 && jailFrames.some(f => /¡Al ladrón!/.test(f.text)) && jailFrames.some(f => /calabozo/.test(f.text)),
+        JSON.stringify(jailFrames.map(f => `${f.plate}: ${f.text}`).slice(0, 6)));
     await enterPlace('tienda');
-    const stealAgain = (await placeScene()).acts.find(a => a.id.startsWith('shop-steal:') && a.enabled);
-    await loadedDice('mal');
-    await page.locator(`#game-shell .gs-town-scene .gs-town-act[data-action="${stealAgain?.id ?? 'shop-steal:'}"]`).click({ timeout: 5000 }).catch(() => {});
-    await page.waitForTimeout(1500);
-    await clearDice();
-    await loadedDice('');
-    await dropToasts();
-    await carryOn('exploration');
-    await enterPlace('tienda');
-    await page.waitForTimeout(500);
-    const refused = await placeScene();
-    const shopActs = refused.acts.filter(a => /^shop-/.test(a.id));
-    await shoot('tienda-no-atiende');
-    check('J11.3: a la segunda, Marisa no os atiende: os recibe de otra forma, enfadada, y en la tienda no se puede hacer nada, con su porqué',
-        Boolean(stealAgain) && shopActs.length > 0 && shopActs.every(a => !a.enabled && /Dos veces/.test(a.detail))
-        && refused.remembered && refused.line !== shop.line && refused.mood === 'enfadado',
-        JSON.stringify({ line: refused.line, mood: refused.mood, acts: shopActs.slice(0, 2) }));
+    await until(async () => (await placeScene()).remembered, 8000);
+    const again = await placeScene();
+    const buys = again.acts.filter(a => /^shop-buy:/.test(a.id));
+    await shoot('tienda-vende-mas-caro');
+    check('D-J47: al salir, Marisa os vuelve a vender (ya no cierra cuatro semanas), enfadada y más caro',
+        buys.some(a => a.enabled) && !again.acts.some(a => /Dos veces/.test(a.detail)) && again.remembered && again.line !== shop.line
+        && again.mood === 'enfadado' && buys.some(a => /\+30 %/.test(a.detail)),
+        JSON.stringify({ line: again.line, mood: again.mood, acts: buys.slice(0, 2) }));
 
     console.log('\n--- problemas ---');
     console.log(problems.length ? problems.join('\n') : '(ninguno)');

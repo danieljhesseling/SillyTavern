@@ -115,6 +115,18 @@ export const TERRAIN_TYPES = {
         movementCost: 2,
         coverBonus: 0,
     },
+    /**
+     * Tanda 10: agua honda (el mar del muelle, un río profundo). No se cruza andando: se ve a
+     * través, pero el camino la rodea como a un muro. La poco honda (`water`) sigue siendo
+     * terreno difícil.
+     */
+    deep_water: {
+        label: 'Deep water',
+        blocksMovement: true,
+        blocksSight: false,
+        movementCost: Infinity,
+        coverBonus: 0,
+    },
     /** Hielo: se anda por él, pero el trueno lo quiebra bajo los pies. El fuego lo funde. */
     ice: {
         label: 'Ice',
@@ -212,6 +224,7 @@ export const TERRAIN_SCHEMA_VERSION = 1;
  * @property {Record<string, number>} [elevation] Solo en el tablero abierto (`withOverlay`): las cotas (J12.10).
  * @property {Set<string>} [slowCells] Solo en el tablero abierto: casillas que cuestan el doble por una zona (J19.6).
  * @property {Set<string>} [blindCells] Solo en el tablero abierto: casillas que no dejan ver por una zona (J19.6).
+ * @property {Set<string>} [hotCells] Solo en el tablero abierto: el fuego a la vista, que el camino rodea si puede (tanda 8, `pathfinding.js`).
  */
 
 /**
@@ -222,10 +235,10 @@ export const TERRAIN_SCHEMA_VERSION = 1;
  * `setCell`) no, así que una telaraña no acaba escrita en el mapa.
  *
  * @param {BoardTerrain} terrain
- * @param {{elevation?: Record<string, number>|null, slowCells?: Iterable<string>|null, blindCells?: Iterable<string>|null}} overlay
+ * @param {{elevation?: Record<string, number>|null, slowCells?: Iterable<string>|null, blindCells?: Iterable<string>|null, hotCells?: Iterable<string>|null}} overlay
  * @returns {BoardTerrain} El mismo objeto.
  */
-export function withOverlay(terrain, { elevation = null, slowCells = null, blindCells = null } = {}) {
+export function withOverlay(terrain, { elevation = null, slowCells = null, blindCells = null, hotCells = null } = {}) {
     if (!terrain || typeof terrain !== 'object') return terrain;
     const hide = (/** @type {string} */ name, /** @type {any} */ value) => Object.defineProperty(terrain, name, {
         value, enumerable: false, configurable: true, writable: true,
@@ -235,6 +248,8 @@ export function withOverlay(terrain, { elevation = null, slowCells = null, blind
     if (slow.size > 0) hide('slowCells', slow);
     const blind = new Set(blindCells ?? []);
     if (blind.size > 0) hide('blindCells', blind);
+    const hot = new Set(hotCells ?? []);
+    if (hot.size > 0) hide('hotCells', hot);
     return terrain;
 }
 
@@ -467,6 +482,8 @@ export const ASCII_TERRAIN = {
     '>': { type: 'stairs' },
     // R3: el agua, el hielo y la maleza.
     'w': { type: 'water' },
+    // Tanda 10: el agua honda, que no se cruza andando.
+    'W': { type: 'deep_water' },
     'i': { type: 'ice' },
     'b': { type: 'brush' },
     // R6: los barriles y los cofres.
@@ -522,7 +539,8 @@ const CELL_WORDS = {
     cover_three_quarters: 'Tres cuartos de cobertura: +5 a la CA',
     chasm: 'Precipicio: no se pasa, y a quien empujan dentro, cae',
     stairs: 'Escalera: baja al nivel siguiente',
-    water: 'Agua: cada casilla cuesta el doble, y quien está dentro se moja (el frío lo hiela)',
+    water: 'Agua poco honda: cada casilla cuesta el doble, y quien está dentro se moja (el frío la hiela)',
+    deep_water: 'Agua honda: no se cruza andando',
     ice: 'Hielo: se anda, pero el trueno lo quiebra y el fuego lo funde',
     brush: 'Maleza: cada casilla cuesta el doble, y arde',
     barrel: 'Barril: cubre, y si le llega el fuego, revienta',

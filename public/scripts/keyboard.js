@@ -44,18 +44,46 @@ export const DISABLED_CONTROL_CLASS = 'disabled';
  * @type {MutationObserver}
  */
 const observer = new MutationObserver(mutations => {
+    // J20.6 (DnD Coin): cada nodo una vez, y solo los de más arriba: lo que cuelga de otro ya lo
+    // recorre `handleNodeChange` de ese. Un redibujado del juego añade cientos de nodos y cambia
+    // clases a montones; antes se miraba cada uno, con su árbol entero, tantas veces como cambiaba.
+    // Lo que ya no está en la página se salta: si vuelve, llega otra vez como añadido.
+    /** @type {Set<Element>} */
+    const changed = new Set();
     mutations.forEach(mutation => {
         if (mutation.type === 'childList') {
-            mutation.addedNodes.forEach(handleNodeChange);
+            mutation.addedNodes.forEach(node => {
+                if (node instanceof Element) changed.add(node);
+            });
         }
         if (mutation.type === 'attributes') {
             const target = mutation.target;
             if (mutation.attributeName === 'class' && target instanceof Element) {
-                handleNodeChange(target);
+                changed.add(target);
             }
         }
     });
+    outermostConnected(changed).forEach(handleNodeChange);
 });
+
+/**
+ * J20.6: de lo que ha cambiado, lo que hay que mirar: lo que sigue en la página y no cuelga de
+ * otro que también ha cambiado (ese ya recorre su árbol entero). En el orden en que llegó.
+ *
+ * @param {Set<Element>} changed
+ * @returns {Element[]}
+ */
+export function outermostConnected(changed) {
+    /** @type {Element[]} */
+    const roots = [];
+    for (const node of changed) {
+        if (!node.isConnected) continue;
+        let covered = false;
+        for (let up = node.parentElement; up && !covered; up = up.parentElement) covered = changed.has(up);
+        if (!covered) roots.push(node);
+    }
+    return roots;
+}
 
 /**
  * Function to handle node changes (added or modified nodes)
@@ -65,7 +93,7 @@ function handleNodeChange(node) {
     if (node.nodeType === Node.ELEMENT_NODE && node instanceof Element) {
         // Handle keyboard interactables
         if (isKeyboardInteractable(node)) {
-            makeKeyboardInteractable(node);
+            prepareInteractables([node], true);
         }
         initializeInteractables(node);
 
@@ -109,7 +137,21 @@ export function registerInteractableType(interactableSelector, { disabledByDefau
  */
 export function isKeyboardInteractable(control) {
     // Check if this control matches any of the selectors
-    return interactableSelectors.some(selector => control.matches(selector));
+    return control.matches(joinedInteractableSelector());
+}
+
+/** J20.6: todos los selectores en uno, para mirar una vez y no una por selector. */
+let joinedSelector = { count: 0, text: '' };
+
+/**
+ * J20.6: `interactableSelectors` como una sola lista de CSS. Se rehace si se registra otro.
+ * @returns {string}
+ */
+function joinedInteractableSelector() {
+    if (joinedSelector.count !== interactableSelectors.length) {
+        joinedSelector = { count: interactableSelectors.length, text: interactableSelectors.join(', ') };
+    }
+    return joinedSelector.text;
 }
 
 /**
@@ -119,9 +161,20 @@ export function isKeyboardInteractable(control) {
  * @param {Element[]} interactables - The controls to make interactable and set their state
  */
 export function makeKeyboardInteractable(...interactables) {
+    prepareInteractables(interactables, false);
+}
+
+/**
+ * Lo de `makeKeyboardInteractable`. J20.6: lo que sale de buscar los selectores ya casa con
+ * uno (`matched`), y no se vuelve a mirar: mirarlo era lo que más pesaba al redibujar el juego.
+ *
+ * @param {Element[]} interactables
+ * @param {boolean} matched Si se sabe que todos casan con algún selector.
+ */
+function prepareInteractables(interactables, matched) {
     interactables.forEach(interactable => {
         // If this control doesn't have any of the classes, lets say the caller knows this and wants this to be a custom-enabled keyboard control.
-        if (!isKeyboardInteractable(interactable)) {
+        if (!matched && !isKeyboardInteractable(interactable)) {
             interactable.classList.add(CUSTOM_INTERACTABLE_CONTROL_CLASS);
         }
 
@@ -132,18 +185,11 @@ export function makeKeyboardInteractable(...interactables) {
 
         /**
          * Check if the element or any parent element has 'disabled' or 'not_focusable' class
+         * (J20.6: con `closest`, que lo mira el navegador por dentro, él mismo y hacia arriba).
          * @param {Element} el
          * @returns {boolean}
          */
-        const hasDisabledOrNotFocusableAncestor = (el) => {
-            while (el) {
-                if (el.classList.contains(NOT_FOCUSABLE_CONTROL_CLASS) || el.classList.contains(DISABLED_CONTROL_CLASS)) {
-                    return true;
-                }
-                el = el.parentElement;
-            }
-            return false;
-        };
+        const hasDisabledOrNotFocusableAncestor = (el) => el.closest(`.${NOT_FOCUSABLE_CONTROL_CLASS}, .${DISABLED_CONTROL_CLASS}`) !== null;
 
         // Set/remove the tabindex accordingly to the classes. Remembering if it had a custom value.
         if (!hasDisabledOrNotFocusableAncestor(interactable)) {
@@ -165,7 +211,7 @@ export function makeKeyboardInteractable(...interactables) {
  */
 function initializeInteractables(element = document) {
     const interactables = getAllInteractables(element);
-    makeKeyboardInteractable(...interactables);
+    prepareInteractables(interactables, true);
 }
 
 /**
@@ -176,6 +222,7 @@ function initializeInteractables(element = document) {
  */
 function getAllInteractables(element) {
     // Query each selector individually and combine all to a big array to return
+    // (J20.6: medido, así es más rápido que todos juntos: el navegador busca rápido por una clase sola).
     return [].concat(...interactableSelectors.map(selector => Array.from(element.querySelectorAll(`${selector}`))));
 }
 

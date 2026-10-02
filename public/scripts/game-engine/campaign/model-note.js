@@ -25,6 +25,8 @@ const ORDERS = [
     /^adapta\b/i,
     /^no (inventes|digas|cambies|expliques|insin[uú]es|sabes|decidas|exageres|a[nñ]adas)\b/i,
     /^que se note\b/i,
+    // «Que aparezcan con naturalidad cuando toque» (la gente nueva de un sitio, world-growth.js).
+    /^que aparezcan? con naturalidad\b/i,
     /^sin (explicarlo|decidir|inventar)\b/i,
     /^hazlo\b/i,
     /^usa (esto|solo)\b/i,

@@ -21,7 +21,7 @@ import { offerChips } from '../game-engine/campaign/item-offers.js';
 import { nextTone, describeTone, readTone } from '../game-engine/campaign/scene-tone.js';
 import { hasAction } from '../game-engine/combat/turn-machine.js';
 import { describeMode as describeGameMode } from '../game-engine/rules/modes.js';
-import { readHall, describeHallCount } from '../game-engine/campaign/legacy.js';
+import { describeHallCount } from '../game-engine/campaign/legacy.js';
 import { SKILLS, checkOptions } from '../game-engine/rules/checks.js';
 import { fortuneLine } from '../game-engine/world/fortune.js';
 import { pendingByPlace } from '../game-engine/campaign/guidance.js';
@@ -38,6 +38,7 @@ import { LENGTHS, nextLength } from '../game-engine/campaign/narration.js';
 import { forageCheck } from '../game-engine/campaign/forage.js';
 import { usesLeft, canUseAbility, describeAbility } from '../game-engine/rules/abilities.js';
 import { isShellOpen, toggleGameShell, refreshGameShell, closeGameShell } from '../game-engine/ui/shell/game-shell.js';
+import { markAppMode } from '../game-engine/ui/app-mode.js';
 import { buildDialogueView } from '../game-engine/ui/shell/dialogue-scene.js';
 import { buildExplorationView } from '../game-engine/ui/shell/exploration-scene.js';
 import { buildClockView, availableHitDice } from '../game-engine/ui/shell/clock-widget.js';
@@ -69,9 +70,10 @@ import {
 } from './combat-state.js';
 import { buildEnemyIntents } from './enemy-turn.js';
 import {
-    judgeCurrentScenario, resolveAllyTurnAction, retreatFromCombat, startWaitingFight, waitingSummary,
+    judgeCurrentScenario, resolveAllyTurnAction, retreatFromCombat,
     afterFightNow, followAfterFight,
 } from './combat-flow.js';
+import { fightStarting, noticeBoardFight } from './fight-entry.js';
 import {
     confirmEndTurn, endPlayerCombatTurn, handlePlayerCombatAttack, hideCheck, performManeuver, throwItem,
     throwScenery,
@@ -81,7 +83,7 @@ import {
     toggleBoardDoor, boardTrapChips, runTrapChip,
 } from './board.js';
 import {
-    lastWaiting, locationMapsManuallyHidden, renderLocationMapsPreview, setLocationMapsHidden,
+    locationMapsManuallyHidden, renderLocationMapsPreview, setLocationMapsHidden,
 } from './board-view.js';
 import {
     currentSeason, ensureWorldData, getLocationBoards, hereLocation, lastRumors, lastWorldNpcs, lastWorldSeason,
@@ -92,7 +94,7 @@ import {
     campaignDay, getCampaignBonds, getCampaignCalendar, getCampaignMap,
     getCurrentSlotLabel, openWeekTable, sleepTillMorning, spendDayPart, takeRest,
 } from './time.js';
-import { confirmBoardNoReturn, focusDeadline, getPlot, openMilestones, openEnding } from './plot.js';
+import { confirmBoardNoReturn, focusDeadline, getPlot, openMilestones, openEnding, plotEndingTitle } from './plot.js';
 import { refreshWorldMemoryPrompt } from './world-growth.js';
 import { openGameMode, survivalNow } from './modes.js';
 import {
@@ -102,7 +104,7 @@ import {
 } from './narration.js';
 import { openCompanionCard, openFormationPanel } from './companions.js';
 import {
-    askNarrator, askingNarrator, currentReplies, draftInChat, lookChips, namesInLastNarration, runSkillCheck,
+    askNarrator, askingNarrator, currentReplies, draftInChat, lookChips, placeLookChips, namesInLastNarration, runSkillCheck,
     startTalk,
 } from './talk.js';
 import { askBeforeTravelling, campHere, neighbourPlaces, travelWithTime } from './travel.js';
@@ -115,7 +117,11 @@ import {
 } from './menus.js';
 import { lastMeter } from './events.js';
 import { chatWith, dayStripNow, meetSomeone, peopleChips, townNow } from './social.js';
-import { canAvoidHere, canParleyNow, openAvoidChoice, openParleyChoice } from './avoid.js';
+import { withPastimes } from './pastimes.js';
+import { hallShown } from './romance.js';
+import { canParleyNow, openParleyChoice } from './avoid.js';
+import { buildCombatBarView, runCombatBarPick } from './combat-bar.js';
+import { shownName } from '../game-engine/ui/shown-names.js';
 
 /** Los avisos del juego, guardados para la bandeja (idea 159). */
 /** @type {import('../game-engine/ui/shell/notices.js').Notice[]} */
@@ -257,6 +263,35 @@ function buildShellDialogue() {
 }
 
 /**
+ * J10.7: si un hito abierto del hilo pide hablar con alguien («Habla con Amosca»).
+ *
+ * @param {string} name
+ * @returns {boolean}
+ */
+function threadWants(name) {
+    const who = String(name ?? '').toLowerCase();
+    return Boolean(who) && openMilestones().some(m => m?.asks?.kind === 'talk' && String(m.asks.npc ?? '').toLowerCase() === who);
+}
+
+/**
+ * J10.7: los sitios adonde manda ahora el hilo: el de cada hito abierto, los de sus pistas y
+ * los de sus maneras de cumplirse («ve al Molino Hundido»).
+ *
+ * @returns {Set<string>} En minúscula.
+ */
+function threadPlaces() {
+    const out = new Set();
+    for (const m of openMilestones()) {
+        const asks = m?.asks ?? {};
+        for (const place of [asks.place, ...(Array.isArray(asks.clues) ? asks.clues : []).map((/** @type {any} */ c) => c?.place),
+            ...(Array.isArray(asks.options) ? asks.options : []).map((/** @type {any} */ o) => o?.place)]) {
+            if (String(place ?? '').trim()) out.add(String(place).trim().toLowerCase());
+        }
+    }
+    return out;
+}
+
+/**
  * @param {number} [limit] Cuantas caben; sin decir, las de la fila.
  * @returns {import('../game-engine/ui/shell/action-chips.js').ActionChip[]}
  */
@@ -269,6 +304,11 @@ export function buildShellChips(limit = undefined) {
     const location = currentLocationName
         ? getCurrentWorldLocationMaps().find(l => l.name === currentLocationName)
         : null;
+    // Tanda 10: mientras la pelea del tablero se decide o el grupo se coloca, no hay nada más que
+    // hacer. Y estando en un tablero, solo lo que es de ahí: ni saltar la prueba, ni hablar con la
+    // gente del pueblo, ni rumores, ni tiradas sueltas (`onBoard`).
+    if (fightStarting()) return [];
+    const onBoard = Boolean(currentBoardName);
 
     return buildActionChips({
         fighting: combatEncounter.active,
@@ -276,10 +316,15 @@ export function buildShellChips(limit = undefined) {
         doors: closedDoorsNearParty(),
         // Con los muertos no se habla (idea 36).
         // Con los compañeros: el primero es quien juega, y hablar consigo mismo no es hablar.
-        companions: partyMembers.slice(1).filter(m => !m.dead).map(m => ({ name: m.name })),
+        companions: onBoard ? [] : partyMembers.slice(1).filter(m => !m.dead).map(m => ({ name: m.name })),
         mentioned: namesInLastNarration(),
         // Se viaja a los vecinos: una ficha a la otra punta del mapa sería un salto.
-        places: neighbourPlaces().map(name => ({ name })),
+        // J10.7: adonde manda el hilo, delante: en la fila solo caben dos.
+        places: (() => {
+            const wanted = threadPlaces();
+            return neighbourPlaces().map(name => ({ name }))
+                .sort((a, b) => Number(wanted.has(b.name.toLowerCase())) - Number(wanted.has(a.name.toLowerCase())));
+        })(),
         // Los tableros de aquí que pide la historia: sus fichas van delante.
         thread: threadBoardsHere(location),
         // Los que quedan por ganar, delante: caben dos, y un tablero ya ganado escondía el
@@ -292,19 +337,22 @@ export function buildShellChips(limit = undefined) {
         // Cuantos dados quedan sale del nivel y de los ya gastados; las caras las
         // lee el descanso, que puede esperar al Lorebook porque es asincrono.
         hitDice: availableHitDice(partyMembers),
-        rumors: rumorsLeftHere(),
+        rumors: onBoard ? 0 : rumorsLeftHere(),
         forage: Boolean(currentLocationName) && !currentBoardName && forageCheck(hereLocation() ?? {}).allowed,
         explore: Boolean(currentLocationName) && !currentBoardName
             && canExplore(getCurrentWorldLocationMaps(), []),
-        proposals: readProposals(chat_metadata?.[PROPOSALS_KEY]).map(p => ({ name: p.name })),
+        proposals: onBoard ? [] : readProposals(chat_metadata?.[PROPOSALS_KEY]).map(p => ({ name: p.name })),
         ...(limit !== undefined ? { limit } : {}),
         // Idea 151: con quien se puede hablar aqui, ademas de los tuyos.
         people: lastWorldNpcs
-            .filter(n => !n.dead && n.where.toLowerCase() === String(currentLocationName).toLowerCase())
-            .map(n => ({ name: n.name })),
+            .filter(n => !onBoard && !n.dead && n.where.toLowerCase() === String(currentLocationName).toLowerCase())
+            // J10.7: con quien pide hablar el hilo, delante: en la fila solo caben dos.
+            .sort((a, b) => Number(threadWants(b.name)) - Number(threadWants(a.name)))
+            // J13.7: por lo que es («el posadero») hasta que se presente.
+            .map(n => ({ name: n.name, label: shownName(n.name, 'el') })),
         // Idea 139: lo que ofrece el narrador.
         // Z3: y lo que el sitio deja examinar, sin que nadie lo ofrezca.
-        extras: [...offerChips(chat_metadata?.[OFFERS_KEY]), ...lookChips()],
+        extras: [...offerChips(chat_metadata?.[OFFERS_KEY]), ...(onBoard ? [] : lookChips())],
         // Idea 67: acampar donde no hay posada.
         camp: Boolean(currentLocationName) && !currentBoardName && campHere().ok,
         // Idea 75: la escalera al nivel siguiente.
@@ -315,29 +363,28 @@ export function buildShellChips(limit = undefined) {
             fighting: combatEncounter.active,
         }),
         // Idea 137: lo que estas escribiendo pide una tirada.
-        typed: typedIntents.map(skill => ({ skill, label: SKILLS[/** @type {keyof typeof SKILLS} */ (skill)]?.label ?? skill })),
+        typed: onBoard ? [] : typedIntents.map(skill => ({ skill, label: SKILLS[/** @type {keyof typeof SKILLS} */ (skill)]?.label ?? skill })),
         // Idea 144: lo que se le puede decir a quien se está hablando. Sin conexión, solo lo que
         // hace algo al pulsarlo: las que dejaban la frase empezada en la caja, sin caja, no (J18.7).
-        replies: offlineGame() ? currentReplies().filter(r => r.command || r.id === 'reply-bye') : currentReplies(),
-        // J4: el tablón de campañas y los mercenarios en el gremio; volver, en una campaña.
-        hub: hubChips(),
-        // Los que esperan en el tablero: la pelea se empieza también desde la fila.
-        fight: !combatEncounter.active && lastWaiting.board === currentBoardName && lastWaiting.placements.length > 0
-            && !isBoardWon(currentLocationName, currentBoardName)
-            ? waitingSummary(lastWaiting.placements) : '',
-        requests: readRequests(chat_metadata?.[CHECK_REQUESTS_KEY], SKILLS).map(r => ({
+        // Tanda 10: en un tablero, contestar a quien tienes delante sí; preguntar por rumores, no.
+        replies: (offlineGame() ? currentReplies().filter(r => r.command || r.id === 'reply-bye') : currentReplies())
+            .filter(r => !onBoard || r.id !== 'reply-rumor'),
+        // J4: el tablón de campañas y los mercenarios en el gremio; volver, en una campaña. Tanda
+        // 10: en un tablero, solo volver al gremio (salir de ahí sí tiene sentido) y el final.
+        hub: onBoard ? hubChips().filter(c => c.id === 'hub-home' || c.id === 'hub-ending') : hubChips(),
+        // Tanda 10: ya no hay ficha de «Iniciar combate» ni de «Evitar la pelea»: con enemigos
+        // que os ven, la pelea empieza sola (`fight-entry.js`).
+        requests: onBoard ? [] : readRequests(chat_metadata?.[CHECK_REQUESTS_KEY], SKILLS).map(r => ({
             skill: r.skill, label: SKILLS[/** @type {keyof typeof SKILLS} */ (r.skill)].label, reason: r.reason, dc: r.dc,
         })),
         // J2.1: el tablero abierto, para que el que pide la historia salga también desde otro
         // de aquí (del muelle a la bodega, sin salir antes).
         board: currentBoardName || '',
         // J14: la charla que espera, quedar con alguien y charlar con quien está aquí.
-        social: peopleChips(),
+        social: onBoard ? [] : peopleChips(),
         // J19.10: la magia fuera de combate, cuando sirve aquí, y curar a los heridos de un toque.
         magic: fieldMagicNow(),
         heal: fieldHealNow()?.choice.name ?? '',
-        // J12.2: junto a «Iniciar combate», otra salida.
-        avoid: canAvoidHere(),
         // J12.3: buscar trampas y desarmar la que se tiene al lado.
         traps: boardTrapChips(),
     });
@@ -371,15 +418,6 @@ export function runShellChip(chip) {
     // Idea 169: las que no cabian en la fila.
     if (chip.id === 'more') {
         openAllChips();
-        return;
-    }
-    if (chip.id === 'fight-board') {
-        if (lastWaiting.board === currentBoardName) startWaitingFight(lastWaiting.placements);
-        return;
-    }
-    // J12.2: hablar, pagar, huir o esconderse, en su ventana.
-    if (chip.id === 'avoid-board') {
-        void openAvoidChoice();
         return;
     }
     // J12.3: buscar trampas, o desarmar la de al lado.
@@ -620,12 +658,20 @@ function buildShellOptions() {
         }),
         // J3.11: la localización de aquí y su gente, sin leer el mundo cada 15 s; y J14.4, quién
         // de tu gente está en cada sitio.
-        getTown: () => townNow(),
+        // J14.11: y en cada sitio, sus trabajos y ratos libres (y el muelle de un puerto).
+        // J10.2: y lo que se puede examinar dentro de cada sitio (la sala del gremio, la capilla…).
+        getTown: () => {
+            const town = withPastimes(townNow());
+            return town ? { ...town, looks: placeLookChips() } : town;
+        },
         getChips: buildShellChips,
         onChip: runShellChip,
         // D-J45: «Continuar» tras ganar sigue el hilo (sale del tablero si lo siguiente es fuera).
-        onContinue: (next) => followAfterFight(next, buildShellSituation()),
-        getChecks: () => (combatEncounter.active || !partyMembers[0]
+        // Tanda 8: con los sitios del pueblo que vio la pantalla: en el gremio, con una sola
+        // localización, son lo que deja salir del tablero al pueblo.
+        onContinue: (next, seen) => followAfterFight(next, { ...buildShellSituation(), townPlaces: Number(seen?.townPlaces) || 0 }),
+        // Tanda 10: en un tablero, la «Tirada» suelta no es de ahí.
+        getChecks: () => (combatEncounter.active || currentBoardName || !partyMembers[0]
             ? []
             : checkOptions(partyMembers[0], { locked: Boolean(chat_metadata?.[PENDING_CHECK_KEY]) })),
         onCheck: (skill) => { runSkillCheck(skill); },
@@ -634,6 +680,9 @@ function buildShellOptions() {
         // Sin conexión no hay narrador a quien escribirle (J18.7).
         canAskNarrator: () => !offlineGame() && !combatEncounter.active && Boolean(partyMembers[0]),
         getFocus: () => {
+            // J9.1: acabada la campaña, lo que hay entre manos es su final, no el camino que no se tomó.
+            const ended = plotEndingTitle();
+            if (ended) return { id: 'final', act: 0, title: `Final: ${ended}`, hint: 'La campaña ha terminado: vuelve al gremio cuando quieras.', daysLeft: null, clock: null };
             const focus = focusOf(getPlot(), chat_metadata?.[PLOT_STATE_KEY], campaignDay());
             // J9.5: con su plazo, si lo tiene (o el más apurado de lo abierto).
             return focus ? { ...focus, clock: focusDeadline() } : null;
@@ -682,9 +731,10 @@ function buildShellOptions() {
         // Idea 181: el comprobador de densidad, desde la partida.
         onCheckWorld: () => { void checkCurrentWorld(); },
         // Idea 199: los caídos de todas las partidas.
-        countHall: () => readHall(/** @type {any} */ (extension_settings).partyHall).length,
+        // J14.10: con el romance apagado, sin las parejas.
+        countHall: () => hallShown(/** @type {any} */ (extension_settings).partyHall).length,
         // J3.9: «1 campaña terminada · 2 caídos».
-        hallHint: () => describeHallCount(/** @type {any} */ (extension_settings).partyHall),
+        hallHint: () => describeHallCount(hallShown(/** @type {any} */ (extension_settings).partyHall)),
         onHall: () => { openHallOfFame(); },
         onEditCampaign: () => { void openCampaignBuilder(); },
         // El asistente de campana vive en la pantalla de bienvenida, que viaja dentro del
@@ -733,6 +783,9 @@ function buildShellOptions() {
         onMainMenu: () => { $('#option_close_chat').trigger('click'); },
         renderStage: () => renderLocationMapsPreview(),
         onAttack: (name) => handlePlayerCombatAttack(name),
+        // Tanda 10: la barra de acciones de D&D 2024 y sus menús de grimorio.
+        getActionBar: buildCombatBarView,
+        onBarPick: (pick) => runCombatBarPick(pick),
         onEndTurn: () => { void confirmEndTurn(); },
         onAutoTurn: () => {
             const entry = getCurrentTurnEntry();
@@ -746,7 +799,11 @@ function buildShellOptions() {
         // J2.2: el de la pelea sale al empezar la primera, no al abrir el tablero.
         onScene: (scene) => { if (!MOMENT_TIPS.includes(scene)) showTip(scene); },
         // U0 del pegamento: el diario de sesión.
-        onSceneTime: (scene) => keepSessionLog(enterScene(currentSessionLog(), scene, Date.now())),
+        onSceneTime: (scene) => {
+            keepSessionLog(enterScene(currentSessionLog(), scene, Date.now()));
+            // Tanda 10: al llegar al tablero, si los que esperan os ven, la pelea empieza sola.
+            if (scene === 'combat') noticeBoardFight();
+        },
         onSession: () => { void openSessionLog(); },
         onHowToPlay: () => { void openHowToPlay(); },
         // U5 del pegamento: la semana en una mesa.
@@ -1021,7 +1078,11 @@ function setGameShellAutostart(value) {
  * juego al que vuelve.
  */
 export function autostartGameShell() {
-    if (!shouldAutostartGameShell() || isShellOpen()) return;
+    // J20.7 y J20.8: abierto desde el icono del móvil (la dirección lleva `?juego`), la página se
+    // marca como app (sitio para la muesca) y entra en el juego aunque «Abrir el juego al entrar»
+    // esté apagado.
+    const asApp = markAppMode();
+    if ((!asApp && !shouldAutostartGameShell()) || isShellOpen()) return;
 
     const shellOptions = buildShellOptions();
     setLocationMapsHidden(false);

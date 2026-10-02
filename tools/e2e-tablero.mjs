@@ -32,6 +32,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { Buffer } from 'node:buffer';
+import { entrarEnLaPelea } from './e2e-entrar-pelea.mjs';
 
 const ROOT = new URL('..', import.meta.url).pathname.replace(/^[/]([A-Za-z]:)/, '$1');
 const argAfter = (/** @type {string} */ flag) => (process.argv.includes(flag) ? process.argv[process.argv.indexOf(flag) + 1] : '');
@@ -243,6 +244,9 @@ try {
     await page.locator('.hc-root .hc-enter').click();
     await until(async () => (await state()).party.length === 1, 60000);
     await until(() => chatHas(/Baja a la bodega/), 20000);
+    // Tanda 10: en el tablero del muelle no sale «Saltar la prueba»; primero se sale de él.
+    await until(async () => (await chips()).some(c => /^(Saltar la prueba|Salir del tablero)$/.test(c)), 15000);
+    if ((await chips()).includes('Salir del tablero')) await clickChip(/^Salir del tablero$/);
     await until(async () => (await chips()).some(c => /^Saltar la prueba$/.test(c)), 15000);
     await clickChip(/^Saltar la prueba$/);
     await page.waitForSelector('.popup:has-text("¿Saltar la prueba?")', { timeout: 10000 }).catch(() => {});
@@ -348,16 +352,14 @@ try {
         return null;
     }, { sel: BOARD, cols: size.cols });
     if (door) await page.mouse.click(door.x, door.y);
-    const opened = await until(() => chatHas(/La puerta de \(11, 5\) queda abierta: da a El granero/), 8000);
-    check('abrir la puerta del granero dice a qué sala da: «da a El granero» (J12.11)', Boolean(door) && opened, JSON.stringify({ door, lines: await chatLines(/La puerta de/) }));
+    // Sin modelo, la nota contada quita las coordenadas: «La puerta queda abierta: da a…».
+    const opened = await until(() => chatHas(/La puerta (de \(11, 5\) )?queda abierta: da a El granero/), 8000);
+    check('abrir la puerta del granero dice a qué sala da: «da a El granero» (J12.11)', Boolean(door) && opened, JSON.stringify({ door, lines: await chatLines(/La puerta/) }));
     await clearDice();
     await shot('3-puerta');
 
-    // 7. La pelea con el cuervo: si la puerta no la empieza, se empieza desde la fila.
-    if (!(await state()).fighting) {
-        await until(async () => (await chips()).some(c => /^Iniciar combate/.test(c)), 8000);
-        await clickChip(/^Iniciar combate/);
-    }
+    // 7. La pelea con el cuervo: abrir la puerta la empieza sola (tanda 10: colocarse y «Empezar»).
+    if (!(await state()).fighting) await entrarEnLaPelea(page);
     const fighting = await until(async () => (await state()).fighting, 15000);
     check('el cuervo del granero pelea', fighting, JSON.stringify(await chips()));
     const myTurn = async () => {

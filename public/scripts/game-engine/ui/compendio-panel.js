@@ -53,6 +53,10 @@ export const DOMAIN_LABELS = {
     companeros: ['Compañeros', 'Cómo es cada uno: qué busca, qué le gusta y si se viene al gremio'],
     noches: ['Noches', 'Lo que pasa de noche en la posada, y lo que hablan dos compañeros entre ellos'],
     personales: ['Misiones personales', 'Cómo se juega la misión de cada compañero, paso a paso, hasta sus dos finales'],
+    // J14.10.
+    romances: ['Romances', 'Con quien lo permite: la señal, las tres citas, la noche (fundido a negro) y el epílogo'],
+    // J12.7.
+    peleas: ['Peleas', 'Quién te busca pelea en la taberna, contra quién se apuesta un duelo, quién te reta por honor y lo que se lee'],
 };
 
 /**

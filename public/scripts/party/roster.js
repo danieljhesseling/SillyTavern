@@ -24,6 +24,7 @@ import { renderLocationMapsPreview } from './board-view.js';
 import { loadCurrentLocation } from './world.js';
 import { packPeople, unpackPeople } from './social.js';
 import { packFormation, unpackFormation } from './companions.js';
+import { syncGameState } from './game-state.js';
 
 /** @typedef {import('./types.js').PartyMember} PartyMember */
 /** @typedef {import('./types.js').DndCatalog} DndCatalog */
@@ -122,6 +123,8 @@ export function loadPartyForChat() {
     loadCurrentLocation();
     loadCombatState();
     renderPartyMembers();
+    // J4.2: en una partida del gremio, el gremio de este chat se pone al día con el de la partida.
+    void syncGameState();
 }
 
 /**

@@ -51,6 +51,7 @@ import { rememberTogether, bark, recordFeat } from './companions.js';
 import {
     concentrationAfterHurt, counterAgainst, enemyWalksZones, hurtSummon, livingSummons, shieldAgainst,
 } from './spell-turn.js';
+import { brawlEnemyTurn, brawlKnockOut } from './brawl.js';
 
 /**
  * Resolve enemy action: attack roll, damage and possible status effects.
@@ -233,7 +234,10 @@ export function damagePartyMember(target, totalDamage, isCrit = false) {
         combatEncounter.tally = noteTaken(combatEncounter.tally, target.id, before - (Number(target.hp) || 0), !wasDown && target.hp === 0);
     }
 
-    if (target.hp === 0) {
+    // J12.7: en una pelea sin muertes, quien cae queda fuera de combate: ni salvaciones ni remate.
+    const knocked = target.hp === 0 ? brawlKnockOut(target) : null;
+    if (knocked) lines.push(...knocked);
+    else if (target.hp === 0) {
         if (!target.activeConditions.includes('Unconscious')) {
             target.activeConditions.push('Unconscious');
         }
@@ -444,6 +448,9 @@ export function resolveEnemyTurnAction(turnEntry) {
         /** @type {any} */ (enemy).parleyLull -= 1;
         return `🤔 [COMBAT] ${enemy.name} duda y baja el arma: este turno no ataca.`;
     }
+    // J12.7: en un duelo sin muertes, quien no puede más se rinde.
+    const yielded = brawlEnemyTurn(enemy);
+    if (yielded !== null) return yielded;
 
     const livingParty = getLivingPartyMembers();
     if (!livingParty.length) {

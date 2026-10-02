@@ -57,7 +57,7 @@ import { afterRestMagic, getAbilityCatalogue } from './magic.js';
 import { expireBoard, getGuild, openDispatch, returnDispatches, rivalsMove } from './contracts.js';
 import { openCaseBoard, startCase } from './cases.js';
 import { applyFall } from './combat-flow.js';
-import { lastWorldSeason, weatherHere } from './world.js';
+import { lastWorldSeason, weatherHere, lastHubHome } from './world.js';
 import {
     describeWorldFactions, getCurrentWorldFactions, scheduleFactionTick, shiftFactionStanding,
 } from './factions.js';
@@ -89,6 +89,8 @@ export const campaign = createCampaignState({
     // Z1 de ROADMAP_SIN_TOKENS: el descanso, contado por el narrador del motor.
     tellRest: (kind) => tellMoment('descanso', {
         largo: kind === 'largo' ? 'sí' : 'no',
+        // J13.1: bajo techo (la posada, el gremio) no se cuentan guardias ni brasas.
+        bajo: restingUnder,
         dia: Math.max(1, Number(getCampaignCalendar()?.day) || 1) + (kind === 'largo' ? 1 : 0),
         tiempo: weatherHere(),
     }),
@@ -116,7 +118,9 @@ export function currentUpkeepRules() {
     // lo que haya construido, y el mundo de fuera los sube. Preguntarlo en dos sitios
     // distintos seria acabar cobrando dos cosas distintas.
     return applyMarket(
-        upkeepWithBuildings(getActiveRuleset()?.upkeep ?? null, getGuild()),
+        // J4.2: el gremio es el mismo en todas sus campañas, pero su cocina y sus camas solo
+        // abaratan la vida en casa: en una campaña del tablón se paga lo de allí.
+        upkeepWithBuildings(getActiveRuleset()?.upkeep ?? null, lastHubHome ? null : getGuild()),
         currentMarket(),
     );
 }
@@ -460,6 +464,10 @@ function passNeeds(days) {
         member.injuries = patch.injuries;
         member.baseStats = patch.baseStats;
         Object.assign(member, patch.stats);
+        // J9.1 (H9 de las vueltas): el agotamiento baja la vida máxima; la de ahora no puede
+        // quedarse por encima («34/24 PG»).
+        const top = Number(member.maxHp) || 0;
+        if (top > 0 && (Number(member.hp) || 0) > top) member.hp = top;
 
         // Quien llega al final cae a cero: de ahi en adelante deciden las reglas de la
         // campana, igual que si lo hubiera tumbado una espada. Una sola puerta a la muerte.
@@ -473,6 +481,14 @@ function passNeeds(days) {
     if (said.length > 0) {
         postCombatNarration(`🥖 [CAMPAÑA] ${said.join(' ')}`);
         savePartyState();
+        // J9.1: el aviso dice también qué hacer. Sin esto, «empieza a tener hambre» salía
+        // cinco veces y a la sexta el héroe moría en el camino sin saber por qué.
+        const worn = partyMembers.filter(m => !m.dead && readInjuries(m).some(i => i?.id === 'exhaustion'));
+        if (worn.length > 0) {
+            const level = Math.max(...worn.map(m => Number(/agotamiento (\d)/.exec(String(readInjuries(m).find(i => i?.id === 'exhaustion')?.label ?? ''))?.[1]) || 1));
+            toastr.warning(`Agotamiento ${level} de ${LETHAL_EXHAUSTION}: comed y dormid en una posada, acampad o cazad por el camino. Si llega a ${LETHAL_EXHAUSTION}, se muere.`,
+                `${worn.map(m => m.name).join(', ')}: hambre, sed o sueño`, { timeOut: 15000 });
+        }
     }
 }
 
@@ -541,7 +557,8 @@ function chargeBill() {
     }
 
     // Idea 37: el maestro de armas enseña a los que van por detrás.
-    const lessons = trainingFor(getGuild(), partyMembers);
+    // J4.2: el maestro de armas se queda en el gremio: fuera, en una campaña del tablón, no entrena.
+    const lessons = lastHubHome ? [] : trainingFor(getGuild(), partyMembers);
     for (const lesson of lessons) {
         const member = partyMembers.find(m => String(m.id) === lesson.id);
         if (member) member.xp = (Number(member.xp) || 0) + lesson.xp;
@@ -737,13 +754,25 @@ export function recordCampaignBondEvent(characterId, eventType) {
 export function getCurrentSlotLabel() {
     return campaign.getSlotLabel();
 }
-/** @param {'corto'|'largo'} kind @returns {Promise<string>} */
-export async function takeRest(kind) {
+/**
+ * J13.1: dónde se duerme ahora, para contarlo: `techo` (la posada, el gremio), `cielo` (al raso)
+ * o nada si no se sabe. Lo pone `takeRest` mientras dura el descanso.
+ */
+let restingUnder = '';
+
+/**
+ * @param {'corto'|'largo'} kind
+ * @param {{under?: 'techo'|'cielo'|''}} [options] Dónde se duerme, para que el narrador no cuente
+ *   guardias y brasas en una cama de posada.
+ * @returns {Promise<string>}
+ */
+export async function takeRest(kind, { under = '' } = {}) {
     // J14.7: antes de dormir, lo que pase esta noche (en la posada, alguien que llega o una
     // ronda; con dos de los tuyos, a veces una charla entre ellos). Una por noche como mucho.
     if (kind === 'largo' && !combatEncounter.active) await playNight();
     const before = getCampaignCalendar();
-    const result = await campaign.rest(kind);
+    restingUnder = under;
+    const result = await campaign.rest(kind).finally(() => { restingUnder = ''; });
     if (result) {
         // J14.2: el corto se lleva la parte del día, y la cabecera dice en qué.
         if (kind === 'corto') noteDayPart('descansar', before, { label: 'Descanso corto' });

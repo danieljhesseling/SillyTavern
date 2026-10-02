@@ -48,6 +48,8 @@ import {
 } from './state.js';
 import { campaignDay } from './time.js';
 import { postCombatNarration } from './narration.js';
+import { humanHello } from './greetings.js';
+import { setPhraseBank } from '../game-engine/campaign/human-lines.js';
 
 export function saveCurrentLocation() {
     if (chat_metadata) {
@@ -214,6 +216,11 @@ export async function reloadWorldFactions() {
                 language: String(e.dndData?.language || ''),
                 // Idea 87: quien ha muerto sigue en el mundo, pero ya no atiende.
                 dead: Boolean(e.dndData?.dead),
+                // J13.7: cómo se le llama hasta que se presenta (party/known-people.js).
+                id: String(e.dndData?.id || ''),
+                gender: String(e.dndData?.gender || ''),
+                stranger: String(e.dndData?.stranger || ''),
+                famous: e.dndData?.famous === true,
             }));
         lastMix = data?.metadata?.mix ?? null;
         // Los confidentes, para reclutarlos en la posada (idea 26).
@@ -498,6 +505,8 @@ export let lastCompendium = { has: () => false, find: () => [] };
 // Se rellena en cuanto alguien pide el compendio por primera vez.
 void getCompendium().then(({ compendium }) => {
     lastCompendium = compendium;
+    // J13.8: las frases de la gente (seguir una charla, cómo te mira, el saludo), para el motor.
+    if (compendium?.has?.('frases')) setPhraseBank(compendium.find('frases', {}));
     const causes = causesOf(compendium);
     if (causes.length > 0) console.log(`[compendio] heridas por causa: ${causes.join(', ')}`);
 });
@@ -643,12 +652,13 @@ export function markedRumors(told = []) {
 /**
  * J11.3 y J11.4: el saludo de quien atiende un sitio del pueblo cuando recuerda algo: en el
  * gremio, cómo acabó la última campaña (las semanas después de volver); en los demás, lo que
- * hicisteis allí. Con la cara que pone (J13: `alegre`, `enfadado`), para su retrato. Texto vacío
- * si no recuerda nada: entonces vale el saludo de siempre.
+ * hicisteis allí. Con la cara que pone (J13: `alegre`, `enfadado`), para su retrato. Si no
+ * recuerda nada, J13.8: el saludo de quien ya te conoce o aún no, a esta hora y según te mire
+ * (`humanHello`, con `remembered: false`). Vacío si tampoco hay: entonces vale el de siempre.
  *
  * @param {any} place El sitio (`TownPlace`), con su clase (`kind`) y quien lo atiende (`keeper`).
  * @param {{slot?: string, hero?: any}} [facts]
- * @returns {{text: string, mood: string}}
+ * @returns {{text: string, mood: string, remembered?: boolean}}
  */
 export function rememberedHello(place, { slot = '', hero = null } = {}) {
     const today = Math.max(1, campaignDay());
@@ -661,7 +671,7 @@ export function rememberedHello(place, { slot = '', hero = null } = {}) {
     }
     const marks = chat_metadata?.[WORLD_MARKS_KEY];
     const text = rememberedGreeting({ place, town: currentLocationName, marks, rows: echoRows(), today, slot, hero });
-    if (!text) return { text: '', mood: '' };
+    if (!text) return humanHello(place, { slot, hero, dialogues: lastDialogues });
     // La misma reacción que da el saludo: si os cobra más o no os atiende, enfadado; si menos, alegre.
     const echo = reactionsAt({ marks, rows: echoRows(), town: currentLocationName, place: place?.kind, today })
         .find(r => r.echo.greetings.length > 0 || r.echo.refuse)?.echo;

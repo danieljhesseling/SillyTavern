@@ -46,7 +46,8 @@ describe('los sitios de un pueblo', () => {
     });
 
     test('un pueblo sin lista: sus servicios y la plaza; sin muelle si no es puerto; unas ruinas, nada', () => {
-        expect(placesOf(barovia)).toEqual(['posada', 'tienda', 'templo', 'plaza']);
+        // M4: Barovia tiene tablón (las notas de la puerta de la iglesia): sus encargos se ven.
+        expect(placesOf(barovia)).toEqual(['posada', 'tienda', 'templo', 'tablon', 'plaza']);
         expect(placesOf(vallaki)).toEqual(['posada', 'tienda', 'herreria', 'templo', 'tablon', 'plaza']);
         expect(placesOf({ name: 'Ruinas', type: 'ruins', services: [] })).toEqual([]);
         expect(placesOf({ name: 'Algún sitio', type: 'village' }, { hub: true })).toEqual(['gremio', 'posada', 'tienda', 'herreria', 'tablon', 'plaza', 'muelle']);

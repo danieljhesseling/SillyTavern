@@ -9,7 +9,8 @@
  *   se cierre el panel de victoria → la escena de la huida acaba en la charla de Giles, que
  *   cumple su hito cuando lo cuenta → lo que se ve al examinar algo del pueblo, si la tirada
  *   sale → «Hablar» con Giles abre su charla directamente, con «Otras cosas» (D-J36) → lo que
- *   dice sale en la novela con su cara y su gesto → viajar abre las escenas de los hitos 3 y 4 →
+ *   dice sale en la novela con su cara y su gesto → las escenas de los hitos 3 y 4, que piden llegar a
+ *   un sitio, salen al llegar (J9.1), no antes del viaje →
  *   la de Karl ya es la charla y cumple su hito (D-J39) → el hito siguiente, que solo trae
  *   texto, se abre como una escena corta del narrador (D-J40) → el Diario apunta lo decidido y
  *   lo que os han contado → la estación de hoy llega al narrador (J13).
@@ -341,11 +342,13 @@ try {
         JSON.stringify({ doneBefore, done: now.done, heard: now.heard, steps: talkSteps.map(s => s.options.map((/** @type {any} */ o) => o.id).join('/')) }));
     check('J8.6: lo que contó Giles queda recordado', Boolean(now.dialogues['giles-lo-que-vio']?.learned?.length), JSON.stringify(now.dialogues['giles-lo-que-vio'] ?? null));
 
-    // La pista en el barro se abre al acabar la charla.
-    const mud = await until(async () => (await story())?.id === 'la-pista-en-el-barro', 15000);
-    check('J9.2: al acabar la charla se abre la escena del hito siguiente (la pista en el barro)', mud, JSON.stringify(await story()));
-    await playScene();
-    await page.waitForTimeout(800);
+    // J9.1: la pista en el barro pide llegar al Campamento Furtivo: su escena cuenta la llegada,
+    // así que al acabar la charla se abre el hito, pero su escena espera a que se llegue.
+    await page.waitForTimeout(2500);
+    const notYet = await story();
+    now = await meta();
+    check('J9.1: al acabar la charla se abre la pista en el barro, y su escena (una llegada) no sale todavía',
+        now.open.includes('la-pista-en-el-barro') && notYet?.id !== 'la-pista-en-el-barro', JSON.stringify({ story: notYet, open: now.open }));
 
     // --- J10.2: lo que se examina en el pueblo, y lo que se ve si sale ------------------------
     await slash('/leave');
@@ -407,18 +410,29 @@ try {
     await slash('/go Campamento Furtivo');
     await page.waitForTimeout(1500);
     await clearDice();
-    const winter = await until(async () => (await story())?.id === 'el-invierno-cierra-el-paso', 20000);
-    check('J9.2: llegar al Campamento Furtivo cumple el hito 3 y abre la escena del 4 (el invierno cierra el paso)',
-        winter && (await meta()).done.includes('la-pista-en-el-barro'), JSON.stringify({ story: await story(), done: (await meta()).done }));
+    // J9.1: al llegar sale la escena de la llegada (la pista en el barro), no la del hito 4, que
+    // también es una llegada (al castillo) y espera a que se llegue allí.
+    const mud = await until(async () => (await story())?.id === 'la-pista-en-el-barro', 20000);
+    check('J9.1: llegar al Campamento Furtivo cumple el hito 3 y abre su escena, la de la llegada',
+        mud && (await meta()).done.includes('la-pista-en-el-barro'), JSON.stringify({ story: await story(), done: (await meta()).done }));
     await playScene();
+    await page.waitForTimeout(2000);
+    const early = await story();
+    check('J9.1: la escena del hito 4 (llegar al castillo) no sale en el campamento',
+        early?.id !== 'el-invierno-cierra-el-paso' && (await meta()).open.includes('el-invierno-cierra-el-paso'), JSON.stringify(early));
     await slash('/acampar');
     await slash('/explorar');
     await page.locator('.popup:not([closing]) .popup-button-ok').last().click({ timeout: 2000 }).catch(() => {});
     await slash('/go Castillo de Vane');
     await page.waitForTimeout(1500);
     await clearDice();
+    // J9.1: primero la llegada al castillo (el invierno cierra el paso), y detrás la de Karl.
+    const winter = await until(async () => (await story())?.id === 'el-invierno-cierra-el-paso', 20000);
+    check('J9.1: llegar a Castillo de Vane cumple el hito 4 y abre su escena, la de la llegada',
+        winter && (await meta()).done.includes('el-invierno-cierra-el-paso'), JSON.stringify({ story: await story(), done: (await meta()).done }));
+    await playScene();
     const karl = await until(async () => (await story())?.id === 'el-hambre-de-los-lobos', 20000);
-    check('J9.2: llegar a Castillo de Vane cumple el hito 4 y abre la escena de Karl', karl && (await meta()).done.includes('el-invierno-cierra-el-paso'),
+    check('J9.2: detrás de la llegada al castillo se abre la escena de Karl', karl && (await meta()).done.includes('el-invierno-cierra-el-paso'),
         JSON.stringify({ story: await story(), done: (await meta()).done }));
     await shoot('karl');
     // J11.1: lo que no tiene vuelta atrás lo dice en la opción, y se decide a la segunda pulsación.

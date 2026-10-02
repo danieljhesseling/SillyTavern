@@ -48,4 +48,9 @@ describe('splitModelNote (Z0 de ROADMAP_SIN_TOKENS)', () => {
         expect(said).toBe('[FIESTA] Hoy es la Fiesta del Santo Patrón en El Pueblo de Barro.');
         expect(splitModelNote('La pelea acabó: dos lobos muertos. Describe la escena en un párrafo breve.').said).toBe('La pelea acabó: dos lobos muertos.');
     });
+
+    test('«Que aparezcan con naturalidad…» (la gente nueva de un sitio) es una orden', () => {
+        const { said } = splitModelNote('[GENTE] En La ermita viven Salir, el de la guardia y Gwynael, el minero. Que aparezcan con naturalidad cuando toque: el grupo no los conoce todavía.');
+        expect(said).toBe('[GENTE] En La ermita viven Salir, el de la guardia y Gwynael, el minero.');
+    });
 });

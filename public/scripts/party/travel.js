@@ -404,8 +404,8 @@ export async function campNight() {
         }
     }
 
-    // Y se duerme.
-    await takeRest('largo');
+    // Y se duerme, al raso.
+    await takeRest('largo', { under: 'cielo' });
     const morning = campMorning({ party: living, fire: lit, weather, cook: wantsDinner, caught });
     for (const id of morning.restless) {
         const member = partyMembers.find(m => String(m.id) === id);
@@ -589,9 +589,10 @@ async function meetOnTheRoad(random) {
         partyMembers[0].items = partyMembers[0].items ?? [];
         addItemToInventory(/** @type {any} */ (partyMembers[0]), createItem(/** @type {any} */ (describeLootItem(met.item))));
         savePartyState();
-        return { day: 1, id: 'mercader', name: 'Un mercader', note: `Le comprasteis ${met.item} por ${met.price} de oro.`, days: 0, climate: '' };
+        return { day: 1, id: 'mercader', name: 'Un mercader', note: `A un mercader le comprasteis ${met.item} por ${met.price} de oro.`, days: 0, climate: '' };
     }
-    return { day: 1, id: 'mercader', name: 'Un mercader', note: `Traía ${met.item}; seguisteis de largo.`, days: 0, climate: '' };
+    // J13.1: la nota va en «Del camino queda esto: …»; con quién, para que se entienda.
+    return { day: 1, id: 'mercader', name: 'Un mercader', note: `Un mercader traía ${met.item}, y seguisteis de largo.`, days: 0, climate: '' };
 }
 
 /**
@@ -819,22 +820,31 @@ export async function travelWithTime(name, options = {}) {
     }
     savePartyState();
     countStat('trips');
-    notePlot({ kind: 'arrive', place: match.name });
     void populatePlace(match.name);
 
     // El reloj de uno en uno: cada dia cura, pasa hambre y acerca la cuenta semanal. Un
     // salto de cinco dias de golpe se saltaria cuatro de esos.
     for (let day = 0; day < total; day++) {
-        advanceCampaignDay();
         // Por el camino se duerme de noche y se bebe de la cantimplora; comer es otra cosa
         // (las raciones, el cazador). Antes, cada día de viaje contaba veinticuatro horas
         // despierto y sin beber, y un viaje de cuatro días mataba de sed o de sueño aunque se
         // saliera comido y descansado. El paso rápido sigue debiendo el sueño al llegar.
-        for (const member of partyMembers.filter(m => !m.dead)) {
-            member.needs = relieve(member, 'slept');
-            member.needs = relieve(member, 'drank');
-        }
+        // J9.1 (H8 de las vueltas): se bebe y se duerme ANTES de que pase el día. Después, el
+        // día ya había sumado sus 24 h a la sed de ayer y dejaba «Agotamiento 3» puesto, con
+        // el grupo recién salido de la posada.
+        const rested = () => {
+            for (const member of partyMembers.filter(m => !m.dead)) {
+                member.needs = relieve(member, 'slept');
+                member.needs = relieve(member, 'drank');
+            }
+        };
+        rested();
+        advanceCampaignDay();
+        rested();
     }
+    // J9.1: se llega cuando han pasado los días del camino, no al salir. Antes el hito «llegar a»
+    // se cumplía el día de la salida y su escena salía con el día de la llegada, como tarde.
+    notePlot({ kind: 'arrive', place: match.name });
 
     // A paso rapido se llega sin haber dormido.
     if (pace === 'rapido') {

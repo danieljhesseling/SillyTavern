@@ -16,11 +16,13 @@
 
 import { sceneOptions, chooseInScene, sceneTranscript } from '../campaign/plot-scenes.js';
 import { describeDialogueEffect } from '../campaign/dialogues.js';
-import { loadPixelManifest } from './pixel-art.js';
+import { loadPixelManifest, firstArt } from './pixel-art.js';
 import { portraitFor, backdropFor } from './meetup-scene.js';
 import { optionChips, openDialogueWindow, opinionRow, choiceLines } from './dialogue-window.js';
 import { noReturnBadge, noReturnGuard } from './decision-warning.js';
 import { findOption } from '../campaign/companion-opinions.js';
+import { hearLine, shownName, shownText } from './shown-names.js';
+import { humanNote } from '../campaign/human-lines.js';
 
 /** @param {any} value @returns {string} */
 const text = (value) => String(value ?? '').trim();
@@ -45,6 +47,7 @@ function el(tag, className = '', content = '') {
  * @property {string} mood
  * @property {Array<{kind: 'say'|'narration'|'you'|'roll'|'note', text: string}>} lines
  * @property {boolean} ask Si aquí se decide.
+ * @property {any} [presenta] J13.7: quién se da a conocer en ella (`true`: quien habla).
  */
 
 /**
@@ -60,6 +63,8 @@ export function sceneFrames(scene) {
         mood: beat.mood,
         lines: [{ kind: beat.who ? 'say' : 'narration', text: beat.text }],
         ask: Boolean(beat.decision),
+        // J13.7: quién se da a conocer en esta línea, si el paquete lo dice.
+        ...(/** @type {any} */ (beat).presenta != null ? { presenta: /** @type {any} */ (beat).presenta } : {}),
     }));
 }
 
@@ -85,6 +90,7 @@ export function choiceFrames(at, result, notes = []) {
         mood: line.mood,
         lines: [...(i === 0 ? head : []), { kind: line.who ? 'say' : 'narration', text: line.text }, ...(i === 0 ? tail : [])],
         ask: false,
+        ...(/** @type {any} */ (line).presenta != null ? { presenta: /** @type {any} */ (line).presenta } : {}),
     }));
 }
 
@@ -199,7 +205,8 @@ export async function openPlotScene({
                 delete portrait.dataset.src;
                 return;
             }
-            const url = portraitFor({ name: who, pack, mood: mood === 'neutral' ? '' : mood });
+            // M4: quien no tiene retrato pero sí ficha en el bestiario (el malo), con su dibujo.
+            const url = portraitFor({ name: who, pack, mood: mood === 'neutral' ? '' : mood }) || firstArt('creature', { name: who });
             if (portrait.dataset.src === url && portrait.firstChild) return;
             portrait.dataset.src = url;
             portrait.textContent = '';
@@ -210,7 +217,7 @@ export async function openPlotScene({
             }
             const image = /** @type {HTMLImageElement} */ (el('img', 'pixel-art qd-pixel'));
             image.src = url;
-            image.alt = who;
+            image.alt = shownName(who);
             image.addEventListener('error', () => {
                 image.remove();
                 silhouette();
@@ -255,7 +262,12 @@ export async function openPlotScene({
         const draw = () => {
             const frame = frames[at];
             root.dataset.beat = String(frame.beat);
-            plate.textContent = frame.who;
+            // J13.7: lo que se lee aquí enseña nombres (quien se presenta); la placa, después.
+            for (const line of frame.lines) {
+                if (line.kind === 'say') hearLine({ who: frame.who, text: line.text, presenta: frame.presenta });
+                else if (line.kind === 'narration') hearLine({ who: '', text: line.text, presenta: frame.presenta });
+            }
+            plate.textContent = shownName(frame.who);
             plate.hidden = !frame.who;
             drawPortrait(frame.who, frame.mood);
             step.textContent = total > 1 ? `${frame.beat + 1} / ${total}` : '';
@@ -264,7 +276,7 @@ export async function openPlotScene({
                 const kind = line.kind === 'narration' ? 'qd-note' : line.kind === 'you' ? 'qd-you' : line.kind === 'note' ? 'qd-note dw-note' : line.kind === 'roll' ? 'dw-roll' : 'qd-say';
                 const p = el('p', `qd-line ${kind} ps-${line.kind}`);
                 if (line.kind === 'you') p.appendChild(el('span', 'qd-who', 'Tú'));
-                p.appendChild(document.createTextNode(line.text));
+                p.appendChild(document.createTextNode(shownText(line.text, { mask: line.kind === 'note' })));
                 lines.appendChild(p);
             }
             lines.scrollTop = lines.scrollHeight;
@@ -287,7 +299,8 @@ export async function openPlotScene({
                     const body = el('span', 'dw-body');
                     const saying = el('span', 'dw-said');
                     if (option.tag) saying.appendChild(el('span', 'dw-tag', option.tag));
-                    saying.appendChild(document.createTextNode(option.label));
+                    // J13.7: lo que dices no nombra a quien aún no se ha presentado.
+                    saying.appendChild(document.createTextNode(shownText(option.label, { mask: true })));
                     body.appendChild(saying);
                     if (option.locked) {
                         const why = el('span', 'dw-why');
@@ -316,7 +329,7 @@ export async function openPlotScene({
 
             const last = at >= frames.length - 1;
             const next = chip(`qd-chip ${last ? 'qd-chip-finish ps-finish' : 'qd-chip-next ps-next'}`, () => advance());
-            next.append(el('span', 'qd-key', '↵'), el('span', 'qd-label', last ? (scene.dialogue ? `Hablar con ${scene.dialogue.speaker}` : 'Terminar') : 'Seguir'));
+            next.append(el('span', 'qd-key', '↵'), el('span', 'qd-label', last ? (scene.dialogue ? `Hablar con ${shownName(scene.dialogue.speaker, 'el')}` : 'Terminar') : 'Seguir'));
             chips.appendChild(next);
             if (!last) {
                 const skip = chip('qd-leave ps-skip', () => skipAhead());
@@ -353,13 +366,15 @@ export async function openPlotScene({
         /** Lo aplica quien abrió la escena; lo que devuelve (o, si nada, lo de siempre) se dice. */
         const apply = async (/** @type {any[]} */ effects, /** @type {number} */ beat, /** @type {any} */ roll) => {
             if (effects.length === 0 && !roll) return [];
+            // J13.8: «Tomás os mira mejor» se dice como lo diría quien mira. El libro guarda la llana.
+            const human = (/** @type {string[]} */ lines) => lines.map((line, i) => humanNote(line, { seed: `${scene.id}:${beat}`, turn: i }));
             try {
                 const said = await applyEffects(effects, { scene, beat, roll });
-                if (Array.isArray(said)) return said.map(text).filter(Boolean);
+                if (Array.isArray(said)) return human(said.map(text).filter(Boolean));
             } catch (error) {
                 console.error('[escena] no se pudo aplicar', error);
             }
-            return effects.map(describeDialogueEffect).filter(Boolean);
+            return human(effects.map(describeDialogueEffect).filter(Boolean));
         };
 
         const pick = async (/** @type {string} */ id) => {

@@ -2,7 +2,7 @@ import { describe, test, expect } from '@jest/globals';
 import { readFileSync } from 'node:fs';
 import {
     readSceneBeats, sceneBackdrop, milestoneScene, stepScenes, rememberScene, sceneOptions, chooseInScene,
-    applySceneEffects, sceneTranscript, sceneDecisions, checkPlotScenes, SCENE_LIMITS,
+    applySceneEffects, sceneTranscript, sceneDecisions, checkPlotScenes, SCENE_LIMITS, isArrival,
 } from '../public/scripts/game-engine/campaign/plot-scenes.js';
 import { readPlot, startPlot, plotEvent } from '../public/scripts/game-engine/campaign/plot.js';
 import { readDialogues } from '../public/scripts/game-engine/campaign/dialogues.js';
@@ -127,12 +127,33 @@ describe('qué se enseña al abrirse un hito', () => {
             ],
         }));
         const start = startPlot(plot);
-        expect(stepScenes(start).map(s => [s.milestone.id, s.scene.kind])).toEqual([['a', 'scene']]);
+        // J9.1: «llegar a X» cuenta la llegada: al abrirse no sale; sale al llegar.
+        expect(stepScenes(start)).toEqual([]);
         const step = plotEvent(plot, start.state, { kind: 'arrive', place: 'X' }, 1);
-        expect(stepScenes(step).map(s => [s.milestone.id, s.scene.kind])).toEqual([['b', 'text']]);
+        expect(stepScenes(step).map(s => [s.milestone.id, s.scene.kind, s.when])).toEqual([['a', 'scene', 'done']]);
         const found = plotEvent(plot, step.state, { kind: 'arrive', place: 'X' }, 1);
-        expect(stepScenes(found).map(s => [s.milestone.id, s.scene.kind])).toEqual([['c', 'text']]);
-        expect(stepScenes(start, { played: ['a'] }).map(s => s.scene.kind)).toEqual(['text']);
+        expect(stepScenes(found).map(s => [s.milestone.id, s.scene.kind, s.when])).toEqual([['c', 'text', 'done']]);
+        // Una llegada ya jugada (al abrirse, en una partida de antes) no se repite al llegar.
+        expect(stepScenes(step, { played: ['a'] })).toEqual([]);
+    });
+
+    test('J9.1: lo que se abre sin ser una llegada sale al abrirse, marcado como tal', () => {
+        const plot = /** @type {any} */ (readPlot({
+            milestones: [
+                { id: 'a', title: 'A', scene: 'Pelea.', opens: { kind: 'start' }, asks: { kind: 'win', board: 'T' }, beats: ['Te rodean.'] },
+                { id: 'b', title: 'B', scene: 'Llegas a Y.', opens: { kind: 'after', milestone: 'a' }, asks: { kind: 'arrive', place: 'Y' } },
+                { id: 'c', title: 'C', scene: 'Habla.', opens: { kind: 'after', milestone: 'b' }, asks: { kind: 'talk', npc: 'Z' } },
+            ],
+        }));
+        const start = startPlot(plot);
+        expect(stepScenes(start).map(s => [s.milestone.id, s.when])).toEqual([['a', 'opened']]);
+        const won = plotEvent(plot, start.state, { kind: 'win', board: 'T' }, 1);
+        // Se abre la llegada: nada que contar todavía.
+        expect(stepScenes(won)).toEqual([]);
+        const there = plotEvent(plot, won.state, { kind: 'arrive', place: 'Y' }, 2);
+        expect(stepScenes(there).map(s => [s.milestone.id, s.scene.kind, s.when])).toEqual([['b', 'text', 'done'], ['c', 'text', 'opened']]);
+        expect(isArrival(plot.milestones[1])).toBe(true);
+        expect(isArrival(plot.milestones[0])).toBe(false);
     });
 });
 

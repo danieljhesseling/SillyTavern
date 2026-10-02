@@ -134,3 +134,4 @@ Ahora todos los PNJ tienen sus tres gestos, con el mismo nombre `<id>--alegre|en
 - `otilia--alegre.png`: Otilia sonriendo, por fin tranquila.
 - `otilia--enfadado.png`: Otilia furiosa, enseñando los dientes.
 - `otilia--triste.png`: Otilia llorando.
+- `un-guardia.png`: «Un guardia», el de la guardia sin nombre (en El Peaje Norte no hay alguacil ni sargento; el calabozo, D-J47). Casco redondo de hierro, capa gris con cuello de piel, fajín rojo y barba castaña con escarcha. Sin gestos: no es gente del paquete.

@@ -70,7 +70,8 @@ describe('J2.1: un prólogo corto y jugable', () => {
             [{ kind: 'win', ...here, board: 'El muelle de Puerto Alba' }, 'el-muelle', 'la-charla', /Soy Tomás/],
             [{ kind: 'talk', ...here, npc: 'Tomás' }, 'la-charla', 'el-gremio', /Brunilda, la maestra del gremio/],
             [{ kind: 'talk', ...here, npc: 'Brunilda' }, 'el-gremio', 'la-prueba', /Baja a la bodega/],
-            [{ kind: 'win', ...here, board: 'La bodega del gremio' }, 'la-prueba', 'el-tablon', /apunta tu nombre en el libro del gremio/],
+            // J13.8: Brunilda no lo anuncia: moja la pluma y te espera con el libro.
+            [{ kind: 'win', ...here, board: 'La bodega del gremio' }, 'la-prueba', 'el-tablon', /Brunilda te ve llegar.*moja la pluma/],
         ];
         for (const [event, done, opened, scene] of walk) {
             const step = plotEvent(plot, state, event, 1);
@@ -141,7 +142,7 @@ describe('J2.3: la prueba del gremio se puede saltar', () => {
         expect(step.skipped.map(m => m.id)).toEqual(['el-muelle', 'la-charla', 'el-gremio']);
         expect(step.state.done).toEqual(expect.arrayContaining(['el-muelle', 'la-charla', 'el-gremio', 'la-prueba']));
         expect(step.opened.map(m => m.id)).toEqual(['el-tablon']);
-        expect(step.opened[0].scene).toMatch(/apunta tu nombre en el libro del gremio/);
+        expect(step.opened[0].scene).toMatch(/Brunilda te ve llegar.*moja la pluma/);
         // Y ya no hay prueba que saltar.
         expect(hubTrial(plot, step.state)).toBeNull();
     });
@@ -171,14 +172,14 @@ describe('J2.3: la prueba del gremio se puede saltar', () => {
         expect(hubTrial(hidden, { open: ['a'] })).toBeNull();
     });
 
-    test('la fila ofrece pelear, saltar, el tablón y contratar, por ese orden', () => {
+    test('la fila ofrece saltar, el tablón y contratar, por ese orden (la pelea empieza sola, tanda 10)', () => {
         const hub = [
             { id: 'hub-skip', label: 'Saltar la prueba', icon: 'fa-forward', command: '/saltar-prueba' },
             { id: 'hub-board', label: 'Tablón de campañas', icon: 'fa-scroll', command: '/campanas' },
             { id: 'hub-hire', label: 'Contratar mercenarios', icon: 'fa-coins', command: '/contratar' },
         ];
-        const chips = buildActionChips({ fight: 'Rata de bodega x2', hub });
-        expect(chips.slice(0, 4).map(c => c.label)).toEqual(['Iniciar combate (Rata de bodega x2)', 'Saltar la prueba', 'Tablón de campañas', 'Contratar mercenarios']);
-        expect(chips[1].command).toBe('/saltar-prueba');
+        const chips = buildActionChips({ hub });
+        expect(chips.slice(0, 3).map(c => c.label)).toEqual(['Saltar la prueba', 'Tablón de campañas', 'Contratar mercenarios']);
+        expect(chips[0].command).toBe('/saltar-prueba');
     });
 });

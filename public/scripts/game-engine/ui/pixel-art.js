@@ -76,7 +76,7 @@ const BIOME_WORDS = [
 /** Las casillas que tienen un solo dibujo, sea cual sea el bioma. */
 const TILE_FILES = {
     difficult: 'dificil', cover_half: 'cobertura-media', cover_three_quarters: 'cobertura-tres-cuartos', chasm: 'abismo',
-    stairs: 'escalera', water: 'agua', ice: 'hielo', brush: 'maleza', barrel: 'barril', chest: 'cofre', exit: 'salida',
+    stairs: 'escalera', water: 'agua', deep_water: 'agua', ice: 'hielo', brush: 'maleza', barrel: 'barril', chest: 'cofre', exit: 'salida',
     lever: 'palanca', barricade: 'barricada',
 };
 
@@ -117,6 +117,17 @@ export function terrainTile(cell, { biome = 'mazmorra', edge = false } = {}) {
     if (type === 'door') return cell?.broken ? 'puerta-rota' : cell?.open ? 'puerta-abierta' : cell?.locked ? 'puerta-cerrojo' : 'puerta-cerrada';
     if (type === 'high') return edge ? 'alto-borde' : 'alto';
     return /** @type {Record<string, string>} */ (TILE_FILES)[type] ?? '';
+}
+
+/**
+ * El dibujo de lo ya visto en el suelo (`hazards.js`): el fuego que arde, o una trampa
+ * descubierta. Sin él, una trampa vista era solo un cuadro de rayas.
+ *
+ * @param {{kind?: string}|null|undefined} hazard
+ * @returns {string}
+ */
+export function hazardTile(hazard) {
+    return /fuego|fire/i.test(text(hazard?.kind)) ? 'fuego' : 'trampa';
 }
 
 /**
@@ -442,6 +453,43 @@ export function artFor(kind, query = {}, manifest = loaded) {
  */
 export function firstArt(kind, query = {}, manifest = loaded) {
     return artFor(kind, query, manifest)[0] ?? '';
+}
+
+/** El dibujo de un enemigo que no tiene el suyo (`bestias/enemigo-sin-dibujo.png`). */
+export const UNDRAWN_ENEMY = 'enemigo-sin-dibujo';
+
+/**
+ * El dibujo de un enemigo en el tablero. Si es alguien del paquete con retrato (el rival de un
+ * duelo: Izek, Luvash, Ramiro), su retrato, salvo que tenga su bicho propio dibujado; si no, su
+ * bicho, por su nombre o por su arquetipo. Sin paquete abierto no se busca retrato: un «Ramiro»
+ * de otra campaña no es el del gremio.
+ *
+ * @param {{name?: string, archetype?: string, pack?: string}} [query]
+ * @param {PixelManifest|null} [manifest]
+ * @returns {string}
+ */
+export function enemyArt({ name = '', archetype = '', pack = '' } = {}, manifest = loaded) {
+    const face = pack ? firstArt('portrait', { name, pack }, manifest) : '';
+    if (face && !firstArt('creature', { id: name }, manifest)) return face;
+    return firstArt('creature', { name, archetype }, manifest)
+        // Uno sin dibujo (el jefe propio de una campaña tuya): una sombra encapuchada, no la calavera.
+        || firstArt('creature', { id: UNDRAWN_ENEMY }, manifest);
+}
+
+/**
+ * El sitio dibujado detrás de un rato libre (J14.11): leer en la biblioteca del gremio, si ya
+ * la tiene, o entrenar en el patio (`sitios/biblioteca.png`, `sitios/patio.png`). Los demás, y
+ * estos si falta su dibujo, el del sitio donde se hacen (la sala del gremio, la posada…).
+ *
+ * @param {string} pastime El rato (`leer`, `patio`, `cartas`…).
+ * @param {string} placeArt El dibujo del sitio (`gremio`, `taberna`…).
+ * @param {{library?: number}} [guild] Lo que tiene el gremio: el nivel de la biblioteca.
+ * @param {PixelManifest|null} [manifest]
+ * @returns {string} El id para `firstArt('place', …)`.
+ */
+export function pastimePlace(pastime, placeArt, { library = 0 } = {}, manifest = loaded) {
+    const own = pastime === 'patio' ? 'patio' : pastime === 'leer' && Number(library) > 0 ? 'biblioteca' : '';
+    return own && firstArt('place', { id: own }, manifest) ? own : placeArt;
 }
 
 /**

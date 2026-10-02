@@ -401,3 +401,27 @@ describe('getProfileOptions', () => {
         expect(options).toContainEqual(['aggressive', 'Agresivo']);
     });
 });
+
+describe('M4: sin llegar este turno, por el camino de verdad', () => {
+    test('el lobo encerrado en la tienda sale por la puerta en vez de quedarse pegado a la pared', () => {
+        // La tienda de Madam Eva: el lobo dentro, la puerta arriba y el héroe abajo, al otro
+        // lado de la pared. En línea recta lo más cercano era quedarse donde estaba.
+        const rows = [
+            '....................',
+            '.....####.###.......',
+            '.....#......#.......',
+            '.....#......#.......',
+            '.....########.......',
+            '....................',
+        ];
+        const plan = planEnemyTurn({
+            actor: foe({ gridX: 9, gridY: 3, speedFeet: 40 }),
+            targets: [hero({ gridX: 8, gridY: 5 })],
+            terrain: terrainFromMap(rows), gridWidth: 20, gridHeight: 6,
+        });
+        expect(plan.rationale).not.toBe('No puede acercarse más.');
+        expect(plan.movementCostFeet).toBeGreaterThan(0);
+        // Sale por el hueco de la fila 1, hacia fuera.
+        expect(plan.path.some(cell => cell.x === 9 && cell.y === 1)).toBe(true);
+    });
+});

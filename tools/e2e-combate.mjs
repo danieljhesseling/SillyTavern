@@ -33,6 +33,7 @@ import { createRequire } from 'node:module';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { entrarEnLaPelea } from './e2e-entrar-pelea.mjs';
 
 const ROOT = new URL('..', import.meta.url).pathname.replace(/^[/]([A-Za-z]:)/, '$1');
 const argAfter = (/** @type {string} */ flag) => (process.argv.includes(flag) ? process.argv[process.argv.indexOf(flag) + 1] : '');
@@ -188,16 +189,19 @@ try {
             })),
         };
     });
-    /** Pasar el turno de quien lleve el jugador, con el botón del panel del combate. */
+    /** Pasar el turno de quien lleve el jugador, con el botón de la barra del combate (tanda 10). */
     const endTurn = async () => {
         await clearDice();
         await dropToasts();
         const clicked = await page.evaluate(() => {
-            const button = [...document.querySelectorAll('#game-shell .wm-combat-buttons button')].find(b => /Fin de turno/.test(b.textContent || ''));
+            const button = [...document.querySelectorAll('#game-shell .gs-actions button')].find(b => /Fin de turno/.test(b.textContent || ''));
             if (button instanceof HTMLElement) button.click();
             return Boolean(button);
         });
         if (!clicked) await page.evaluate(async () => (await import('/scripts/party/player-actions.js')).endPlayerCombatTurn());
+        // Idea 153: con alguien a tiro, el botón pregunta «¿Acabar el turno?»: se acaba igual.
+        const sure = page.locator('.popup:visible .popup-button-ok', { hasText: 'Acabar igual' }).first();
+        if (await sure.waitFor({ state: 'visible', timeout: 800 }).then(() => true).catch(() => false)) await sure.click({ timeout: 3000 }).catch(() => {});
         await page.waitForTimeout(500);
         await clearDice();
     };
@@ -262,7 +266,10 @@ try {
     check('Iria, druida, empieza en el gremio', inHub && /druid/i.test(heroClass), JSON.stringify({ heroClass }));
     await page.waitForTimeout(1200);
 
-    // 2. Saltar la prueba (J2.3), y con ella salen el tablón y contratar (D-J28).
+    // 2. Saltar la prueba (J2.3), y con ella salen el tablón y contratar (D-J28). Tanda 10: en el
+    // tablero del muelle no sale; primero se sale de él.
+    await until(async () => (await chips()).some(c => /^(Saltar la prueba|Salir del tablero)$/.test(c)), 20000);
+    if ((await chips()).includes('Salir del tablero')) await clickChip(/^Salir del tablero$/);
     await until(async () => (await chips()).some(c => /^Saltar la prueba$/.test(c)), 20000);
     await clickChip(/^Saltar la prueba$/);
     await page.waitForSelector('.popup:has-text("¿Saltar la prueba?")', { timeout: 10000 }).catch(() => {});
@@ -370,9 +377,9 @@ try {
         JSON.stringify({ cardBefore, cardAfter }));
 
     // 6. La pelea con la bruja. Con mucha vida, para que dure lo que hace falta mirar.
-    const witchOffered = await until(async () => (await chips()).some(c => /^Iniciar combate \(Bruja Baroviana/.test(c)), 15000);
+    // Tanda 10: ya no hay ficha de «Iniciar combate»; la pelea empieza sola (decidir, colocarse, «Empezar»).
     const fightStart = await chatLength();
-    await clickChip(/^Iniciar combate \(Bruja Baroviana/);
+    const witchOffered = await entrarEnLaPelea(page);
     await until(async () => (await fight()).active, 10000);
     await clearDice();
     await page.evaluate(async () => {
@@ -427,9 +434,10 @@ try {
     await endTurn();
     const wolfTwoTurn = await until(async () => (await fight()).turn?.id === wolfIds[1], 8000);
     const wolfLog = await chatSince(beforeWolves);
-    const turnPanel = await page.evaluate(() => (document.querySelector('#game-shell .wm-combat-turn-panel')?.textContent || '').replace(/\s+/g, ' ').trim());
+    // Tanda 10: de quién es el turno lo dice la cabecera de la iniciativa, arriba a la derecha.
+    const turnPanel = await page.evaluate(() => (document.querySelector('#game-shell .vtt-init .wm-init-head')?.textContent || '').replace(/\s+/g, ' ').trim());
     check('J19.5 y J7.3: el lobo que lleva el juego decide solo; al segundo le toca y lo mueves tú',
-        new RegExp(`${wolves[0].name}[^\\n]*decide por su cuenta`).test(wolfLog) && wolfTwoTurn && new RegExp(`${wolves[1].name}.*Te toca`).test(turnPanel),
+        new RegExp(`${wolves[0].name}[^\\n]*decide por su cuenta`).test(wolfLog) && wolfTwoTurn && new RegExp(`Turno de ${wolves[1].name}`).test(turnPanel),
         JSON.stringify({ wolfLog: wolfLog.slice(0, 400), turnPanel }));
     // Pulsar su ficha la elige: se encienden las casillas a las que llega.
     await clearDice();

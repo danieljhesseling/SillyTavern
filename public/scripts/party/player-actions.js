@@ -41,12 +41,19 @@ import { planFollowUp, planBatonPass, planUltimate } from '../game-engine/combat
 import { spendPerk } from '../game-engine/campaign/bonds.js';
 import { lineToEntry } from '../game-engine/ui/combat-log.js';
 import { clearTimersFor } from '../game-engine/combat/condition-timers.js';
+import { brawlOf } from '../game-engine/combat/brawl.js';
+import {
+    MASTERIES, masteryOf, isLightWeapon, isRangedWeapon, hasWeaponMastery, masteryDC, masteryFires, grazeDamage, toppled,
+    pushPath, cleaveTarget, combineEdge, turnFlags, markTurn, noteVex, takeVex, hasVex,
+} from '../game-engine/rules/weapon-mastery.js';
+import { saveLine } from '../game-engine/rules/unarmed.js';
+import { crawlCost } from '../game-engine/rules/actions-2024.js';
 import { combatEncounter, currentBoardName, currentLocationName, partyMembers, usedReactions } from './state.js';
 import { applyTimedCondition } from './magic.js';
 import {
     enemyTokenId, getAliveEnemies, getAttackableEnemiesForMember, getCurrentActingMember, getCurrentTurnEntry,
     getCurrentTurnState, getRemainingMovementFeet, getTargetArmorClass, heightFor, occupiedCellsFor, partyCell,
-    partyFlanks, resetCombatTurnState, saveCombatState,
+    partyFlanks, resetCombatTurnState, saveCombatState, speedOf,
 } from './combat-state.js';
 import { floatOnToken, pushCombatLogEntry, showCombatDiceRoll } from './combat-log.js';
 import { chargeOpportunityAttacks, enemyBark, resolveEnemyAttackOn } from './enemy-turn.js';
@@ -425,9 +432,12 @@ export function handlePlayerCombatMove(rawValue) {
     const turnState = getCurrentTurnState();
     if (!turnState) return '';
     const remainingFeet = getRemainingMovementFeet(member);
+    // Tanda 10: cuerpo a tierra se avanza arrastrándose, y cada paso cuesta el doble (2024).
+    const crawling = (Array.isArray(member.activeConditions) ? member.activeConditions : []).includes('Prone');
+    distanceFeet = crawlCost(distanceFeet, crawling);
 
     if (distanceFeet > remainingFeet) {
-        toastr.warning(`Movimiento insuficiente. Necesitas ${distanceFeet} pies y te quedan ${remainingFeet}.`);
+        toastr.warning(`Movimiento insuficiente. Necesitas ${distanceFeet} pies y te quedan ${remainingFeet}.${crawling ? ' Por el suelo, cada paso cuesta el doble: levántate antes.' : ''}`);
         return '';
     }
 
@@ -446,7 +456,7 @@ export function handlePlayerCombatMove(rawValue) {
         const end = way[way.length - 1];
         targetX = end.x;
         targetY = end.y;
-        distanceFeet = getPathCost(getActiveBoardContext().terrain, way) * 5;
+        distanceFeet = crawlCost(getPathCost(getActiveBoardContext().terrain, way) * 5, crawling);
     }
     member.mapPosition = {
         locationName: currentLocationName,
@@ -458,7 +468,9 @@ export function handlePlayerCombatMove(rawValue) {
     // salta porque has llegado, no para impedir que llegues. Con camino, ya lo ha visto
     // `walkTraps` paso a paso.
     if (!way) fireHazardsOnEnter(member, targetX, targetY);
-    Object.assign(combatEncounter, spendMovement(combatEncounter, distanceFeet, Number(member.speed) || 30));
+    // Con lo que anda de verdad (Correr, Acelerado, Ralentizado: `speedOf`): con la velocidad de
+    // la ficha, lo andado de más con Correr no se apuntaba.
+    Object.assign(combatEncounter, spendMovement(combatEncounter, distanceFeet, speedOf(member)));
     savePartyState();
     saveCombatState();
 
@@ -517,6 +529,121 @@ export function attackLine({ who, at, total, ac, hit, natural, modifier, cover =
         what: 'Ataque', who, at, total, against: ac, label: 'CA', success: hit, natural, modifier,
         extra: [covered, edged].filter(Boolean).join(' · '),
     });
+}
+
+/**
+ * Las casillas libres del tablero para apartar a alguien: que se pueda pisar y sin nadie encima.
+ *
+ * @returns {{isFree: (x: number, y: number) => boolean, isChasm: (x: number, y: number) => boolean}}
+ */
+export function shoveGround() {
+    const { terrain, gridWidth, gridHeight } = getActiveBoardContext();
+    const taken = new Set([
+        ...getAliveEnemies().map((/** @type {any} */ e) => cellKey(Number(e.gridX) || 0, Number(e.gridY) || 0)),
+        ...partyMembers.filter(m => (Number(m.hp) || 0) > 0)
+            .map(m => cellKey(Number(m.mapPosition?.gridX) || 0, Number(m.mapPosition?.gridY) || 0)),
+    ]);
+    return {
+        isFree: (x, y) => isPassable(terrain, x, y, gridWidth, gridHeight) && !taken.has(cellKey(x, y)),
+        isChasm: (x, y) => getCell(terrain, x, y)?.type === 'chasm',
+    };
+}
+
+/**
+ * Apartar a un enemigo hasta `cells` casillas en línea recta, desde quien empuja: lo que pisa al
+ * llegar (una trampa, fuego) y el vacío si lo hay detrás.
+ *
+ * @param {any} member
+ * @param {any} target
+ * @param {number} cells
+ * @returns {string[]}
+ */
+export function pushEnemyAway(member, target, cells) {
+    const ground = shoveGround();
+    const from = { x: Number(member.mapPosition?.gridX) || 0, y: Number(member.mapPosition?.gridY) || 0 };
+    const path = pushPath({ from, target: { x: Number(target.gridX) || 0, y: Number(target.gridY) || 0 }, cells, ...ground });
+    if (path.falls) {
+        target.gridX = path.to.x;
+        target.gridY = path.to.y;
+        target.currentHp = 0;
+        combatEncounter.conditionTimers = clearTimersFor(combatEncounter.conditionTimers, String(target.instanceId));
+        $(`.wm-token[data-token-id="${enemyTokenId(target)}"]`).addClass('wm-token-falling');
+        return [`🕳️ ${target.name} pierde pie y cae al vacío.`];
+    }
+    if (path.moved === 0) return [`🧱 ${target.name} no tiene a dónde ir: se queda donde está.`];
+    target.gridX = path.to.x;
+    target.gridY = path.to.y;
+    return [`💨 ${target.name} sale despedido ${path.moved * 5} pies, hasta (${path.to.x + 1}, ${path.to.y + 1}).`, ...shovedInto(target, path.to)];
+}
+
+/**
+ * Tanda 10: lo que hace la maestría de un arma (D&D 2024) tras un golpe que entra.
+ *
+ * @param {{member: any, wielder: any, weapon: any, mastery: string, target: any, abilityMod: number, attackMod: number, rangeFeet: number, round: number}} input
+ * @returns {string[]}
+ */
+function applyMastery({ member, wielder, weapon, mastery, target, abilityMod, attackMod, rangeFeet, round }) {
+    /** @type {string[]} */
+    const lines = [];
+    const label = MASTERIES[/** @type {keyof typeof MASTERIES} */ (mastery)]?.label ?? mastery;
+    const alive = (Number(target.currentHp) || 0) > 0;
+    const id = String(target.instanceId);
+    if (mastery === 'vex' && alive) {
+        combatEncounter.tactics = noteVex(combatEncounter.tactics, { by: String(member.id), target: id, round });
+        lines.push(`🎯 ${label}: tu siguiente ataque contra ${target.name}, con ventaja.`);
+    } else if (mastery === 'topple' && alive) {
+        const dc = masteryDC(abilityMod, Number(member.level) || 1);
+        const natural = rollDiceDetailed('1d20', 20).total;
+        const modifier = getAbilityModifier(Number(target.constitution) || 10);
+        lines.push(`🪓 ${label}: ${saveLine({ who: target.name, label: 'Constitución', natural, modifier, dc })}.`);
+        if (toppled({ dc, saveTotal: natural + modifier })) {
+            applyTimedCondition(target, id, 'Prone', 1);
+            combatEncounter.maneuvers = noteKnockdown(combatEncounter.maneuvers, id, String(member.id), round);
+            lines.push(`💢 ${target.name} cae al suelo: pegarle de cerca va con ventaja.`);
+        }
+    } else if (mastery === 'sap' && alive) {
+        applyTimedCondition(target, id, 'Debilitado', 1);
+        lines.push(`💢 ${label}: el golpe le deja tocado; su siguiente ataque, con desventaja.`);
+    } else if (mastery === 'slow' && alive) {
+        applyTimedCondition(target, id, 'Ralentizado', 1);
+        lines.push(`🐢 ${label}: anda 10 pies menos hasta tu próximo turno.`);
+    } else if (mastery === 'push' && alive) {
+        lines.push(`💨 ${label}:`, ...pushEnemyAway(member, target, 2));
+    } else if (mastery === 'cleave' && !isRangedWeapon(weapon)) {
+        const turn = turnFlags(combatEncounter.tactics, String(member.id), round);
+        const secondId = turn.cleaved ? '' : cleaveTarget({
+            first: { id, x: Number(target.gridX) || 0, y: Number(target.gridY) || 0 },
+            attacker: { x: Number(member.mapPosition?.gridX) || 0, y: Number(member.mapPosition?.gridY) || 0 },
+            reachFeet: Math.min(rangeFeet, 10),
+            others: getAliveEnemies().map((/** @type {any} */ e) => ({ id: String(e.instanceId), x: Number(e.gridX) || 0, y: Number(e.gridY) || 0, hp: Number(e.currentHp) || 0 })),
+        });
+        const second = secondId ? getAliveEnemies().find((/** @type {any} */ e) => String(e.instanceId) === secondId) : null;
+        if (second) {
+            combatEncounter.tactics = markTurn(combatEncounter.tactics, String(member.id), round, { cleaved: true });
+            const natural = rollDiceDetailed('1d20', 20).total;
+            const total = natural + attackMod;
+            const { ac } = getTargetArmorClass(second, member);
+            const hit = natural === 20 || (natural !== 1 && total >= ac);
+            lines.push(`🪓 ${label}: el mismo tajo sigue hasta ${second.name}.`);
+            lines.push(attackLine({ who: member.name, at: second.name, total, ac, hit, natural, modifier: attackMod }));
+            if (hit) {
+                const formula = getPlayerDamageFormula(wielder, rangeFeet);
+                const rolled = rollDiceDetailed(formula, 8).total;
+                const damage = Math.max(1, rolled + Math.min(0, abilityMod) + weaponBonus(wielder));
+                second.currentHp = Math.max(0, (Number(second.currentHp) || 0) - damage);
+                combatEncounter.tally = noteDealt(combatEncounter.tally, member.id, damage, second.currentHp === 0);
+                floatOnToken(enemyTokenId(second), `-${damage}`, 'damage');
+                lines.push(`✅ ${damage} de daño, sin tu modificador. ${second.name}: ${second.currentHp}/${second.maxHp}.`);
+                if (second.currentHp === 0) {
+                    lines.push(`☠️ ${second.name} cae derrotado.`);
+                    recordFeat(member, 'kill', String(second.name));
+                }
+            } else {
+                lines.push('❌ No le alcanza.');
+            }
+        }
+    }
+    return lines;
 }
 
 /**
@@ -956,9 +1083,68 @@ export function handlePlayerCombatAttack(rawTargetName) {
         toastr.warning(`Objetivo no encontrado: ${rawTargetName}`);
         return '';
     }
+    return strikeEnemy(member, target);
+}
 
+/**
+ * Tanda 10: atacar a un enemigo por su id (la barra de acciones lo elige de una lista, y dos
+ * enemigos pueden llamarse igual).
+ *
+ * @param {string} targetId
+ * @param {{weapon?: any, offHand?: boolean, cost?: 'action'|'bonus'|'none'}} [opts]
+ * @returns {string}
+ */
+export function attackEnemyById(targetId, opts = {}) {
+    const entry = getCurrentTurnEntry();
+    const member = getCurrentActingMember();
+    if (!combatEncounter.active || !entry || entry.isEnemy || !member || !getCurrentTurnState()) {
+        toastr.warning('No hay un turno de jugador activo.');
+        return '';
+    }
+    const cost = opts.cost ?? 'action';
+    if (cost !== 'none' && !hasAction(combatEncounter, cost)) {
+        toastr.warning(cost === 'bonus' ? 'Ya has gastado la acción adicional.' : 'Tu accion de este turno ya fue usada.');
+        return '';
+    }
+    const target = getAliveEnemies().find((/** @type {any} */ e) => String(e.instanceId) === String(targetId));
+    if (!target) {
+        toastr.warning('Ese enemigo ya no está en pie.');
+        return '';
+    }
+    return strikeEnemy(member, target, opts);
+}
+
+/**
+ * Quien ataca, con otra arma en la mano (la de la otra mano): la misma ficha con esa arma puesta.
+ * No se guarda: es para las cuentas del golpe.
+ *
+ * @param {any} member
+ * @param {any} weapon
+ * @returns {any}
+ */
+function wielding(member, weapon) {
+    if (!weapon) return member;
+    return { ...member, equippedItems: { ...(member.equippedItems ?? {}), weapon: weapon.id } };
+}
+
+/**
+ * El golpe de verdad: la tirada, el daño, lo que hace el crítico, las maestrías de 2024 y el
+ * final de la pelea si toca. Con `opts.weapon`, con esa arma (la de la otra mano); con
+ * `opts.offHand`, sin sumar el modificador al daño (salvo que reste); `opts.cost`, lo que gasta.
+ *
+ * @param {any} member
+ * @param {any} target
+ * @param {{weapon?: any, offHand?: boolean, cost?: 'action'|'bonus'|'none'}} [opts]
+ * @returns {string}
+ */
+function strikeEnemy(member, target, opts = {}) {
+    const turnState = getCurrentTurnState();
+    if (!turnState) return '';
+    const cost = opts.cost ?? 'action';
+    const wielder = wielding(member, opts.weapon ?? null);
+    const weapon = heldWeapon(wielder);
     const origin = member.mapPosition || { gridX: 0, gridY: 0, locationName: currentLocationName };
-    const rangeFeet = getAttackRangeFeet(member);
+    const rangeFeet = getAttackRangeFeet(wielder);
     const distanceFeet = getDistanceInFeet(origin.gridX || 0, origin.gridY || 0, target.gridX || 0, target.gridY || 0);
     if (distanceFeet > rangeFeet) {
         toastr.warning(`${target.name} está fuera de alcance: a ${distanceFeet} pies, y llegas a ${rangeFeet}.`);
@@ -967,8 +1153,12 @@ export function handlePlayerCombatAttack(rawTargetName) {
 
     // Idea 47: lo aprendido a fuerza de tumbar a los de su clase.
     // Idea 120: el «+1» del arma suma al ataque y al daño.
-    const attackMod = getPlayerAttackModifier(member, rangeFeet) + traitBonus(member, target.name) + perkBonus(member, 'attack') + weaponBonus(member);
-    const edge = attackEdge({
+    const abilityMod = getPlayerAttackModifier(wielder, rangeFeet);
+    const attackMod = abilityMod + traitBonus(member, target.name) + perkBonus(member, 'attack') + weaponBonus(wielder);
+    const round = Number(combatEncounter.round) || 1;
+    // Tanda 10: Molestar (la maestría de 2024) da ventaja en el siguiente golpe contra él.
+    const vexed = hasVex(combatEncounter.tactics, { by: String(member.id), target: String(target.instanceId), round });
+    const baseEdge = attackEdge({
         targetId: String(target.instanceId),
         height: heightFor(partyCell(member), { x: Number(target.gridX) || 0, y: Number(target.gridY) || 0 }),
         targetConditions: target.activeConditions ?? [],
@@ -980,12 +1170,18 @@ export function handlePlayerCombatAttack(rawTargetName) {
         attackerId: String(member.id),
         hindered: attackHindrance(partyCell(member), { x: Number(target.gridX) || 0, y: Number(target.gridY) || 0 }, distanceFeet),
     });
+    const edge = { ...baseEdge, ...combineEdge(baseEdge, vexed ? ['le tienes molestado'] : []) };
     const edged = rollWithEdge(() => rollDiceDetailed('1d20', 20).total, edge.mode);
     const attackRoll = { total: edged.natural, natural: edged.natural };
+    if (vexed) combatEncounter.tactics = takeVex(combatEncounter.tactics, { by: String(member.id), target: String(target.instanceId), round }).state;
     // La ayuda vale para un golpe: se gasta aunque falle.
     if (edge.usesHelp) combatEncounter.maneuvers = consumeHelp(combatEncounter.maneuvers, String(target.instanceId));
-    // Idea 11: quien ataca desde su escondite deja de estar escondido.
-    if (edge.usesHidden) combatEncounter.maneuvers = revealHidden(combatEncounter.maneuvers, String(member.id));
+    // Idea 11: quien ataca desde su escondite deja de estar escondido (tanda 10: y deja de ser
+    // invisible, que es lo que le dio Ocultarse).
+    if (edge.usesHidden) {
+        combatEncounter.maneuvers = revealHidden(combatEncounter.maneuvers, String(member.id));
+        member.activeConditions = (Array.isArray(member.activeConditions) ? member.activeConditions : []).filter((/** @type {string} */ c) => c !== 'Invisible');
+    }
     const attackTotal = attackRoll.total + attackMod;
     const { ac: targetAc, cover: targetCover } = getTargetArmorClass(target, member);
     const isCrit = attackRoll.natural === 20;
@@ -1003,27 +1199,54 @@ export function handlePlayerCombatAttack(rawTargetName) {
     });
 
     const lines = [];
-    lines.push(`🗡️ ${member.name} ataca a ${target.name}.`);
+    lines.push(opts.offHand
+        ? `🗡️ ${member.name} golpea a ${target.name} con la otra mano${weapon ? ` (${String(weapon.name).toLowerCase()})` : ''}.`
+        : `🗡️ ${member.name} ataca a ${target.name}.`);
     lines.push(attackLine({ who: member.name, at: target.name, total: attackTotal, ac: targetAc, hit: isHit, natural: attackRoll.total, modifier: attackMod, cover: targetCover, edge: describeEdge(edged, edge.mode, edge.reasons) }));
 
-    Object.assign(combatEncounter, useAction(combatEncounter, 'action'));
+    if (cost !== 'none') Object.assign(combatEncounter, useAction(combatEncounter, cost));
+    // Tanda 10: lo que el turno de 2024 recuerda: con qué arma ligera atacó (para la otra mano)
+    // y si ya golpeó con la otra.
+    const masteryOn = hasWeaponMastery(member) && !brawlOf(combatEncounter);
+    const mastery = masteryOn ? masteryOf(weapon) : '';
+    if (opts.offHand) {
+        combatEncounter.tactics = markTurn(combatEncounter.tactics, String(member.id), round, { offhand: true, ...(cost === 'none' ? { nicked: true } : {}) });
+    } else if (weapon && isLightWeapon(weapon) && !isRangedWeapon(weapon)) {
+        combatEncounter.tactics = markTurn(combatEncounter.tactics, String(member.id), round, { lightWeapon: String(weapon.id) });
+    }
 
     // Idea 186: cada golpe suena según salga.
     soundCue(isHit ? (isCrit ? 'crit' : 'hit') : 'miss');
     if (!isHit) {
         lines.push('❌ Resultado: fallo.');
+        // Rozar (2024): aunque falle, el filo le alcanza.
+        if (masteryFires(mastery, { hit: false })) {
+            const graze = grazeDamage(abilityMod);
+            if (graze > 0) {
+                target.currentHp = Math.max(0, (Number(target.currentHp) || 0) - graze);
+                combatEncounter.tally = noteDealt(combatEncounter.tally, member.id, graze, target.currentHp === 0);
+                floatOnToken(enemyTokenId(target), `-${graze}`, 'damage');
+                lines.push(`🪶 Rozar: el filo le alcanza igual, ${graze} de daño. ${target.name}: ${target.currentHp}/${target.maxHp}.`);
+                if (target.currentHp === 0) lines.push(`☠️ ${target.name} cae derrotado.`);
+            }
+        }
         saveCombatState();
         postCombatNarration(lines.join('\n'));
+        if (target.currentHp === 0 && !checkScenarioOutcome() && getAliveEnemies().length === 0 && !judgeCurrentScenario()) {
+            postCombatNarration('🏆 [COMBAT] Todos los enemigos han sido derrotados.');
+            endCombat('victory');
+        }
         renderLocationMapsPreview();
         return `${member.name} fallo contra ${target.name}`;
     }
 
-    const damageFormula = getPlayerDamageFormula(member, rangeFeet);
+    const damageFormula = getPlayerDamageFormula(wielder, rangeFeet);
     const damageRoll = rollDiceDetailed(damageFormula, 8);
     const critRoll = isCrit ? rollDiceDetailed(damageFormula, 8) : null;
     // Idea 55: con el arma de siempre, se pega mejor.
-    const weaponName = String(heldWeapon(member)?.name ?? '');
-    const damageMod = Math.max(0, getPlayerAttackModifier(member, rangeFeet)) + knackBonus(member, weaponName) + weaponBonus(member);
+    const weaponName = String(weapon?.name ?? '');
+    // Tanda 10: con la otra mano no se suma el modificador al daño, salvo que reste (2024).
+    const damageMod = (opts.offHand ? Math.min(0, abilityMod) : Math.max(0, abilityMod)) + knackBonus(member, weaponName) + weaponBonus(wielder);
     const totalDamage = Math.max(1, damageRoll.total + (critRoll?.total || 0) + damageMod);
     if (weaponName) recordFeat(member, 'hit', weaponName);
 
@@ -1058,7 +1281,7 @@ export function handlePlayerCombatAttack(rawTargetName) {
     }
     // Idea 15: un critico hace algo, segun el arma.
     if (isCrit && target.currentHp > 0) {
-        const effect = critEffect(String(heldWeapon(member)?.damageType ?? ''));
+        const effect = critEffect(String(weapon?.damageType ?? ''));
         if (effect.kind === 'damage') {
             const extra = rollDiceDetailed(effect.dice, 8).total;
             target.currentHp = Math.max(0, target.currentHp - extra);
@@ -1071,6 +1294,10 @@ export function handlePlayerCombatAttack(rawTargetName) {
                 combatEncounter.maneuvers = noteKnockdown(combatEncounter.maneuvers, String(target.instanceId), String(member.id), Number(combatEncounter.round) || 1);
             }
         }
+    }
+    // Tanda 10: la maestría del arma (2024), si quien la lleva sabe usarla.
+    if (masteryFires(mastery, { hit: true, damage: totalDamage })) {
+        lines.push(...applyMastery({ member, wielder, weapon, mastery, target, abilityMod, attackMod, rangeFeet, round }));
     }
     if (target.currentHp === 0) {
         recordFeat(member, 'kill', String(target.name));

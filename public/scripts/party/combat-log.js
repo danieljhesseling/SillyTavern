@@ -17,9 +17,14 @@ import { DICE_LOG_KEY } from './keys.js';
 import { combatLogEntries, setCombatLogEntries } from './state.js';
 import { combatLogPanel, combatLogFilter } from './board-view.js';
 import { showTip } from './narration.js';
+import { focusLost, holdFocus } from '../game-engine/ui/keyboard-nav.js';
+import { motionMs } from '../game-engine/ui/motion.js';
 
 /** @type {HTMLElement|null} */
 let combatDiceOverlayElement = null;
+
+/** J15.5: al quitar los dados, el foco vuelve a lo que lo tenía antes de la primera tirada. @type {(() => void)|null} */
+let combatDiceFocusBack = null;
 
 /** @type {Array<{title: string, subtitle: string, dc: string, total: string, formula: string, classification: 'critical-success'|'success'|'failure'|'critical-failure', detail: string, glyph: string}>} */
 let combatDiceQueue = [];
@@ -34,6 +39,24 @@ export function paintCombatLog() {
     renderCombatLog(combatLogPanel, filterLog(combatLogEntries, combatLogFilter));
 }
 
+/** J20.6: si ya hay un repintado del registro pedido para el siguiente fotograma. */
+let paintPending = false;
+
+/**
+ * J20.6: repinta el registro una vez por fotograma, justo antes de pintarlo, y no una vez por
+ * línea. Un ataque escribe diez o doce líneas, y cada repintado obligaba al navegador a medir
+ * la página entera (`scrollHeight`): en un teléfono, casi un tercio del trabajo de una pelea.
+ */
+function paintSoon() {
+    if (paintPending) return;
+    paintPending = true;
+    const later = typeof requestAnimationFrame === 'function' ? requestAnimationFrame : (/** @type {() => void} */ fn) => setTimeout(fn, 0);
+    later(() => {
+        paintPending = false;
+        paintCombatLog();
+    });
+}
+
 /**
  * Adds an entry to the log and repaints it if it is visible.
  * @param {import('../game-engine/ui/combat-log.js').LogEntry|null} item
@@ -41,7 +64,7 @@ export function paintCombatLog() {
 export function pushCombatLogEntry(item) {
     if (!item) return;
     setCombatLogEntries(appendLogEntry(combatLogEntries, item));
-    paintCombatLog();
+    paintSoon();
 }
 
 /**
@@ -49,9 +72,15 @@ export function pushCombatLogEntry(item) {
  * @param {string} text
  */
 export function pushCombatLogLines(text) {
+    // J20.6: todas las líneas, y un solo repintado.
+    let entries = combatLogEntries;
     for (const line of String(text ?? '').split('\n')) {
-        pushCombatLogEntry(lineToEntry(line));
+        const item = lineToEntry(line);
+        if (item) entries = appendLogEntry(entries, item);
     }
+    if (entries === combatLogEntries) return;
+    setCombatLogEntries(entries);
+    paintSoon();
 }
 
 function ensureCombatDiceOverlay() {
@@ -95,6 +124,16 @@ function ensureCombatDiceOverlay() {
         </div>
     `;
 
+    // J15.5: los dados son una ventana: se anuncian con su título, y la tarjeta recibe el foco
+    // mientras ruedan (el botón aún no se puede pulsar).
+    overlay.setAttribute('role', 'dialog');
+    overlay.setAttribute('aria-modal', 'true');
+    overlay.querySelector('.wm-dice-title')?.setAttribute('id', 'wm-dice-title');
+    overlay.setAttribute('aria-labelledby', 'wm-dice-title');
+    overlay.querySelector('.wm-dice-card')?.setAttribute('tabindex', '-1');
+    overlay.querySelector('.wm-dice-result')?.setAttribute('aria-live', 'polite');
+    // Escondidos (transparentes), no se pueden enfocar: Tab no llega a un botón que no se ve.
+    overlay.inert = true;
     document.body.appendChild(overlay);
     combatDiceOverlayElement = overlay;
     return overlay;
@@ -140,7 +179,8 @@ function flushCombatDiceQueue() {
     const dcNumeric = /^-?\d+$/.test(next.dc) ? Number(next.dc) : null;
     const totalNumeric = /^-?\d+$/.test(next.total) ? Number(next.total) : 0;
     const startedAt = Date.now();
-    const durationMs = 820;
+    // J20.6 y J15.5: más corta en el teléfono, y sin rodar con «reducir movimiento».
+    const durationMs = motionMs(820);
     const timer = window.setInterval(() => {
         const elapsed = Date.now() - startedAt;
         if (dcNumeric == null) {
@@ -163,23 +203,42 @@ function flushCombatDiceQueue() {
             totalEl.classList.remove('rolling');
             nextBtn.disabled = false;
             nextBtn.textContent = finalBtnText;
+            // J15.5: ya se puede pasar: el foco, al botón (Intro sigue).
+            if (overlay.contains(document.activeElement) || focusLost()) nextBtn.focus({ preventScroll: true });
         }
     }, 42);
 
+    // Un segundo clic en la misma tirada (dos toques seguidos, o Intro, que SillyTavern pulsa
+    // además del navegador) no la cierra dos veces: la segunda vez dejaba la siguiente tirada a
+    // la vista y sin poder cerrarse.
+    let closed = false;
     nextBtn.onclick = () => {
-        if (!combatDiceAnimating) return;
+        if (!combatDiceAnimating || closed) return;
+        closed = true;
         window.clearInterval(timer);
         dcEl.classList.remove('rolling');
         totalEl.classList.remove('rolling');
         nextBtn.disabled = false;
         overlay.classList.remove('active');
+        overlay.inert = true;
         window.setTimeout(() => {
             combatDiceAnimating = false;
             flushCombatDiceQueue();
+            // La última tirada: el foco, de vuelta a donde estaba (o a lo principal de la pelea).
+            if (!combatDiceAnimating) {
+                const back = combatDiceFocusBack;
+                combatDiceFocusBack = null;
+                back?.();
+            }
         }, 120);
     };
 
     overlay.classList.add('active');
+    overlay.inert = false;
+    // J15.5: el foco entra en los dados; con la primera tirada se apunta de dónde venía.
+    const card = /** @type {HTMLElement|null} */ (overlay.querySelector('.wm-dice-card'));
+    if (!combatDiceFocusBack && card) combatDiceFocusBack = holdFocus(card, card);
+    else if (card && !overlay.contains(document.activeElement)) card.focus({ preventScroll: true });
 }
 
 /**

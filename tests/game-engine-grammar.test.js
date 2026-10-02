@@ -171,6 +171,24 @@ const RESOLVED = {
     'compendio/quedadas.json': [/^\.rows\[\d+\]\.beats\[\d+\]\.(note|say)$/, /^\.rows\[\d+\]\.beats\[\d+\]\.replies\[\d+\]\.(text|then)$/],
     // Las noches en el camino: sus escenas se montan con `bindCast` (cast-scenes.js), que las resuelve.
     'compendio/noches.json': [/^\.rows\[\d+\]\.beats\[\d+\]\.(note|say)$/, /^\.rows\[\d+\]\.beats\[\d+\]\.replies\[\d+\]\.(text|then)$/],
+    // J14.10: las escenas de romance se juegan como quedadas (`renderScene`), y las frases de
+    // pareja van dentro de un rato; el epílogo y el salón los resuelve `fillCouple` (romance.js).
+    // El «no» de la ficha de un compañero sale como lo que contesta en la señal (`renderScene`).
+    'compendio/romances.json': [
+        /^\.rows\[\d+\]\.beats\[\d+\]\.(note|say)$/, /^\.rows\[\d+\]\.beats\[\d+\]\.replies\[\d+\]\.(text|then)$/,
+        /^\.rows\[\d+\]\.lines\[\d+\]$/, /^\.rows\[\d+\]\.(home|away|hall)$/,
+    ],
+    'compendio/companeros.json': [/^\.rows\[\d+\]\.romance\.no$/],
+    // J10.7: los actos de una campaña sin hilo van al hilo (`act-grammar.js`): las líneas de sus
+    // escenas, las escenas y pistas de sus hitos, y sus finales, que se resuelven como los del paquete.
+    'compendio/actos.json': [
+        /^\.rows\[\d+\]\.(gancho|pistas|encrucijada)\.beats\[\d+\]\.(text|options\[\d+\]\.(text|reply\.text))$/,
+        /^\.rows\[\d+\]\.(testigo|guarida|golpe|bando_a|bando_b)\.(scene|hint)$/,
+        /^\.rows\[\d+\]\.(scene|hint)$/,
+        /^\.rows\[\d+\]\.epilogos\[\d+\]\.text$/,
+    ],
+    // J12.7: lo que dicen quien busca pelea, quien reta y las frases de la taberna (`fillLine`).
+    'compendio/peleas.json': [/^\.rows\[\d+\]\.(provoca|reta|dice|gana|pierde)$/, /^\.rows\[\d+\]\.texto(\[\d+\])?$/],
     // D-J17: la sinopsis de la tarjeta del tablón (`hub-panel.js`, con quien va).
     // Y el camino hasta la campaña (`journeyLine`, que sale por `postForModel`).
     'mundos/mundos.json': [/^\.worlds\[\d+\]\.synopsis$/, /^\.worlds\[\d+\]\.journey\.how$/],
@@ -193,6 +211,10 @@ const RESOLVED = {
         /^\.contracts\[\d+\]\.twist$/,
         // J8.1: las charlas con ramas (`dialogues.js` las resuelve con tu héroe antes de enseñarlas).
         /^\.dialogues\[\d+\]\.nodes\[\d+\]\.(line|again|journal)$/,
+        // J13.8: lo que dice al volver otro día (en lista), al seguir la charla y al contestar.
+        /^\.dialogues\[\d+\]\.nodes\[\d+\]\.(again\[\d+\](\.text)?|more\[\d+\])$/,
+        /^\.dialogues\[\d+\]\.nodes\[\d+\]\.options\[\d+\]\.reply(\.text)?$/,
+        /^\.plot\.milestones\[\d+\]\.beats\[\d+\]\.alt\[\d+\]\.text$/,
         /^\.dialogues\[\d+\]\.nodes\[\d+\]\.options\[\d+\]\.(text|tag|journal)$/,
         /^\.dialogues\[\d+\]\.nodes\[\d+\]\.options\[\d+\]\.check\.(success|partial|failure)\.journal$/,
         /^\.dialogues\[\d+\]\.nodes\[\d+\](\.options\[\d+\](\.check\.(success|partial|failure))?)?\.effects\[\d+\]\.clue$/,
