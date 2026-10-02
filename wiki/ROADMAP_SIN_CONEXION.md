@@ -43,9 +43,9 @@ author: DanielJHesseling / Claude Opus 5.5
 
 ## 📍 Cómo va (2026-10-02)
 
-**Avance, sobre 148 filas activas** (sin lo aparcado ni las decisiones; J10.7 queda aparcada por D-J55):
+**Avance, sobre 149 filas activas** (sin lo aparcado ni las decisiones):
 - **91 % jugable** (135 filas).
-- **96 % construido** (142 filas).
+- **96 % construido** (143 filas).
 
 Todo lo contado está en commits (el último, 62b4e7ec4).
 
@@ -326,6 +326,8 @@ Tus respuestas a D-J11…D-J38. «⏳» significa que está por hacer.
 | **D-J54** | ¿Cuánto habla el narrador? | Casi nada. La historia se cuenta con conversaciones de novela visual entre la gente, con sus retratos, como en *Etrian Odyssey*. El narrador queda para una línea corta de ambiente o de paso del tiempo, y sin placa. Vale para las escenas, los sucesos, el calabozo y los hilos de las campañas sin historia escrita (J10.7) | ⏳ en parte: falta pasar las notas del juego a conversaciones (J13.1) |
 | **D-J55** | ¿En qué se centra la beta sin conexión? | En que se jueguen bien las campañas que ya existen (el prólogo y el gremio, 1387 y Strahd) y en dar forma a lo que hay. Las semillas, las campañas generadas y lo que el juego podría hacer solo quedan para el modo mundo semiabierto, más adelante | ✅ |
 | **D-J56** | ¿Cómo se ajusta la dificultad? | Mixto, con límites: cada zona tiene su nivel recomendado y el motor ajusta dentro de un margen (tope ×1,35, D-J21), sin que llegue a dar igual tu nivel. El grupo de referencia es de **4**, como en D&D (antes, 3): con menos se quita algún enemigo y con 5 se añade. La cripta de Strahd, para nivel 6-7 | ⏳ |
+| **D-J57** | Las tres campañas de semilla (El mundo tras la pantalla, isekai; Las tierras del ocaso, fantasía épica; La costa que no duerme, terror) | Al tablón como **experimentales**, con su historia en tres actos (J10.7 deja de estar aparcada para ellas). Más adelante se pueden escribir bien, como 1387 o Strahd | ⏳ |
+| **D-J58** | Las facciones | Se queda lo que es historia: la reputación con cada grupo, y las puertas, los peajes y los finales que dependen de ella. La simulación de un mundo vivo (relojes que avanzan solos, quién controla cada sitio, precios y sucesos por facción) se apaga con un interruptor hasta el modo mundo semiabierto. Ahora, el foco es un D&D puro: el grupo, su gestión y las relaciones | ⏳ |
 
 ---
 
@@ -590,7 +592,7 @@ Así no hay que reescribir el motor para el servidor. El riesgo: si el anfitrió
 | J10.4 | **Secretos**: sitios y cosas escondidas que se descubren por un rumor, un mapa, una tirada o una persona | A | M | Tres secretos en 1387 |
 | J10.5 | **El mapa de la campaña, dibujado**: sitios y caminos con CSS (sin arte), con lo visitado y tus notas | A | M | Captura para el Gem de UX |
 | J10.6 | **Gente con horario** (T9): cada persona, en un sitio según la hora | A | M | Pruebas |
-| J10.7 | **Hilos con fondo para campañas sin escribir** ⏸️ *Aparcada para el modo mundo semiabierto (D-J55).* (Z5): una gramática de actos para las campañas que generes con la semilla | A | L | Una campaña generada tiene tres actos que se juegan |
+| J10.7 | **Hilos con fondo para campañas sin escribir** *Para las tres campañas de semilla, como experimentales (D-J57); el resto, para el modo mundo semiabierto.* (Z5): una gramática de actos para las campañas que generes con la semilla | A | L | Una campaña generada tiene tres actos que se juegan |
 
 **Hecho cuando** dentro de 1387 hay al menos tres razones distintas para ir a cada sitio.
 
