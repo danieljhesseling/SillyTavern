@@ -10,6 +10,11 @@
  *   de acciones o la tarjeta del enemigo, y también cuando el juego lleva al compañero;
  * - lo que la barra y la tarjeta necesitan saber para ofrecerlas (`bondChoices`).
  *
+ * E3.2: **la jugada en pareja del rango 3 para cualquier pareja del grupo** (`resolvePairCombo`),
+ * con su nombre y lo que deja según los papeles de los dos (`rules/pair-moves.js`): tú con un
+ * compañero o dos compañeros entre ellos. Un compañero que va solo también la hace con otro
+ * compañero (no con tu reacción), una vez por ronda.
+ *
  * Lo puro (quién puede, cómo se llama, qué dice) está en `game-engine/combat/bond-moves.js`.
  */
 
@@ -17,7 +22,7 @@ import { rollDiceDetailed, getAttackRangeFeet } from './combat-rules.js';
 import {
     PAIR_MOVE_RANK, pairMoveOf, pairMoveOptions, perkBanner, perkLine, ultimateOf,
 } from '../game-engine/combat/bond-moves.js';
-import { pairOptions } from '../game-engine/rules/pair-moves.js';
+import { PAIR_RANK, pairLine, pairOptions, roleOf } from '../game-engine/rules/pair-moves.js';
 import { planUltimate } from '../game-engine/combat/bond-perks.js';
 import { getBondProgress } from '../game-engine/campaign/bonds.js';
 import { noteKnockdown, recordManeuver } from '../game-engine/combat/maneuvers.js';
@@ -25,13 +30,15 @@ import { bondMoveUsed, noteBondMove } from '../game-engine/rules/weapon-mastery.
 import { escapeSave, saveFails, saveLine, unarmedDC } from '../game-engine/rules/unarmed.js';
 import { hasAction, useAction } from '../game-engine/combat/turn-machine.js';
 import { pushFx, showBond } from '../game-engine/ui/combat-vtt/fx.js';
+import { floatOnToken } from './combat-log.js';
 import { combatEncounter, partyMembers, usedReactions } from './state.js';
-import { getAliveEnemies, partyCell, saveCombatState } from './combat-state.js';
+import { enemyTokenId, getAliveEnemies, partyCell, saveCombatState } from './combat-state.js';
 import { showCombatDiceRoll } from './combat-log.js';
 import { fxOn, tokenIdOf } from './combat-fx.js';
 import { applyTimedCondition } from './magic.js';
 import { postCombatNarration } from './narration.js';
 import { getCampaignBonds } from './time.js';
+import { sulks } from './roce.js';
 import { attackEnemyById, resolveFollowUpAttack, resolveUltimateById } from './player-actions.js';
 import { checkScenarioOutcome } from './combat-flow.js';
 
@@ -43,12 +50,13 @@ import { checkScenarioOutcome } from './combat-flow.js';
  *
  * @param {any} member El compañero cuya ventaja salta (el que habla).
  * @param {BondPerk} perkId
- * @param {{partner?: any}} [options] Con quién (también brilla).
+ * @param {{partner?: any, title?: string, line?: string}} [options] Con quién (también brilla); y,
+ *   si la jugada trae los suyos, su rótulo y su frase (E3.2: la de la pareja por sus papeles).
  */
-export function announceBond(member, perkId, { partner = null } = {}) {
+export function announceBond(member, perkId, { partner = null, title: ownTitle = '', line: ownLine = '' } = {}) {
     if (!member) return;
-    const line = perkLine(member, perkId);
-    const title = perkBanner(member, perkId);
+    const line = ownLine || perkLine(member, perkId);
+    const title = ownTitle || perkBanner(member, perkId);
     if (title) postCombatNarration(`💞 [COMBAT] ${title}`);
     if (line) postCombatNarration(`💬 ${member.name}: «${line}»`);
     const step = {
@@ -66,7 +74,7 @@ export function announceBond(member, perkId, { partner = null } = {}) {
  * Los del grupo como los quieren `pairOptions` y `pairMoveOptions`: dónde están, su vínculo contigo,
  * si les queda la reacción y si ya hicieron su jugada en esta pelea.
  *
- * @returns {Array<{id: string, name: string, x: number, y: number, hp: number, rank: number, reachFeet: number, reactionUsed: boolean, moveUsed: boolean, style: any}>}
+ * @returns {Array<{id: string, name: string, x: number, y: number, hp: number, rank: number, reachFeet: number, reactionUsed: boolean, moveUsed: boolean, style: any, role: any}>}
  */
 export function bondFighters() {
     const bonds = getCampaignBonds();
@@ -75,11 +83,14 @@ export function bondFighters() {
         name: String(m.name),
         ...partyCell(m),
         hp: Number(m.hp) || 0,
-        rank: getBondProgress(bonds, String(m.id)).rank,
+        // E4.1: quien está molesto contigo no hace ataques en pareja ni su jugada (hasta que se le pase).
+        rank: sulks(m) ? 0 : getBondProgress(bonds, String(m.id)).rank,
         reachFeet: getAttackRangeFeet(m),
         reactionUsed: usedReactions.has(`party:${m.id}`),
         moveUsed: bondMoveUsed(combatEncounter.tactics, String(m.id)),
         style: pairMoveOf(m).style,
+        // E3.2: su papel, para la jugada en pareja.
+        role: roleOf(m),
     }));
 }
 
@@ -97,6 +108,7 @@ const enemyCell = (enemy) => ({
  * @property {string} partnerId Con quién la hace quien juega (vacío en el golpe definitivo).
  * @property {string} enemyId
  * @property {string} badge «Vínculo 7».
+ * @property {import('../game-engine/rules/pair-moves.js').PairCombo} [combo] La jugada en pareja (rango 3).
  */
 
 /**
@@ -105,9 +117,10 @@ const enemyCell = (enemy) => ({
  *
  * @param {any} member Quien juega.
  * @param {any} [onlyEnemy] Solo contra este (la tarjeta de un enemigo).
+ * @param {{withHero?: boolean}} [options] Si vale sumar al héroe a la jugada en pareja.
  * @returns {BondChoice[]}
  */
-export function bondChoices(member, onlyEnemy = null) {
+export function bondChoices(member, onlyEnemy = null, { withHero = true } = {}) {
     if (!member || !combatEncounter.active || !hasAction(combatEncounter, 'action')) return [];
     const heroId = String(partyMembers[0]?.id ?? '');
     const fighters = bondFighters();
@@ -117,11 +130,13 @@ export function bondChoices(member, onlyEnemy = null) {
     const cells = enemies.map(enemyCell);
     /** @type {BondChoice[]} */
     const out = [];
-    for (const option of pairOptions({ actor: me, heroId, party: fighters, enemies: cells })) {
-        const companionId = String(member.id) === heroId ? option.partnerId : String(member.id);
+    // E3.2: con cualquiera del grupo con quien tenga vínculo 3, la jugada de los dos por sus papeles.
+    for (const option of pairOptions({ actor: me, heroId, party: fighters, enemies: cells, withHero })) {
         out.push({
-            kind: 'pair', name: `A una con ${option.partnerName}`, desc: 'Los dos atacáis, con ventaja. Gasta tu acción y su reacción.',
-            companionId, partnerId: option.partnerId, enemyId: option.enemyId, badge: 'Vínculo 3',
+            kind: 'pair', name: `${option.combo.name} · con ${option.partnerName.split(/\s+/)[0]}`,
+            desc: `${option.combo.describe} Gasta tu acción y la reacción de ${option.partnerName.split(/\s+/)[0]}.`,
+            companionId: option.companionId, partnerId: option.partnerId, enemyId: option.enemyId, badge: `Vínculo ${PAIR_RANK}`,
+            combo: option.combo,
         });
     }
     for (const option of pairMoveOptions({ actor: me, heroId, party: fighters, enemies: cells })) {
@@ -232,9 +247,104 @@ export function resolveBondMove(member, companionId, enemyId) {
 }
 
 /**
+ * Cuántas rondas dura lo que se le deja a alguien «hasta su próximo turno»: los estados con fecha
+ * caducan al empezar la ronda, así que si ya le ha tocado en esta, tiene que durar a la siguiente.
+ *
+ * @param {string} id
+ * @returns {number}
+ */
+function untilTurnOf(id) {
+    const order = Array.isArray(combatEncounter.turnOrder) ? combatEncounter.turnOrder : [];
+    const at = Number(combatEncounter.currentTurnIndex) || 0;
+    return order.slice(at + 1).some(entry => String(entry?.id) === String(id)) ? 1 : 2;
+}
+
+/**
+ * E3.2: la jugada en pareja del rango 3, para cualquier pareja del grupo, según sus papeles
+ * (`pairCombo`): pegan los dos con ventaja, en su orden (quien dispara abre, la sombra remata), y
+ * deja lo de cada papel: cubrir, despistar, dejarle vendido, frenarle o bendecir a la pareja.
+ * Gasta la acción de quien la empieza y la reacción de quien se suma.
+ *
+ * @param {any} member Quien la empieza (a quien le toca).
+ * @param {string} partnerId Quien se suma.
+ * @param {any} enemy
+ * @returns {string} El nombre de la jugada, o vacío si no se ha podido.
+ */
+export function resolvePairCombo(member, partnerId, enemy) {
+    const partner = partyMembers.find(m => String(m.id) === String(partnerId));
+    if (!combatEncounter.active || !member || !partner || !enemy) return '';
+    const option = bondChoices(member, enemy).find(c => c.kind === 'pair' && c.partnerId === String(partnerId));
+    const combo = option?.combo;
+    if (!option || !combo) {
+        toastr.warning(`Ahora no se puede: hace falta vínculo ${PAIR_RANK}, tu acción, su reacción y que lleguéis los dos.`, 'En pareja');
+        return '';
+    }
+    const id = String(enemy.instanceId);
+    const speaker = String(option.companionId) === String(partner.id) ? partner : member;
+    usedReactions.add(`party:${partner.id}`);
+    announceBond(speaker, 'pair', { partner: speaker === partner ? member : partner, title: `Vínculo ${PAIR_RANK} · ${combo.name}`, line: combo.say });
+    postCombatNarration(`[COMBAT] ${pairLine(String(member.name), String(partner.name), String(enemy.name), combo.name)}`);
+
+    const standing = () => (Number(enemy.currentHp) || 0) > 0 && combatEncounter.active;
+    for (const who of combo.order) {
+        if (!standing()) break;
+        if (who === String(member.id)) {
+            // Su pareja le abre la guardia: el golpe de quien la empieza va con ventaja.
+            combatEncounter.maneuvers = recordManeuver(combatEncounter.maneuvers, 'ayudar', String(partner.id), id);
+            attackEnemyById(id);
+        } else {
+            resolveFollowUpAttack(String(partner.id), enemy, `va a una con ${member.name} contra`, 'advantage');
+        }
+    }
+    // Si cayó antes de que pegara quien la empezó, su acción se ha ido igual: era la jugada.
+    if (combatEncounter.active && hasAction(combatEncounter, 'action')) Object.assign(combatEncounter, useAction(combatEncounter, 'action'));
+
+    if (combatEncounter.active) {
+        const byId = (/** @type {string} */ who) => (who === String(member.id) ? member : who === String(partner.id) ? partner : null);
+        /** @type {string[]} */
+        const lines = [];
+        for (const effect of combo.effects) {
+            const by = byId(effect.by);
+            const on = effect.on ? byId(effect.on) : null;
+            if (!by) continue;
+            if (effect.kind === 'cubrir' && on && (Number(on.hp) || 0) > 0) {
+                combatEncounter.maneuvers = recordManeuver(combatEncounter.maneuvers, 'cubrir', String(by.id), String(on.id));
+                floatOnToken(tokenIdOf(on), 'Cubierto', 'heal');
+                lines.push(`🛡️ ${by.name} se queda cubriendo a ${on.name}: hasta su próximo turno, le pegan con desventaja.`);
+            } else if (effect.kind === 'bendecir' && on && (Number(on.hp) || 0) > 0) {
+                applyTimedCondition(on, String(on.id), 'Bendecido', 2);
+                floatOnToken(tokenIdOf(on), 'Bendecido', 'heal');
+                lines.push(`✨ ${by.name} bendice a ${on.name}: dos rondas pegando con ventaja.`);
+            } else if (standing() && effect.kind === 'despistar') {
+                applyTimedCondition(enemy, id, 'Distraído', untilTurnOf(id));
+                floatOnToken(enemyTokenId(enemy), 'Despistado', 'damage');
+                lines.push(`🌀 ${by.name} despista a ${enemy.name}: en su próximo turno pega con desventaja.`);
+            } else if (standing() && effect.kind === 'vendido') {
+                combatEncounter.maneuvers = recordManeuver(combatEncounter.maneuvers, 'ayudar', String(by.id), id);
+                floatOnToken(enemyTokenId(enemy), 'Vendido', 'damage');
+                lines.push(`🎯 ${by.name} deja vendido a ${enemy.name}: el siguiente golpe de los vuestros va con ventaja.`);
+            } else if (standing() && effect.kind === 'frenar') {
+                applyTimedCondition(enemy, id, 'Ralentizado', untilTurnOf(id));
+                floatOnToken(enemyTokenId(enemy), 'Frenado', 'damage');
+                lines.push(`❄️ ${by.name} frena a ${enemy.name} con un hechizo: se mueve 10 pies menos.`);
+            }
+        }
+        if (lines.length > 0) postCombatNarration(`[COMBAT] ${lines.join('\n')}`);
+    }
+    saveCombatState();
+    if (combatEncounter.active) checkScenarioOutcome();
+    return combo.name;
+}
+
+/** La pelea y la ronda en las que el juego ya ha hecho una jugada en pareja por su cuenta. */
+/** @type {{enemies: any, round: number}} */
+let autoPair = { enemies: null, round: -1 };
+
+/**
  * E3.4: un compañero que va solo también usa lo que le da el vínculo, en vez de su golpe de
  * siempre: su golpe definitivo contra un jefe (o contra quien aguanta todo ese daño: no lo gasta en
- * rematar a un herido), o su jugada del rango 7 con el héroe, una vez por pelea.
+ * rematar a un herido), o su jugada del rango 7 con el héroe, una vez por pelea. E3.2: si no, su
+ * jugada en pareja con otro compañero (nunca con tu reacción), una por ronda entre todos.
  *
  * @param {any} member
  * @param {any} target El enemigo al que iba a pegar.
@@ -252,5 +362,13 @@ export function allyBondPlay(member, target) {
     }
     const move = choices.find(c => c.kind === 'pair_move');
     if (move) return Boolean(resolveBondMove(member, move.companionId, move.enemyId));
+    const round = Number(combatEncounter.round) || 0;
+    if (autoPair.enemies !== combatEncounter.enemies || autoPair.round !== round) {
+        const pair = bondChoices(member, target, { withHero: false }).find(c => c.kind === 'pair');
+        if (pair && resolvePairCombo(member, pair.partnerId, target)) {
+            autoPair = { enemies: combatEncounter.enemies, round };
+            return true;
+        }
+    }
     return false;
 }

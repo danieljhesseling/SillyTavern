@@ -24,7 +24,6 @@ import {
 } from '../game-engine/board/terrain.js';
 import { isArea } from '../game-engine/rules/area.js';
 import { supportActions } from '../game-engine/campaign/pet.js';
-import { pairOptions } from '../game-engine/rules/pair-moves.js';
 import { getReachableCells, findPath, getPathCost } from '../game-engine/board/pathfinding.js';
 import { createEmptyFog, normalizeFog, updateFog } from '../game-engine/board/fog-of-war.js';
 import { fogOnFor } from '../game-engine/board/board-camera.js';
@@ -45,9 +44,9 @@ import { ultimateOf } from '../game-engine/combat/bond-moves.js';
 import { combineEdge, hasVex } from '../game-engine/rules/weapon-mastery.js';
 import { sneakBadge } from '../game-engine/rules/sneak-attack.js';
 import { weaponOf } from '../game-engine/rules/equipment.js';
+import { imbueFor } from '../game-engine/rules/elemental-weapon.js';
 import { sneakFor } from './combo-rules.js';
 import { bondChoices, resolveBondMove } from './bond-play.js';
-import { getBondProgress } from '../game-engine/campaign/bonds.js';
 import { createCombatLogPanel, setRound, renderLogFilters, logFilterOf } from '../game-engine/ui/combat-log.js';
 import { usesLeft, canUseAbility, describeAbility } from '../game-engine/rules/abilities.js';
 import { findOpportunityAttacks } from '../game-engine/combat/opportunity.js';
@@ -57,6 +56,7 @@ import { buildSummary } from '../game-engine/ui/combat-vtt/summary.js';
 import { turnBannerText } from '../game-engine/ui/combat-vtt/turn-banner.js';
 import { holdRedraw } from './combat-fx.js';
 import { LOCATION_MAPS_MANUAL_HIDDEN_KEY } from './keys.js';
+import { bookLineFor } from './guild-pay.js';
 import {
     combatBoardSelection, combatEncounter, combatLogEntries, currentBoardName, currentLocationName, partyMembers,
     setCombatBoardSelection, setCurrentBoardName, setCurrentLocationName, usedReactions,
@@ -64,7 +64,7 @@ import {
 import { currentPet, petSupport } from './pet.js';
 import { abilityVictims, carriedNames, getAbilityCatalogue, knownAbilitiesOf, useAbility } from './magic.js';
 import {
-    boardCellOf, getAliveEnemies, getAttackableEnemiesForMember, getCurrentActingMember, getCurrentTurnEntry,
+    getAliveEnemies, getAttackableEnemiesForMember, getCurrentActingMember, getCurrentTurnEntry,
     getCurrentTurnState, getPartyMemberByTurnEntry, getRemainingMovementFeet, getTargetArmorClass, heightFor,
     occupiedCellsFor, partyCell, partyFlanks, underYourHand,
 } from './combat-state.js';
@@ -390,6 +390,8 @@ function openTargetCard(member, enemy) {
     // El número que suma al d20, por partes: la característica, la competencia y lo demás.
     const attackParts = getPlayerAttackParts(member, forecastRange, [
         { label: 'del arma', value: weaponBonus(member) },
+        // E3.3: Arma elemental, si la lleva.
+        { label: 'de Arma elemental', value: imbueFor(member, weaponOf(member))?.bonus ?? 0 },
         { label: 'contra los de su clase', value: traitBonus(member, enemy.name) },
         { label: 'de lo aprendido', value: perkBonus(member, 'attack') },
     ]);
@@ -452,6 +454,9 @@ function openTargetCard(member, enemy) {
     if (face) nameRow.append($('<img class="tc-face" alt="">').attr('src', face).toggleClass('pixel-art', face !== enemy.avatar));
     root.append(nameRow.append($('<span></span>').text(card.name)));
     root.append($('<div class="tc-stats"></div>').text(describeTargetCard(card)));
+    // E5.1: lo que dice de él el libro de bichos de la biblioteca del gremio.
+    const bookLine = bookLineFor(enemy);
+    if (bookLine) root.append($('<div class="tc-book"></div>').text(bookLine));
     if (card.inRange) root.append($('<div class="tc-forecast"></div>').text(forecast.text));
     // E2.1: la luz, dicha claro: quién ve a quién.
     const lightLine = lightCardLine(partyCell(member), { x: Number(enemy.gridX) || 0, y: Number(enemy.gridY) || 0 });
@@ -496,23 +501,16 @@ function openTargetCard(member, enemy) {
         actions.append(button);
     }
 
-    // R3: a una con quien tiene vínculo, si los dos están pegados a este enemigo.
-    const heroId = String(partyMembers[0]?.id ?? '');
-    const bonds = getCampaignBonds();
-    const fighters = partyMembers.filter(m => !m.dead).map(m => ({
-        id: String(m.id), name: String(m.name), ...boardCellOf(m), hp: Number(m.hp) || 0,
-        rank: getBondProgress(bonds, String(m.id)).rank, reactionUsed: usedReactions.has(`party:${m.id}`),
-    }));
-    const me = fighters.find(f => f.id === String(member.id));
-    const pairs = me && hasAction(combatEncounter, 'action')
-        ? pairOptions({ actor: me, heroId, party: fighters, enemies: [{ id: String(enemy.instanceId), name: String(enemy.name), ...boardCellOf(enemy), hp: Number(enemy.currentHp) || 0 }] })
-        : [];
-    for (const pair of pairs) {
-        const button = $('<button class="menu_button tc-btn tc-pair" type="button"></button>').text(`A una con ${pair.partnerName}`);
-        button.attr('title', 'Los dos atacáis, con ventaja. Gasta tu acción y su reacción.');
+    // R3 y E3.2: la jugada en pareja con quien tiene vínculo 3, con su nombre por los papeles de
+    // los dos; cada uno, desde donde llega con su arma.
+    for (const pair of bondChoices(member, enemy).filter(c => c.kind === 'pair')) {
+        const button = $('<button class="menu_button tc-btn tc-pair" type="button"></button>')
+            .attr('data-pair', pair.partnerId).text(pair.name);
+        button.attr('title', pair.desc);
         button.on('click', () => {
             closeTargetCard();
             resolvePairStrike(member, pair.partnerId, enemy);
+            renderLocationMapsPreview();
         });
         actions.append(button);
     }

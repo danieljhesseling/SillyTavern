@@ -33,6 +33,11 @@ Hay dos clases de casilla:
 | `exit` | `x` | `salida.png` | encima |
 | `lever` | `P` | `palanca.png` | encima |
 | `barricade` | `=` | `barricada.png` | encima |
+| `topple` (E1.4) | `H` | `columna.png` (aún sin dibujo: usa `cobertura-tres-cuartos.png`) | encima |
+| `statue` (E1.5) | `S` | `estatua.png` (aún sin dibujo: colores) | encima |
+| `gem` (E1.5) | `g` | `gema.png` (aún sin dibujo: colores) | encima |
+| `rune` (E1.5) | `1`–`5` | `runa.png` (aún sin dibujo: colores; el número lo pone el juego) | llena |
+| `lever_pair` (E1.5) | `p` | `palanca-doble.png` (aún sin dibujo: usa `palanca.png`) | encima |
 | puente (suelo que cruza agua, abismo o un barranco) | `.` | `puente-ns.png` o `puente-eo.png`, y `puente-baranda-*.png` en los bordes | llena + encima |
 | acantilado de las cotas (`elevation`, J12.10) | — | `acantilado-<hacia dónde cae>.png`, en la casilla de abajo | encima |
 

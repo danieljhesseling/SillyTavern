@@ -21,7 +21,7 @@ import {
     spendTorch, describeLight, shieldBonusOf, torchBurning, handFor, carriesLantern, torchesOf,
 } from '../game-engine/board/light.js';
 import {
-    isKey, toolsInParty, pickEdge, lockOutcome, lockLabels, dropBrokenTools, failLine, LOCK_DC,
+    isKey, toolsInParty, pickEdge, lockOutcome, lockLabels, dropBrokenTools, failLine, noToolsLine, LOCK_DC,
 } from '../game-engine/board/lock-picking.js';
 import {
     isHostileGround, partyRations, eatRations, ambushChance, watchPassive, surpriseCheck, wearsHeavyArmour,
@@ -338,9 +338,10 @@ function roomBehind(board, gx, gy, gridW, gridH) {
 }
 
 /**
- * E2.2 (idea 77): una puerta cerrada con llave. Con la llave se abre; si no, con maña (con
- * ganzúas, mejor) o a golpes. Fallar hace ruido: lo que hay detrás abre desde dentro y sale.
- * Fallar por mucho con ganzúas las rompe (cosecha propia).
+ * E2.2 (idea 77): una puerta cerrada con llave. Con la llave se abre; si no, con ganzúas o a
+ * golpes. Sin ganzúas no se fuerza (Daniel, 2026-10-03, como 5e): el botón no sale y uno de los
+ * tuyos lo dice. Fallar hace ruido: lo que hay detrás abre desde dentro y sale. Fallar por mucho
+ * con ganzúas las rompe (cosecha propia).
  *
  * @param {any} board
  * @param {number} gx
@@ -361,18 +362,27 @@ export async function tryLockedDoor(board, gx, gy, gridW, gridH) {
     body.append($('<h3></h3>').text('Puerta cerrada con llave'));
     body.append($('<p></p>').text(keyHolder
         ? `${keyHolder.member.name} lleva ${keyHolder.item.name}.`
-        : tools ? `Nadie lleva la llave. ${tools.member.name} lleva ${String(tools.item.name).toLowerCase()}.` : 'Nadie lleva la llave. Se puede abrir con maña o echarla abajo.'));
+        : tools ? `Nadie lleva la llave. ${tools.member.name} lleva ${String(tools.item.name).toLowerCase()}.` : 'Nadie lleva la llave ni ganzúas.'));
+    // Sin ganzúas no se fuerza: lo dice uno de los tuyos (D-J60), con lo que queda.
+    const noTools = tools ? '' : noToolsLine({ key: Boolean(keyHolder) });
+    if (noTools) {
+        const speaker = living.find(m => m !== partyMembers[0]) ?? living[0];
+        const say = $('<p class="lk-say"></p>');
+        say.append($('<b></b>').text(`${text(speaker?.name) || 'Alguien'}: `), document.createTextNode(`«${noTools}»`));
+        body.append(say);
+    }
     body.append($('<p class="lk-risk"></p>').text('Si falla, se oye al otro lado.'));
     const picked = await new Popup(body[0], POPUP_TYPE.TEXT, '', {
         okButton: false,
         cancelButton: 'Dejarla',
         customButtons: [
             ...(keyHolder ? [{ text: labels.key, result: 31, classes: ['lk-key'] }] : []),
-            { text: labels.pick, result: 32, classes: ['lk-pick'] },
+            ...(labels.pick ? [{ text: labels.pick, result: 32, classes: ['lk-pick'] }] : []),
             { text: labels.force, result: 33, classes: ['lk-force'] },
         ],
     }).show();
     if (picked !== 31 && picked !== 32 && picked !== 33) return;
+    if (picked === 32 && !tools) return;
     if (picked === 31) {
         board.terrain = unlockDoor(normalizeTerrain(board.terrain), gx, gy);
         persistBoardTerrain(board);

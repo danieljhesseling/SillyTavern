@@ -104,6 +104,9 @@ const FORK_FILES = [
     'public/scripts/game-engine/campaign/recruit.js',
     'public/scripts/game-engine/campaign/memories.js',
     'public/scripts/game-engine/world/travel-choices.js',
+    // E6 de ROADMAP_ENTRETENIDO: el camino entre campañas.
+    'public/scripts/game-engine/world/road-cards.js',
+    'public/scripts/game-engine/campaign/camp-roles.js',
     'public/scripts/game-engine/world/fortune.js',
     'public/scripts/game-engine/world/news.js',
     'public/scripts/game-engine/campaign/guidance.js',
@@ -408,6 +411,7 @@ const FORK_FILES = [
     'public/scripts/game-engine/rules/rituals.js',
     'public/scripts/game-engine/rules/spell-reactions.js',
     'public/scripts/game-engine/rules/concentration.js',
+    'public/scripts/game-engine/rules/elemental-weapon.js',
     'public/scripts/game-engine/rules/summons.js',
     'public/scripts/game-engine/board/spell-zones.js',
     'public/scripts/game-engine/combat/enemy-spells.js',
@@ -438,6 +442,13 @@ const FORK_FILES = [
     'public/scripts/game-engine/rules/epic-boons.js',
     'public/scripts/game-engine/campaign/retirement.js',
     'public/scripts/game-engine/campaign/mercenary-life.js',
+    'public/scripts/game-engine/campaign/weekly-mercenaries.js',
+    // E5: el gremio que paga (la forja, la cocina y la biblioteca para la salida; el banquillo; los informes).
+    'public/scripts/game-engine/campaign/guild-perks.js',
+    // E4: compañeros con roce (el disgusto, las discusiones junto al fuego, las misiones de los mercenarios).
+    'public/scripts/game-engine/campaign/grudges.js',
+    'public/scripts/game-engine/campaign/campfire-arguments.js',
+    'public/scripts/game-engine/campaign/merc-quests.js',
     'public/scripts/game-engine/rules/resurrection.js',
     'public/scripts/game-engine/ui/hard-mode-option.js',
     // J14.11: trabajos y ratos libres (servir mesas, la forja, las cartas, leer y pescar).
@@ -462,6 +473,8 @@ const FORK_FILES = [
     'public/scripts/game-engine/board/leftovers.js',
     'public/scripts/game-engine/board/falls.js',
     'public/scripts/game-engine/board/sleepers.js',
+    // E1.4 y E1.5 de ROADMAP_ENTRETENIDO: lo que se derrumba y los mecanismos.
+    'public/scripts/game-engine/board/mechanisms.js',
     // J5.7 y J5.8: el guion de una campaña en Word, de ida y vuelta.
     'public/scripts/game-engine/campaign/script-doc.js',
     'public/scripts/game-engine/campaign/script-docx.js',

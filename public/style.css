@@ -52,6 +52,8 @@
 @import url(css/combat-vtt.css);
 @import url(css/mazmorra.css);
 @import url(css/larga-vida.css);
+@import url(css/friccion.css);
+@import url(css/gremio-paga.css);
 
 :root {
     interpolate-size: allow-keywords;

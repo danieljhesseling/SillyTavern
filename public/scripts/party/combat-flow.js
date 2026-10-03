@@ -89,7 +89,7 @@ import {
 } from './state.js';
 import { saveCheckpoint, restoreCheckpoint } from './checkpoints.js';
 import { currentPet, offerTaming, petLivesIt } from './pet.js';
-import { expireTimedConditions, getAbilityCatalogue } from './magic.js';
+import { expireTimedConditions, getAbilityCatalogue, allyImbue } from './magic.js';
 import { dismissGuests } from './contracts.js';
 import {
     actsOnItsOwn, getAliveEnemies, getAttackableEnemiesForMember, getCurrentTurnEntry, getEnemyByInstanceId,
@@ -981,6 +981,8 @@ export function resolveAllyTurnAction(entry) {
     allyBeforeTurn2024(member);
     // Tanda 16: si uno de los suyos se desangra y es bastante seguro, va a su lado y le atiende.
     if (allyRescue2024(member)) return '';
+    // E3.3: si sabe Arma elemental y compensa, imbuye el arma de quien tiene al lado.
+    if (allyImbue(member)) return '';
 
     const plan = planAllyTurn({
         actor: {

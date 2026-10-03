@@ -42,6 +42,8 @@ const CATALOGUE = {
     // E2 de ROADMAP_ENTRETENIDO: lo que pesa en la mazmorra. Siempre en la tienda (`town.js`).
     'Antorcha': { type: 'gear', category: 'gear', subcategory: 'generic', weight: 0.5, price: 1, description: 'Alumbra 20 pies, y penumbra 20 más. Dura una hora y ocupa una mano.' },
     'Kit de curandero': { type: 'gear', category: 'gear', subcategory: 'tool', weight: 1.5, price: 5, uses: 10, description: 'Diez usos. Con uno, se estabiliza a quien se desangra sin tirar Medicina.' },
+    // E2.2 (Daniel, 2026-10-03): sin ganzúas no se fuerza una cerradura (como las herramientas de ladrón de 5e, 25 po).
+    'Ganzúas': { type: 'gear', category: 'gear', subcategory: 'tool', weight: 0.5, price: 25, description: 'Herramientas de ladrón. Sin ellas no se puede forzar una cerradura; con ellas, quien sabe de Juego de manos tira con ventaja.' },
     'Antorcha bendecida': { type: 'gear', category: 'gear', subcategory: 'consumable', weight: 0.5 },
     'Daga mellada': { type: 'weapon', category: 'weapon', subcategory: 'simple_melee', weight: 0.5, damageDice: '1d4', damageType: 'piercing', slot: 'weapon' },
     'Bolsa de canicas': { type: 'gear', category: 'gear', subcategory: 'tool', weight: 1 },

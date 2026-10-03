@@ -30,6 +30,7 @@ import { findUnreachable, describeReachability } from '../board/reachability.js'
 import { normalizeBoardGrid } from '../board/map-image.js';
 import { validateZones } from '../board/zones.js';
 import { normalizeElevation } from '../board/heights.js';
+import { puzzleWarnings } from '../board/mechanisms.js';
 import { checkDialogues } from './dialogues.js';
 import { checkAvoid } from '../combat/avoid-fight.js';
 import { checkParley } from '../combat/parley.js';
@@ -297,6 +298,9 @@ function cellState(map, size, cell) {
  * @param {Issue[]} warnings
  */
 function checkDrawnBoard(board, path, size, errors, warnings) {
+    // E1.5: los mecanismos que no se pueden resolver o no abren nada.
+    for (const message of puzzleWarnings(board.map)) warnings.push({ path: `${path}.map`, message });
+
     if (board.image !== undefined) {
         const image = typeof board.image === 'string' ? board.image.trim() : '';
         if (!image) {

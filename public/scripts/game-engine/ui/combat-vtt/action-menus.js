@@ -66,6 +66,7 @@
  * @property {boolean} masteryOn Si quien la lleva sabe usarla.
  * @property {string} damage La fórmula entera, con el modificador («1d6+3»).
  * @property {string} damageType
+ * @property {string} [imbue] E3.3: lo que suma Arma elemental («+1d4 fuego»), si la lleva.
  * @property {number} reachFeet
  * @property {boolean} light
  * @property {boolean} ranged
@@ -432,7 +433,9 @@ function weaponFace(weapon) {
         ? words.short
         : weapon.ranged ? 'Se dispara de lejos.' : 'Cuerpo a cuerpo.';
     const reach = [reachWords(weapon.reachFeet), weapon.light ? 'ligera' : '', Number(weapon.hands) >= 2 ? 'a dos manos' : ''].filter(Boolean).join(' · ');
-    return { tags, desc, badges: badgesOf([damageBadge(weapon.damage, weapon.damageType), { text: reach, kind: 'reach' }]) };
+    // E3.3: el arma imbuida (Arma elemental) suma sus dados, del tipo elegido.
+    const imbue = weapon.imbue ? { text: weapon.imbue, kind: /** @type {const} */ ('damage') } : null;
+    return { tags, desc, badges: badgesOf([damageBadge(weapon.damage, weapon.damageType), imbue, { text: reach, kind: 'reach' }]) };
 }
 
 /**

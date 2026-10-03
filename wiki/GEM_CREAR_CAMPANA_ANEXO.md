@@ -795,7 +795,7 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
             "items": {
               "type": "string"
             },
-            "description": "Filas de la misma longitud, entre 8 y 40 columnas y entre 6 y 30 filas. Borde exterior siempre de muro. Solo estos caracteres: '.' suelo transitable, '#' muro, 'D' puerta cerrada, 'L' puerta cerrada con llave (se abre con una llave, con maña o a golpes; el jefe del tablero suelta la llave), 'o' puerta abierta, '~' terreno difícil, 'c' cobertura media, 'C' cobertura de tres cuartos, 'v' precipicio (no se anda; a quien empujan dentro, cae), '>' escalera al nivel siguiente, 'w' agua poco honda (cuesta el doble; el frío la hiela), 'W' agua honda (no se cruza andando; se ve a través): el mar, un río profundo, 'i' hielo (cuesta el doble y resbala: Acrobacias CD 10 o al suelo; el trueno lo quiebra, el fuego lo funde), 'b' maleza (cuesta el doble, y arde), 'm' barro (cuesta el doble), 'T' barril (cubre; con fuego, revienta), 'k' cofre (se abre estando al lado), '^' en alto (subir cuesta el doble; desde arriba se ataca con ventaja): torres, escalones, la empalizada, 'x' salida (quien la pisa puede irse de la pelea; con un objetivo «alcanzar» encima, salir es ganar): la ventana, la trampilla, 'P' palanca (no se pisa; estando al lado, abre todas las puertas con llave del tablero): la reja del fondo, '=' barricada (corta el paso, no la vista; cubre a quien está detrás y a golpes se rompe: 15 de vida). Sin map, el juego lo lee del dibujo si hay image, o dibuja uno con la semilla."
+            "description": "Filas de la misma longitud, entre 8 y 40 columnas y entre 6 y 30 filas. Borde exterior siempre de muro. Solo estos caracteres: '1' runa 1 (las runas 1 a 5 se pisan en orden, de la 1 a la última que pongas; pisar una que no toca las apaga todas; con todas encendidas, se abren las puertas con llave), '2' runa 2, '3' runa 3, '4' runa 4, '5' runa 5, '.' suelo transitable, '#' muro, 'D' puerta cerrada, 'L' puerta cerrada con llave (se abre con una llave, con ganzúas o a golpes; el jefe del tablero suelta la llave), 'o' puerta abierta, '~' terreno difícil, 'c' cobertura media, 'C' cobertura de tres cuartos, 'v' precipicio (no se anda; a quien empujan dentro, cae), '>' escalera al nivel siguiente, 'w' agua poco honda (cuesta el doble; el frío la hiela), 'W' agua honda (no se cruza andando; se ve a través): el mar, un río profundo, 'i' hielo (cuesta el doble y resbala: Acrobacias CD 10 o al suelo; el trueno lo quiebra, el fuego lo funde), 'b' maleza (cuesta el doble, y arde), 'm' barro (cuesta el doble), 'T' barril (cubre; con fuego, revienta), 'k' cofre (se abre estando al lado), '^' en alto (subir cuesta el doble; desde arriba se ataca con ventaja): torres, escalones, la empalizada, 'x' salida (quien la pisa puede irse de la pelea; con un objetivo «alcanzar» encima, salir es ganar): la ventana, la trampilla, 'P' palanca (no se pisa; estando al lado, abre todas las puertas con llave del tablero): la reja del fondo, '=' barricada (corta el paso, no la vista; cubre a quien está detrás y a golpes se rompe: 15 de vida), 'H' columna, puntal o estantería que se puede tirar (corta el paso y cubre; estando al lado, se empuja y cae sobre las dos casillas de detrás: 1d10 contundente y derribado, salvación de Destreza CD 12 para la mitad), 'S' estatua con las manos vacías (no se pisa; se le pone una gema; con todas puestas, se abren las puertas con llave del tablero), 'g' gema en un pedestal (no se pisa; se coge estando al lado; pon tantas como estatuas), 'p' palanca doble (no se pisa; pon dos lejos una de otra: se bajan a la vez, en la misma ronda o con alguien en cada una, y abren las puertas con llave). Sin map, el juego lo lee del dibujo si hay image, o dibuja uno con la semilla."
           },
           "partyStart": {
             "type": "array",
@@ -3556,10 +3556,15 @@ El mapa es un tablero de combate por casillas, no una ilustración: tiene que po
 recorrerse. Deja pasillos de al menos una casilla de ancho, usa muros interiores para
 crear cobertura y rutas, y no dibujes una sala vacía.
 
+- `1` runa 1 (las runas 1 a 5 se pisan en orden, de la 1 a la última que pongas; pisar una que no toca las apaga todas; con todas encendidas, se abren las puertas con llave)
+- `2` runa 2
+- `3` runa 3
+- `4` runa 4
+- `5` runa 5
 - `.` suelo transitable
 - `#` muro
 - `D` puerta cerrada
-- `L` puerta cerrada con llave (se abre con una llave, con maña o a golpes; el jefe del tablero suelta la llave)
+- `L` puerta cerrada con llave (se abre con una llave, con ganzúas o a golpes; el jefe del tablero suelta la llave)
 - `o` puerta abierta
 - `~` terreno difícil
 - `c` cobertura media
@@ -3577,6 +3582,10 @@ crear cobertura y rutas, y no dibujes una sala vacía.
 - `x` salida (quien la pisa puede irse de la pelea; con un objetivo «alcanzar» encima, salir es ganar): la ventana, la trampilla
 - `P` palanca (no se pisa; estando al lado, abre todas las puertas con llave del tablero): la reja del fondo
 - `=` barricada (corta el paso, no la vista; cubre a quien está detrás y a golpes se rompe: 15 de vida)
+- `H` columna, puntal o estantería que se puede tirar (corta el paso y cubre; estando al lado, se empuja y cae sobre las dos casillas de detrás: 1d10 contundente y derribado, salvación de Destreza CD 12 para la mitad)
+- `S` estatua con las manos vacías (no se pisa; se le pone una gema; con todas puestas, se abren las puertas con llave del tablero)
+- `g` gema en un pedestal (no se pisa; se coge estando al lado; pon tantas como estatuas)
+- `p` palanca doble (no se pisa; pon dos lejos una de otra: se bajan a la vez, en la misma ronda o con alguien en cada una, y abren las puertas con llave)
 
 ## Muestra de un paquete completo
 

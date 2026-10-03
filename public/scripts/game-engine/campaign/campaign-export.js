@@ -55,6 +55,8 @@ function text(value) {
  */
 function charFor(cell) {
     if (!cell || cell.type === 'floor') return '.';
+    // E1.5: la runa se escribe con su número.
+    if (cell.type === 'rune') return String(Math.min(5, Math.max(1, Math.trunc(Number(cell.order) || 1))));
     return CHAR_BY_CELL[`${cell.type}:${cell.open === true}:${cell.locked === true}`]
         ?? CHAR_BY_CELL[`${cell.type}:${cell.open === true}:false`]
         ?? CHAR_BY_CELL[`${cell.type}:false:false`]

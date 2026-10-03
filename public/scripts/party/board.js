@@ -28,6 +28,9 @@ import { lockBonus } from '../game-engine/rules/field-uses.js';
 import { hasLeft } from '../game-engine/board/exits.js';
 import { isWatching } from '../game-engine/combat/brawl.js';
 import { hitBarricade, pullLever } from '../game-engine/board/interactables.js';
+// E1.4 y E1.5: lo que se derrumba y los mecanismos (estatuas, runas, palancas dobles).
+import { mechanismAt } from '../game-engine/board/mechanisms.js';
+import { useMechanism, stepOnRunes } from './board-mechanisms.js';
 // E1.1 y E1.3 de ROADMAP_ENTRETENIDO: los que duermen y el hielo que resbala.
 import { sleepersOf } from '../game-engine/board/sleepers.js';
 import { firstIce, ICE_DC } from '../game-engine/board/falls.js';
@@ -133,6 +136,8 @@ async function persistBoardTerrainNow(board) {
             stored.awakened = true;
             if (Array.isArray(board.enemyPlacements)) stored.enemyPlacements = board.enemyPlacements;
         }
+        // E1.5: las gemas cogidas que aún no se han puesto en su estatua.
+        if (board.gemsCarried !== undefined && Number.isFinite(Number(board.gemsCarried))) stored.gemsCarried = Number(board.gemsCarried);
         await saveWorldInfo(worldName, data);
     } catch (e) {
         console.warn('[party] could not persist board terrain', e);
@@ -493,6 +498,12 @@ export function toggleBoardDoor(board, gx, gy, open, gridW, gridH) {
     const touched = getCell(normalizeTerrain(board?.terrain), gx, gy).type;
     if (touched === 'lever' || touched === 'barricade') {
         useBoardThing(board, gx, gy, touched);
+        return;
+    }
+    // E1.4 y E1.5: la columna que se tira, la gema, la estatua y la palanca doble.
+    const mechanism = mechanismAt(normalizeTerrain(board?.terrain), gx, gy);
+    if (mechanism) {
+        useMechanism(board, gx, gy, mechanism);
         return;
     }
     if (open && isLocked(normalizeTerrain(board.terrain), gx, gy)) {
@@ -1191,6 +1202,20 @@ export function knownTrapsHere() {
  * @returns {number} El índice del camino donde se queda.
  */
 export function walkTraps(member, path) {
+    const stop = walkTrapsOnly(member, path);
+    // E1.5: las runas pisadas hasta donde se queda, en orden o no.
+    if (Array.isArray(path) && stop > 0) stepOnRunes(member, path.slice(1, stop + 1));
+    return stop;
+}
+
+/**
+ * Las trampas y el hielo de `walkTraps`, sin las runas.
+ *
+ * @param {any} member
+ * @param {Array<{x: number, y: number}>} path Con la casilla de salida.
+ * @returns {number} El índice del camino donde se queda.
+ */
+function walkTrapsOnly(member, path) {
     // E1.3: en combate, el hielo resbala: quien lo pisa en su turno y falla, se queda ahí, en el suelo.
     const slipped = slipOnIce(member, Array.isArray(path) ? path : []);
     const steps = (Array.isArray(path) ? path : []).slice(0, slipped >= 0 ? slipped + 1 : undefined);

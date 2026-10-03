@@ -171,7 +171,7 @@ describe('puertas con llave', () => {
         expect(asciiFromTerrain(terrainFromAsciiMap(['DLo']), 3, 1)).toEqual(['DLo']);
     });
 
-    test('y se abre con maña: Juego de manos, del pícaro', () => {
+    test('y se abre con ganzúas: Juego de manos, del pícaro', () => {
         expect(SKILLS.sleight.label).toBe('Juego de manos');
         expect(skillModifier({ class: 'pícaro', level: 1, dexterity: 14 }, 'sleight')).toEqual({ modifier: 4, proficient: true });
     });

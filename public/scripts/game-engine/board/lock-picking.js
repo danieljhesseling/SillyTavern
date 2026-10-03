@@ -14,13 +14,14 @@
  * - **Fallar por 5 o más rompe las ganzúas** (cosecha propia, marcada: en 5e las herramientas no
  *   se rompen).
  *
- * Sin ganzúas se sigue pudiendo probar «con maña», como antes (en 5e sin herramientas no se puede:
- * es cosecha propia de la idea 77, y lo decide Daniel).
+ * - **Sin ganzúas no se fuerza** (Daniel, 2026-10-03, como 5e: hacen falta herramientas de ladrón).
+ *   La vía «con maña» de la idea 77 se quita: el botón no sale, uno del grupo lo dice
+ *   (`noToolsLine`) y quedan la llave, echarla abajo u otro camino.
  *
  * Puro: dice lo que pasa con la tirada ya hecha. Quien llama tira, despierta la sala y guarda.
  */
 
-/** La prueba de abrir con maña (idea 77) y la de echarla abajo. */
+/** La prueba de abrir con ganzúas (idea 77) y la de echarla abajo. */
 export const LOCK_DC = { pick: 14, force: 16 };
 
 /** Cosecha propia: fallar por tanto o más rompe las ganzúas. */
@@ -66,8 +67,8 @@ export function toolsInParty(members) {
 }
 
 /**
- * Cómo se tira al abrir con maña: con ventaja si hay ganzúas y quien prueba sabe de Juego de
- * manos (2024); si no, sin más.
+ * Cómo se tira al abrir con ganzúas: con ventaja si quien prueba sabe de Juego de manos (2024);
+ * si no, sin más. Sin ganzúas no se tira (no se puede forzar).
  *
  * @param {{withTools: boolean, proficient: boolean}} input
  * @returns {''|'advantage'}
@@ -80,7 +81,7 @@ export function pickEdge({ withTools, proficient }) {
  * Lo que pasa con una tirada de abrir.
  *
  * @param {Object} input
- * @param {'pick'|'force'} input.how Con maña o a golpes.
+ * @param {'pick'|'force'} input.how Con ganzúas o a golpes.
  * @param {number} input.total Lo que ha sacado, ya sumado.
  * @param {number} input.natural El d20 que cuenta (un 20 siempre sale, un 1 siempre falla).
  * @param {number} input.dc
@@ -102,8 +103,8 @@ export function lockOutcome({ how, total, natural, dc, withTools = false }) {
 }
 
 /**
- * Los botones de la puerta: la llave (si la hay), con maña (con ganzúas si las hay) y a golpes,
- * cada uno diciendo lo que arriesga.
+ * Los botones de la puerta: la llave (si la hay), con ganzúas (solo si alguien las lleva: si no,
+ * vacío y no sale) y a golpes, cada uno diciendo lo que arriesga.
  *
  * @param {{key?: string, tools?: string, edge?: ''|'advantage', trick?: number}} input `trick`: lo que
  *   baja la CD lo aprendido (la Mano de ganzúa).
@@ -113,7 +114,7 @@ export function lockLabels({ key = '', tools = '', edge = '', trick = 0 }) {
     const dc = LOCK_DC.pick - Math.max(0, Math.trunc(Number(trick) || 0));
     const pick = text(tools)
         ? `Con ${text(tools).toLowerCase()} (Juego de manos, CD ${dc}${edge === 'advantage' ? ', con ventaja' : ''}). Si falla, se oye; si falla por mucho, se rompen`
-        : `Con maña (Juego de manos, CD ${dc}). Si falla, se oye`;
+        : '';
     return {
         key: text(key) ? `Usar ${text(key)}` : '',
         pick,
@@ -164,4 +165,16 @@ export function failLine({ how, broke, heard, tools = '' }) {
             : 'Se me ha escapado el pestillo: ha sonado un chasquido.';
     const then = heard ? ' ¡Silencio! Al otro lado se mueve algo.' : ' Parece que nadie lo ha oído.';
     return `${first}${then}`;
+}
+
+/**
+ * Lo que dice uno del grupo cuando nadie lleva ganzúas (E2.2, Daniel, 2026-10-03: sin herramientas
+ * de ladrón no se fuerza), con las salidas que quedan.
+ *
+ * @param {{key?: boolean}} [input] Si alguien lleva una llave (entonces no hace falta decir nada).
+ * @returns {string} Vacío si hay llave.
+ */
+export function noToolsLine({ key = false } = {}) {
+    if (key) return '';
+    return 'Sin ganzúas no hay nada que hacer con esta cerradura. O la echamos abajo, o buscamos la llave, o vamos por otro lado.';
 }

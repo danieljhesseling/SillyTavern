@@ -18,6 +18,7 @@ import { heightBetween } from '../game-engine/board/heights.js';
 import { readLeft } from '../game-engine/board/exits.js';
 import { getCoverAlongLine } from '../game-engine/board/line-of-sight.js';
 import { perkBonus } from '../game-engine/rules/level-perks.js';
+import { prepBonus } from '../game-engine/campaign/guild-perks.js';
 import { armorWithSpell } from '../game-engine/rules/spell-cast.js';
 import { createTurnState, getRemainingMovement } from '../game-engine/combat/turn-machine.js';
 import { isFlanked } from '../game-engine/combat/crits.js';
@@ -244,7 +245,9 @@ export function getTargetArmorClass(target, attacker = null) {
     // nada con clase de armadura encima, todo sigue exactamente como estaba.
     // Idea 46: la «piel dura» de quien la eligió al subir de nivel.
     // J19: y la que da un conjuro (Armadura de mago, Escudo de fe), si lo tiene encima.
-    const base = armorWithSpell((wornArmorClass(target) || Number(target?.armorClass) || 10) + perkBonus(target, 'armorClass'), target)
+    const base = armorWithSpell((wornArmorClass(target) || Number(target?.armorClass) || 10) + perkBonus(target, 'armorClass')
+        // E5.1: la armadura templada en la forja del gremio, hasta volver a casa.
+        + prepBonus(target, 'armorClass'), target)
         // J19.7: el Escudo levantado, hasta su turno; y Acelerado, +2.
         + shieldBonus(target)
         + ((Array.isArray(target?.activeConditions) ? target.activeConditions : []).includes('Acelerado') ? 2 : 0)

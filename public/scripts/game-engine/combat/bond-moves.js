@@ -16,7 +16,7 @@
  */
 
 import { classKey } from '../rules/checks.js';
-import { PAIR_RANK } from '../rules/pair-moves.js';
+import { PAIR_RANK, pairCombo, roleOf, shootsFar } from '../rules/pair-moves.js';
 
 /** El rango de la jugada propia de cada compañero. */
 export const PAIR_MOVE_RANK = 7;
@@ -122,21 +122,6 @@ const STYLE_BY_CLASS = {
     fighter: 'derribo', barbarian: 'derribo', monk: 'derribo', paladin: 'guardia', cleric: 'guardia',
     ranger: 'tiro', rogue: 'tiro', wizard: 'tiro', sorcerer: 'tiro', warlock: 'tiro', bard: 'guardia', druid: 'guardia',
 };
-
-/**
- * Si alguien lleva puesta un arma de lejos, por lo que dice de ella (`items` y `equippedItems`).
- *
- * @param {any} member
- * @returns {boolean}
- */
-function shootsFar(member) {
-    const items = Array.isArray(member?.items) ? member.items : [];
-    const weapon = items.find((/** @type {any} */ i) => i && String(i.id) === String(member?.equippedItems?.weapon ?? ''));
-    if (!weapon) return false;
-    if (text(weapon.category) === 'distancia' || /ranged/.test(text(weapon.subcategory))) return true;
-    if ((Number(weapon.rangeFeet) || 0) > 30) return true;
-    return /\b(arco|ballesta|honda|bow|crossbow|sling)\b/i.test(text(weapon.name));
-}
 
 /**
  * Lo escrito para alguien, si lo hay.
@@ -387,18 +372,25 @@ export function stillToAct(order, currentIndex) {
  * Lo que da el vínculo con alguien en combate, para su ficha: todo, con lo ya abierto marcado y lo
  * siguiente señalado («Con vínculo 7: Yunque y martillo»).
  *
+ * E3.2: con el héroe (`hero`), la fila del rango 3 dice la jugada en pareja de los dos por sus
+ * papeles («Con vínculo 3: Yo lo paro, tú tiras»).
+ *
  * @param {any} member
  * @param {number} rank Su vínculo contigo.
+ * @param {any} [hero] El héroe, para nombrar la jugada en pareja de los dos.
  * @returns {BondSheetRow[]}
  */
-export function bondSheetRows(member, rank) {
+export function bondSheetRows(member, rank, hero = null) {
     const r = Math.max(0, Math.floor(Number(rank) || 0));
     const who = shortOf(member);
     const move = pairMoveOf(member);
     const ult = ultimateOf(member);
+    const combo = hero ? pairCombo({ id: 'hero', name: hero.name, role: roleOf(hero) }, { id: 'mate', name: member?.name, role: roleOf(member) }) : null;
     const rows = [
         { rank: PAIR_RANK, label: 'Ataque de seguimiento', describe: `Si aciertas un crítico, ${who} puede atacar gratis al mismo enemigo (la mitad de las veces).` },
-        { rank: PAIR_RANK, label: 'A una', describe: 'Pegados los dos al mismo enemigo, atacáis los dos con ventaja (gasta su reacción).' },
+        combo
+            ? { rank: PAIR_RANK, label: combo.name, describe: `En pareja: ${combo.describe} Gasta su reacción. Con otro del grupo que también tenga vínculo ${PAIR_RANK}, la suya según sus papeles.` }
+            : { rank: PAIR_RANK, label: 'A una', describe: 'Llegando los dos al mismo enemigo, atacáis los dos con ventaja (gasta su reacción).' },
         { rank: FRIEND_RANK, label: 'Relevo', describe: 'Si tumba a un enemigo, puede pasarle el turno a alguien del grupo que aún no haya jugado.' },
         { rank: FRIEND_RANK, label: 'Lo muevo yo', describe: 'En combate puedes moverle tú, o dejárselo al juego.' },
         { rank: PAIR_MOVE_RANK, label: move.name, describe: `${move.describe} Una vez por combate.` },

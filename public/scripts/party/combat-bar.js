@@ -30,6 +30,7 @@ import { hitChance } from '../game-engine/combat/forecast.js';
 import { brawlOf } from '../game-engine/combat/brawl.js';
 import { noteDealt } from '../game-engine/combat/tally.js';
 import { weaponOf, weaponBonus, equippedIn } from '../game-engine/rules/equipment.js';
+import { imbueFor, IMBUE_WORDS } from '../game-engine/rules/elemental-weapon.js';
 import {
     masteryOf, isLightWeapon, isRangedWeapon, isWeaponItem, hasWeaponMastery, turnFlags, markTurn, readTactics,
     noteStudied, combineEdge, hasVex,
@@ -60,7 +61,7 @@ import {
 } from './combat-state.js';
 import {
     abilityOf, abilityVictims, applyTimedCondition, carriedNames, castsLikeFifth, classRowOf, getAbilityCatalogue, knownAbilitiesOf, spellAbilityAt,
-    useAbility, useMagicItem,
+    useAbility, useMagicItem, spellFor, imbueRefusal,
 } from './magic.js';
 import {
     attackEnemyById, hideCheck, performManeuver, pushEnemyAway, throwItem, throwScenery, attackLine,
@@ -156,6 +157,8 @@ function forecastAgainst(member, wielder, enemy, distanceFeet) {
     const rangeFeet = getAttackRangeFeet(wielder);
     const parts = getPlayerAttackParts(wielder, rangeFeet, [
         { label: 'del arma', value: weaponBonus(wielder) },
+        // E3.3: Arma elemental, si el arma de este golpe la lleva.
+        { label: 'de Arma elemental', value: imbueFor(member, weaponOf(wielder))?.bonus ?? 0 },
         { label: 'contra los de su clase', value: traitBonus(member, enemy.name) },
         { label: 'de lo aprendido', value: perkBonus(member, 'attack') },
     ]);
@@ -300,6 +303,18 @@ function wielding(member, weapon) {
 }
 
 /**
+ * E3.3: lo que suma Arma elemental al daño de un arma, para su tarjeta («+1d4 fuego»).
+ *
+ * @param {any} member
+ * @param {any} weapon
+ * @returns {string}
+ */
+function imbueDiceSaid(member, weapon) {
+    const imbue = imbueFor(member, weapon);
+    return imbue?.dice ? `+${imbue.dice} ${String(IMBUE_WORDS[/** @type {'Fire'} */ (imbue.type)] ?? '')}`.trim() : '';
+}
+
+/**
  * Un arma como tarjeta: su daño con el modificador, su maestría y a quién llega.
  *
  * @param {any} member
@@ -335,6 +350,8 @@ function weaponView(member, weapon, { offHand = false } = {}) {
         mastery: weapon ? masteryOf(weapon) : '',
         masteryOn: hasWeaponMastery(member) && !brawlOf(combatEncounter),
         damage: `${formula}${mod > 0 ? `+${mod}` : mod < 0 ? `${mod}` : ''}`,
+        // E3.3: con los dados de Arma elemental, del tipo elegido.
+        imbue: imbueDiceSaid(member, weapon),
         damageType: String(weapon?.damageType || 'contundente'),
         reachFeet: rangeFeet,
         light: weapon ? isLightWeapon(weapon) : false,
@@ -423,14 +440,17 @@ function abilityViews(member) {
         .filter(ability => ability.combat !== false)
         .map(ability => {
             const verdict = canUseAbility({ member, ability, distanceFeet: 0, hasAction: true, hasBonus: true, carried });
+            const imbues = Boolean(typeof ability.spellLevel === 'number' && spellFor(String(ability.id))?.imbue);
             const judge = (/** @type {any} */ who, /** @type {boolean} */ isEnemy) => {
                 const distanceFeet = feetBetween(member, who);
                 const v = canUseAbility({ member, ability, distanceFeet, hasAction: action, hasBonus: bonus, targetAlive: true, carried });
+                // E3.3: Arma elemental, solo a quien lleva un arma corriente sin imbuir.
+                const notThis = v.ok && !isEnemy && imbues ? imbueRefusal(who) : '';
                 return {
                     ...(isEnemy ? enemyView(member, who) : allyView(member, who)),
                     // J12.18: lo que tienes de acertar (o su CD) y, si es un área, a quién pilla.
                     ...(v.ok ? abilityForecast(member, ability, who, isEnemy, distanceFeet) : {}),
-                    enabled: v.ok, reason: pies(v.reason),
+                    enabled: v.ok && !notThis, reason: pies(v.reason || notThis),
                 };
             };
             const spellLevel = typeof ability.spellLevel === 'number' ? ability.spellLevel

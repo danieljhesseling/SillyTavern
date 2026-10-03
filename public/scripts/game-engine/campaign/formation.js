@@ -22,6 +22,7 @@
  */
 
 import { ROLES } from '../world/travel-roles.js';
+import { NIGHT_ROLES } from './camp-roles.js';
 import { skillModifier } from '../rules/checks.js';
 
 /** Las filas de la marcha, en orden. */
@@ -40,6 +41,10 @@ export const DUTIES = {
     cazador: { label: ROLES.cazador.label, does: `En el camino: ${ROLES.cazador.gives}.` },
     // E2.1: la antorcha ocupa una mano (5e). Quien la lleva, sin escudo; sin elegir, quien tenga una libre.
     antorcha: { label: 'Quién lleva la luz', does: 'En los sitios oscuros, lleva la antorcha o el farol. Ocupa una mano: con escudo, pelea sin él.' },
+    // E6.2: los papeles de la noche al acampar (`camp-roles.js`). Sin elegir, al acampar se propone.
+    cocinero: { label: NIGHT_ROLES.cocinero.label, does: `Al acampar: ${NIGHT_ROLES.cocinero.does}` },
+    erudito: { label: NIGHT_ROLES.erudito.label, does: `Al acampar: ${NIGHT_ROLES.erudito.does}` },
+    tasador: { label: NIGHT_ROLES.tasador.label, does: `Al acampar: ${NIGHT_ROLES.tasador.does}` },
 };
 
 /** Las clases que van delante y las que van detrás; las demás, en medio. */

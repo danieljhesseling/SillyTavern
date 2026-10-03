@@ -45,7 +45,7 @@ import { createSeededRandom } from './game-engine/combat/seeded-random.js';
 import { seedOf, derive } from './game-engine/campaign/seed.js';
 import { abilitiesFor } from './game-engine/compendio/skills.js';
 import { racesOf, kindsOf, describeKin } from './game-engine/compendio/kin.js';
-import { kitFor, kitSlots, describeKit } from './game-engine/campaign/starting-kit.js';
+import { startingGear, kitSlots, describeKit } from './game-engine/campaign/starting-kit.js';
 import { armourClassOf } from './game-engine/rules/equipment.js';
 import { readPlot, plotFromFaction, startPlot } from './game-engine/campaign/plot.js';
 import { saveSummary, describeSave, describeSaveParty } from './game-engine/campaign/save-card.js';
@@ -1995,6 +1995,10 @@ export async function returnToHub() {
         // H16: en el gremio pasan los días de fuera: lo vivido allí y el viaje de ida y vuelta.
         const back = journeyDays(road);
         passGuildDays(away.lived + 2 * back, { back });
+        // E5.2: lo de la forja y la cocina se acaba; los que fueron suman una salida (y si
+        // encadenan, vuelven cansados), y quien esperaba en casa descansa.
+        const { guildHomecoming } = await import('./party/guild-pay.js');
+        guildHomecoming({ days: away.lived + 2 * back });
         await postJourney(journeyLine({ world: road, home: hubTownName(home), back: true }));
         if (firstHomecoming) {
             await postHomecoming([homecomingScene({
@@ -2408,7 +2412,8 @@ async function createStartingHero(worldName, { another = false } = {}) {
     const forms = ['armas', 'armaduras', 'trastos']
         .filter(domain => compendium.has?.(domain))
         .flatMap(domain => compendium.find(domain, { kind: 'forma' }));
-    const kitOf = (/** @type {any} */ classRow) => kitFor({ classRow, forms });
+    // E2 (Daniel, 2026-10-03): y las antorchas, y las ganzúas del trasfondo que las da.
+    const kitOf = (/** @type {any} */ classRow, background = '') => startingGear({ classRow, forms, background });
     // Cada opción de las tarjetas, con lo que da y, si es una clase, con qué empieza.
     const optionOf = (/** @type {any} */ row) => ({
         name: String(row.name),
@@ -2454,7 +2459,7 @@ async function createStartingHero(worldName, { another = false } = {}) {
                 classRow,
                 preset: catalogue?.classPresets?.get?.(picked.className) ?? null,
             }).dndData;
-            const pieces = kitOf(classRow);
+            const pieces = kitOf(classRow, String(picked.background ?? ''));
             const items = pieces.map((piece, i) => ({ ...piece, id: `k${i}` }));
             const equippedItems = Object.fromEntries(Object.entries(kitSlots(pieces)).map(([slot, i]) => [slot, `k${i}`]));
             const worn = armourClassOf({ member: { items, equippedItems }, dexModifier: Math.floor((Number(spec.dex) - 10) / 2) });
@@ -2527,7 +2532,7 @@ async function createStartingHero(worldName, { another = false } = {}) {
     if (another) seatPartyHero(memberFromEntry(entry, worldName));
     else setPartyFromWorldEntries([entry], worldName);
     // J1.3: con el equipo de su clase puesto.
-    const kit = kitOf(classRow);
+    const kit = kitOf(classRow, String(answers.background ?? ''));
     if (kit.length > 0) giveStartingGear(kit, kitSlots(kit));
     // J0.2: tu nombre es el de tu personaje; nadie te lo ha preguntado antes.
     setUserName(answers.name, { toastPersonaNameChange: false });

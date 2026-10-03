@@ -57,6 +57,7 @@ import { readApproval } from '../game-engine/campaign/approval.js';
 import { servicesOf } from '../game-engine/campaign/services.js';
 import { travelRolesOf, guardsOf } from '../game-engine/campaign/formation.js';
 import { openMeetupScene } from '../game-engine/ui/meetup-scene.js';
+import { firesideTalk } from './roce.js';
 import {
     APPROVAL_KEY, ARRIVALS_HEARD_KEY, BOARD_KEY, GRAVES_KEY, MOUNTS_KEY, NEWS_KEY, PLOT_STATE_KEY,
     RUMORS_HEARD_KEY, TAKEN_KEY, VISITED_KEY, WANTED_KEY, WEATHER_TODAY_KEY,
@@ -78,13 +79,16 @@ import { afterArrival } from './social.js';
 import { notePlot, openMilestones } from './plot.js';
 import { noteDeed, populatePlace, worldWrite } from './world-growth.js';
 import {
-    numberWord, playSucesos, postCombatNarration, postForModel, showTip, standInsHere, storyWindowsOn, sucesosOn, tellMoment,
+    numberWord, playSucesos, postCombatNarration, postForModel, sayHere, showTip, standInsHere, storyWindowsOn, sucesosOn, tellMoment,
 } from './narration.js';
 import { partyPurse, payFromParty, savePartyState } from './roster.js';
 import { changeAttitude, companionCards, getPartyFormation, judgeDecision, sayRoadLine } from './companions.js';
 import { countStat } from './menus.js';
 import { alarmBonus } from './rituals.js';
 import { fieldLightOn, askHealOnArrival } from './magic.js';
+import {
+    arriveTired, cookTonight, feedOnTheRoad, heartyMorning, nightRolesRows, playRoadCards, studyAndAppraise,
+} from './road-choices.js';
 
 /**
  * Lo que el narrador del motor sabe de un sitio al llegar: cómo es, a qué hora, con qué
@@ -215,6 +219,17 @@ export async function playNight({ road = false, pair = null, day = campaignDay()
     const campaign = String(lastPack || (lastHub ? 'gremio' : ''));
     const today = readApproval(chat_metadata[APPROVAL_KEY]).frictions.filter(f => f.day === Math.max(1, day));
     const chosen = Array.isArray(pair) && pair.length === 2 ? [{ a: String(pair[0]), b: String(pair[1]) }] : null;
+    // E4: antes que lo demás, lo que se dicen junto al fuego: un mercenario que pide más paga, una
+    // discusión tras un roce o un día duro, o un mercenario que te pide lo suyo. Una cosa por noche.
+    if (!chosen) {
+        const fireside = await firesideTalk({ inn, campaign, day });
+        if (fireside !== null) {
+            chat_metadata[NIGHTS_KEY] = recordNight(chat_metadata[NIGHTS_KEY], { day });
+            saveMetadata();
+            if (isShellOpen()) refreshGameShell();
+            return fireside;
+        }
+    }
     const cards = companionCards();
     const random = createSeededRandom(derive(String(chat_metadata?.[METADATA_KEY] || ''), 'noche-escena', String(currentLocationName), String(day)));
     const pick = nightFor({
@@ -337,9 +352,8 @@ export async function campNight() {
     if (pair.children().length > 1) {
         body.append($('<label class="cp-row"></label>').append($('<span></span>').text('Que charlen entre ellos: ')).append(pair));
     }
-    const cook = $('<input type="checkbox" class="cp-cook">').prop('checked', true);
-    body.append($('<label class="cp-row"></label>').append(cook)
-        .append($('<span></span>').text(' Buscar algo que cenar (Supervivencia, CD 12)')));
+    // E6.2: quién cocina (antes, «buscar algo que cenar»), quién estudia y quién examina el botín.
+    const nightRoles = nightRolesRows(body, living, suggested);
     const ok = await new Popup(body[0], POPUP_TYPE.CONFIRM, '', { okButton: 'Pasar la noche', cancelButton: 'Mejor no' }).show();
     if (!ok) return '';
 
@@ -348,20 +362,16 @@ export async function campNight() {
     const guards = living.filter(m => guardIds.includes(String(m.id)));
     const friend = living.find(m => String(m.id) === String(talk.val() || ''));
     const chat31 = String(pair.val() || '').split('|');
-    const wantsDinner = Boolean(cook.prop('checked'));
+    const roleIds = nightRoles();
+    const byId = (/** @type {string} */ id) => living.find(m => String(m.id) === id) ?? null;
+    const cooker = byId(roleIds.cocinero);
+    const wantsDinner = Boolean(cooker);
     /** @type {string[]} */
     const lines = [];
 
-    // La cena: con fuego, lo que se encuentre.
-    let caught = false;
-    if (wantsDinner && lit) {
-        const cooker = living.reduce((/** @type {any} */ top, m) => (!top || skillModifier(m, 'survival').modifier > skillModifier(top, 'survival').modifier ? m : top), null);
-        const roll = cooker ? rollCheck({ member: cooker, skill: 'survival', rollD20: () => rollDiceDetailed('1d20', 20).total, dc: 12 }) : null;
-        if (roll) {
-            postCombatNarration(roll.said);
-            caught = roll.success;
-        }
-    }
+    // La cena: con fuego, lo que encuentre y guise quien cocina (E6.2).
+    const dinner = cookTonight(cooker, lit);
+    const caught = dinner.caught;
 
     // La noche: el sitio, el fuego y de quién es la tierra.
     const ruler = rulerOf(currentLocationName);
@@ -417,6 +427,14 @@ export async function campNight() {
     }
     if (morning.fed) for (const member of living) member.needs = relieve(member, 'ate');
     lines.push(...morning.lines);
+    // E6.2: la cena que repone (todos los dados de golpe y un día más de cura), dicha por quien
+    // cocinó; y lo que sacaron de noche quien estudia y quien examina el botín.
+    if (dinner.hearty) {
+        const mended = heartyMorning(living);
+        lines.push('La cena repone: recuperáis todos los dados de golpe.', ...mended);
+    }
+    if (cooker && dinner.said) sayHere(`🍲 [CAMPAMENTO] ${cooker.name}: ${dinner.said}`, String(cooker.name), dinner.said);
+    lines.push(...studyAndAppraise({ erudito: byId(roleIds.erudito), tasador: byId(roleIds.tasador) }));
     savePartyState();
 
     const said = lines.join(' ');
@@ -527,9 +545,10 @@ export async function askBeforeTravelling(plan) {
  * Ideas 88 y 92: lo que sale al paso por el camino, y lo que se hace con ello.
  *
  * @param {() => number} random El azar del viaje, con la semilla del mundo.
+ * @param {boolean} [noMerchant] E6.1: si ya salió el mercader de las tarjetas del camino, otro no.
  * @returns {Promise<any|null>} El suceso, para contarlo con el resto del viaje.
  */
-async function meetOnTheRoad(random) {
+async function meetOnTheRoad(random, noMerchant = false) {
     const goods = declaredLootNames().filter(name => describeLootItem(name).category === 'magic');
     const met = roadEncounter({
         factions: getCurrentWorldFactions(),
@@ -537,7 +556,7 @@ async function meetOnTheRoad(random) {
         random,
         discount: withJob(partyMembers, 'buscavidas') ? 0.25 : 0,
     });
-    if (!met) return null;
+    if (!met || (noMerchant && met.kind === 'merchant')) return null;
     // R4: con Paso sin rastro, los cazarrecompensas no os encuentran. Gasta la carga.
     const hider = met.kind === 'bounty' ? whoCan(partyMembers, 'hideTrail') : null;
     if (hider) {
@@ -788,9 +807,17 @@ export async function travelWithTime(name, options = {}) {
         if (index >= 0) paced.avoided.push(`${String(paced.events.splice(index, 1)[0]?.name ?? 'un contratiempo')} (lo vio ${currentPet()?.name})`);
     }
     const trip = options.confirm ? await decideSetbacks(paced.events) : paced.events;
+    // E6.1: en un viaje de tres días o más, cada dos o tres días alguien para la marcha y pregunta
+    // (`road-choices.js`). Con su propia semilla, para no mover el resto del viaje.
+    const cards = options.confirm && !sailing
+        ? await playRoadCards({
+            to: match.name, days: paceDays(plan.days, pace), trip, season: currentSeason(), weather,
+            random: createSeededRandom(derive(worldName, 'tarjetas', currentLocationName, match.name, String(campaignDay()))),
+        })
+        : { played: [], tired: false };
     // Ideas 88 y 92: cazarrecompensas o un mercader, si hay a quien preguntar.
     if (options.confirm && !sailing) {
-        const met = await meetOnTheRoad(random);
+        const met = await meetOnTheRoad(random, cards.played.includes('mercader'));
         if (met) trip.push(met);
     }
     // Idea 71: una parada por el camino, con el azar del viaje.
@@ -826,6 +853,7 @@ export async function travelWithTime(name, options = {}) {
 
     // El reloj de uno en uno: cada dia cura, pasa hambre y acerca la cuenta semanal. Un
     // salto de cinco dias de golpe se saltaria cuatro de esos.
+    let eatenOnRoad = 0;
     for (let day = 0; day < total; day++) {
         // Por el camino se duerme de noche y se bebe de la cantimplora; comer es otra cosa
         // (las raciones, el cazador). Antes, cada día de viaje contaba veinticuatro horas
@@ -841,6 +869,8 @@ export async function travelWithTime(name, options = {}) {
             }
         };
         rested();
+        // E6.1: y se come: lo que trae el cazador o una ración por cabeza (`road-choices.js`).
+        eatenOnRoad += feedOnTheRoad(roles.fed);
         advanceCampaignDay();
         rested();
     }
@@ -855,6 +885,9 @@ export async function travelWithTime(name, options = {}) {
             member.needs = { ...needs, rest: needs.rest + RUSH_REST_HOURS };
         }
         savePartyState();
+    } else if (cards.tired) {
+        // E6.1: y lo mismo si se apretó el paso con la ventisca encima.
+        arriveTired();
     }
     // Idea 65: el cazador da de comer a todos por el camino.
     if (roles.fed) {
@@ -891,6 +924,7 @@ export async function travelWithTime(name, options = {}) {
     if (weather.length > 0) told.push(`tiempo: ${[...new Set(weather)].join(', ')}`);
     if (ride.note) told.push(ride.note);
     if (roles.results.length > 0) told.push(describeRoles(roles.results));
+    if (eatenOnRoad > 0) told.push(`${eatenOnRoad} ${eatenOnRoad === 1 ? 'ración comida' : 'raciones comidas'} por el camino`);
     if (shortcut?.line) told.push(shortcut.line);
     if (sailing) told.push(describeVoyage({ fare, days: total }));
     // Idea 192: el camino se ve pasar, sin parar el juego.

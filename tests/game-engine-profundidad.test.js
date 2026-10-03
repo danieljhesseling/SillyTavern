@@ -326,8 +326,10 @@ describe('R3: los ataques en pareja', () => {
     const wolf = { id: 'w', name: 'Lobo', x: 5, y: 6, hp: 7 };
 
     test('el héroe y un compañero con vínculo 3, pegados al mismo enemigo, pueden ir a una', () => {
-        expect(pairOptions({ actor: hero, heroId: 'h', party: [hero, bruna, tess], enemies: [wolf] }))
-            .toEqual([{ partnerId: 'b', partnerName: 'Bruna', enemyId: 'w', enemyName: 'Lobo' }]);
+        // E3.2: y trae la jugada de los dos por sus papeles (`combo`).
+        const options = pairOptions({ actor: hero, heroId: 'h', party: [hero, bruna, tess], enemies: [wolf] });
+        expect(options).toHaveLength(1);
+        expect(options[0]).toMatchObject({ partnerId: 'b', partnerName: 'Bruna', enemyId: 'w', enemyName: 'Lobo', companionId: 'b' });
         expect(pairOptions({ actor: bruna, heroId: 'h', party: [hero, bruna, tess], enemies: [wolf] })[0]?.partnerId).toBe('h');
     });
 

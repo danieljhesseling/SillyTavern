@@ -1352,23 +1352,26 @@ export function renderLocationView(target, options) {
             if (!parsed || !cell) continue;
 
             const type = cell.type === 'door' && cell.open ? 'door-open' : cell.type;
+            // E1.5: la runa lleva su número, y la runa, la estatua y la palanca doble, si ya están hechas.
+            const mark = cell.type === 'rune' ? ` wm-terrain-rune-${Math.trunc(Number(cell.order) || 1)}` : '';
+            const extra = `${mark}${cell.on ? ` wm-terrain-${classSafe(cell.type)}-on` : ''}`;
             // A door is the one piece of terrain that answers to the player. The layer
             // ignores pointer events so it never eats a drag; the door opts back in.
             // While painting, a click means "paint here", so the door stays inert.
             // R6: un cofre también responde: se abre estando al lado.
             // T1 y B3: la palanca y la barricada, igual.
-            const actionable = ['door', 'chest', 'lever', 'barricade'].includes(cell.type) && typeof onDoorToggle === 'function' && !paintMode;
+            const actionable = ['door', 'chest', 'lever', 'barricade', 'topple', 'statue', 'gem', 'lever_pair'].includes(cell.type) && typeof onDoorToggle === 'function' && !paintMode;
             if (!actionable && !inWindow(area, parsed.x, parsed.y)) continue;
             // Lo alto lleva el borde en su última fila: la de debajo ya no es alta.
             const edge = cell.type === 'high' && terrain.cells[`${parsed.x},${parsed.y + 1}`]?.type !== 'high';
             const drawn = tile(terrainTile(cell, { biome: kind, edge }));
             if (!actionable) {
-                plain += `<div class="wm-terrain-cell wm-terrain-${classSafe(type)}${drawn ? ' wm-terrain-tiled' : ''}" style="`
+                plain += `<div class="wm-terrain-cell wm-terrain-${classSafe(type)}${extra}${drawn ? ' wm-terrain-tiled' : ''}" style="`
                     + `${boxStyle(parsed.x * cellW, parsed.y * cellH, cellW, cellH)}${drawn ? `;background-image:url('${cssUrl(drawn)}')` : ''}"></div>`;
                 continue;
             }
             const el = $('<div class="wm-terrain-cell"></div>')
-                .addClass(`wm-terrain-${type}`)
+                .addClass(`wm-terrain-${type}${extra}`)
                 .css({
                     left: parsed.x * cellW + 'px',
                     top: parsed.y * cellH + 'px',
@@ -1379,7 +1382,11 @@ export function renderLocationView(target, options) {
 
             const open = Boolean(cell.open);
             el.addClass('wm-terrain-door-actionable')
-                .attr('title', cell.type === 'chest' ? 'Abrir el cofre' : cell.type === 'lever' ? 'Tirar de la palanca' : cell.type === 'barricade' ? 'Golpear la barricada' : open ? 'Cerrar la puerta' : 'Abrir la puerta')
+                .attr('title', cell.type === 'chest' ? 'Abrir el cofre' : cell.type === 'lever' ? 'Tirar de la palanca' : cell.type === 'barricade' ? 'Golpear la barricada'
+                    // E1.4 y E1.5.
+                    : cell.type === 'topple' ? 'Tirarla: cae sobre las dos casillas de detrás' : cell.type === 'gem' ? 'Coger la gema'
+                        : cell.type === 'statue' ? (cell.on ? 'Ya tiene su gema' : 'Ponerle una gema') : cell.type === 'lever_pair' ? 'Bajar la palanca (a la vez que la otra)'
+                            : open ? 'Cerrar la puerta' : 'Abrir la puerta')
                 .on('mousedown', function (e) {
                     // Stops the board's own pan handler from starting a drag.
                     e.preventDefault();

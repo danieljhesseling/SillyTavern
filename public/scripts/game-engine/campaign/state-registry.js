@@ -71,6 +71,8 @@ export const STATE_KEYS = [
     // J14.10: lo guarda `party/romance.js` (campaign/romance.js); viaja con el grupo, como lo social.
     { key: 'romances', kind: 'juego', owner: 'party/romance.js', what: 'Los romances: con quién, en qué cita vais y si sois pareja' },
     { key: 'dispatches', kind: 'juego', owner: 'party.js', what: 'Quién está fuera haciendo un encargo sin el héroe' },
+    // E5.3: los guarda `party/guild-pay.js`; se cuentan en cuanto la pantalla está libre.
+    { key: 'dispatchReports', kind: 'juego', owner: 'party/guild-pay.js', what: 'Lo que tienen que contar los que volvieron de un encargo' },
     { key: 'cases', kind: 'juego', owner: 'party.js', what: 'El caso abierto, sus pistas encontradas y los ya cerrados' },
     { key: 'duels', kind: 'juego', owner: 'party.js', what: 'Con quién se habló ya hoy (un duelo de palabras por persona y día)' },
     { key: 'visited', kind: 'juego', owner: 'party.js', what: 'Dónde habéis estado' },
@@ -91,6 +93,8 @@ export const STATE_KEYS = [
     // E8.3: los héroes que se quedaron de maestros; son del gremio, no de una campaña.
     { key: 'mentors', kind: 'juego', owner: 'party/long-life.js', what: 'Los maestros del gremio: los héroes que se retiraron y lo que enseñan', scope: 'partida' },
     { key: 'guildStorage', kind: 'juego', owner: 'party.js', what: 'El almacén del gremio', scope: 'partida' },
+    // E5.1: los libros de bichos de la biblioteca (`campaign/guild-perks.js`).
+    { key: 'guildBooks', kind: 'juego', owner: 'party/guild-pay.js', what: 'Los libros de bichos de la biblioteca del gremio: lo que aguanta cada uno', scope: 'partida' },
     // J4.2: la guarda `party/game-state.js`. Es de juego para que un punto de retorno la devuelva
     // con lo demás: uno de antes del último viaje deja al chat por detrás del almacén, y el gremio
     // se vuelve a traer de él (no se deshace lo que se hizo en otra campaña).

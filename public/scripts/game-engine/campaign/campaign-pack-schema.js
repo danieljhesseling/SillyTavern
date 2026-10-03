@@ -137,12 +137,25 @@ export function getMapLegend() {
         // T1 y B3.
         lever: 'palanca (no se pisa; estando al lado, abre todas las puertas con llave del tablero): la reja del fondo',
         barricade: 'barricada (corta el paso, no la vista; cubre a quien está detrás y a golpes se rompe: 15 de vida)',
+        // E1.4 y E1.5 de ROADMAP_ENTRETENIDO.
+        topple: 'columna, puntal o estantería que se puede tirar (corta el paso y cubre; estando al lado, se empuja y cae sobre las dos casillas de detrás: 1d10 contundente y derribado, salvación de Destreza CD 12 para la mitad)',
+        statue: 'estatua con las manos vacías (no se pisa; se le pone una gema; con todas puestas, se abren las puertas con llave del tablero)',
+        gem: 'gema en un pedestal (no se pisa; se coge estando al lado; pon tantas como estatuas)',
+        lever_pair: 'palanca doble (no se pisa; pon dos lejos una de otra: se bajan a la vez, en la misma ronda o con alguien en cada una, y abren las puertas con llave)',
     };
     const legend = { '.': 'suelo transitable' };
     for (const [char, cell] of Object.entries(ASCII_TERRAIN)) {
+        // E1.5: las runas, con su número.
+        if (cell.type === 'rune') {
+            const order = /** @type {any} */ (cell).order;
+            legend[char] = order === 1
+                ? 'runa 1 (las runas 1 a 5 se pisan en orden, de la 1 a la última que pongas; pisar una que no toca las apaga todas; con todas encendidas, se abren las puertas con llave)'
+                : `runa ${order}`;
+            continue;
+        }
         const base = names[cell.type] ?? cell.type;
         legend[char] = cell.type === 'door'
-            ? `${base}${cell.open ? ' abierta' : /** @type {any} */ (cell).locked ? ' cerrada con llave (se abre con una llave, con maña o a golpes; el jefe del tablero suelta la llave)' : ' cerrada'}`
+            ? `${base}${cell.open ? ' abierta' : /** @type {any} */ (cell).locked ? ' cerrada con llave (se abre con una llave, con ganzúas o a golpes; el jefe del tablero suelta la llave)' : ' cerrada'}`
             : base;
     }
     return legend;

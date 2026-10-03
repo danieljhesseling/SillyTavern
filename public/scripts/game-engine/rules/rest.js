@@ -50,7 +50,9 @@ export function getHitDice(member, hitDieByClass = {}) {
     const fromClass = parseHitDie(hitDieByClass?.[String(member?.class ?? '').toLowerCase()]);
     const faces = declared || fromClass || DEFAULT_HIT_DIE;
 
-    const total = Math.max(1, Math.floor(Number(member?.level) || 1));
+    // E5.1: el guiso de camino de la cocina del gremio da un dado más hasta volver a casa
+    // (`guild-perks.js`, `prepBonus`).
+    const total = Math.max(1, Math.floor(Number(member?.level) || 1)) + (member?.guildPrep?.ration === 'guiso' ? 1 : 0);
     const spent = Math.min(total, Math.max(0, Math.floor(Number(member?.hitDiceSpent) || 0)));
 
     return { faces, total, spent, available: total - spent };

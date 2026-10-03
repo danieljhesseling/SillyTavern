@@ -106,6 +106,7 @@ export function dispatchDays(contract) {
  * @property {number} leftOn
  * @property {number} backOn
  * @property {number} chance
+ * @property {string[]} [fromBench] E5.3: los que salieron de casa, y a casa vuelven.
  */
 
 /**

@@ -1,0 +1,29 @@
+/* E7 de wiki/ROADMAP_ENTRETENIDO.md, «Sin fricción aburrida». */
+
+/* E7.3: «Equipar lo mejor», en la ficha, debajo de lo que lleva puesto. `.menu_button` es
+   `width: min-content`: sin esto, una palabra por línea. */
+.ch-equip-best,
+.lu-actions .lu-recommend {
+    width: auto;
+    white-space: nowrap;
+    padding: 4px 10px;
+    gap: 0.4em;
+}
+
+.ch-equip-best {
+    align-self: flex-start;
+    margin-top: 6px;
+}
+
+/* E7.4: lo recomendado para su papel, en la tarjeta de subir de nivel. */
+.lu-advice {
+    margin: 6px 0 2px;
+    font-size: 0.85em;
+    color: var(--SmartThemeQuoteColor, #e8c46a);
+}
+
+/* E7.1: lo que dice quien lo ve al explorar: un bocadillo que se lee con calma. */
+.wm-bark.wm-bark-ahead {
+    max-width: 260px;
+    white-space: normal;
+}

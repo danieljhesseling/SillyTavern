@@ -5,7 +5,7 @@
  *
  * - **La palanca** (`P`): estando al lado, se tira de ella y **se abren las puertas con
  *   llave del tablero** — la reja del fondo. Es la cuarta forma de pasar una puerta cerrada
- *   (con la llave, con maña, a golpes y ahora con la palanca), y la que obliga a ir a otro
+ *   (con la llave, con ganzúas, a golpes y ahora con la palanca), y la que obliga a ir a otro
  *   sitio primero.
  * - **La barricada** (`=`): corta el paso pero no la vista, y cubre a quien está detrás
  *   (su cobertura cuenta en la línea de tiro, como las cajas). Tiene vida: a golpes se

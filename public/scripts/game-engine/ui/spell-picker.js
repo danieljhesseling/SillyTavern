@@ -116,15 +116,18 @@ export function buildSpellSwap({ known, options, onChange = () => {} }) {
  * @param {number} input.limit
  * @param {string[]} input.chosen
  * @param {string} [input.note]
+ * @param {string} [input.advice] Lo que dice que ya viene marcado lo de su papel.
  * @param {(ids: string[]) => {ok: boolean, errors: string[]}} input.check
  * @param {any} input.Popup
  * @param {any} input.POPUP_TYPE
  * @returns {Promise<string[]|null>} Lo elegido, o null si se deja.
  */
-export async function openPreparePanel({ who, options, limit, chosen, note = '', check, Popup, POPUP_TYPE }) {
+export async function openPreparePanel({ who, options, limit, chosen, note = '', advice = '', check, Popup, POPUP_TYPE }) {
     const root = $('<div class="sp-root sp-prepare"></div>');
     root.append($('<h3></h3>').text(`${who}: preparar conjuros`));
     root.append($('<p class="sp-lead"></p>').text(note || `Elige los ${limit} que tendrá a mano hasta el próximo descanso largo. Los trucos no cuentan: se saben siempre.`));
+    // E7.4 (decisión de Daniel): ya viene marcado lo de su papel, y se dice.
+    if (advice) root.append($('<p class="sp-advice lu-advice"></p>').text(advice));
     const errors = $('<div class="sp-errors"></div>');
     const picker = buildSpellPicker({
         name: 'preparar', title: 'Preparados', options, count: limit, chosen,

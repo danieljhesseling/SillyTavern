@@ -12,6 +12,7 @@
 import { firstArt, loadPixelManifest } from './pixel-art.js';
 import { resolveGender } from '../campaign/grammar.js';
 import { HUB_NEXT_HERO_GOLD, HUB_KEPT_NOTE, HUB_SEED_TRAIT } from '../campaign/hub.js';
+import { recruitLine } from '../campaign/weekly-mercenaries.js';
 
 /** @param {string} value @returns {JQuery} */
 const div = (value) => $('<div></div>').addClass(value);
@@ -651,13 +652,16 @@ export async function openHirePanel({ Popup, POPUP_TYPE, offers, purse }) {
     /** @type {{action: 'hire'|'fire', name: string}|null} */
     let chosen = null;
     const grid = div('vt-grid hb-grid');
+    // E8.4: los de paso de esta semana, aparte, debajo de los de siempre.
+    const weeklyGrid = div('vt-grid hb-grid hb-weekly-grid');
     for (const offer of offers) {
         const short = !offer.hired && purse < offer.fee;
+        const weekly = /** @type {any} */ (offer).weekly === true;
         const tile = card({
             icon: /explor/i.test(offer.className) ? 'fa-crosshairs' : 'fa-shield-halved',
-            // Su retrato; si no lo tiene, el de relleno de su clase.
+            // Su retrato; si no lo tiene, el de relleno de su clase (con su especie, si la trae).
             art: firstArt('mercenary', { name: offer.name })
-                || firstArt('hero', { className: offer.className, gender: /** @type {any} */ (offer).gender, name: offer.name }),
+                || firstArt('hero', { className: offer.className, gender: /** @type {any} */ (offer).gender, race: /** @type {any} */ (offer).race, name: offer.name }),
             label: offer.hired ? `Despedir a ${offer.name}` : `Contratar a ${offer.name} por ${offer.fee} de oro`,
             disabled: short,
             onClick: () => {
@@ -666,7 +670,17 @@ export async function openHirePanel({ Popup, POPUP_TYPE, offers, purse }) {
             },
         }).attr('data-hireling', offer.name).toggleClass('is-hired', offer.hired);
         tile.append(div('vt-name').text(offer.name));
-        tile.append(div('vt-what').text(`${offer.className} · Fuerza ${offer.strength} · Destreza ${offer.dexterity}`));
+        tile.append(div('vt-what').text(weekly
+            ? `${recruitLine(/** @type {any} */ (offer))} · Fuerza ${offer.strength} · Destreza ${offer.dexterity}`
+            : `${offer.className} · Fuerza ${offer.strength} · Destreza ${offer.dexterity}`));
+        // E8.4: el de paso se presenta él, con su rasgo.
+        if (weekly) {
+            const said = /** @type {any} */ (offer);
+            if (String(said.pitch ?? '').trim()) tile.append(div('hb-pitch').text(`«${String(said.pitch).trim()}»`));
+            if (String(said.trait?.label ?? '').trim()) {
+                tile.append(div('hb-trait').append('<i class="fa-solid fa-fw fa-feather"></i>').append($('<span></span>').text(`Rasgo: ${String(said.trait.label).trim()}`)));
+            }
+        }
         // E8.6: un veterano, con su apodo.
         const nick = String(/** @type {any} */ (offer).nickname ?? '').trim();
         if (nick) tile.append(div('hb-veteran').append('<i class="fa-solid fa-medal"></i>').append($('<span></span>').text(`Veterano: «${nick}»`)));
@@ -686,9 +700,14 @@ export async function openHirePanel({ Popup, POPUP_TYPE, offers, purse }) {
         if (short) tile.append(div('hb-warn').text(`No llega el oro: cuesta ${offer.fee}.`));
         tile.append(div('vt-go').append(`<i class="fa-solid ${offer.hired ? 'fa-hand' : 'fa-coins'}"></i>`)
             .append($('<span></span>').text(offer.hired ? 'Despedirle' : 'Contratarle')));
-        grid.append(tile);
+        (weekly ? weeklyGrid : grid).append(tile);
     }
     body.append(grid);
+    if (weeklyGrid.children().length > 0) {
+        body.append($('<h4 class="hb-weekly-title"></h4>').text('De paso esta semana'))
+            .append($('<p class="vt-sub hb-weekly-sub"></p>').text('Llegan al gremio buscando trabajo. Cobran menos y no tienen historia escrita: la que tengan, la ganarán con vosotros. La semana que viene habrá otros.'))
+            .append(weeklyGrid);
+    }
     body.append(div('hb-foot').append($('<button type="button" class="menu_button hb-close"></button>')
         .text('Cerrar')
         .on('click', () => { void popup?.completeCancelled(); })));

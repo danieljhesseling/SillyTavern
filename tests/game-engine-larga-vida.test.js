@@ -4,6 +4,8 @@
  * devolver la vida en el templo y el modo duro.
  */
 
+/* global globalThis */
+
 import { describe, test, expect, beforeEach } from '@jest/globals';
 import { tierOf, campaignTier, sortByTier, tierLine, tierBoardLine } from '../public/scripts/game-engine/campaign/level-tiers.js';
 import {

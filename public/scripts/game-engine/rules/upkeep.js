@@ -88,7 +88,8 @@ export function upkeepPerHead(party, rules = null) {
     return people.map((member) => {
         const paid = motiveOf(member) === 'coin';
         const food = prices.foodPerDay * prices.weekLength;
-        const wage = paid ? prices.wagePerWeek : 0;
+        // E4.1: lo que se le subió el sueldo cuando pidió más paga.
+        const wage = paid ? prices.wagePerWeek + Math.max(0, Math.floor(Number(member?.wageRaise) || 0)) : 0;
 
         return {
             name: String(member?.name ?? 'Alguien'),

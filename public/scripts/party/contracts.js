@@ -43,7 +43,7 @@ import { generateBoard } from '../game-engine/world-builder/dungeon-generator.js
 import { formParty, readReasons } from '../game-engine/rules/companions.js';
 import { isShellOpen, refreshGameShell } from '../game-engine/ui/shell/game-shell.js';
 import {
-    BOARD_KEY, CASES_KEY, DEBT_KEY, DISPATCHES_KEY, GUILD_KEY, NEMESES_KEY, PLOT_STATE_KEY, TAKEN_KEY,
+    BENCH_KEY, BOARD_KEY, CASES_KEY, DEBT_KEY, DISPATCHES_KEY, GUILD_KEY, NEMESES_KEY, PLOT_STATE_KEY, TAKEN_KEY,
     WRITTEN_DONE_KEY,
 } from './keys.js';
 import { currentBoardName, currentLocationName, partyMembers, setPartyMembers } from './state.js';
@@ -64,6 +64,9 @@ import { savePartyState, renderPartyMembers } from './roster.js';
 import { voiceOpinions, offerPersonalQuests } from './companions.js';
 import { raiseFame, shiftPlaceFortune } from './town.js';
 import { countStat } from './menus.js';
+import { readBench } from '../game-engine/campaign/bench.js';
+import { dispatchReport } from '../game-engine/campaign/guild-perks.js';
+import { noteBackFromErrand, queueDispatchReport } from './guild-pay.js';
 
 /**
  * Entrega el encargo aceptado, si el combate que acaba de ganarse era el suyo.
@@ -314,10 +317,14 @@ export function refreshContractBoard() {
  * U8: mandar a uno o dos compañeros, sin el héroe, a un encargo menor del tablón. La
  * probabilidad se ve antes de mandarlos; mientras están fuera, no van con el grupo.
  *
+ * E5.3: desde el gremio, también la gente que espera en casa (`bench`); `pick`, quien sale ya
+ * marcado.
+ *
  * @param {any} contract
+ * @param {{bench?: boolean, pick?: string}} [options]
  * @returns {Promise<boolean>}
  */
-export async function openDispatch(contract) {
+export async function openDispatch(contract, { bench = false, pick = '' } = {}) {
     if (!chat_metadata) return false;
     const allowed = canDispatch(contract);
     if (!allowed.ok) {
@@ -325,7 +332,8 @@ export async function openDispatch(contract) {
         return false;
     }
     const hero = partyMembers[0];
-    const candidates = partyMembers.filter(m => m !== hero && !m.dead && (Number(m.hp) || 0) > 0 && !m.guest);
+    const home = bench ? readBench(chat_metadata[BENCH_KEY]).filter(m => !m.dead) : [];
+    const candidates = [...partyMembers.filter(m => m !== hero && !m.dead && (Number(m.hp) || 0) > 0 && !m.guest), ...home];
     if (candidates.length === 0) {
         toastr.info('No hay nadie a quien mandar: el héroe no se despacha.', 'Despachar');
         return false;
@@ -334,8 +342,9 @@ export async function openDispatch(contract) {
     body.append($('<h3></h3>').text(`Mandar a «${contract.title}»`));
     body.append($('<p class="dp-intro"></p>').text('Uno o dos, sin el héroe. Mientras estén fuera, no van con vosotros.'));
     for (const member of candidates) {
-        const box = $('<input type="checkbox" class="dp-pick">').attr('value', String(member.id));
-        body.append($('<label class="dp-member"></label>').append(box).append(document.createTextNode(` ${member.name} (nivel ${Number(member.level) || 1})`)));
+        const box = $('<input type="checkbox" class="dp-pick">').attr('value', String(member.id)).prop('checked', String(member.id) === String(pick));
+        const where = home.includes(member) ? ', en casa' : '';
+        body.append($('<label class="dp-member"></label>').append(box).append(document.createTextNode(` ${member.name} (nivel ${Number(member.level) || 1}${where})`)));
     }
     const odds = $('<p class="dp-odds"></p>');
     body.append(odds);
@@ -360,6 +369,12 @@ export async function openDispatch(contract) {
     if (!ok || members.length === 0) return false;
     const { chance } = dispatchOdds({ members, contract });
     const dispatch = startDispatch({ contract, members, today: Math.max(1, campaignDay()), chance });
+    // E5.3: quien sale de casa vuelve a casa.
+    const fromHome = members.filter(m => home.includes(m)).map(m => String(m.id));
+    if (fromHome.length > 0) {
+        Object.assign(dispatch, { fromBench: fromHome });
+        chat_metadata[BENCH_KEY] = readBench(chat_metadata[BENCH_KEY]).filter(m => !fromHome.includes(String(m.id)));
+    }
     chat_metadata[DISPATCHES_KEY] = [...(Array.isArray(chat_metadata[DISPATCHES_KEY]) ? chat_metadata[DISPATCHES_KEY] : []), dispatch];
     chat_metadata[BOARD_KEY] = (Array.isArray(chat_metadata[BOARD_KEY]) ? chat_metadata[BOARD_KEY] : []).filter((/** @type {any} */ c) => String(c?.id) !== String(contract.id));
     // En el sitio: `partyMembers` es el array que el resto del archivo tiene cogido.
@@ -392,6 +407,10 @@ export function returnDispatches(today) {
     for (const dispatch of due) {
         const random = createSeededRandom(derive(seed, 'despacho', dispatch.id));
         const result = resolveDispatch({ dispatch, random, allowDeath: survival.mortality === 'everyone' });
+        // E5.3: lo que se cuenta al volver: la herida de quien la trae y el renombre ganado.
+        /** @type {{label: string, days: number}|null} */
+        let injury = null;
+        const home = Array.isArray(dispatch.fromBench) ? dispatch.fromBench.map(String) : [];
         for (const member of dispatch.members) {
             if (String(member.id) === result.dead) {
                 member.dead = true;
@@ -399,17 +418,23 @@ export function returnDispatches(today) {
                 countStat('deaths');
                 buryMember(member, today, getCampaignBonds());
             } else if (String(member.id) === result.hurt && survival.injuries) {
-                const patch = applyInjury(member, rollInjury(() => random() * 0.4));
+                const rolled = rollInjury(() => random() * 0.4);
+                injury = { label: String(rolled.label), days: Number(rolled.days) || 0 };
+                const patch = applyInjury(member, rolled);
                 member.injuries = patch.injuries;
                 member.baseStats = patch.baseStats;
                 Object.assign(member, patch.stats);
             }
-            partyMembers.push(member);
+            // E5.2: un encargo también es una salida.
+            if (!member.dead) noteBackFromErrand(member);
+            if (home.includes(String(member.id)) && !member.dead) chat_metadata[BENCH_KEY] = [...readBench(chat_metadata[BENCH_KEY]), member];
+            else partyMembers.push(member);
         }
-        if (result.success) finishDispatchedContract(dispatch.contract);
-        else void shiftPlaceFortune(String(dispatch.contract?.locationName ?? ''), -1);
+        const renown = result.success ? finishDispatchedContract(dispatch.contract) : 0;
+        if (!result.success) void shiftPlaceFortune(String(dispatch.contract?.locationName ?? ''), -1);
         postCombatNarration(`🧭 [GREMIO] ${result.line}`);
         noteDeed(result.line);
+        queueDispatchReport(dispatchReport({ dispatch, result, injury, renown, random }));
     }
     savePartyState();
     renderPartyMembers();
@@ -421,9 +446,11 @@ export function returnDispatches(today) {
  * U8: un encargo cumplido sin el héroe: se cobra, sube la reputación y el sitio lo nota.
  *
  * @param {any} contract
+ * @returns {number} Lo que sube el renombre.
  */
 function finishDispatchedContract(contract) {
     const guild = getGuild();
+    const before = Number(guild.renown) || 0;
     const done = completeContract(guild, contract);
     const holder = partyMembers.find(m => (m.hp || 0) > 0) ?? partyMembers[0];
     if (holder) holder.gold = (Number(holder.gold) || 0) + done.gold;
@@ -432,6 +459,7 @@ function finishDispatchedContract(contract) {
     countStat('contracts');
     countStat('gold', Number(done.gold) || 0);
     void shiftPlaceFortune(String(contract?.locationName ?? ''), 1);
+    return Math.max(0, (Number(done.renown) || 0) - before);
 }
 
 /**

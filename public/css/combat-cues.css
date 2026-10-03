@@ -1371,11 +1371,29 @@
     margin-bottom: 2px;
 }
 
+/* E4.1: molesto contigo, y lo que cobra de más. */
+.cc-grudge {
+    margin: 4px 0;
+    padding: 4px 8px;
+    border-left: 3px solid #c0703a;
+    font-size: 0.85em;
+}
+
 /* Idea 59: lo que habla. */
 .ch-langs {
     margin: 4px 0 8px;
     font-size: 0.9em;
     opacity: 0.85;
+}
+
+/* E3.3: el arma imbuida (Arma elemental), bajo el equipo. */
+.ch-imbue {
+    margin: 4px 0 8px;
+    padding: 4px 8px;
+    border-left: 3px solid #e8893a;
+    background: rgba(232, 137, 58, 0.12);
+    border-radius: 4px;
+    font-size: 0.9em;
 }
 
 /* Idea 62: los juegos de equipo. */

@@ -231,7 +231,7 @@ export function aheadLine(plan) {
         case 'foe': return names.length > 0 ? `¡Alto! Ahí delante hay alguien: ${names.join(', ')}.` : '¡Alto! Ahí delante hay alguien.';
         case 'trap': return names.length > 0 ? `¡Quietos! Ahí hay una trampa: ${names[0].toLowerCase()}.` : '¡Quietos! Ahí hay una trampa.';
         case 'chest': return found.length > 1 ? 'Mirad, cofres.' : 'Mirad, un cofre.';
-        case 'door': return 'Aquí hay una puerta. La abrimos cuando digas.';
+        case 'door': return 'Ahí hay una puerta. La abrimos cuando digas.';
         case 'dark': return 'Está demasiado oscuro para seguir. Necesitamos luz.';
         default: return '';
     }

@@ -1,7 +1,7 @@
 import { describe, test, expect } from '@jest/globals';
 import fs from 'node:fs';
 import {
-    roleOf, keyAbilities, recommendAbilityPicks, recommendPerk, recommendSpells, preparedByRole, describeAdvice, spellWorth,
+    roleOf, keyAbilities, recommendAbilityPicks, recommendPerk, recommendSpells, preparedByRole, describeAdvice, spellWorth, heroPreparation,
 } from '../public/scripts/game-engine/rules/level-advice.js';
 import { PERKS } from '../public/scripts/game-engine/rules/level-perks.js';
 import { normalizeSpell } from '../public/scripts/game-engine/rules/spell-catalogue.js';
@@ -63,6 +63,16 @@ describe('E7.4: subir de nivel recomendado y preparar según el papel', () => {
         expect(catalogue.find((/** @type {any} */ s) => s.id === striker?.[0]).damage).toBeTruthy();
         // Quien no prepara (sin magia de 5e), nada.
         expect(preparedByRole({ member, classRow: { id: 'guerrero' }, catalogue, role: 'frente' })).toBeNull();
+    });
+
+    test('el cuadro del héroe sale ya marcado con lo de su papel, y lo dice', () => {
+        const member = { id: 'h', class: 'Clériga', level: 3, wisdom: 16, prepared: ['conj-bendecir'] };
+        const start = heroPreparation({ member, classRow: cleric, catalogue, role: 'sanador' });
+        expect(start?.chosen).toEqual(preparedByRole({ member, classRow: cleric, catalogue, role: 'sanador' }));
+        expect(start?.chosen.slice(0, 2)).toEqual(['hab-curar', 'conj-palabra-curacion']);
+        expect(start?.line).toBe('Marcado lo de su papel: curar. Cámbialo si quieres.');
+        // Quien no prepara: nada que marcar (el cuadro queda como estaba).
+        expect(heroPreparation({ member, classRow: { id: 'guerrero' }, catalogue, role: 'frente' })).toBeNull();
     });
 
     test('lo recomendado, dicho en una frase', () => {

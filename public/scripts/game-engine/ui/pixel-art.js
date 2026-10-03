@@ -89,6 +89,9 @@ const TILE_FILES = {
     stairs: 'escalera', water: 'agua', deep_water: 'agua-honda', ice: 'hielo', brush: 'maleza', barrel: 'barril', chest: 'cofre', exit: 'salida',
     mud: 'barro',
     lever: 'palanca', barricade: 'barricada',
+    // E1.4 y E1.5: sin dibujo propio aún (wiki/PIXELLAB_PENDIENTE.md); la columna usa la de la
+    // cobertura y la palanca doble la de la palanca. La estatua, la gema y la runa, sus colores.
+    topple: 'columna', lever_pair: 'palanca-doble', statue: 'estatua', gem: 'gema', rune: 'runa',
 };
 
 /**
@@ -107,6 +110,9 @@ const BIOME_TILES = ['difficult', 'cover_half', 'cover_three_quarters'];
  */
 const TILE_STAND_INS = {
     'agua-honda': ['agua'],
+    // E1.4 y E1.5.
+    'columna': ['cobertura-tres-cuartos'],
+    'palanca-doble': ['palanca'],
     'dificil-pantano': ['barro', 'dificil-exterior'],
     'dificil-playa': ['dificil-exterior'],
     'cobertura-media-playa': ['cobertura-media-exterior'],

@@ -7,6 +7,8 @@
  *   manos del juego y sin enseñarla (`quiet-fight.js`): la vida, los conjuros, el botín y los PX
  *   son los de verdad, y la pantalla de victoria lo dice.
  *
+ * - **E7.1, explorar hacia delante** (`board/explore-ahead.js`): la ficha del tablero; el grupo
+ *   avanza en formación y se para ante alguien, una trampa, un cofre, una puerta o la oscuridad.
  * - **E7.3, equipar lo mejor** (`rules/best-gear.js`): el botón de la ficha, y los compañeros que
  *   lleva el juego se ponen solos lo mejor de lo suyo tras ganar.
  * - **E7.4, subir de nivel solos** (`rules/level-advice.js`, `levelUpByRole` en level-up.js): los
@@ -48,6 +50,7 @@ import { savePartyState, renderPartyMembers } from './roster.js';
 import { controlOf } from './spell-turn.js';
 import { canLevelUp, levelUpByRole } from './level-up.js';
 import { fightWaitingHere } from './fight-entry.js';
+import { silentNow } from './silent.js';
 
 /** @param {any} value @returns {string} */
 const text = (value) => String(value ?? '').trim();
@@ -217,7 +220,7 @@ function thingsOnBoard(board) {
  * @returns {any|null}
  */
 function spotter(here) {
-    const mates = here.filter(m => m !== partyMembers[0]);
+    const mates = here.filter(m => m !== partyMembers[0] && !silentNow(m));
     return mates.map(m => ({ m, passive: 10 + skillModifier(m, 'perception').modifier }))
         .sort((a, b) => b.passive - a.passive)[0]?.m ?? null;
 }
@@ -273,10 +276,33 @@ export async function exploreAheadNow() {
     }
     const line = aheadLine(told);
     const who = line ? spotter(here) : null;
-    if (line && who) sayHere(`👣 [TABLERO] ${aheadNotice(told)}`, text(who.name), line);
-    else if (aheadNotice(told)) toastr.info(aheadNotice(told), 'Explorar hacia delante');
     renderLocationMapsPreview();
+    if (line && who) {
+        sayHere(`👣 [TABLERO] ${aheadNotice(told)}`, text(who.name), line);
+        // En el tablero, la frase sale en un bocadillo sobre quien lo ha visto (como los gritos).
+        setTimeout(() => sayOverToken(who, line), 350);
+    } else if (aheadNotice(told)) {
+        toastr.info(aheadNotice(told), 'Explorar hacia delante');
+    }
     return told;
+}
+
+/**
+ * Un bocadillo con lo que dice alguien del grupo, sobre su ficha del tablero.
+ *
+ * @param {any} member
+ * @param {string} line
+ */
+function sayOverToken(member, line) {
+    const token = [...document.querySelectorAll('.wm-token')]
+        .find(t => t instanceof HTMLElement && t.dataset.tokenId === String(member?.id) && t.offsetParent);
+    if (!token) return;
+    token.querySelectorAll('.wm-bark').forEach(old => old.remove());
+    const bubble = document.createElement('div');
+    bubble.className = 'wm-bark wm-bark-ahead';
+    bubble.textContent = line;
+    token.appendChild(bubble);
+    setTimeout(() => bubble.remove(), 5000);
 }
 
 // ---------------------------------------------------------------------------------------

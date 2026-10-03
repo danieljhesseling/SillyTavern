@@ -15,6 +15,8 @@
  * @property {string[]} skills  Ids de `SKILLS` en `rules/checks.js`.
  * @property {string} contact  Lo que el narrador puede usar: a quien conoce, que sabe.
  * @property {RegExp} words    Lo que, dicho en «Quien eres», lo delata.
+ * @property {string[]} [tools] Las formas de `trastos.json` con las que empieza (E2.2: el
+ *   criminal, con sus ganzúas, como las herramientas de ladrón de su trasfondo en 5e).
  */
 
 /** @type {Record<string, Background>} */
@@ -30,6 +32,7 @@ export const BACKGROUNDS = {
         skills: ['stealth', 'deception'],
         contact: 'Conoce los bajos fondos: sabe a quién preguntar y quién compra lo robado.',
         words: /\b(ladr|robar|rob[oó]|calle|carterist|contrabandist|asesin|banda|c[aá]rcel|preso)/i,
+        tools: ['forma-ganzuas'],
     },
     erudito: {
         label: 'Erudito',

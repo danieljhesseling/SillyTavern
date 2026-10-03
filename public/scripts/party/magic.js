@@ -77,8 +77,12 @@ import { noteDeed, worldWrite } from './world-growth.js';
 import { postCombatNarration, postForModel, showTip, narratorMode } from './narration.js';
 import { savePartyState, renderPartyMembers } from './roster.js';
 import { judgeDecision, recordFeat, getPartyFormation } from './companions.js';
-import { preparedByRole, roleOf } from '../game-engine/rules/level-advice.js';
+import { heroPreparation, preparedByRole, roleOf } from '../game-engine/rules/level-advice.js';
 import { brawlRefused } from './brawl.js';
+import { weaponOf } from '../game-engine/rules/equipment.js';
+import { canImbue, imbueTier, bestImbueType, readImbue, planAllyImbue, IMBUE_ICONS } from '../game-engine/rules/elemental-weapon.js';
+import { getAttackRangeFeet } from './combat-rules.js';
+import { takeBroth } from '../game-engine/campaign/guild-perks.js';
 
 /**
  * R4: usar un pergamino o una varita: el conjuro sale del objeto, sin gastar cargas del
@@ -705,12 +709,15 @@ export async function openSpellPreparation(member) {
     const options = classSpellList(classRow, rows).filter(spell => spell.level > 0 && spell.level <= max
         && (casting.mode !== 'spellbook' || book.includes(spell.id) || spell.aliases.some(a => book.includes(a))));
     const limit = preparedLimit(classRow, member);
+    // E7.4 (decisión de Daniel): sale ya marcado lo de su papel, como los compañeros; él lo cambia.
+    const byRole = heroPreparation({ member, classRow, catalogue: rows, role: roleOf(member, getPartyFormation()) });
     const { openPreparePanel } = await import('../game-engine/ui/spell-picker.js');
     const chosen = await openPreparePanel({
         who: String(member.name),
         options,
         limit,
-        chosen: (Array.isArray(member.prepared) ? member.prepared : []).map(String),
+        chosen: byRole?.chosen ?? (Array.isArray(member.prepared) ? member.prepared : []).map(String),
+        advice: byRole?.line ?? '',
         note: casting.mode === 'spellbook'
             ? `Del libro, los ${limit} que tendrá a mano hasta el próximo descanso largo. Los trucos no cuentan.`
             : `De toda la lista de su clase, los ${limit} que tendrá a mano hasta el próximo descanso largo. Los trucos no cuentan.`,
@@ -800,7 +807,7 @@ let lastRestMagic = { kind: '', at: 0 };
  * cargas de los objetos (eso lo hace `takeRest`, en `party/time.js`, antes de llamar aquí).
  * Con el largo se acaba lo que duraba horas (la concentración, la Armadura de mago, la vida
  * de Ayuda) y se puede volver a preparar. Si tu personaje prepara, se le abre el cuadro al
- * despertar.
+ * despertar, ya marcado con lo de su papel (E7.4).
  *
  * Lo llama `takeRest` (`party/time.js`).
  *
@@ -818,6 +825,7 @@ export function afterRestMagic(kind) {
     for (const member of partyMembers.filter(m => !m.dead)) {
         member.concentration = null;
         delete member.spellAc;
+        delete member.spellWeapon;
         if (member.spellHp) {
             const bonus = Math.max(0, Number(member.spellHp.bonus) || 0);
             member.maxHp = Math.max(1, (Number(member.maxHp) || 1) - bonus);
@@ -1220,6 +1228,12 @@ function endLinked(ended) {
             delete creature.spellAc;
             lines.push(`🛡️ A ${creature.name} se le acaba ${current.name}.`);
         }
+        // E3.3: el arma imbuida (Arma elemental) vuelve a ser corriente.
+        const imbued = readImbue(creature?.spellWeapon);
+        if (imbued && imbued.casterId === current.casterId && imbued.spellId === current.spellId) {
+            delete creature.spellWeapon;
+            lines.push(`🗡️ El arma de ${creature.name} vuelve a ser corriente: se acaba ${current.name}.`);
+        }
         const marks = Array.isArray(creature?.spellMarks) ? creature.spellMarks : [];
         const { linked, rest } = linkedTo(current, marks);
         if (linked.length === 0) continue;
@@ -1500,6 +1514,15 @@ export function useAbility(member, ability, target, slotLevel = 0) {
         }
     }
 
+    // E3.3: Arma elemental pide un arma corriente en la mano de quien la recibe; si no, no se gasta nada.
+    if (spell?.imbue) {
+        const refusal = imbueRefusal(subject);
+        if (refusal) {
+            toastr.warning(refusal);
+            return '';
+        }
+    }
+
     // El coste se paga aunque falle: lanzar y errar tambien gasta el turno.
     if (ability.cost !== 'free') {
         Object.assign(combatEncounter, useAction(combatEncounter, ability.cost === 'bonus' ? 'bonus' : 'action'));
@@ -1636,6 +1659,8 @@ export function resolveAbilityOnBoard({ actor, side, ability, subject }) {
                         : enemyAttackBonus(actor),
                 targetAc: friendly || target === actor ? 10 : getTargetArmorClass(target, actor).ac,
                 saveModifier: abilityModifier(target, ability.saveAbility),
+                // E5.1: el caldo del gremio, en la primera salvación de quien lo lleva.
+                saveAdvantage: ray === 0 && side === 'enemy' && victim.kind === 'party' && ability.resolution === 'save' && drinkBroth(target, lines),
             });
             // J19.7: a quien del grupo le acierta el conjuro de ataque de un enemigo, Escudo, si
             // lo sabe y con él ya no entra (un crítico entra igual).
@@ -1897,6 +1922,10 @@ function castSpellExtras({ actor, side, ability, spell, cells, victims, aim }) {
                 delete victim.ref.spellAc;
                 lines.push(`✨ A ${victim.ref.name} se le deshace la magia que le protegía.`);
             }
+            if (victim.ref.spellWeapon) {
+                delete victim.ref.spellWeapon;
+                lines.push(`✨ El arma de ${victim.ref.name} vuelve a ser corriente.`);
+            }
         }
         done = !spell.damage;
     }
@@ -1964,6 +1993,85 @@ function castSpellExtras({ actor, side, ability, spell, cells, victims, aim }) {
 }
 
 /**
+ * E3.3: por qué no se le puede imbuir el arma a alguien (sin arma, ya mágica o ya imbuida).
+ * Vacío si se puede. Lo usan el lanzamiento, la barra (el aliado sale apagado con su porqué) y
+ * la IA de los compañeros.
+ *
+ * @param {any} member
+ * @returns {string}
+ */
+export function imbueRefusal(member) {
+    if (!member) return 'Hace falta elegir a quién.';
+    const verdict = canImbue(member, weaponOf(member));
+    return verdict.ok ? '' : verdict.reason;
+}
+
+/**
+ * E3.3: el compañero que va solo y sabe Arma elemental la lanza si compensa: pelea larga, no
+ * se concentra ya en otra cosa y tiene a un paso a alguien con un arma corriente (o la suya).
+ * La decide `planAllyImbue`; se lanza por el mismo camino que desde la barra.
+ *
+ * Lo llama el turno de un compañero (`resolveAllyTurnAction`, en `combat-flow.js`).
+ *
+ * @param {any} member
+ * @returns {boolean} Si la ha lanzado (ya no le queda la acción).
+ */
+export function allyImbue(member) {
+    if (!member || member.summon || !combatEncounter.active || !castsLikeFifth(member)) return false;
+    if (!hasAction(combatEncounter, 'action')) return false;
+    const ability = spellAbilitiesOf(member).find(a => !a.blocked && spellFor(String(a.id))?.imbue);
+    if (!ability) return false;
+    const from = boardCellOf(member);
+    const candidates = partyMembers
+        .filter(m => !m.dead && !(/** @type {any} */ (m)).summon && (Number(m.hp) || 0) > 0)
+        .map(m => {
+            const at = boardCellOf(m);
+            return {
+                id: String(m.id), name: String(m.name),
+                distanceFeet: getDistanceInFeet(from.x, from.y, at.x, at.y),
+                ok: !imbueRefusal(m),
+                melee: getAttackRangeFeet(m) <= 10,
+            };
+        });
+    const plan = planAllyImbue({
+        caster: { id: String(member.id), concentrating: Boolean(readConcentration(member.concentration)) },
+        candidates,
+        enemies: getAliveEnemies().map(e => ({ currentHp: Number(e.currentHp) || 0, boss: Boolean(e.boss) })),
+    });
+    const target = plan ? partyMembers.find(m => String(m.id) === plan.targetId) : null;
+    if (!plan || !target) return false;
+    postCombatNarration(`[COMBAT] ${member.name} decide por su cuenta: Arma elemental sobre ${target === member ? 'su propia arma' : `el arma de ${target.name}`}: ${plan.why}.`);
+    return Boolean(useAbility(member, ability, target, 0));
+}
+
+/**
+ * E3.3: Arma elemental sobre alguien del grupo: su arma suma al ataque y al daño, del tipo que
+ * más les duele a los que quedan en pie (fuego si da igual). Lleva el id de quien lo lanza y
+ * del conjuro, y se acaba con su concentración (`endLinked`).
+ *
+ * @param {Object} input
+ * @param {any} input.actor
+ * @param {import('../game-engine/rules/spell-catalogue.js').Spell} input.spell
+ * @param {any} input.ability Con `slotLevel`.
+ * @param {any} input.target
+ * @returns {string[]}
+ */
+function imbueWeapon({ actor, spell, ability, target }) {
+    const weapon = weaponOf(target);
+    if (!canImbue(target, weapon).ok) return [];
+    const tier = imbueTier(spell.imbue, Number(ability.slotLevel) || spell.level);
+    const pick = bestImbueType({ types: spell.imbue?.types, enemies: getAliveEnemies() });
+    target.spellWeapon = {
+        spellId: spell.id, casterId: combatIdOf(actor), casterName: String(actor.name ?? ''), name: spell.name,
+        weaponId: String(weapon?.id ?? ''), weaponName: String(weapon?.name ?? ''),
+        bonus: tier.bonus, dice: tier.dice, type: pick.type,
+    };
+    const icon = /** @type {Record<string, string>} */ (IMBUE_ICONS)[pick.type] ?? '✨';
+    const why = pick.why ? ` (${pick.why})` : '';
+    return [`${icon} ${target.name}: su ${String(weapon?.name ?? 'arma').toLowerCase()} se carga de ${pick.word}${why}. +${tier.bonus} al ataque y +${tier.dice} de ${pick.word} en cada golpe que entre.`];
+}
+
+/**
  * J19: lo que deja un conjuro de 5e en quien alcanza, después de la tirada: quitar estados,
  * estabilizar, devolver a la vida, más vida máxima, armadura, empujar; y apuntar el estado
  * que depende de una concentración, para quitarlo cuando se acabe.
@@ -2019,6 +2127,8 @@ function spellAfterEffects({ actor, side, spell, ability, victim, plan }) {
         const after = getTargetArmorClass(target).ac;
         lines.push(`🛡️ ${target.name}: ${spell.name}, CA ${before} → ${after}.`);
     }
+    // E3.3: Arma elemental: el arma corriente que toca se vuelve mágica mientras se concentre.
+    if (spell.imbue && victim.kind === 'party') lines.push(...imbueWeapon({ actor, spell, ability, target }));
     if (spell.pushFeet > 0 && victim.kind !== side) {
         const pushed = pushAway(actor, victim, spell.pushFeet);
         if (pushed) lines.push(pushed);
@@ -2071,4 +2181,21 @@ export async function learnAbility(memberId, abilityId) {
     noteDeed(line);
     toastr.success(line, '📜 Aprendido', { timeOut: 10000 });
     await postForModel(`[APRENDIZAJE] ${line} Cuéntalo en dos frases. No inventes nada más.`);
+}
+
+/**
+ * E5.1: el caldo fuerte de la cocina del gremio se bebe en la primera salvación: con ventaja, y
+ * se gasta. Dice si lo había y apunta la línea.
+ *
+ * @param {any} member
+ * @param {string[]} lines
+ * @returns {boolean}
+ */
+function drinkBroth(member, lines) {
+    const broth = takeBroth(member);
+    if (!broth.used) return false;
+    if (broth.guildPrep) member.guildPrep = broth.guildPrep;
+    else delete member.guildPrep;
+    lines.push(broth.line);
+    return true;
 }

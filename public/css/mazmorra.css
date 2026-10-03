@@ -66,6 +66,13 @@
     opacity: 0.85;
 }
 
+/* E2.2: sin ganzúas, lo dice uno de los tuyos. */
+.lk-root .lk-say {
+    padding: 6px 10px;
+    border-left: 3px solid rgba(240, 170, 60, 0.6);
+    font-style: italic;
+}
+
 /* E2.4: seguir o volver, con el «volver» en otro tono. */
 .vq-seguir .vq-no {
     border-color: rgba(240, 170, 60, 0.6);

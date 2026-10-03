@@ -325,6 +325,7 @@ export function canUseAbility({
  * @param {number} [input.attackModifier]
  * @param {number} [input.targetAc]
  * @param {number} [input.saveModifier]
+ * @param {boolean} [input.saveAdvantage] E5.1: la salvación con ventaja (el caldo del gremio).
  * @returns {{
  *   ok: boolean, hit: boolean, saved: boolean, crit: boolean,
  *   damage: number, healing: number, condition: string, conditionRounds: number,
@@ -332,7 +333,7 @@ export function canUseAbility({
  * }}
  */
 export function planAbilityUse({
-    actor, target = null, ability, roll, attackModifier = 0, targetAc = 10, saveModifier = 0,
+    actor, target = null, ability, roll, attackModifier = 0, targetAc = 10, saveModifier = 0, saveAdvantage = false,
 }) {
     const actorName = text(actor?.name) || 'Alguien';
     const targetName = ability.target === 'self' ? actorName : (text(target?.name) || 'el objetivo');
@@ -357,10 +358,14 @@ export function planAbilityUse({
             return { ok: true, hit, saved, crit, damage: 0, healing: 0, condition: '', conditionRounds: 0, attackTotal, lines };
         }
     } else if (ability.resolution === 'save') {
-        const save = roll('1d20');
+        const first = roll('1d20');
+        // E5.1: con ventaja, dos dados y el mejor.
+        const other = saveAdvantage ? roll('1d20') : null;
+        const save = other && (Number(other.total) || 0) > (Number(first.total) || 0) ? other : first;
         const total = (Number(save.total) || 0) + saveModifier;
         saved = total >= ability.saveDc;
-        lines.push(`🎲 Salvación de ${targetName}: d20(${save.total}) ${saveModifier >= 0 ? '+' : ''}${saveModifier} = ${total} vs CD ${ability.saveDc}`);
+        const dice = other ? `d20 con ventaja(${first.total}, ${other.total})` : `d20(${save.total})`;
+        lines.push(`🎲 Salvación de ${targetName}: ${dice} ${saveModifier >= 0 ? '+' : ''}${saveModifier} = ${total} vs CD ${ability.saveDc}`);
     }
 
     let damage = 0;

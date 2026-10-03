@@ -31,7 +31,8 @@ function fakeGame() {
 
 describe('J4.2: qué es de la partida entera', () => {
     test('el gremio, su almacén, el banquillo y la mascota; el grupo y el hilo, de cada chat', () => {
-        expect(gameScopeKeys().sort()).toEqual(['bench', 'guild', 'guildStorage', 'pet']);
+        // E8.3: y los maestros del gremio (los héroes retirados), que son de la partida entera.
+        expect(gameScopeKeys().sort()).toEqual(['bench', 'guild', 'guildStorage', 'mentors', 'pet']);
         expect(entryOf('party')?.scope).toBeUndefined();
         expect(entryOf('plotState')?.scope).toBeUndefined();
         // La versión que tiene cada chat vuelve con un punto de retorno (ver la prueba de abajo).

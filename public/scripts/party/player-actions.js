@@ -15,11 +15,11 @@ import {
     getPlayerAttackModifier, getPlayerAttackBonus, nextRandom,
 } from './combat-rules.js';
 import { weaponOf as heldWeapon, weaponBonus } from '../game-engine/rules/equipment.js';
+import { imbueFor, imbueDamage, IMBUE_WORDS, IMBUE_ICONS } from '../game-engine/rules/elemental-weapon.js';
 import {
     setCell as setTerrainCell, getCoverBonus, cellKey, isPassable, getCell,
 } from '../game-engine/board/terrain.js';
 import { isHigh } from '../game-engine/board/heights.js';
-import { pairLine } from '../game-engine/rules/pair-moves.js';
 import { findPath, getPathCost } from '../game-engine/board/pathfinding.js';
 import { getCoverAlongLine } from '../game-engine/board/line-of-sight.js';
 import {
@@ -53,7 +53,7 @@ import { pushGround, landing } from '../game-engine/board/falls.js';
 import { saveLine } from '../game-engine/rules/unarmed.js';
 import { crawlCost } from '../game-engine/rules/actions-2024.js';
 import { conditionSaid } from '../game-engine/rules/abilities.js';
-import { combatEncounter, currentBoardName, currentLocationName, partyMembers, usedReactions } from './state.js';
+import { combatEncounter, currentBoardName, currentLocationName, partyMembers } from './state.js';
 import { applyTimedCondition } from './magic.js';
 import {
     enemyTokenId, getAliveEnemies, getAttackableEnemiesForMember, getCurrentActingMember, getCurrentTurnEntry,
@@ -74,7 +74,8 @@ import { postCombatNarration, soundCue, showTip } from './narration.js';
 import { savePartyState } from './roster.js';
 import { bark, recordFeat } from './companions.js';
 import { sneakFor, spendSneak } from './combo-rules.js';
-import { announceBond } from './bond-play.js';
+import { announceBond, resolvePairCombo } from './bond-play.js';
+import { sulks } from './roce.js';
 import { relayOrder, stillToAct, ultimateOf } from '../game-engine/combat/bond-moves.js';
 
 /** @typedef {import('./types.js').PartyMember} PartyMember */
@@ -234,18 +235,9 @@ function ultimateOn(member, target) {
  * @param {any} enemy
  */
 export function resolvePairStrike(member, partnerId, enemy) {
-    const partner = partyMembers.find(m => String(m.id) === String(partnerId));
-    if (!partner || !combatEncounter.active) return;
-    usedReactions.add(`party:${partner.id}`);
-    // E3.4: lo dice el compañero (el del vínculo), y se ve en el tablero.
-    const heroFirst = String(member.id) === String(partyMembers[0]?.id);
-    announceBond(heroFirst ? partner : member, 'pair', { partner: heroFirst ? member : partner });
-    postCombatNarration(`[COMBAT] ${pairLine(String(member.name), String(partner.name), String(enemy.name))}`);
-    combatEncounter.maneuvers = recordManeuver(combatEncounter.maneuvers, 'ayudar', String(partner.id), String(enemy.instanceId));
-    handlePlayerCombatAttack(String(enemy.name));
-    if ((Number(enemy.currentHp) || 0) > 0 && combatEncounter.active) {
-        resolveFollowUpAttack(String(partner.id), enemy, `va a una con ${member.name} contra`, 'advantage');
-    }
+    // E3.2: la jugada de los dos por sus papeles, con su nombre y lo que deja (`bond-play.js`).
+    if (!member || !enemy) return;
+    resolvePairCombo(member, partnerId, enemy);
 }
 
 /**
@@ -264,7 +256,7 @@ export function resolveFollowUpAttack(actorId, target, how = 'ataca de seguimien
 
     const rangeFeet = getAttackRangeFeet(ally);
     // Al d20, la característica y la competencia; al daño, solo la característica.
-    const attackMod = getPlayerAttackBonus(ally, rangeFeet);
+    const attackMod = getPlayerAttackBonus(ally, rangeFeet) + (imbueFor(ally, heldWeapon(ally))?.bonus ?? 0);
     // E3.1: también aquí cuentan las reglas de siempre (en el suelo, sujeto, la niebla…); la jugada
     // en pareja (R3) suma su ventaja a esas.
     const allyCell = partyCell(ally);
@@ -326,7 +318,9 @@ export function resolveFollowUpAttack(actorId, target, how = 'ataca de seguimien
     const sneak = sneakFor(ally, brawlOf(combatEncounter) ? null : heldWeapon(ally), target, followEdge);
     const sneakTotal = sneak.ok ? rollDiceDetailed(sneak.dice, 6).total + (isCrit ? rollDiceDetailed(sneak.dice, 6).total : 0) : 0;
     if (sneak.ok) spendSneak(ally);
-    const totalDamage = Math.max(1, damageRoll.total + (critRoll?.total || 0) + damageMod) + sneakTotal;
+    // E3.3: y los dados de Arma elemental, si su arma la lleva.
+    const imbued = imbueHit(ally, heldWeapon(ally), target, isCrit);
+    const totalDamage = Math.max(1, damageRoll.total + (critRoll?.total || 0) + damageMod) + sneakTotal + imbued.damage;
 
     target.currentHp = Math.max(0, (target.currentHp || 0) - totalDamage);
     combatEncounter.tally = noteDealt(combatEncounter.tally, ally.id, totalDamage, target.currentHp === 0);
@@ -338,6 +332,7 @@ export function resolveFollowUpAttack(actorId, target, how = 'ataca de seguimien
         extra: sneak.ok ? `furtivo +${sneakTotal}` : '',
     }));
     if (sneak.ok) lines.push(sneakLine({ dice: sneak.dice, total: sneakTotal, why: sneak.why, crit: isCrit }));
+    if (imbued.line) lines.push(imbued.line);
     lines.push(`❤️ Estado de ${target.name}: ${target.currentHp}/${target.maxHp}`);
 
     if (target.currentHp === 0) lines.push(`☠️ ${target.name} cae derrotado.`);
@@ -1315,7 +1310,9 @@ function strikeEnemy(member, target, opts = {}) {
     const modFeet = weapon && distanceFeet <= 5 && !isRangedWeapon(weapon) ? 5 : rangeFeet;
     // Al d20, la característica y la competencia; al daño (y a Rozar), solo la característica.
     const abilityMod = getPlayerAttackModifier(wielder, modFeet);
-    const attackMod = getPlayerAttackBonus(wielder, modFeet) + traitBonus(member, target.name) + perkBonus(member, 'attack') + weaponBonus(wielder);
+    // E3.3: y el de Arma elemental, si el arma con la que golpea la lleva.
+    const attackMod = getPlayerAttackBonus(wielder, modFeet) + traitBonus(member, target.name) + perkBonus(member, 'attack') + weaponBonus(wielder)
+        + (imbueFor(member, weapon)?.bonus ?? 0);
     const round = Number(combatEncounter.round) || 1;
     // Tanda 10: Molestar (la maestría de 2024) da ventaja en el siguiente golpe contra él.
     const vexed = hasVex(combatEncounter.tactics, { by: String(member.id), target: String(target.instanceId), round });
@@ -1421,7 +1418,9 @@ function strikeEnemy(member, target, opts = {}) {
     const sneakTotal = sneak.ok ? rollDiceDetailed(sneak.dice, 6).total + (isCrit ? rollDiceDetailed(sneak.dice, 6).total : 0) : 0;
     if (sneak.ok) spendSneak(member);
     const sneakDice = sneak.ok ? ` + ${sneak.dice}${isCrit ? ` + ${sneak.dice}` : ''}` : '';
-    const totalDamage = Math.max(1, damageRoll.total + (critRoll?.total || 0) + damageMod) + sneakTotal;
+    // E3.3: los dados de Arma elemental, del tipo elegido y con lo que resiste.
+    const imbued = imbueHit(member, weapon, target, isCrit);
+    const totalDamage = Math.max(1, damageRoll.total + (critRoll?.total || 0) + damageMod) + sneakTotal + imbued.damage;
     if (weaponName) recordFeat(member, 'hit', weaponName);
 
     showCombatDiceRoll({
@@ -1430,7 +1429,8 @@ function strikeEnemy(member, target, opts = {}) {
         formula: `${damageFormula}${isCrit ? ` + ${damageFormula}` : ''}${sneakDice}`,
         detail: (isCrit
             ? `${damageRoll.rolls.join(', ')} + crítico(${critRoll?.rolls.join(', ') || ''}) + mod(${damageMod})`
-            : `${damageRoll.rolls.join(', ')} + mod(${damageMod})`) + (sneak.ok ? ` + furtivo(${sneakTotal})` : ''),
+            : `${damageRoll.rolls.join(', ')} + mod(${damageMod})`) + (sneak.ok ? ` + furtivo(${sneakTotal})` : '')
+            + (imbued.line ? ` + ${String(IMBUE_WORDS[/** @type {'Fire'} */ (imbueFor(member, weapon)?.type ?? 'Fire')])}(${imbued.damage})` : ''),
         total: totalDamage,
         glyph: 'dmg',
         stage: { dice: `${damageFormula}${isCrit ? ` + ${damageFormula}` : ''}${sneakDice}`, modifier: damageMod, crit: isCrit },
@@ -1444,6 +1444,7 @@ function strikeEnemy(member, target, opts = {}) {
         extra: sneak.ok ? `furtivo +${sneakTotal}` : '',
     }));
     if (sneak.ok) lines.push(sneakLine({ dice: sneak.dice, total: sneakTotal, why: sneak.why, crit: isCrit }));
+    if (imbued.line) lines.push(imbued.line);
     floatOnToken(enemyTokenId(target), `-${totalDamage}`, isCrit ? 'crit' : 'damage');
     if (isCrit) recordFeat(member, 'crit');
     // Idea 17: rematar la jugada de un compañero suma.
@@ -1512,6 +1513,8 @@ function strikeEnemy(member, target, opts = {}) {
             party: partyMembers,
             attackerId: String(member.id),
             canReach: (/** @type {any} */ ally) => {
+                // E4.1: quien está molesto contigo no aprovecha el hueco.
+                if (sulks(ally)) return false;
                 const from = ally.mapPosition || { gridX: 0, gridY: 0 };
                 return getDistanceInFeet(from.gridX || 0, from.gridY || 0, target.gridX || 0, target.gridY || 0)
                     <= getAttackRangeFeet(ally);
@@ -1552,6 +1555,28 @@ function strikeEnemy(member, target, opts = {}) {
 
     renderLocationMapsPreview();
     return `${member.name} golpea a ${target.name}`;
+}
+
+/**
+ * E3.3: lo que suma Arma elemental a un golpe que entra: sus dados del tipo elegido (dobles
+ * con crítico), con lo que resiste el enemigo. Nada si el arma del golpe no la lleva.
+ *
+ * @param {any} member
+ * @param {any} weapon El arma del golpe.
+ * @param {any} target
+ * @param {boolean} isCrit
+ * @returns {{damage: number, line: string}}
+ */
+function imbueHit(member, weapon, target, isCrit) {
+    const imbue = imbueFor(member, weapon);
+    if (!imbue || !imbue.dice) return { damage: 0, line: '' };
+    const rolled = rollDiceDetailed(imbue.dice, 4).total + (isCrit ? rollDiceDetailed(imbue.dice, 4).total : 0);
+    const out = imbueDamage(rolled, imbue.type, target);
+    const word = /** @type {Record<string, string>} */ (IMBUE_WORDS)[imbue.type] ?? 'fuego';
+    const icon = /** @type {Record<string, string>} */ (IMBUE_ICONS)[imbue.type] ?? '✨';
+    const how = [isCrit ? 'crítico, dados dobles' : '', out.note].filter(Boolean).join('; ');
+    // El total del golpe ya lo lleva: se dice qué parte es del arma imbuida.
+    return { damage: out.damage, line: `${icon} De ese daño, ${out.damage} ${out.damage === 1 ? 'es' : 'son'} de ${word} (${imbue.name}${how ? `; ${how}` : ''}).` };
 }
 
 /**

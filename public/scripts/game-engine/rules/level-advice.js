@@ -228,6 +228,24 @@ export function preparedByRole({ member, classRow, catalogue, role }) {
 }
 
 /**
+ * Decisión de Daniel (2026-10-03): el cuadro de preparar del héroe sale ya marcado con lo de su
+ * papel, igual que lo preparan solos los compañeros, y una línea que lo dice. Él lo cambia antes
+ * de aceptar. Nada si no prepara o no hay nada que marcar.
+ *
+ * @param {Object} input
+ * @param {any} input.member
+ * @param {any} input.classRow
+ * @param {any[]} input.catalogue
+ * @param {keyof typeof ROLES} input.role
+ * @returns {{chosen: string[], line: string}|null}
+ */
+export function heroPreparation({ member, classRow, catalogue, role }) {
+    const chosen = preparedByRole({ member, classRow, catalogue, role });
+    if (!chosen || chosen.length === 0) return null;
+    return { chosen, line: `Marcado lo de su papel: ${ROLES[role] ?? role}. Cámbialo si quieres.` };
+}
+
+/**
  * En una frase, lo recomendado: «Su papel: curar. +2 a Sabiduría; Aguante; Curar heridas.»
  *
  * @param {Object} input

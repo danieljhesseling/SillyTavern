@@ -56,8 +56,8 @@ import { dealWith, BOUNTY } from '../game-engine/campaign/prisoners.js';
 import { findShortcut, applyShortcut } from '../game-engine/world/road.js';
 import { basePrice, weeklyStock, priceToday, sellPrice, canSell, junkOf, SPELL_SUPPLIES } from '../game-engine/campaign/shop.js';
 
-/** E2 de ROADMAP_ENTRETENIDO: lo que pesa en la mazmorra, siempre en la tienda (antorchas, raciones y el kit). */
-const DUNGEON_SUPPLIES = ['Antorcha', 'Raciones de viaje', 'Kit de curandero'];
+/** E2 de ROADMAP_ENTRETENIDO: lo que pesa en la mazmorra, siempre en la tienda (antorchas, raciones, el kit y las ganzúas). */
+const DUNGEON_SUPPLIES = ['Antorcha', 'Raciones de viaje', 'Kit de curandero', 'Ganzúas'];
 import { closeShopCards } from '../game-engine/campaign/hours.js';
 import { festivalsOf, festivalToday } from '../game-engine/world/festivals.js';
 import { readLetters, newLetters } from '../game-engine/campaign/letters.js';

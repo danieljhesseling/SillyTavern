@@ -476,6 +476,8 @@ export function runShellChip(chip) {
         case 'hub-heroes': void openHubHeroes(); return;
         // J7.4: la formación y los papeles.
         case 'hub-formation': void openFormationPanel(); return;
+        // E5.2 y E5.3: quién está para salir.
+        case 'hub-rest': void import('./guild-pay.js').then(m => m.openRestRoster()); return;
         case 'hub-memory': void openMemoryView(); return;
         case 'hub-board': void openHubCampaigns(); return;
         case 'hub-hire': void openHubHire(); return;

@@ -50,7 +50,10 @@ import { openMemoryPanel } from '../game-engine/ui/memory-panel.js';
 export { memoryPanelModel } from '../game-engine/ui/memory-panel.js';
 import { getCompendium } from '../game-engine/compendio/browser.js';
 import { sortByTier, tierBoardLine } from '../game-engine/campaign/level-tiers.js';
-import { canRetireNow, withHireReasons } from './long-life.js';
+import { canRetireNow, withHireReasons, weeklyHireOffers } from './long-life.js';
+import { recruitPatch } from '../game-engine/campaign/weekly-mercenaries.js';
+import { drawGuildPrep, drawGuildBooks, restHallLine } from './guild-pay.js';
+import { canDispatch } from '../game-engine/campaign/dispatch.js';
 import { BENCH_KEY, BOARD_KEY, GRAVES_KEY, GUILD_KEY, MODE_HISTORY_KEY, PLOT_STATE_KEY, STORAGE_KEY, TAKEN_KEY } from './keys.js';
 import {
     combatEncounter, currentBoardName, currentLocationName, partyMembers, setCurrentBoardName, setPartyMembers,
@@ -435,7 +438,9 @@ export async function openHubHire() {
     // J3.6: con camas en los dormitorios se quedan más espadas de alquiler (`guildHirelings`).
     // E8.5: con por qué llevarles (riesgo, que siempre están, su oficio y lo que cuestan); E8.3,
     // con la rebaja si un maestro los recomienda; E8.6, el apodo del veterano.
-    const offers = withHireReasons(hireOffers({ hirelings: guildHirelings(getGuild(), HIRELINGS), party: partyMembers, fee: MERCENARY_FEE }));
+    const written = hireOffers({ hirelings: guildHirelings(getGuild(), HIRELINGS), party: partyMembers, fee: MERCENARY_FEE });
+    // E8.4: y los de paso de esta semana, más baratos, con las mismas cuatro razones.
+    const offers = withHireReasons([...written, ...await weeklyHireOffers(written.map(o => o.name))]);
     const choice = await openHirePanel({ Popup, POPUP_TYPE, offers, purse: partyPurse() });
     if (!choice) return '';
     const offer = offers.find(o => o.name === choice.name);
@@ -459,9 +464,11 @@ export async function openHubHire() {
     }
     const hero = partyMembers.find(m => !m.guest) ?? partyMembers[0];
     const merc = guestMember({
-        id: Date.now(), name: offer.name, kind: 'mercenary', contractId: HUB_CONTRACT, level: Number(hero?.level) || 1,
+        id: Date.now(), name: offer.name, kind: 'mercenary', contractId: HUB_CONTRACT, level: Number(/** @type {any} */ (offer).level) || Number(hero?.level) || 1,
         base: hero, stats: offer,
     });
+    // E8.4: el de paso trae su especie, sus seis características, su rasgo y cómo se presentó.
+    if (/** @type {any} */ (offer).weekly) Object.assign(merc, recruitPatch(/** @type {any} */ (offer)));
     const at = hero?.mapPosition ?? { locationName: currentLocationName, gridX: 1, gridY: 1 };
     merc.mapPosition = { ...at, gridX: (Number(at.gridX) || 0) + partyMembers.length };
     partyMembers.push(merc);
@@ -842,6 +849,9 @@ export async function openGuildHouse() {
         inside.append(grid);
         drawForge(guild, purse);
         drawLibrary(guild);
+        // E5.1: el temple de la forja, las raciones de la cocina y los libros de bichos.
+        drawGuildPrep(inside, draw);
+        drawGuildBooks(inside, draw);
     };
 
     /**
@@ -1049,6 +1059,14 @@ export async function openGuildErrands() {
         card.append($('<div class="vt-name"></div>').text(e.title));
         card.append($('<div class="vt-what"></div>').text([e.patron, e.where, e.how].filter(Boolean).join(' ')));
         card.append($('<div class="hb-state"></div>').text(`${e.pay} · ${e.due}`));
+        // E5.3: lo menor se puede mandar hacer a quien espera en casa, sin el héroe.
+        const errand = (Array.isArray(chat_metadata?.[BOARD_KEY]) ? chat_metadata[BOARD_KEY] : []).find((/** @type {any} */ c) => String(c?.id) === e.id);
+        if (errand && canDispatch(errand).ok && !combatEncounter.active) {
+            card.append($('<button type="button" class="menu_button hb-errand-send"></button>').text('Que vaya alguien de casa').on('click', async function () {
+                const { openDispatch } = await import('./contracts.js');
+                if (await openDispatch(errand, { bench: true })) $(this).replaceWith($('<div class="hb-state"></div>').text('Mandados. Volverán con el informe.'));
+            }));
+        }
         if (e.enabled) {
             card.append($('<button type="button" class="menu_button"></button>').text('Aceptar').on('click', () => {
                 chosen = e.id;
@@ -1214,6 +1232,8 @@ export function buildHallData() {
                 why: training.can.why,
             },
             house: { built, total },
+            // E5.2: quién está para salir, y si alguien ha vuelto con su informe.
+            rest: { line: restHallLine() },
             // Un tablón que aún no se ha llenado no está vacío: sin línea hasta que se mire.
             ...(board.length > 0 || taken ? { errands: { offers: board.length, taken: taken ? String(taken.title || '') : '' } } : {}),
         };

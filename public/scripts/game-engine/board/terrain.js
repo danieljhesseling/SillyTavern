@@ -209,7 +209,70 @@ export const TERRAIN_TYPES = {
         movementCost: Infinity,
         coverBonus: 5,
     },
+    /**
+     * E1.4: una columna, un puntal o una estantería que se puede tirar. Corta el paso y cubre
+     * como la cobertura de tres cuartos; estando al lado, se empuja y cae sobre las dos casillas
+     * de detrás (`mechanisms.js`).
+     */
+    topple: {
+        label: 'Column',
+        blocksMovement: true,
+        blocksSight: false,
+        movementCost: Infinity,
+        coverBonus: 5,
+    },
+    /** E1.5: una estatua con las manos abiertas. Se le pone una gema estando al lado. */
+    statue: {
+        label: 'Statue',
+        blocksMovement: true,
+        blocksSight: false,
+        movementCost: Infinity,
+        coverBonus: 2,
+    },
+    /** E1.5: una gema en un pedestal. Estando al lado, se coge. */
+    gem: {
+        label: 'Gem',
+        blocksMovement: true,
+        blocksSight: false,
+        movementCost: Infinity,
+        coverBonus: 0,
+    },
+    /** E1.5: una baldosa con una runa y su número. Se pisan en orden. */
+    rune: {
+        label: 'Rune',
+        blocksMovement: false,
+        blocksSight: false,
+        movementCost: 1,
+        coverBonus: 0,
+    },
+    /** E1.5: una de dos palancas que hay que bajar a la vez. */
+    lever_pair: {
+        label: 'Paired lever',
+        blocksMovement: true,
+        blocksSight: false,
+        movementCost: Infinity,
+        coverBonus: 0,
+    },
 };
+
+/**
+ * E1.5: lo que guardan las casillas de los mecanismos: el número de la runa, si está encendida
+ * (`on`; en la estatua, que ya tiene su gema; en la palanca emparejada, que el mecanismo ya
+ * se abrió) y la ronda en que se bajó una palanca emparejada.
+ *
+ * @param {string} type
+ * @param {any} source
+ * @returns {{order?: number, on?: boolean, round?: number}}
+ */
+function mechanismState(type, source) {
+    /** @type {{order?: number, on?: boolean, round?: number}} */
+    const out = {};
+    if (!source || typeof source !== 'object') return out;
+    if (type === 'rune' && Number(source.order) > 0) out.order = Math.trunc(Number(source.order));
+    if ((type === 'rune' || type === 'statue' || type === 'lever_pair') && source.on) out.on = true;
+    if (type === 'lever_pair' && Number(source.round) > 0) out.round = Math.trunc(Number(source.round));
+    return out;
+}
 
 /** B3: la vida de una barricada entera. */
 export const BARRICADE_HP = 15;
@@ -227,6 +290,9 @@ export const TERRAIN_SCHEMA_VERSION = 1;
  * @property {boolean} [locked] Doors only: cerrada con llave (idea 77).
  * @property {boolean} [broken] Doors only: rota (idea 23). Se queda abierta para siempre.
  * @property {number} [hp] Barricades only: lo que le queda (B3).
+ * @property {number} [order] Runas (E1.5): su número, de 1 a 5.
+ * @property {boolean} [on] Runas, estatuas y palancas emparejadas (E1.5): encendida, con su gema, abierta.
+ * @property {number} [round] Palancas emparejadas (E1.5): la ronda en que se bajó.
  */
 
 /**
@@ -326,6 +392,8 @@ export function normalizeTerrain(raw) {
         }
         // B3: lo que le queda a una barricada golpeada.
         if (type === 'barricade' && value && typeof value === 'object' && Number(value.hp) > 0) cell.hp = Math.trunc(Number(value.hp));
+        // E1.5: la runa con su número, la estatua con su gema, la palanca bajada.
+        Object.assign(cell, mechanismState(type, value));
         cells[key] = cell;
     }
 
@@ -370,7 +438,7 @@ export function getCellDefinition(terrain, x, y) {
  * @param {number} x
  * @param {number} y
  * @param {string} type
- * @param {{ open?: boolean, locked?: boolean, broken?: boolean, hp?: number }} [options]
+ * @param {{ open?: boolean, locked?: boolean, broken?: boolean, hp?: number, order?: number, on?: boolean, round?: number }} [options]
  * @returns {BoardTerrain}
  */
 export function setCell(terrain, x, y, type, options = {}) {
@@ -392,6 +460,8 @@ export function setCell(terrain, x, y, type, options = {}) {
     }
     // B3: la vida de una barricada, si se dice.
     if (type === 'barricade' && Number(options.hp) > 0) cell.hp = Math.trunc(Number(options.hp));
+    // E1.5: el estado de los mecanismos.
+    Object.assign(cell, mechanismState(type, options));
     return { version: TERRAIN_SCHEMA_VERSION, cells: { ...base.cells, [key]: cell } };
 }
 
@@ -483,7 +553,7 @@ export function getCoverBonus(terrain, x, y) {
 export const ASCII_TERRAIN = {
     '#': { type: 'wall' },
     'D': { type: 'door', open: false },
-    // Idea 77: cerrada con llave. Se abre con una llave, con maña o a golpes.
+    // Idea 77: cerrada con llave. Se abre con una llave, con ganzúas (E2.2) o a golpes.
     'L': { type: 'door', open: false, locked: true },
     'o': { type: 'door', open: true },
     '~': { type: 'difficult' },
@@ -509,6 +579,17 @@ export const ASCII_TERRAIN = {
     // T1 y B3: la palanca y la barricada.
     'P': { type: 'lever' },
     '=': { type: 'barricade' },
+    // E1.4: la columna o la estantería que se puede tirar.
+    'H': { type: 'topple' },
+    // E1.5: la estatua, la gema, las runas en orden y las palancas que se bajan a la vez.
+    'S': { type: 'statue' },
+    'g': { type: 'gem' },
+    '1': { type: 'rune', order: 1 },
+    '2': { type: 'rune', order: 2 },
+    '3': { type: 'rune', order: 3 },
+    '4': { type: 'rune', order: 4 },
+    '5': { type: 'rune', order: 5 },
+    'p': { type: 'lever_pair' },
 };
 
 /**
@@ -528,7 +609,7 @@ export function terrainFromAsciiMap(rows) {
         [...String(row ?? '')].forEach((char, x) => {
             const cell = ASCII_TERRAIN[char];
             if (cell) {
-                terrain = setCell(terrain, x, y, cell.type, { open: /** @type {any} */ (cell).open, locked: /** @type {any} */ (cell).locked });
+                terrain = setCell(terrain, x, y, cell.type, { open: /** @type {any} */ (cell).open, locked: /** @type {any} */ (cell).locked, order: /** @type {any} */ (cell).order });
             }
         });
     });
@@ -563,6 +644,9 @@ const CELL_WORDS = {
     high: 'En alto: subir cuesta el doble, y desde aquí se ataca con ventaja',
     exit: 'Salida: quien la pisa puede irse de la pelea',
     lever: 'Palanca: estando al lado, se tira de ella y se abren las puertas con llave',
+    topple: 'Columna o estantería: cubre, y estando al lado se puede tirar sobre las dos casillas de detrás',
+    gem: 'Una gema en un pedestal: estando al lado, se coge',
+    lever_pair: 'Palanca doble: hay que bajarla a la vez que la otra; con las dos, se abren las puertas con llave',
 };
 
 /**
@@ -578,11 +662,16 @@ export function describeCell(terrain, x, y) {
     const said = cell.type === 'door'
         ? (cell.broken ? 'Puerta rota: ya no se cierra'
             : cell.open ? 'Puerta abierta'
-                : cell.locked ? 'Puerta cerrada con llave: con una llave, con maña o a golpes'
+                : cell.locked ? 'Puerta cerrada con llave: con una llave, con ganzúas o a golpes'
                     : 'Puerta cerrada: se abre con una ficha o pulsándola')
         : cell.type === 'barricade'
             ? `Barricada: corta el paso, cubre, y a golpes se rompe (${Number(/** @type {any} */ (cell).hp) > 0 ? Math.trunc(Number(/** @type {any} */ (cell).hp)) : BARRICADE_HP} de vida)`
-            : (CELL_WORDS[/** @type {keyof typeof CELL_WORDS} */ (cell.type)] ?? 'Suelo');
+            // E1.5: la runa dice su número, y la estatua si ya tiene su gema.
+            : cell.type === 'rune'
+                ? `Runa ${Number(cell.order) || 1}: las runas se pisan en orden, de la 1 en adelante${cell.on ? ' (ya encendida)' : ''}`
+                : cell.type === 'statue'
+                    ? (cell.on ? 'Estatua: ya tiene su gema' : 'Estatua con las manos vacías: estando al lado, se le pone una gema')
+                    : (CELL_WORDS[/** @type {keyof typeof CELL_WORDS} */ (cell.type)] ?? 'Suelo');
     return `Casilla (${Math.trunc(x) + 1}, ${Math.trunc(y) + 1}) · ${said}`;
 }
 

@@ -9,7 +9,19 @@
  * Son piezas sencillas: la forma tal cual, sin material ni propiedades. Lo bueno se gana.
  *
  * Puro: recibe las filas y devuelve las piezas y dónde va cada una.
+ *
+ * E2 de wiki/ROADMAP_ENTRETENIDO.md (Daniel, 2026-10-03): todos empiezan además con 5 antorchas
+ * (como el paquete de explorador o el de mazmorra de 5e), y quien tiene herramientas de ladrón
+ * por su trasfondo (el criminal) empieza con ganzúas (`startingGear`).
  */
+
+import { backgroundOf } from './backgrounds.js';
+
+/** Las antorchas con las que empieza cada héroe (el paquete de explorador de 5e trae 10; el de mazmorra, 10; aquí 5). */
+export const STARTING_TORCHES = 5;
+
+/** La antorcha cuando el compendio no la trae: la de la tienda (`loot-items.js`). */
+const TORCH_FALLBACK = { id: 'forma-antorcha', name: 'Antorcha', itemType: 'gear', kg: 0.5, slot: '' };
 
 /** @param {any} value */
 const text = (value) => String(value ?? '').trim();
@@ -36,6 +48,7 @@ const number = (value, fallback) => {
  * @property {string} dexMode
  * @property {string} description
  * @property {string} kitForm   La forma de la que sale, para saber de dónde vino.
+ * @property {number} [quantity] Cuántas son, si es un montón (las antorchas).
  */
 
 /**
@@ -77,6 +90,32 @@ export function kitFor({ classRow, forms }) {
 }
 
 /**
+ * Todo con lo que empieza un héroe: el kit de su clase, lo que da su trasfondo (las ganzúas del
+ * criminal) si la clase no lo trae ya, y las antorchas (E2.1: un montón de `STARTING_TORCHES`).
+ *
+ * @param {Object} input
+ * @param {any} input.classRow La fila de la clase, con su `kit` (sin fila, solo lo demás).
+ * @param {any[]} input.forms  Las formas de armas, armaduras y trastos.
+ * @param {string} [input.background] El id del trasfondo (`backgrounds.js`).
+ * @returns {KitPiece[]}
+ */
+export function startingGear({ classRow, forms, background = '' }) {
+    const pieces = kitFor({ classRow, forms });
+    const has = new Set(pieces.map(piece => piece.kitForm));
+    const extra = (backgroundOf(background)?.tools ?? []).filter(id => !has.has(id));
+    const fromBackground = extra.length > 0 ? kitFor({ classRow: { kit: extra }, forms }) : [];
+    const all = [...pieces, ...fromBackground];
+    const torchAt = all.findIndex(piece => piece.kitForm === 'forma-antorcha');
+    if (torchAt >= 0) {
+        all[torchAt] = { ...all[torchAt], quantity: Math.max(STARTING_TORCHES, Math.floor(Number(all[torchAt].quantity) || 1)) };
+        return all;
+    }
+    const torch = kitFor({ classRow: { kit: ['forma-antorcha'] }, forms })[0]
+        ?? kitFor({ classRow: { kit: ['forma-antorcha'] }, forms: [TORCH_FALLBACK] })[0];
+    return [...all, { ...torch, quantity: STARTING_TORCHES }];
+}
+
+/**
  * Qué va puesto de un kit: la primera pieza de cada sitio. El escudo, solo si el arma se
  * lleva con una mano; lo que no tiene sitio va en la mochila.
  *
@@ -103,6 +142,14 @@ export function kitSlots(pieces) {
  * @returns {string}
  */
 export function describeKit(pieces) {
-    const names = (Array.isArray(pieces) ? pieces : []).map(piece => text(piece?.name)).filter(Boolean);
+    // Un montón se dice con su número: «5 antorchas».
+    const names = (Array.isArray(pieces) ? pieces : [])
+        .map(piece => {
+            const name = text(piece?.name);
+            const count = Math.floor(Number(piece?.quantity) || 1);
+            if (!name || count <= 1) return name;
+            return `${count} ${name.toLowerCase()}${/[aeiouáéíóú]$/i.test(name) ? 's' : 'es'}`;
+        })
+        .filter(Boolean);
     return names.length > 0 ? `Llevas: ${names.join(', ')}.` : '';
 }

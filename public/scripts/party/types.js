@@ -23,6 +23,7 @@
  * @property {string} [gender] Cómo se presenta (J1.4): decide si el texto dice «cansado» o «cansada».
  * @property {import('../game-engine/campaign/face-choice.js').FaceChoice} [face] D-J52: su cara sin arte, si la eligió.
  * @property {string} [nickname] El apodo ganado (idea 44).
+ * @property {{week: number, raceLabel: string, trait: {id: string, label: string, says: string}, pitch: string}} [recruit] E8.4: un mercenario de paso, hecho por el juego (`weekly-mercenaries.js`).
  * @property {string[]} [scars] Las cicatrices de heridas ya curadas (idea 56).
  * @property {any} [feats] Las hazañas que lleva: tumbados, criticos, caidas, rescates.
  * @property {string} [prefer] A quien va primero en combate (idea 35).
@@ -39,6 +40,7 @@
  * @property {any} [concentration] J19: el conjuro que mantiene (`rules/concentration.js`), o null.
  * @property {number} [concentrationHp] J19: los PG que tenía en la última tirada de concentración, para ver si le han dado desde entonces.
  * @property {any} [spellAc] J19: la CA que le da un conjuro (escudo de fe, armadura de mago).
+ * @property {any} [spellWeapon] E3.3: su arma imbuida (Arma elemental): `rules/elemental-weapon.js`.
  * @property {{bonus: number, spellId: string, name: string}} [spellHp] J19: los PG de más que le da un conjuro.
  * @property {Array<{casterId: string, spellId: string, condition: string}>} [spellMarks] J19: los estados que le ha puesto un conjuro con concentración.
  * @property {Record<string, number>} [abilityUses] Cuantas veces ha usado cada una desde el ultimo descanso.
@@ -59,6 +61,9 @@
  * @property {number} copper
  * @property {string} inventory
  * @property {string} conditions
+ * @property {{temper?: number, ration?: string}|null} [guildPrep] - E5.1: lo que la forja y la cocina del gremio le prepararon para la salida.
+ * @property {number} [outings] - E5.2: salidas seguidas sin parar en casa.
+ * @property {number} [homeDays] - E5.2: días seguidos en casa desde la última salida.
  * @property {number} [hitDiceSpent] - Dados de golpe gastados. Un descanso corto los gasta y uno largo devuelve la mitad.
  * @property {string} [hitDie] - Dado de golpe propio, si no vale el de su clase.
  * @property {string} alignment

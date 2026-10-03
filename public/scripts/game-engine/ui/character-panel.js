@@ -227,6 +227,8 @@ export async function openCharacterPanel({
         worn.append(row);
     }
     root.append(worn);
+    // E3.3: el arma imbuida, bajo lo que lleva puesto.
+    if (sheet.spellWeapon) root.append($('<div class="ch-imbue"></div>').text(sheet.spellWeapon));
     // E7.3: ponerse lo mejor de lo que hay a mano, con un toque (y dice por qué).
     if (onEquipBest) {
         const best = $('<button class="menu_button ch-equip-best" type="button"></button>')

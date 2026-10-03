@@ -1,6 +1,8 @@
 import { describe, expect, test } from '@jest/globals';
 import { readFileSync } from 'node:fs';
-import { kitFor, kitSlots, describeKit } from '../public/scripts/game-engine/campaign/starting-kit.js';
+import { kitFor, kitSlots, describeKit, startingGear, STARTING_TORCHES } from '../public/scripts/game-engine/campaign/starting-kit.js';
+import { torchesOf } from '../public/scripts/game-engine/board/light.js';
+import { describeLootItem } from '../public/scripts/game-engine/combat/loot-items.js';
 import { armourClassOf } from '../public/scripts/game-engine/rules/equipment.js';
 
 const read = (path) => JSON.parse(readFileSync(new URL(path, import.meta.url), 'utf8'));
@@ -51,6 +53,33 @@ describe('el equipo inicial por clase (J1.3)', () => {
         expect(pieces.map(p => p.name)).toEqual(['Daga', 'Ganzúas']);
         expect(kitSlots(pieces)).toEqual({ weapon: 0 });
         expect(describeKit(pieces)).toBe('Llevas: Daga, Ganzúas.');
+    });
+
+    test('E2 (Daniel, 2026-10-03): todos empiezan con 5 antorchas, y el pícaro y el criminal con ganzúas', () => {
+        const fighter = startingGear({ classRow: row('guerrero'), forms });
+        const torch = fighter.find(p => p.name === 'Antorcha');
+        expect(torch?.quantity).toBe(STARTING_TORCHES);
+        expect(STARTING_TORCHES).toBe(5);
+        // La antorcha va a la mochila: no quita sitio a nada de lo puesto.
+        expect(kitSlots(fighter)).toEqual({ body: 0, weapon: 1, shield: 2 });
+        expect(describeKit(fighter)).toBe('Llevas: Cota de malla, Espada larga, Escudo, 5 antorchas.');
+        // Lo que lee la luz (E2.1): cinco antorchas en la mochila.
+        expect(torchesOf({ items: fighter })).toBe(5);
+        // Herramientas de ladrón: el pícaro por su clase; el criminal por su trasfondo; sin repetir.
+        expect(startingGear({ classRow: row('picaro'), forms }).filter(p => p.name === 'Ganzúas')).toHaveLength(1);
+        expect(startingGear({ classRow: row('picaro'), forms, background: 'criminal' }).filter(p => p.name === 'Ganzúas')).toHaveLength(1);
+        expect(startingGear({ classRow: row('guerrero'), forms, background: 'criminal' }).some(p => p.name === 'Ganzúas')).toBe(true);
+        expect(startingGear({ classRow: row('guerrero'), forms, background: 'soldado' }).some(p => p.name === 'Ganzúas')).toBe(false);
+        // Sin fila de clase (una clase de fuera del compendio), al menos las antorchas; sin compendio, también.
+        expect(startingGear({ classRow: null, forms }).map(p => [p.name, p.quantity])).toEqual([['Antorcha', 5]]);
+        expect(startingGear({ classRow: null, forms: [] }).map(p => [p.name, p.quantity])).toEqual([['Antorcha', 5]]);
+    });
+
+    test('las ganzúas y las antorchas se venden siempre en la tienda, con su precio', () => {
+        expect(describeLootItem('Ganzúas')).toMatchObject({ price: 25, subcategory: 'tool' });
+        expect(describeLootItem('Antorcha')).toMatchObject({ price: 1 });
+        const town = readFileSync(new URL('../public/scripts/party/town.js', import.meta.url), 'utf8');
+        expect(town).toMatch(/DUNGEON_SUPPLIES = \[[^\]]*'Antorcha'[^\]]*'Ganzúas'/);
     });
 });
 

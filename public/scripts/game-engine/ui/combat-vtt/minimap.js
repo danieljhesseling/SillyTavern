@@ -113,6 +113,12 @@ export const MINIMAP_COLORS = {
     chest: '#c9a24a',
     lever: '#c9a24a',
     barricade: '#8a5a2b',
+    // E1.4 y E1.5.
+    topple: '#5a5a62',
+    statue: '#9a96a8',
+    gem: '#4fc3d9',
+    rune: '#7d6bd1',
+    lever_pair: '#c9a24a',
     stairs: '#8c8470',
     exit: '#6f9e5d',
     barrel: '#7a5a34',

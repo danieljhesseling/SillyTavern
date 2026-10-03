@@ -21,13 +21,16 @@ import { METADATA_KEY, getCurrentWorldLocationMaps, getCurrentWorldEnemies } fro
 import { removeItemFromInventory } from '../dnd-system.js';
 import { applyInjury } from '../game-engine/rules/injuries.js';
 import { PERKS, takePerk } from '../game-engine/rules/level-perks.js';
-import { EPIC_BOONS, boonChoices, pendingBoons, takeBoon, xpToNextBoon, ABILITY_WORDS, boonAbility } from '../game-engine/rules/epic-boons.js';
+import { boonChoices, pendingBoons, takeBoon, xpToNextBoon, ABILITY_WORDS, boonAbility } from '../game-engine/rules/epic-boons.js';
 import { raiseOffer, isRaisable, raiseScar, raisedWeakness, raiseScene, raisedBasics } from '../game-engine/rules/resurrection.js';
 import {
     MENTORS_KEY, readMentors, canRetire, retireHero, retirementScene, retireChoice, mentorStartLevel, mentorStartXp,
     lessonsFor, lessonScene, lessonChoice, noteTaught, hasGuildPerk, mentorPrice, guildPerks, MENTOR_PURSE, MENTOR_DISCOUNT,
 } from '../game-engine/campaign/retirement.js';
 import { hireReasons, noteTrip, dueVeterans, promoteVeteran, veteranScene } from '../game-engine/campaign/mercenary-life.js';
+import { weekOf, weeklyMercenaries, weeklyOffers } from '../game-engine/campaign/weekly-mercenaries.js';
+import { hubDay } from '../game-engine/campaign/hub.js';
+import { getCompendium } from '../game-engine/compendio/browser.js';
 import { addToHall, readGraves, withoutFallen } from '../game-engine/campaign/legacy.js';
 import { derive } from '../game-engine/campaign/seed.js';
 import { createSeededRandom } from '../game-engine/combat/seeded-random.js';
@@ -323,6 +326,24 @@ export function withHireReasons(offers) {
 }
 
 /**
+ * E8.4: los mercenarios de paso de esta semana del gremio, con la forma de `hireOffers` (y los
+ * de otras semanas que siguen contigo, para poder despedirlos). Salen de la semilla de la
+ * partida y de la semana: la misma semana, la misma gente.
+ *
+ * @param {string[]} taken Los nombres de los de siempre, para no repetirlos.
+ * @returns {Promise<any[]>}
+ */
+export async function weeklyHireOffers(taken = []) {
+    if (!lastHub) return [];
+    const week = weekOf(hubDay({ hub: lastHub, day: campaignDay() }));
+    const level = Number(partyMembers.find(m => !m?.guest)?.level) || 1;
+    const compendium = await getCompendium().catch(() => null);
+    const random = createSeededRandom(derive(String(chat_metadata?.[METADATA_KEY] || ''), 'mercenarios-de-paso', String(week)));
+    const list = weeklyMercenaries({ random, week, level, compendium, taken: [...taken, ...partyMembers.filter(m => !m?.guest).map(m => text(m.name))] });
+    return weeklyOffers({ week: list, party: partyMembers });
+}
+
+/**
  * Una salida más para los mercenarios vivos: lo llama `returnToHub` antes de salir de la campaña.
  *
  * @param {string} campaign El nombre de la campaña (o del mundo).
@@ -402,7 +423,7 @@ export async function openBoonCard(member) {
         const ability = boonAbility(member, boon);
         const button = $('<button type="button" class="menu_button ll-boon"></button>').attr('data-boon', boon.id)
             .append($('<b></b>').text(boon.label))
-            .append($('<span></span>').text(` ${boon.describe}${ability ? ` +1 a ${ABILITY_WORDS[ability]}.` : ''}`));
+            .append($('<span></span>').text(`${boon.describe}${ability ? ` Y +1 a ${ABILITY_WORDS[ability]}.` : ''}`));
         button.on('click', () => {
             chosen = boon.id;
             list.find('.ll-boon').removeClass('is-picked').attr('aria-checked', 'false');
@@ -426,5 +447,3 @@ export async function openBoonCard(member) {
     return taken.line;
 }
 
-/** Para las pruebas del navegador: cuántos dones hay en la lista. */
-export const EPIC_BOON_COUNT = EPIC_BOONS.length;

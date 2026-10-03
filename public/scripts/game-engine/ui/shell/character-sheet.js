@@ -29,6 +29,7 @@ import { readDeathSaves, isDying } from '../../rules/death-saves.js';
 import { levelForXp } from '../../rules/level-up.js';
 import { armourClassOf, describeArmour } from '../../rules/equipment.js';
 import { shownName } from '../../campaign/item-lore.js';
+import { describeImbue } from '../../rules/elemental-weapon.js';
 
 /** Las seis, en el orden en que se leen en una hoja de personaje. */
 export const SHEET_ABILITIES = [
@@ -216,6 +217,8 @@ export function buildCharacterSheet({ member, slotInfo = {}, abilities = [], xpT
 
         // Lo que te pasa ahora mismo, junto y no repartido por tres pantallas.
         conditions: (Array.isArray(member?.activeConditions) ? member.activeConditions : []).map(String),
+        // E3.3: su arma imbuida (Arma elemental), en una frase; vacío si no.
+        spellWeapon: describeImbue(member?.spellWeapon),
         injuries: describeInjuries(member),
         // Las mismas, con su id y su nombre, para ponerles su icono.
         injuryRows: readInjuries(member).map((injury, index) => ({ id: injury.id, label: injury.label, text: describeInjuries(member)[index] ?? injury.label })),

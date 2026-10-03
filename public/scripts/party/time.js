@@ -29,6 +29,8 @@ import { DAY_STAGES, WEEK_STAGES, runStages, weeksDue } from '../game-engine/cam
 import { upcoming, describeUpcoming, whenText } from '../game-engine/campaign/upcoming.js';
 import { affairsOf, standingsOf, weekSummary } from '../game-engine/campaign/week-table.js';
 import { canDispatch } from '../game-engine/campaign/dispatch.js';
+import { infirmaryDays } from '../game-engine/campaign/guild-perks.js';
+import { restAtHome } from './guild-pay.js';
 import { readCases } from '../game-engine/campaign/cases.js';
 import { chronicleOf } from '../game-engine/campaign/chronicle.js';
 import { withJob } from '../game-engine/campaign/company.js';
@@ -179,6 +181,8 @@ const DAY_HANDLERS = {
         healByDays(days);
         // D-J12: y quien descansa en casa, en el gremio, también se cura con los días.
         healBench(days);
+        // E5.2: una semana en casa borra las salidas encadenadas.
+        restAtHome(days);
     },
     // Comer, beber, dormir y aguantar el clima. Hasta ahora la comida se pagaba y no pasaba
     // nada si no comias: un aviso y a seguir.
@@ -419,7 +423,8 @@ function healBench(days) {
             changed = true;
         }
         if (readInjuries(member).length === 0) continue;
-        const patch = healInjuries(member, days);
+        // E5.2: en la enfermería del gremio se cura antes: un día más por cada nivel.
+        const patch = healInjuries(member, infirmaryDays(getGuild(), days));
         member.injuries = patch.injuries;
         member.baseStats = patch.baseStats;
         Object.assign(member, patch.stats);

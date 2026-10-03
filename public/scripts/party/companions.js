@@ -20,6 +20,8 @@ import {
     approvalFor, approvalFromOpinions, noteApproval, frictionsOn, describeApproval, approvalOf, DECISIONS,
 } from '../game-engine/campaign/approval.js';
 import { duePersonalQuests, personalQuestFor, describePersonalAsk } from '../game-engine/campaign/personal-quests.js';
+import { waitsForVeteran } from '../game-engine/campaign/weekly-mercenaries.js';
+import { ensureMercQuests, grudgeLines, mercQuestInfo, mercQuestRows } from './roce.js';
 import { readBench, whereHired } from '../game-engine/campaign/bench.js';
 import { judgeDepartures, describeWarning, describeLeaving } from '../game-engine/campaign/departures.js';
 import { shiftAttitude, describeAttitude, readAttitudes } from '../game-engine/campaign/attitudes.js';
@@ -42,6 +44,7 @@ import {
     readFormation, describeFormation, orderOf, rowOf, moveInOrder, setDuty, dutyHolder, travelRolesOf, DUTIES, ROWS,
 } from '../game-engine/campaign/formation.js';
 export { orderOf, inMarchOrder, DUTIES, ROWS } from '../game-engine/campaign/formation.js';
+import { suggestNightRoles } from '../game-engine/campaign/camp-roles.js';
 import { pickBearer, torchesOf, carriesLantern } from '../game-engine/board/light.js';
 import { POPUP_TYPE, Popup } from '../popup.js';
 import { skillModifier } from '../game-engine/rules/checks.js';
@@ -574,12 +577,16 @@ export function offerPersonalQuests() {
     if (!chat_metadata || !chat_metadata[METADATA_KEY]) return;
     const bonds = getCampaignBonds();
     const asked = Array.isArray(chat_metadata[PERSONAL_ASKED_KEY]) ? chat_metadata[PERSONAL_ASKED_KEY].map(String) : [];
+    // E4.3: el mercenario que llega al vínculo 3 tiene su misión, hecha para él y jugable como las
+    // escritas; también la pide él, junto al fuego (`roce.js`).
+    ensureMercQuests(questRows().map(row => row.key));
     // J14.9: quien tiene su misión escrita (`personales.json`) la pide él, en su rango, y no
     // un encargo de tablón hecho al azar.
     const announced = announceWrittenQuests(asked);
     const written = new Set(questRows().map(row => row.key));
     const due = duePersonalQuests({
-        party: partyMembers.filter(m => !written.has(keyOf(m.name))), rankOf: m => getBondProgress(bonds, String(m.id)).rank, asked,
+        // E8.4: el mercenario de paso no pide nada suyo hasta que es veterano (E8.6).
+        party: partyMembers.filter(m => !written.has(keyOf(m.name)) && !waitsForVeteran(m)), rankOf: m => getBondProgress(bonds, String(m.id)).rank, asked,
     });
     if (due.length === 0) {
         if (announced) {
@@ -628,7 +635,9 @@ function questRows() {
             rows: readQuestRows(withCampaignRows(lastCompendium.find('personales'), lastCompanionStories.personales)),
         };
     }
-    return questData.rows;
+    // E4.3: y las de los mercenarios, hechas para cada uno (las escritas mandan).
+    const written = new Set(questData.rows.map(row => row.key));
+    return [...questData.rows, ...mercQuestRows().filter(row => !written.has(row.key))];
 }
 
 /** @returns {import('../game-engine/campaign/companion-quests.js').QuestsState} */
@@ -655,9 +664,11 @@ export function personalQuestOf(member) {
     const row = questRows().find(r => r.key === keyOf(member?.name));
     if (!row) return null;
     const data = meetupData();
-    const info = questInfo(data, row.quest);
+    // E4.3: la de un mercenario dice ella misma lo suyo, y se abre con el vínculo 3.
+    const merc = mercQuestInfo(row.quest);
+    const info = merc ?? questInfo(data, row.quest);
     const rank = getBondProgress(getCampaignBonds(), String(member?.id ?? '')).rank;
-    const open = unlockedFor(data, row.who, rank).some(u => u.type === 'mision' && String(u.quest?.id ?? '') === row.quest);
+    const open = merc ? rank >= merc.rank : unlockedFor(data, row.who, rank).some(u => u.type === 'mision' && String(u.quest?.id ?? '') === row.quest);
     return { row, info, card: questCard(row, questState(), info), open, rank: info?.rank || 4 };
 }
 
@@ -758,7 +769,7 @@ export async function playPersonalQuest(rowId) {
         toastr.info('Las misiones de tu gente del gremio salen de Puerto Alba: se hacen desde el gremio.', 'Misión personal');
         return '';
     }
-    const info = questInfo(meetupData(), row.quest);
+    const info = mercQuestInfo(row.quest) ?? questInfo(meetupData(), row.quest);
     const title = info?.title || row.id;
     let state = questState();
     if (!state.quests[row.id]) {
@@ -1005,7 +1016,7 @@ export function personalQuestJournal() {
         const member = partyMembers.find(m => keyOf(m.name) === row.key);
         const quest = member ? personalQuestOf(member) : null;
         if (!one && !quest?.open) continue;
-        const card = questCard(row, state, questInfo(meetupData(), row.quest));
+        const card = questCard(row, state, mercQuestInfo(row.quest) ?? questInfo(meetupData(), row.quest));
         const how = card.done ? `terminada: ${card.ending || 'hecha'}` : one ? card.next.toLowerCase() : 'sin empezar (en su ficha)';
         lines.push(`${card.title}, con ${row.who}: ${how}.`);
     }
@@ -1165,6 +1176,8 @@ export function openCompanionCard(memberId) {
         for (const line of liked.recent) box.append($('<div class="cc-approval-line"></div>').text(line));
         root.append(box);
     }
+    // E4.1: si está molesto (no hace ataques en pareja) y lo que cobra de más.
+    for (const line of grudgeLines(member)) root.append($('<div class="cc-grudge"></div>').text(line));
     const earned = [
         member.nickname ? `Le llaman «${member.nickname}»` : '',
         ...traitsOf(member).map(t => t.label),
@@ -1428,7 +1441,10 @@ export function unpackFormation(carried) {
 }
 
 /** Los papeles que se eligen en la ventana: los que el juego ya usa (quién habla, todavía no). */
-const FORMATION_DUTIES = ['cura', 'guia', 'vigia', 'cazador', 'antorcha'];
+const FORMATION_DUTIES = ['cura', 'guia', 'vigia', 'cazador', 'antorcha', 'cocinero', 'erudito', 'tasador'];
+
+/** E6.2: los de la noche al acampar (`camp-roles.js`): también uno por persona. */
+const NIGHT_DUTIES = ['cocinero', 'erudito', 'tasador'];
 
 /** Los del camino (`travel-roles.js`): uno por persona. */
 const ROAD_DUTIES = ['guia', 'vigia', 'cazador'];
@@ -1452,7 +1468,7 @@ export async function openFormationPanel() {
     const march = $('<div class="fm-march"></div>');
     const duties = $('<div class="fm-duties"></div>');
     body.append(summary, $('<div class="fm-title"></div>').text('El orden de marcha'), march, $('<div class="fm-title"></div>').text('Los papeles'),
-        $('<p class="fm-sub"></p>').text('En el camino, cada uno hace un solo papel: guiar, vigilar o cazar.'), duties);
+        $('<p class="fm-sub"></p>').text('En el camino, cada uno hace un solo papel: guiar, vigilar o cazar. Al acampar, también uno: cocinar, estudiar o examinar el botín.'), duties);
     if (members().length < 2) body.append($('<p class="fm-alone"></p>').text('Vas sin compañeros: la formación eres tú. Contrata a alguien o busca quien se una.'));
 
     /** @param {import('../game-engine/campaign/formation.js').Formation} formation */
@@ -1468,6 +1484,11 @@ export async function openFormationPanel() {
         if (duty === 'cura') return dutyHolder(free, 'cura', list)?.name ?? '';
         // E2.1: quien tenga una mano libre (`board/light.js`).
         if (duty === 'antorcha') return pickBearer(list, '', m => torchesOf(m) > 0 || carriesLantern(m))?.member?.name ?? '';
+        // E6.2: quien mejor lo hace de los que no tienen ya otro papel de la noche.
+        if (NIGHT_DUTIES.includes(duty)) {
+            const id = suggestNightRoles({ party: list, modifierOf: (m, skill) => skillModifier(m, skill).modifier, chosen: free.duties })[duty];
+            return list.find(m => String(m.id) === id)?.name ?? '';
+        }
         const roles = travelRolesOf({ formation: free, party: list.filter(m => (Number(m.hp) || 0) > 0), modifierOf: (m, skill) => skillModifier(m, skill).modifier });
         return roles.find(r => r.role === duty)?.name ?? '';
     };
@@ -1509,6 +1530,9 @@ export async function openFormationPanel() {
                 // En el camino, cada uno hace un solo papel: si ya hacía otro, ese lo decide el juego.
                 if (who && ROAD_DUTIES.includes(duty)) {
                     for (const other of ROAD_DUTIES) if (other !== duty && next.duties[other] === who) next = setDuty(next, other, '');
+                }
+                if (who && NIGHT_DUTIES.includes(duty)) {
+                    for (const other of NIGHT_DUTIES) if (other !== duty && next.duties[other] === who) next = setDuty(next, other, '');
                 }
                 save(next);
             });

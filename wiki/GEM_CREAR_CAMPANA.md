@@ -23,7 +23,7 @@ author: generado por tools/gem-instructions.mjs
 | Qué | Dónde va | Tamaño |
 | :--- | :--- | :--- |
 | **Las instrucciones cortas** (la sección 3 de este documento) | En la caja **Instrucciones** del Gem, enteras | 20 mil caracteres |
-| **El anexo**: `wiki/GEM_CREAR_CAMPANA_ANEXO.md` | Se sube **tal cual** como archivo de conocimiento del Gem | 172 mil caracteres |
+| **El anexo**: `wiki/GEM_CREAR_CAMPANA_ANEXO.md` | Se sube **tal cual** como archivo de conocimiento del Gem | 174 mil caracteres |
 
 Las instrucciones cortas dicen quién es el Gem, cómo trabaja, **cómo se escribe hoy** (las reglas de
 las conversaciones, las presentaciones, el grupo de 4, las facciones, los plazos y el aspecto, cada una

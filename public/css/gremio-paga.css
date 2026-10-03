@@ -1,0 +1,129 @@
+/* E5 de wiki/ROADMAP_ENTRETENIDO.md, el gremio que paga.
+   - La casa: lo que la forja y la cocina preparan para la próxima salida, y los libros de bichos
+     de la biblioteca (`party/guild-pay.js`). Las filas son las del cofre (`hb-chest-row`).
+   - «Quién está para salir»: una tarjeta por persona, con su cara y lo que dice.
+   - En la pelea, lo que dice el libro de un enemigo en su tarjeta (`tc-book`). */
+
+.hb-prep,
+.hb-books {
+    margin-top: 12px;
+}
+
+.hb-prep > :not(.vt-section),
+.hb-books > :not(.vt-section) {
+    margin: 4px 0;
+}
+
+.hb-chest-row.hb-prep-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+}
+
+.hb-prep-what {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.hb-prep-row .menu_button {
+    flex: none;
+    width: auto;
+    white-space: nowrap;
+}
+
+/* Quién está para salir. */
+.hb-rest-grid {
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+}
+
+.hb-rest-card {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    text-align: left;
+}
+
+.hb-rest-card[data-where="fuera"] {
+    opacity: 0.75;
+}
+
+.hb-rest-card[data-mood="triste"] {
+    border-color: color-mix(in srgb, var(--SmartThemeQuoteColor, #c08040) 60%, transparent);
+}
+
+.hb-rest-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.hb-rest-face {
+    width: 48px;
+    height: 48px;
+    flex: none;
+    object-fit: cover;
+    border-radius: 6px;
+}
+
+.hb-rest-initials {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2em;
+}
+
+.hb-rest-face.pixel-art {
+    image-rendering: pixelated;
+}
+
+.hb-rest-says {
+    margin: 0;
+    font-style: italic;
+}
+
+.hb-rest-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.hb-rest-actions .menu_button {
+    width: auto;
+    margin: 0;
+    font-size: 0.85em;
+}
+
+.hb-errand-send {
+    width: auto;
+    margin-top: 4px;
+}
+
+/* Mandar a alguien a un encargo: cada uno en su línea, con la casilla a su lado. */
+.dp-root .dp-member {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.dp-root .dp-member input {
+    margin: 0;
+}
+
+/* El libro de bichos, en la tarjeta del enemigo. */
+.tc-book {
+    margin-top: 4px;
+    font-size: 0.85em;
+    opacity: 0.9;
+}
+
+@media screen and (max-width: 600px) {
+    .hb-chest-row.hb-prep-row {
+        flex-wrap: wrap;
+    }
+
+    .hb-rest-grid {
+        grid-template-columns: 1fr;
+    }
+}

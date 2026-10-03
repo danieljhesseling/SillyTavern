@@ -574,6 +574,15 @@ try {
         && /1 tablero leído de su dibujo: El sótano/.test(drawnReport) && /1 cofre con su tesoro: El sótano/.test(drawnReport), drawnReport.slice(0, 700));
     check('la trampa sin casilla la pone el juego en el camino, y lo dice (traps)', /1 trampa puesta en el camino: El sótano/.test(drawnReport), drawnReport.slice(0, 900));
     if (SHOT) await page.screenshot({ path: `${SHOT}.dibujo-informe.png` });
+    // E2.1: el sótano está a oscuras; sin luz, la trampa no se ve al lado y se pisa. Iria baja con
+    // antorchas (como quien las compra en el gremio): la primera se enciende sola al entrar.
+    await page.evaluate(async () => {
+        const { partyMembers } = await import('/scripts/party/state.js');
+        const hero = partyMembers[0];
+        if (!hero) return;
+        hero.items = [...(Array.isArray(hero.items) ? hero.items : []), { name: 'Antorcha', quantity: 3 }];
+        (await import('/scripts/party/roster.js')).savePartyState();
+    });
     await page.locator(`.hb-root [data-campaign="${DRAWN_ID}"]`).click();
     const drawnStarted = await until(async () => (await state()).world.includes(DRAWN_NAME), 120000);
     await page.waitForTimeout(2500);

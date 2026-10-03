@@ -34,12 +34,14 @@ export const HALL_CHIPS = [
     { id: 'hub-house', label: 'Los edificios', icon: 'fa-house-chimney', command: '/casa-gremio' },
     // J7.4: quién va delante y quién cura, guía, vigila y caza. Se abre sin comando (`runShellChip`).
     { id: 'hub-formation', label: 'Formación y papeles', icon: 'fa-people-line', command: '' },
+    // E5.2 y E5.3: quién está para salir, quién descansa en casa y a quién mandar a un encargo.
+    { id: 'hub-rest', label: 'Quién está para salir', icon: 'fa-bed-pulse', command: '' },
 ];
 
 /** Las partes de la sala, en orden, con las fichas que van en cada una. */
 export const HALL_SECTIONS = [
     { id: 'tablon', title: 'El tablón', chips: ['hub-skip', 'hub-board', 'hub-errands'] },
-    { id: 'gente', title: 'Tu gente', chips: ['hub-heroes', 'hub-hire', 'hub-formation', 'hub-retire'] },
+    { id: 'gente', title: 'Tu gente', chips: ['hub-heroes', 'hub-rest', 'hub-hire', 'hub-formation', 'hub-retire'] },
     { id: 'casa', title: 'La casa', chips: ['hub-chest', 'hub-train', 'hub-house', 'hub-sleep'] },
     { id: 'memoria', title: 'La memoria del gremio', chips: ['hub-hall', 'hub-memory'] },
 ];
@@ -53,6 +55,7 @@ export const HALL_SECTIONS = [
  * @property {{built: number, total: number}} [house]
  * @property {{offers: number, taken: string}} [errands]
  * @property {{resting: number}} [heroes]
+ * @property {{line: string}} [rest] E5.2: quién está herido, cansado o fuera.
  * @property {{open: number, locked: number, inProgress: Array<{id: string, name: string}>}} [campaigns]
  */
 
@@ -126,6 +129,9 @@ export function hallDetail(id, hall) {
             if (!h) return '';
             return h.built > 0 ? `${count(h.built, 'nivel levantado', 'niveles levantados')} de ${h.total}` : 'Nada levantado todavía';
         }
+        // E5.2: heridos, cansados, fuera, y si alguien ha vuelto con su informe.
+        case 'hub-rest':
+            return text(hall.rest?.line);
         // E8.3: quedarse de maestro; los nuevos empiezan con ventaja.
         case 'hub-retire':
             return 'Quedarse de maestro: los nuevos empiezan con más nivel y aprenden de ti';

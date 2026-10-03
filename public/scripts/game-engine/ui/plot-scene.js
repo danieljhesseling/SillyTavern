@@ -164,12 +164,14 @@ export function foldNarration(frames) {
  * @param {string} [input.town] La localización, si la escena no dice la suya.
  * @param {boolean} [input.night]
  * @param {HTMLElement|null} [input.mount]
+ * @param {Record<string, string>} [input.faces] E5.3: la cara de quien no tiene retrato con nombre (los
+ *   tuyos: el de relleno de su clase), por su nombre.
  * @returns {Promise<PlotSceneResult>}
  */
 export async function openPlotScene({
     scene, hero = null, getWorld = () => ({}), rollD20 = () => 1 + Math.floor(Math.random() * 20),
     applyEffects = () => [], memory = null, onMemory = () => {}, opinionsFor = () => [], onChoice = () => {},
-    pack = '', place = '', town = '', night = false, mount = null,
+    pack = '', place = '', town = '', night = false, mount = null, faces = {},
 }) {
     await loadPixelManifest();
     /** @type {import('../campaign/plot-scenes.js').SceneChoice[]} */
@@ -251,7 +253,7 @@ export async function openPlotScene({
                 return;
             }
             // M4: quien no tiene retrato pero sí ficha en el bestiario (el malo), con su dibujo.
-            const url = portraitFor({ name: who, pack, mood: mood === 'neutral' ? '' : mood }) || firstArt('creature', { name: who });
+            const url = portraitFor({ name: who, pack, mood: mood === 'neutral' ? '' : mood }) || firstArt('creature', { name: who }) || text(faces?.[who]);
             if (portrait.dataset.src === url && portrait.firstChild) return;
             portrait.dataset.src = url;
             portrait.textContent = '';

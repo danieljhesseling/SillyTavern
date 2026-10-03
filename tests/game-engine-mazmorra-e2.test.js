@@ -9,7 +9,7 @@ import {
     LIGHT_SOURCES, DIM_PASSIVE_PENALTY,
 } from '../public/scripts/game-engine/board/light.js';
 import {
-    isKey, isThievesTools, toolsInParty, pickEdge, lockOutcome, lockLabels, dropBrokenTools, failLine, BREAK_MARGIN, LOCK_DC,
+    isKey, isThievesTools, toolsInParty, pickEdge, lockOutcome, lockLabels, dropBrokenTools, failLine, noToolsLine, BREAK_MARGIN, LOCK_DC,
 } from '../public/scripts/game-engine/board/lock-picking.js';
 import {
     isHostileGround, isRation, rationsOf, partyRations, eatRations, ambushChance, watchPassive, surpriseCheck,
@@ -227,7 +227,18 @@ describe('E2.2: forzar cerraduras con riesgo', () => {
         expect(labels.pick).toMatch(/se rompen/);
         expect(labels.force).toMatch(/Atletismo, CD 16/);
         expect(lockLabels({ key: 'Llave oxidada' }).key).toBe('Usar Llave oxidada');
-        expect(lockLabels({ trick: 5 }).pick).toMatch(/CD 9/);
+        expect(lockLabels({ tools: 'Ganzúas', trick: 5 }).pick).toMatch(/CD 9/);
+    });
+
+    test('sin ganzúas no se fuerza (Daniel, 2026-10-03, como 5e): el botón no sale y uno de los tuyos lo dice', () => {
+        const labels = lockLabels({ key: '', tools: '' });
+        expect(labels.pick).toBe('');
+        expect(lockLabels({ trick: 5 }).pick).toBe('');
+        // Quedan las otras salidas: echarla abajo, la llave u otro camino.
+        expect(labels.force).toMatch(/A golpes/);
+        expect(noToolsLine()).toMatch(/^Sin ganzúas no hay nada que hacer con esta cerradura\./);
+        expect(noToolsLine()).toMatch(/echamos abajo.*llave.*otro lado/);
+        expect(noToolsLine({ key: true })).toBe('');
     });
 
     test('las ganzúas rotas se van de la mochila', () => {

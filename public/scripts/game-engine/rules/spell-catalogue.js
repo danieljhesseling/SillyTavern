@@ -29,6 +29,7 @@ import { SPELLS as GRIMOIRE, spellById } from './grimoire.js';
 import { ZONE_KINDS, ZONE_TRIGGERS } from '../board/spell-zones.js';
 import { validateSummon } from './summons.js';
 import { REACTION_TRIGGERS, REACTION_EFFECTS } from './spell-reactions.js';
+import { readImbueSpec, imbueProblems } from './elemental-weapon.js';
 
 /** Las ocho escuelas de 5e. */
 export const SPELL_SCHOOLS = {
@@ -116,7 +117,7 @@ export const SPELL_COLUMNS = [
     'upcast', 'components', 'material',
     'zone', 'summon', 'reaction', 'ac',
     'teleportFeet', 'pushFeet', 'creates', 'again', 'clearsZones', 'dispels',
-    'element', 'leaves',
+    'element', 'leaves', 'imbue',
 ];
 
 /** @param {any} value @returns {string} */
@@ -210,6 +211,7 @@ export function durationRounds(value) {
  * @property {boolean} dispels
  * @property {string} element
  * @property {string} leaves
+ * @property {import('./elemental-weapon.js').ImbueSpec|null} imbue E3.3: el arma que toca se vuelve mágica (Arma elemental).
  * @property {string} note
  * @property {string[]} aliases
  */
@@ -303,6 +305,7 @@ export function normalizeSpell(row) {
         dispels: Boolean(source.dispels),
         element: text(source.element).toLowerCase(),
         leaves: text(source.leaves),
+        imbue: readImbueSpec(source.imbue),
         note: text(source.note),
         aliases: list(source.aliases),
     };
@@ -434,6 +437,11 @@ export function validateSpell(row, context = {}) {
     if (row.again !== undefined && !['action', 'bonus'].includes(text(row.again))) say('"again" es action o bonus.');
     if (row.element !== undefined && !Object.hasOwn(ELEMENTS, text(row.element).toLowerCase())) say(`"element" dice "${text(row.element)}". Vale: ${Object.keys(ELEMENTS).join(', ')}.`);
     if (row.aliases !== undefined && !Array.isArray(row.aliases)) say('"aliases" tiene que ser una lista de ids.');
+    // E3.3: el arma de un aliado (Arma elemental): a quien la toca, de los suyos.
+    if (row.imbue !== undefined) {
+        for (const problem of imbueProblems(row.imbue, isFormula)) say(problem);
+        if (target !== 'ally') say('trae "imbue" y no apunta a un aliado ("target": "ally").');
+    }
 
     return errors;
 }

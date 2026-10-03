@@ -248,7 +248,8 @@ export async function openOwnSheet(member) {
             // E3.4: el rango de verdad (antes se leía mal y la ficha no lo decía nunca) y lo que da
             // en combate. Tu héroe y las invocaciones no tienen vínculo contigo.
             bondRank: bondRankOf(member),
-            bondPerks: bondRankOf(member) > 0 ? bondSheetRows(member, bondRankOf(member)) : [],
+            // E3.2: con el nombre de vuestra jugada en pareja, por vuestros papeles.
+            bondPerks: bondRankOf(member) > 0 ? bondSheetRows(member, bondRankOf(member), partyMembers[0]) : [],
             onEdit: () => { void openPartyMemberModal(member); },
             // Idea 59: lo que habla.
             languages: languagesOf(member),
