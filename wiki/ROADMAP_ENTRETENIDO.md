@@ -44,8 +44,8 @@ created: 2026-10-02
 - Retirarse: desde el nivel 5; el nuevo empieza 1 nivel más por cada 4 del maestro (hasta el 5); ventajas del gremio: mercenarios −25 %, 50 de oro a cada nuevo, templo −25 %. ¿Las cambias?
 - Un mercenario se hace veterano a la tercera vuelta al gremio con vida. ¿Cuentan también las peleas ganadas?
 
-**Decisión abierta para Daniel (de E7):**
-- Tras dormir, los compañeros que preparan conjuros los preparan solos según su papel (la clériga, curas primero). A tu héroe le sigue saliendo su cuadro de preparar, vacío como siempre. ¿Quieres que le salga ya marcado con lo de su papel?
+**Decidido por Daniel (de E7), un agente lo está metiendo:**
+- **Sí:** tras dormir, los compañeros que preparan conjuros los preparan solos según su papel (la clériga, curas primero). A tu héroe le sigue saliendo su cuadro de preparar, vacío como siempre. Ahora le saldrá ya marcado con lo de su papel, y lo puede cambiar.
 
 **Decididas por Daniel (2026-10-03), un agente las está metiendo:**
 - **Forzar cerraduras requiere herramientas de ladrón** (E2.2), como en 5e. Se quita la vía «con maña».
