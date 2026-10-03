@@ -99,6 +99,20 @@ Es la fase G5 de [[ROADMAP_AUTOMATIZAR]], que se puede adelantar.
 
 - **Los horarios del pueblo** (`hours.js`, D-J29): las tiendas abren y cierran, y quién está dónde depende de la hora.
 
+## E8 · La larga vida: el techo de nivel, el relevo y la gente que se gasta
+
+*Propuesta para decidir (lo planteaste el 2026-10-03). Con campañas largas, el héroe llega al nivel máximo; y la gente escrita como en *Persona* cuesta mucho de hacer, así que no puede haber muchos.*
+
+| ID | Idea | Hoy | D&D | Tamaño |
+| :--- | :--- | :---: | :--- | :---: |
+| E8.1 | **Campañas por tramos de nivel**, como las aventuras oficiales: 1-4, 5-10, 11-16 y 17-20. El tablón ofrece las de tu tramo y el ajuste de D-J56 hace el resto. Las cortas y las largas caben en cualquier tramo. | 🟡 | Sí: los cuatro tramos de juego | S |
+| E8.2 | **Después del nivel 20, dones épicos** en vez de niveles: cada «nivel» de experiencia de más da un don (2024 los trae en el nivel 19 y la guía del máster sigue después). El techo no corta el progreso. | ⬜ | Sí: dones épicos | M |
+| E8.3 | **Retirarse al gremio en vez de reiniciar.** Un héroe alto se queda como maestro: sube el nivel con el que empiezan los nuevos, enseña una dote, da una ventaja al gremio y va al Salón de la fama. Empiezas otro héroe con ventaja: se juega de nuevo sin perder lo ganado. | ⬜ | Cosecha propia, al estilo *Darkest Dungeon* | M |
+| E8.4 | **Dos capas de gente.** Pocos **confidentes** escritos (como *Persona*), que son el corazón. Muchos **mercenarios** generados, baratos y siempre disponibles. | 🟡 | — | — |
+| E8.5 | **Por qué llevar mercenarios:**<br>• **riesgo:** a la mazmorra peligrosa no quieres llevar a Nella;<br>• **disponibilidad:** los confidentes tienen su vida, sus horarios, sus heridas, y a veces no quieren ir (desaprobación, E4.1);<br>• **oficio:** un mercenario trae justo lo que falta (trampas, curas);<br>• **coste:** cobran cada semana, los confidentes no. | ⬜ | — | M |
+| E8.6 | **Veteranos que se ganan su historia.** Un mercenario que sobrevive varias expediciones gana un apodo, un rasgo, un recuerdo de lo que vivió con el grupo y una misión corta generada (E4.3). El cariño sale de jugar, no de escribir: como los soldados de *XCOM*. | ⬜ | — | M |
+| E8.7 | **La muerte cuenta, pero se puede deshacer pagando.** Las salvaciones de muerte de siempre; resucitar en el templo cuesta oro y diamantes y deja una secuela. Los mercenarios mueren de verdad; un confidente caído queda malherido semanas, y solo muere si lo arriesgas en un final. Un **modo duro** opcional con muerte permanente para todos. | 🟡 | Sí: Revivir y Resurrección cuestan componentes caros | M |
+
 ## Lo que se descartó o se corrigió del análisis del 2026-10-03
 
 - **El flujo social de *Persona*** (Palanca 1) ya está en marcha como D-J63, en [[ROADMAP_SIN_CONEXION]].
