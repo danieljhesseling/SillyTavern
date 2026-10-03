@@ -107,6 +107,7 @@ Todo lo contado está en commits (el último, 135fa19f7).
 | Lo que se cuenta, dicho por la gente (J13.9) | ~10 % |
 | Correcciones como ronda del guion (J5.10) y el aspecto de la gente (J5.11) | ~10 % |
 | Directo a la ventana de la pelea tras una conversación, sin la caja vacía de en medio | ~0 % (nuevo) |
+| Modo guiado (D-J62): esconder la fila de acciones libres, «Viajar» y «Tableros de aquí»; entrar en los tableros por la conversación o el encargo | ~0 % (nuevo) |
 | La app del bot, `ProbarCampañas.exe` (J16.6) | En cola, tras las vueltas |
 
 **Bugs y retoques abiertos** (lo que has visto jugando y lo que han encontrado los agentes). Todos tienen a alguien trabajando:
@@ -381,6 +382,7 @@ Tus respuestas a D-J11…D-J38. «⏳» significa que está por hacer.
 | **D-J59** | ¿Cómo se llega al nivel de los finales? | No se sube de nivel por pasar hitos: un personaje de nivel alto que viene de otra campaña se dispararía. El nivel sale de pelear, de los encargos y de las misiones secundarias. Los finales se quedan duros: la cripta de Strahd, para nivel 6-7; las puertas del castillo de 1387, como están. Antes de entrar en un tablero final, el aviso dice para qué nivel es y en cuál está tu grupo | ⏳ |
 | **D-J60** | ¿Queda algo del narrador en el juego sin conexión? | **Nada.** Lo dijiste así: «la figura del narrador en un juego sin conexión no la quiero». Todo lo dice alguien que está allí: la gente del sitio, tus compañeros o tú, en tus respuestas. Ni saludo del narrador, ni resúmenes, ni líneas de ambiente en la caja de la novela. Lo que es ambiente o paso del tiempo se ve en pantalla (el fondo, la hora, la vida) o va en un aviso pequeño fuera de la caja. Corrige D-J54, que aún dejaba una línea corta. Las tarjetas de suceso se quedan como tarjeta (es pantalla, no la caja de la novela), pero sus opciones y resultados los dice alguien. Lo que ves al mirar, las salidas habladas y las notas de las quedadas, también dichas por alguien | ⏳ |
 | **D-J61** | Las caras de los retratos (alegre, enfadado, triste) | **Neutras por ahora**: aún no quedan bien. El arte y los datos de los gestos se quedan, y se vuelven a encender (`PORTRAIT_MOODS` en `ui/pixel-art.js`) cuando estén más cuidadas, con su propio trabajo | ✅ |
+| **D-J62** | ¿Cuánta libertad hay en el pueblo y en los sitios, sin IA? | **Un modo guiado.** Se esconden, sin borrar, la fila de acciones libres de abajo (tablón, mercenarios, encargos, mirar, rumores, «Tirada»…), «Viajar» a cualquier sitio y «Tableros de aquí». Lo del gremio se hace dentro de la Casa del Gremio. A un tablero se entra porque la historia o un encargo te lleva, por ejemplo con una opción de la conversación («Bajo a la bodega»); y se viaja adonde te mandan. Todo lo escondido se apunta en [[LO_OCULTO]] | ⏳ |
 
 ---
 
