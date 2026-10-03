@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resolución de Combate - SillyTavern (1387)</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            /* Variables base del tema SillyTavern */
+            --SmartThemeBodyColor: #eee4d2;
+            --SmartThemeBorderColor: rgba(214, 180, 106, 0.4);
+            --SmartThemeQuoteColor: #6a8caf;
+            --SmartThemeEmColor: #e2c27a;
+            --SmartThemeBlurTintColor: rgba(24, 20, 16, 0.94);
+
+            /* Paleta táctica */
+            --gs-danger: #d08a86;
+            --gs-danger-bg: rgba(140, 58, 54, 0.25);
+            --gs-danger-border: rgba(208, 138, 134, 0.6);
+            --gs-success: #6f9e5d;
+            --gs-success-bg: rgba(111, 158, 93, 0.2);
+            --gs-gold-bright: #ffd27a;
+            
+            /* Superficies modales */
+            --gs-modal-bg: rgba(18, 15, 12, 0.96);
+            --gs-panel-bg: rgba(26, 22, 18, 0.85);
+            --gs-panel-border: rgba(214, 180, 106, 0.22);
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background: #08090c;
+            color: var(--SmartThemeBodyColor);
+            overflow: hidden;
+            user-select: none;
+        }
+
+        /* SIMULADOR DEL TABLERO DE FONDO OSCURECIDO */
+        .mockup-backdrop {
+            position: absolute;
+            inset: 0;
+            background-color: #12100e;
+            background-image: 
+                radial-gradient(ellipse at center, rgba(30, 25, 20, 0.7) 0%, rgba(5, 5, 8, 0.95) 100%),
+                linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+            background-size: 100% 100%, 40px 40px, 40px 40px;
+            filter: blur(8px) brightness(0.35);
+            transform: scale(1.05);
+            z-index: 1;
+        }
+
+        /* CONMUTADOR DE PRUEBAS SUPERIOR */
+        .state-switcher {
+            position: absolute;
+            top: 14px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 8px;
+            z-index: 1000;
+            background: rgba(10, 10, 14, 0.9);
+            padding: 4px 8px;
+            border-radius: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.8);
+        }
+
+        .state-btn {
+            background: transparent;
+            border: none;
+            color: #888;
+            font-weight: 700;
+            font-size: 0.8rem;
+            padding: 6px 14px;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .state-btn.active-victory {
+            background: rgba(226, 194, 122, 0.2);
+            color: var(--gs-gold-bright);
+            border: 1px solid var(--SmartThemeEmColor);
+        }
+
+        .state-btn.active-defeat {
+            background: rgba(208, 138, 134, 0.25);
+            color: #fca5a5;
+            border: 1px solid var(--gs-danger);
+        }
+
+        /* CONTENEDOR MODAL */
+        .gs-outcome-layer {
+            position: absolute;
+            inset: 0;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .gs-outcome-card {
+            width: 100%;
+            max-width: 860px;
+            max-height: calc(100vh - 65px);
+            background: var(--gs-modal-bg);
+            border: 1px solid var(--gs-panel-border);
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.95);
+            backdrop-filter: blur(20px);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            animation: outcomeReveal 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            position: relative;
+        }
+
+        @keyframes outcomeReveal {
+            from {
+                opacity: 0;
+                transform: scale(0.96) translateY(12px);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+
+        /* CABECERAS */
+        .gs-outcome-banner {
+            padding: 22px 30px 16px;
+            text-align: center;
+            position: relative;
+            border-bottom: 1px solid var(--gs-panel-border);
+            overflow: hidden;
+        }
+
+        .outcome-victory .gs-outcome-banner {
+            background: radial-gradient(ellipse at 50% 0%, rgba(226, 194, 122, 0.18) 0%, transparent 75%);
+            border-top: 4px solid var(--SmartThemeEmColor);
+        }
+        .outcome-defeat .gs-outcome-banner {
+            background: radial-gradient(ellipse at 50% 0%, rgba(140, 58, 54, 0.38) 0%, transparent 75%);
+            border-top: 4px solid var(--gs-danger);
+        }
+
+        .gs-outcome-crest {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: rgba(14, 12, 10, 0.95);
+            border: 2px solid;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.55rem;
+            margin-bottom: 8px;
+        }
+
+        .outcome-victory .gs-outcome-crest {
+            color: var(--SmartThemeEmColor);
+            border-color: rgba(214, 180, 106, 0.45);
+            box-shadow: 0 0 20px rgba(226, 194, 122, 0.25);
+        }
+        .outcome-defeat .gs-outcome-crest {
+            color: #fca5a5;
+            border-color: var(--gs-danger-border);
+            box-shadow: 0 0 20px rgba(208, 138, 134, 0.3);
+        }
+
+        .gs-outcome-title {
+            font-family: Georgia, 'Palatino Linotype', serif;
+            font-size: 1.8rem;
+            font-weight: 700;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            margin: 0;
+            line-height: 1.1;
+        }
+        .outcome-victory .gs-outcome-title { color: var(--gs-gold-bright); }
+        .outcome-defeat .gs-outcome-title { color: #fca5a5; }
+
+        .gs-outcome-sub {
+            font-size: 0.84rem;
+            opacity: 0.8;
+            margin-top: 6px;
+            letter-spacing: 0.02em;
+        }
+
+        /* CUERPO DEL MODAL */
+        .gs-outcome-body {
+            padding: 16px 24px;
+            display: grid;
+            grid-template-columns: 1.2fr 1fr;
+            gap: 16px;
+            overflow-y: auto;
+        }
+
+        .gs-outcome-column {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .gs-block-title {
+            font-size: 0.74rem;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--SmartThemeEmColor);
+            opacity: 0.9;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            padding-bottom: 4px;
+        }
+
+        /* TARJETAS DE INTEGRANTES */
+        .gs-roster-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .gs-member-card {
+            display: grid;
+            grid-template-columns: 42px 1fr auto;
+            gap: 12px;
+            align-items: center;
+            padding: 10px 12px;
+            background: var(--gs-panel-bg);
+            border: 1px solid var(--gs-panel-border);
+            border-radius: 10px;
+        }
+
+        .gs-member-avatar-wrap {
+            position: relative;
+            width: 42px;
+            height: 42px;
+        }
+
+        .gs-member-avatar {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            background: #1e1e24;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+        }
+
+        .gs-level-up-badge {
+            position: absolute;
+            top: -4px;
+            right: -4px;
+            width: 18px;
+            height: 18px;
+            background: #eab308;
+            color: #111;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.65rem;
+            box-shadow: 0 0 8px rgba(234, 179, 8, 0.8);
+            animation: pulseGlow 1.8s infinite;
+        }
+
+        @keyframes pulseGlow {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.15); opacity: 0.85; }
+        }
+
+        .gs-member-info {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            min-width: 0;
+        }
+
+        .gs-member-name-row {
+            display: flex;
+            align-items: baseline;
+            gap: 6px;
+        }
+
+        .gs-member-name {
+            font-weight: 700;
+            font-size: 0.88rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .gs-member-role {
+            font-size: 0.72rem;
+            opacity: 0.65;
+        }
+
+        .gs-member-hp-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .gs-hp-bar {
+            flex: 1;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .gs-hp-fill { height: 100%; background: var(--gs-success); border-radius: 2px; }
+        .gs-hp-fill.injured { background: #f59e0b; }
+        .gs-hp-fill.fallen { background: var(--gs-danger); }
+
+        .gs-hp-text {
+            font-size: 0.72rem;
+            font-variant-numeric: tabular-nums;
+            opacity: 0.8;
+            white-space: nowrap;
+        }
+
+        .gs-status-tag {
+            font-size: 0.68rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+            border: 1px solid transparent;
+            width: fit-content;
+        }
+
+        .tag-ok {
+            background: var(--gs-success-bg);
+            color: #86efac;
+            border-color: rgba(111, 158, 93, 0.4);
+        }
+        .tag-wound {
+            background: rgba(245, 158, 11, 0.15);
+            color: #fde047;
+            border-color: rgba(245, 158, 11, 0.4);
+        }
+        .tag-dead {
+            background: var(--gs-danger-bg);
+            color: #fca5a5;
+            border-color: var(--gs-danger-border);
+        }
+
+        .gs-xp-gain {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--gs-gold-bright);
+        }
+
+        .gs-level-btn {
+            font-size: 0.68rem;
+            background: rgba(234, 179, 8, 0.18);
+            border: 1px solid rgba(234, 179, 8, 0.5);
+            color: #fef08a;
+            padding: 3px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 700;
+            transition: all 0.15s;
+        }
+        .gs-level-btn:hover {
+            background: rgba(234, 179, 8, 0.35);
+            border-color: #fde047;
+            transform: scale(1.02);
+        }
+
+        /* COLUMNA DERECHA: BOTÍN O PÉRDIDAS */
+        .gs-panel-box {
+            background: var(--gs-panel-bg);
+            border: 1px solid var(--gs-panel-border);
+            border-radius: 10px;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .gs-purse-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 12px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 8px;
+        }
+
+        .gs-purse-val {
+            font-weight: 800;
+            font-size: 1.05rem;
+            font-variant-numeric: tabular-nums;
+        }
+        .gs-purse-val.gain { color: var(--gs-gold-bright); }
+        .gs-purse-val.loss { color: #fca5a5; }
+
+        .gs-loot-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 6px 10px;
+            border-radius: 6px;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            font-size: 0.82rem;
+        }
+
+        .gs-loot-icon {
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.85rem;
+            color: var(--SmartThemeEmColor);
+            flex-shrink: 0;
+        }
+
+        .gs-consequence-card {
+            padding: 10px;
+            border-radius: 8px;
+            background: rgba(140, 58, 54, 0.12);
+            border: 1px solid rgba(208, 138, 134, 0.25);
+            font-size: 0.8rem;
+            line-height: 1.4;
+        }
+
+        /* PIE DE VENTANA Y BOTONES ESPECÍFICOS */
+        .gs-outcome-footer {
+            padding: 14px 24px;
+            border-top: 1px solid var(--gs-panel-border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            background: rgba(14, 12, 10, 0.65);
+        }
+
+        .gs-footer-note {
+            font-size: 0.78rem;
+            opacity: 0.75;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .gs-footer-actions {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .gs-btn-action {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 9px 16px;
+            border-radius: 8px;
+            border: 1px solid;
+            font-size: 0.86rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        /* Botón dorado (Victoria principal: al epílogo) */
+        .gs-btn-gold {
+            background: rgba(214, 180, 106, 0.2);
+            border-color: var(--SmartThemeEmColor);
+            color: var(--gs-gold-bright);
+        }
+        .gs-btn-gold:hover {
+            background: rgba(214, 180, 106, 0.35);
+            box-shadow: 0 0 16px rgba(226, 194, 122, 0.3);
+            transform: translateY(-1px);
+        }
+
+        /* Botón rojo (Derrota principal: enfermería) */
+        .gs-btn-red {
+            background: var(--gs-danger-btn, #8c3a36);
+            border-color: var(--gs-danger);
+            color: #fff;
+        }
+        .gs-btn-red:hover {
+            background: #a54540;
+            box-shadow: 0 0 16px rgba(208, 138, 134, 0.35);
+            transform: translateY(-1px);
+        }
+
+        /* Botones secundarios sutiles */
+        .gs-btn-subtle {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(255, 255, 255, 0.15);
+            color: inherit;
+        }
+        .gs-btn-subtle:hover {
+            background: rgba(255, 255, 255, 0.12);
+            border-color: rgba(255, 255, 255, 0.25);
+        }
+
+        /* Conmutación entre Victoria y Derrota */
+        .victory-only, .defeat-only { display: none !important; }
+        .outcome-victory .victory-only { display: flex !important; }
+        .outcome-victory div.victory-only { display: flex !important; }
+        .outcome-defeat .defeat-only { display: flex !important; }
+        .outcome-defeat div.defeat-only { display: flex !important; }
+    </style>
+</head>
+<body>
+
+    <!-- FONDO DE TABLERO SIMULADO -->
+    <div class="mockup-backdrop"></div>
+
+    <!-- CONMUTADOR PARA INSPECCIONAR AMBOS ESTADOS -->
+    <div class="state-switcher">
+        <button class="state-btn active-victory" onclick="setOutcome('victory')">
+            <i class="fa-solid fa-trophy"></i> Probar Estado: Victoria
+        </button>
+        <button class="state-btn" onclick="setOutcome('defeat')">
+            <i class="fa-solid fa-skull"></i> Probar Estado: Derrota
+        </button>
+    </div>
+
+    <!-- CAPA PRINCIPAL DEL MODAL DE RESOLUCIÓN -->
+    <div class="gs-outcome-layer">
+        
+        <div id="outcome-card" class="gs-outcome-card outcome-victory">
+
+            <!-- CABECERA VICTORIA / DERROTA -->
+            <div class="gs-outcome-banner">
+                <!-- Corona de Victoria -->
+                <div class="victory-only" style="justify-content:center;">
+                    <div class="gs-outcome-crest">
+                        <i class="fa-solid fa-shield-halved"></i>
+                    </div>
+                </div>
+                <!-- Corona de Derrota -->
+                <div class="defeat-only" style="justify-content:center;">
+                    <div class="gs-outcome-crest">
+                        <i class="fa-solid fa-skull-crossbones"></i>
+                    </div>
+                </div>
+
+                <h1 class="gs-outcome-title victory-only" style="justify-content: center;">Victoria Táctica</h1>
+                <h1 class="gs-outcome-title defeat-only" style="justify-content: center;">El Grupo ha Caído</h1>
+                
+                <div class="gs-outcome-sub victory-only" style="justify-content: center;">
+                    Encuentro superado en La bodega del gremio &bull; Fin en Ronda 3
+                </div>
+                <div class="gs-outcome-sub defeat-only" style="justify-content: center;">
+                    Masacre en La bodega del gremio &bull; Los enemigos retienen la posición
+                </div>
+            </div>
+
+            <!-- CUERPO CENTRAL -->
+            <div class="gs-outcome-body">
+                
+                <!-- COLUMNA 1: ESTADO DEL GRUPO -->
+                <div class="gs-outcome-column">
+                    <div class="gs-block-title victory-only">
+                        <i class="fa-solid fa-users"></i> Balance de la Compañía
+                    </div>
+                    <div class="gs-block-title defeat-only">
+                        <i class="fa-solid fa-users-slash"></i> Bajas y Secuelas (Regla 7b)
+                    </div>
+
+                    <div class="gs-roster-list">
+                        
+                        <!-- Miembro 1: Laedor -->
+                        <div class="gs-member-card">
+                            <div class="gs-member-avatar-wrap">
+                                <img class="gs-member-avatar" src="https://api.dicebear.com/7.x/adventurer/svg?seed=Laedor&backgroundColor=transparent" alt="L">
+                                <div class="gs-level-up-badge victory-only" title="¡Listo para subir de nivel!"><i class="fa-solid fa-star"></i></div>
+                            </div>
+                            <div class="gs-member-info">
+                                <div class="gs-member-name-row">
+                                    <span class="gs-member-name">Laedor</span>
+                                    <span class="gs-member-role">Explorador (Nvl. 1)</span>
+                                </div>
+                                <div class="gs-member-hp-row">
+                                    <div class="gs-hp-bar">
+                                        <div class="gs-hp-fill victory-only" style="width: 100%;"></div>
+                                        <div class="gs-hp-fill fallen defeat-only" style="width: 0%;"></div>
+                                    </div>
+                                    <span class="gs-hp-text victory-only">12/12 PG</span>
+                                    <span class="gs-hp-text defeat-only">0/12 PG</span>
+                                </div>
+                                <div class="victory-only">
+                                    <span class="gs-status-tag tag-ok"><i class="fa-solid fa-check"></i> En pie</span>
+                                </div>
+                                <div class="defeat-only">
+                                    <span class="gs-status-tag tag-wound"><i class="fa-solid fa-crutch"></i> Tobillo torcido (−5 ft)</span>
+                                </div>
+                            </div>
+                            <div class="gs-member-xp-side" style="display:flex; flex-direction:column; align-items:flex-end; gap:3px;">
+                                <span class="gs-xp-gain victory-only">+75 PX</span>
+                                <button class="gs-level-btn victory-only" onclick="alert('Abriendo ficha para repartir puntos y dados de nivel 2')">
+                                    <i class="fa-solid fa-arrow-up"></i> Subir a Nvl. 2
+                                </button>
+                                <span class="gs-status-tag tag-wound defeat-only">Inconsciente</span>
+                            </div>
+                        </div>
+
+                        <!-- Miembro 2: Ulrich Brand -->
+                        <div class="gs-member-card">
+                            <div class="gs-member-avatar-wrap">
+                                <img class="gs-member-avatar" src="https://api.dicebear.com/7.x/adventurer/svg?seed=Ulrich&backgroundColor=transparent" alt="U">
+                            </div>
+                            <div class="gs-member-info">
+                                <div class="gs-member-name-row">
+                                    <span class="gs-member-name">Ulrich Brand</span>
+                                    <span class="gs-member-role">Soldado veterano (Vínculo)</span>
+                                </div>
+                                <div class="gs-member-hp-row">
+                                    <div class="gs-hp-bar">
+                                        <div class="gs-hp-fill injured victory-only" style="width: 45%;"></div>
+                                        <div class="gs-hp-fill fallen defeat-only" style="width: 0%;"></div>
+                                    </div>
+                                    <span class="gs-hp-text victory-only">8/18 PG</span>
+                                    <span class="gs-hp-text defeat-only">0/18 PG</span>
+                                </div>
+                                <div class="victory-only">
+                                    <span class="gs-status-tag tag-wound"><i class="fa-solid fa-bandage"></i> Magullado</span>
+                                </div>
+                                <div class="defeat-only">
+                                    <span class="gs-status-tag tag-dead" title="No cura nunca (Regla 7b)"><i class="fa-solid fa-bone"></i> Pierna rota (Permanente: −10 ft)</span>
+                                </div>
+                            </div>
+                            <div class="gs-member-xp-side" style="display:flex; flex-direction:column; align-items:flex-end; gap:3px;">
+                                <span class="gs-xp-gain victory-only">+75 PX</span>
+                                <span class="gs-status-tag tag-dead defeat-only">Caído a 0 PG</span>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- COLUMNA 2: RECOMPENSAS (VICTORIA) O SECUELAS Y COSTE (DERROTA) -->
+                <div class="gs-outcome-column">
+                    
+                    <!-- BLOQUE VICTORIA -->
+                    <div class="gs-block-title victory-only">
+                        <i class="fa-solid fa-sack-dollar"></i> Botín Despojado
+                    </div>
+
+                    <div class="gs-panel-box victory-only">
+                        <div class="gs-purse-row">
+                            <span style="font-size:0.8rem; opacity:0.85; display:flex; align-items:center; gap:6px;">
+                                <i class="fa-solid fa-coins" style="color:var(--gs-gold-bright);"></i> Monedas saqueadas
+                            </span>
+                            <span class="gs-purse-val gain">+18 táleros</span>
+                        </div>
+
+                        <div style="font-size:0.74rem; text-transform:uppercase; opacity:0.7; font-weight:bold; margin-top:2px;">
+                            Objetos recogidos (3)
+                        </div>
+
+                        <div style="display:flex; flex-direction:column; gap:6px;">
+                            <div class="gs-loot-item">
+                                <div class="gs-loot-icon"><i class="fa-solid fa-flask"></i></div>
+                                <div style="flex:1; font-weight:600;">Poción de curación menor</div>
+                                <span style="font-size:0.65rem; padding:1px 5px; border-radius:3px; background:rgba(255,255,255,0.06);">Común</span>
+                            </div>
+                            <div class="gs-loot-item">
+                                <div class="gs-loot-icon"><i class="fa-solid fa-key"></i></div>
+                                <div style="flex:1; font-weight:600;">Llave de la cancela norte</div>
+                                <span style="font-size:0.65rem; padding:1px 5px; border-radius:3px; background:rgba(59,130,246,0.15); color:#93c5fd;">Misión</span>
+                            </div>
+                            <div class="gs-loot-item">
+                                <div class="gs-loot-icon"><i class="fa-solid fa-drum"></i></div>
+                                <div style="flex:1; font-weight:600;">Piel de rata de alcantarilla</div>
+                                <span style="font-size:0.65rem; padding:1px 5px; border-radius:3px; background:rgba(255,255,255,0.06);">Material</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- BLOQUE DERROTA -->
+                    <div class="gs-block-title defeat-only">
+                        <i class="fa-solid fa-scale-unbalanced"></i> Coste del Fracaso
+                    </div>
+
+                    <div class="gs-panel-box defeat-only">
+                        <div class="gs-purse-row">
+                            <span style="font-size:0.8rem; opacity:0.85; display:flex; align-items:center; gap:6px;">
+                                <i class="fa-solid fa-hand-holding-dollar" style="color:#f87171;"></i> Rescate y curas del gremio
+                            </span>
+                            <span class="gs-purse-val loss">−24 táleros</span>
+                        </div>
+
+                        <div class="gs-consequence-card">
+                            <strong style="color:#fca5a5;"><i class="fa-solid fa-hand-holding-medical"></i> Rescate de Brunilda:</strong><br>
+                            Los guardias del gremio os sacaron antes de que las ratas os devoraran. Cobran el rescate directamente de vuestra bolsa.
+                        </div>
+
+                        <div class="gs-consequence-card">
+                            <strong style="color:#fca5a5;"><i class="fa-solid fa-calendar-day"></i> El reloj del mundo avanza:</strong><br>
+                            Pasáis <strong>1 día entero en cama</strong>. La semana de manutención y comida se acerca peligrosamente.
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+
+            <!-- PIE DE VENTANA: ACCIONES RADICALMENTE DISTINTAS -->
+            <div class="gs-outcome-footer">
+                
+                <!-- NOTA DE VICTORIA -->
+                <div class="gs-footer-note victory-only">
+                    <i class="fa-solid fa-clock" style="color:var(--SmartThemeEmColor);"></i>
+                    <span>Son las 10:00 (Mañana). La sala queda despejada.</span>
+                </div>
+
+                <!-- NOTA DE DERROTA -->
+                <div class="gs-footer-note defeat-only">
+                    <i class="fa-solid fa-triangle-exclamation" style="color:#f87171;"></i>
+                    <span>En Modo Normal puedes cargar punto; en Modo de Hierro las secuelas son definitivas.</span>
+                </div>
+
+                <!-- BOTONERA DE VICTORIA (DECISIONES DE EXPLORACIÓN / AVANCE) -->
+                <div class="gs-footer-actions victory-only">
+                    <!-- Opción 1: Descanso corto en el sitio para curar dados de golpe -->
+                    <button class="gs-btn-action gs-btn-subtle" onclick="alert('Descanso corto: gastas 1 bloque de reloj (+1h) y dados de golpe para curar a Ulrich.')">
+                        <i class="fa-solid fa-bed"></i> Descanso corto (+1h)
+                    </button>
+                    <!-- Opción 2: Quedarse en el tablero a abrir cofres o puertas -->
+                    <button class="gs-btn-action gs-btn-subtle" onclick="alert('Cerrando modal: puedes moverte libremente por el tablero para registrar cofres y palancas.')">
+                        <i class="fa-solid fa-box-open"></i> Registrar la sala
+                    </button>
+                    <!-- Opción 3 (Principal): Pasar a Escena de Diálogo 1 para el epílogo del narrador -->
+                    <button class="gs-btn-action gs-btn-gold" onclick="alert('Transicionando a Escena 1 (Diálogo): el narrador relatará el epílogo en el chat.')">
+                        Continuar al epílogo <kbd style="font-size:0.7em; opacity:0.7; margin-left:4px;">1</kbd> <i class="fa-solid fa-arrow-right"></i>
+                    </button>
+                </div>
+
+                <!-- BOTONERA DE DERROTA (DECISIONES DE RESCATE / SALVAGUARDA) -->
+                <div class="gs-footer-actions defeat-only">
+                    <!-- Opción 1: Abandonar o salir al menú principal -->
+                    <button class="gs-btn-action gs-btn-subtle" onclick="alert('Saliendo al Menú Principal...')">
+                        <i class="fa-solid fa-door-open"></i> Menú principal
+                    </button>
+                    <!-- Opción 2: Cargar el punto de retorno anterior si el modo de juego lo permite -->
+                    <button class="gs-btn-action gs-btn-subtle" onclick="alert('Cargando último punto de retorno guardado (/punto)...')">
+                        <i class="fa-solid fa-rotate-left"></i> Cargar punto anterior
+                    </button>
+                    <!-- Opción 3 (Principal): Aceptar las secuelas, pagar y despertar en el refugio -->
+                    <button class="gs-btn-action gs-btn-red" onclick="alert('Despertando en la enfermería: se descuentan 24 táleros, Ulrich queda con Pierna Rota (-10 ft) y amanece el Día 2.')">
+                        Despertar en la enfermería (+1 día) <i class="fa-solid fa-bed-pulse"></i>
+                    </button>
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- SCRIPT DE CONMUTACIÓN DE PRUEBAS -->
+    <script>
+        function setOutcome(state) {
+            const card = document.getElementById('outcome-card');
+            const btns = document.querySelectorAll('.state-btn');
+            
+            btns.forEach(b => {
+                b.classList.remove('active-victory', 'active-defeat');
+            });
+
+            if (state === 'victory') {
+                card.classList.remove('outcome-defeat');
+                card.classList.add('outcome-victory');
+                btns[0].classList.add('active-victory');
+            } else {
+                card.classList.remove('outcome-victory');
+                card.classList.add('outcome-defeat');
+                btns[1].classList.add('active-defeat');
+            }
+        }
+    </script>
+</body>
+</html>

@@ -43,7 +43,7 @@ author: DanielJHesseling / Claude Opus 5.5
 
 ## 📍 Cómo va (2026-10-02)
 
-**Avance, sobre 158 filas activas** (sin lo aparcado ni las decisiones):
+**Avance, sobre 160 filas activas** (sin lo aparcado ni las decisiones):
 - **95 % jugable** (150 filas).
 - **97 % construido** (153 filas).
 
@@ -119,6 +119,15 @@ Todo lo contado está en commits (el último, 135fa19f7).
 | *Las tierras del ocaso*, escrita entera | 0 % (nuevo) |
 | *La costa que no duerme*, escrita entera | 0 % (nuevo) |
 
+**Se cortó por el límite de uso (2026-10-03, 07:00; vuelve a las 10:00).** Al volver, por este orden:
+1. **Retomar** el modo guiado (~75 %), lo de *Persona* (~65 %) y las tres campañas (~15-25 %), cada uno desde su `progreso.md`.
+2. **El combate:**
+   - la embestida, una sola vez;
+   - el muelle táctico (J12.20);
+   - la pantalla de victoria o derrota (J12.21).
+3. **La tanda de retoques** de abajo.
+4. **Guardar todo en un commit** con las pruebas en verde. Hay mucho trabajo terminado sin guardar: las vueltas, la competencia, los objetivos y efectos, lo dicho por la gente, el aspecto, directo a la pelea y `ProbarCampañas.exe`.
+
 **Retoques que he decidido, con la libertad que me diste.** Van en la próxima tanda pequeña:
 - **Los enemigos también suman su bonificador de competencia** al atacar, como en D&D, y un 1 natural siempre les falla. Después se vuelve a pasar la simulación.
 - **Strahd sube de 90 a 120 PG.** Con la competencia del grupo, la cripta se había quedado corta (6-8 rondas). D-J59 dice que los finales se quedan duros.
@@ -166,6 +175,9 @@ Todo lo contado está en commits (el último, 135fa19f7).
 | **Los ataques del grupo no sumaban el bonificador de competencia** (+2 a nivel 1): un guerrero acertaba con +3 en vez de +5, alrededor del 50 % en vez del 65 % contra CA 13. Además, un 1 natural no siempre fallaba en el cálculo | Competencia al ataque, con la simulación repasada |
 | Atacar a un enemigo desde el menú, y que se note quién se lleva el golpe | Objetivos en el menú (J12.18) |
 | Golpes y muertes que apenas se notan | Efectos (J12.19) |
+| Al atacar, la ficha hace la embestida al tirar el dado y otra vez al golpear: debe ser una sola, al golpear | Próxima tanda (combate) |
+| El menú de acciones tapa el centro del tablero y las fichas que brillan | J12.20, el muelle táctico |
+| Al matar al último enemigo la pelea acaba de golpe, antes de que se vea el ataque | J12.21, la pantalla de victoria o derrota |
 | Tras la conversación del muelle sale una caja vacía con «Continuar», «Salir del tablero» y «Buscar trampas» antes de la ventana de la pelea; debe ir directo a esa ventana, y en todas las campañas | Directo a la decisión |
 | Los avisos verdes y naranjas tapan el título de la tarjeta del final, de la victoria y del Salón de la fama (H18) | Próxima tanda pequeña |
 | Los dados de la iniciativa salen de uno en uno y la barra ya deja atacar entre medias (H19) | Próxima tanda pequeña |
@@ -751,6 +763,8 @@ Así no hay que reescribir el motor para el servidor. El riesgo: si el anfitrió
 | J12.17 | **Moverse bien**: el mar y los ríos hondos no se cruzan andando, el camino va recto si puede, y las diagonales cuestan 5, 10, 5… (la regla opcional de 5e, con un interruptor) | A | M | Pruebas y el muelle del prólogo: nada de andar sobre el agua |
 | J12.18 | **Los objetivos dentro del menú, y quién se lleva el golpe** (lo pediste el 2026-10-02). Al elegir un ataque o un conjuro en la barra («Hacha»), debajo salen los objetivos a tu alcance, con su vida, la distancia y la probabilidad de acertar; se elige ahí, sin ir a su ficha. Al pasar el ratón, los enemigos afectados brillan en **rojo** y los aliados en **azul**; en un conjuro de área se ve la zona con todos los de dentro | A | M | e2e en el muelle: elegir el arma, ver al ratero en el menú, resaltarlo y atacarle desde ahí |
 | J12.19 | **Efectos que se notan**: al golpear, destello, sacudida, el número de daño grande y el corte o el fuego según el daño. Con un crítico, más llamativo; al fallar, un «¡Falla!» claro; la cura, en verde. Al caer alguien, la ficha se tumba y se apaga, y queda marcada | A | M | Capturas de un golpe, un crítico y una muerte |
+| J12.20 | **El muelle táctico a la izquierda** (lo pediste el 2026-10-03, con el encargo de tu Gem de UX: [[maquetas/ENCARGO_COMBATE_MUELLE_Y_RESULTADO]]). El menú de acciones deja de tapar el centro del tablero: se abre a la izquierda, encima del minimapa, con su scroll y su aspa para cerrarlo, y se cierra también con su tecla o pulsando el mapa. En el móvil, una hoja desde abajo | A | S | A 1280×720 y 1920×1080 ninguna ficha queda tapada con el menú abierto |
+| J12.21 | **La pantalla de victoria o derrota**, después de ver el último golpe entero (maqueta `wiki/maquetas/resultado-combate.html`). En la victoria:<br>• el balance de cada uno: vida, estado, PX y «Subir de nivel»;<br>• el botín;<br>• botones con sentido: seguir la historia, registrar la sala, descanso corto.<br>En la derrota: las bajas y las secuelas, quién os rescata y cuánto cuesta, y despertar en la enfermería o cargar el punto | A | M | Ganar y perder la pelea del muelle y ver cada pantalla tras la animación |
 
 **Hecho cuando** subes un mapa de D&D en imagen y en unos minutos lo juegas como tablero, con sus muros, puertas y alturas; y una pelea escrita se puede resolver hablando. (Lo de cada jugador en su turno, J12.1, vuelve con J6.)
 
