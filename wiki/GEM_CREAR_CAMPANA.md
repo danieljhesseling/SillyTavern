@@ -2,7 +2,7 @@
 title: Instrucciones para el Gem — el paquete de una campaña
 tags: [gem, gemini, campanas, importar, contrato, seeding]
 created: 2026-09-22
-updated: 2026-10-02
+updated: 2026-10-03
 author: generado por tools/gem-instructions.mjs
 ---
 

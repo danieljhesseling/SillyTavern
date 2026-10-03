@@ -2,7 +2,7 @@
 title: Anexo del Gem de campañas — el contrato entero y las muestras largas
 tags: [gem, gemini, campanas, contrato, anexo]
 created: 2026-10-02
-updated: 2026-10-02
+updated: 2026-10-03
 author: generado por tools/gem-instructions.mjs
 ---
 
@@ -18,7 +18,7 @@ mandan sobre cualquier cosa de aquí.
 
 # Contrato del paquete de campaña
 
-Versión 1. Generado desde el motor el 2026-10-02.
+Versión 1. Generado desde el motor el 2026-10-03.
 
 Devuelve **solo JSON válido** que cumpla este esquema. Una sección por respuesta si el
 libro es largo; el orden recomendado es: world → locations → confidants → npcs → bestiary → items → boards → quests → heroes → dialogues → plot.
@@ -167,7 +167,7 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
     "dialogueEffect": {
       "type": "object",
       "minProperties": 1,
-      "description": "Una cosa por objeto. Los que hay: attitude, clue, rumor, milestone, give, take, bond, gold, time, end.",
+      "description": "Una cosa por objeto. Los que hay: attitude, clue, rumor, milestone, give, take, bond, gold, time, end, board, go.",
       "properties": {
         "attitude": {
           "type": "integer",
@@ -212,6 +212,14 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
         "end": {
           "type": "boolean",
           "description": "Se acaba la charla."
+        },
+        "board": {
+          "type": "string",
+          "description": "Al acabar la charla se va a ese tablero, y la pelea empieza sola: «Bajo a la bodega». Por su nombre en boards."
+        },
+        "go": {
+          "type": "string",
+          "description": "Al acabar la charla se viaja a ese sitio, por su nombre en locations."
         }
       }
     },
