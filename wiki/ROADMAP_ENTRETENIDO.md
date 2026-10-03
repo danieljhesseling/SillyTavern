@@ -21,6 +21,25 @@ created: 2026-10-02
 - 🟡 existe a medias o sin contenido que lo use;
 - ⬜ no existe.
 
+## 📍 Cómo va (2026-10-03, 22:50)
+
+**Avance: ~40 %** (9 de 32 ideas ya se juegan; el resto, en marcha). Nada de esto está aún en un commit: entra con el commit de cierre del modo guiado o en el siguiente.
+
+| Bloque | Hecho | % aprox. | Quién |
+| :--- | :--- | :---: | :--- |
+| E1 · El tablero que se usa | E1.1, E1.2, E1.3 | 60 % | Un agente con E1.4 (derrumbes) y E1.5 (puzles) |
+| E2 · La mazmorra que pesa | Todo | 100 % | — |
+| E3 · El grupo y sus combos | E3.1, E3.4 | 50 % | Un agente con E3.2 (combos para todas las parejas) y otro con E3.3 (Arma elemental, decidido por Daniel) |
+| E4 · Compañeros con roce | — | 0 % | Un agente, empezando |
+| E5 · El gremio que paga | — | 0 % | Un agente, empezando |
+| E6 · El camino entre campañas | — | 0 % | Un agente, empezando |
+| E7 · Sin fricción aburrida | — | ~10 % | Un agente |
+| E8 · La larga vida | Escrito y enganchado (tramos, dones épicos, retirarse, mercenarios, resucitar, modo duro); falta la prueba en el navegador | ~65 % | Un agente |
+
+**Decisiones abiertas para Daniel:**
+- **Forzar cerraduras sin herramientas (E2.2):** hoy se puede «con maña», con más riesgo. En 5e sin herramientas de ladrón no se puede. ¿Se queda o se quita?
+- Los tableros escritos aún no usan el campo `light` (la luz de cada tablero), y los héroes no empiezan con antorchas.
+
 ---
 
 ## E1 · El tablero que se usa

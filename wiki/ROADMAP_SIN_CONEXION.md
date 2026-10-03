@@ -134,17 +134,16 @@ Casi todo está en commits (el último, c9c41512b); los retoques y las tres camp
   - aspecto para los enemigos que hablan;
   - pasan los días al volver al gremio (H16).
 
-**En marcha ahora (2026-10-03, 20:00): tres agentes.**
+**En marcha ahora (2026-10-03, 22:50): nueve agentes.**
 
 | Tarea | % aprox. |
 | :--- | :---: |
-| Modo guiado (D-J62) y las pruebas que tocó | ~85 % |
-| Entretenimiento E3: combos y el vínculo que se nota en la pelea | ~80 % |
-| Entretenimiento E1: otras victorias, empujar donde duele, superficies que reaccionan | ~60 % |
+| Modo guiado (D-J62) y las pruebas que tocó: última pasada (e2e-quick, combate, vueltas de 1387 y del gremio). La campaña del Gem y Strahd ya salen bien con el flujo guiado | ~92 % |
+| Ocho agentes con [[ROADMAP_ENTRETENIDO]] (E1.4-E1.5, E3.2, E3.3, E4, E5, E6, E7, E8): su estado, allí | — |
 
-Al acabar el modo guiado este roadmap queda **al 100 %** de lo que no está aparcado. Desde ahí se sigue con [[ROADMAP_ENTRETENIDO]], de dos en dos frentes.
+Al acabar el modo guiado este roadmap queda **al 100 %** de lo que no está aparcado.
 
-**Retoques que he decidido, con la libertad que me diste.** Van en la próxima tanda pequeña:
+**Retoques que he decidido, con la libertad que me diste** (✅ todos hechos; ver «Terminado hoy»):
 - **Los enemigos también suman su bonificador de competencia** al atacar, como en D&D, y un 1 natural siempre les falla. Después se vuelve a pasar la simulación.
 - **Strahd sube de 90 a 120 PG.** Con la competencia del grupo, la cripta se había quedado corta (6-8 rondas). D-J59 dice que los finales se quedan duros.
 - **Los dados de la iniciativa salen todos juntos** en una tarjeta, y la barra no se enciende hasta que acaban (H19).
@@ -168,38 +167,39 @@ Al acabar el modo guiado este roadmap queda **al 100 %** de lo que no está apar
 - **Los retratos que no cuadran con su texto** (Madre Elvira, Valerius, Hilda, Donavich, Ireena) se quedan; el aspecto describe el dibujo.
 - **Al volver al gremio desde una campaña** pasan en el gremio los días del viaje, y el cansancio se cura descansando allí (H16).
 
-**Bugs y retoques abiertos** (lo que has visto jugando y lo que han encontrado los agentes). Todos tienen a alguien trabajando:
+**Bugs y retoques** (lo que has visto jugando y lo que han encontrado los agentes). Todos los de la lista están arreglados salvo el último:
 
-| Bug | Quién lo arregla |
+| Bug | Estado |
 | :--- | :--- |
-| El prólogo empieza con un párrafo del narrador que resume la escena del muelle (D-J54) | El prólogo |
-| Al atacar, la tirada y el daño se aplican antes de que acabe la animación | Que el combate se sienta |
-| La pelea termina antes de que salga el aviso de las tiradas | Que el combate se sienta |
-| No queda claro de quién es el turno | El tablero se mueve y se lee |
-| Las fichas se teletransportan en vez de deslizarse | El tablero se mueve y se lee |
-| El cuadro amarillo del cursor del teclado se queda en el tablero al usar el ratón | El tablero se mueve y se lee |
-| Los nombres de las fichas se cortan («Ratero del…») | El tablero se mueve y se lee |
-| En 1387, la escena del principio sale encima de colocarse (V5) | Arreglos del combate |
-| Un caído no se podía estabilizar, y los mercenarios morían a menudo | Arreglos del combate |
-| La pelea seguía tras caer el último enemigo y el caído seguía tirando salvaciones | Arreglos del combate |
-| Una trampa a 0 PG mataba sin salvaciones | Arreglos del combate |
-| El golpe especial del jefe sale en inglés en el resumen | Arreglos del combate |
-| En el móvil, los avisos del borde tapan nombres de fichas | Arreglos del tablero |
-| La Luz no da su +2 al examinar | Arreglos del tablero |
-| En 1387, «La tienda de mando» sale sin la capitana Keller ni su escolta | Arreglos del tablero |
-| Los sitios donde 1387 se calla o se atasca (38 apuntados por el bot) | 1387 de punta a punta |
-| **Los ataques del grupo no sumaban el bonificador de competencia** (+2 a nivel 1): un guerrero acertaba con +3 en vez de +5, alrededor del 50 % en vez del 65 % contra CA 13. Además, un 1 natural no siempre fallaba en el cálculo | Competencia al ataque, con la simulación repasada |
-| Atacar a un enemigo desde el menú, y que se note quién se lleva el golpe | Objetivos en el menú (J12.18) |
-| Golpes y muertes que apenas se notan | Efectos (J12.19) |
-| Al atacar, la ficha hace la embestida al tirar el dado y otra vez al golpear: debe ser una sola, al golpear | Próxima tanda (combate) |
-| El menú de acciones tapa el centro del tablero y las fichas que brillan | J12.20, el muelle táctico |
-| Al matar al último enemigo la pelea acaba de golpe, antes de que se vea el ataque | J12.21, la pantalla de victoria o derrota |
-| Tras la conversación del muelle sale una caja vacía con «Continuar», «Salir del tablero» y «Buscar trampas» antes de la ventana de la pelea; debe ir directo a esa ventana, y en todas las campañas | Directo a la decisión |
-| Los avisos verdes y naranjas tapan el título de la tarjeta del final, de la victoria y del Salón de la fama (H18) | Próxima tanda pequeña |
-| Los dados de la iniciativa salen de uno en uno y la barra ya deja atacar entre medias (H19) | Próxima tanda pequeña |
-| La rareza del botín sale en inglés («common») en el texto (H20) | Próxima tanda pequeña |
-| A veces no sale la escena del principio de Strahd (H15), la puerta de la taberna aparece antes de «Empezar» (H17) y «Volver al gremio» falla a veces (H13) | Próxima tanda pequeña |
-| Al volver al gremio no pasa el tiempo y se arrastra el cansancio de Barovia (H16) | Próxima tanda pequeña |
+| El prólogo empieza con un párrafo del narrador que resume la escena del muelle (D-J54) | ✅ Arreglado |
+| Al atacar, la tirada y el daño se aplican antes de que acabe la animación | ✅ Arreglado |
+| La pelea termina antes de que salga el aviso de las tiradas | ✅ Arreglado |
+| No queda claro de quién es el turno | ✅ Arreglado |
+| Las fichas se teletransportan en vez de deslizarse | ✅ Arreglado |
+| El cuadro amarillo del cursor del teclado se queda en el tablero al usar el ratón | ✅ Arreglado |
+| Los nombres de las fichas se cortan («Ratero del…») | ✅ Arreglado |
+| En 1387, la escena del principio sale encima de colocarse (V5) | ✅ Arreglado |
+| Un caído no se podía estabilizar, y los mercenarios morían a menudo | ✅ Arreglado |
+| La pelea seguía tras caer el último enemigo y el caído seguía tirando salvaciones | ✅ Arreglado |
+| Una trampa a 0 PG mataba sin salvaciones | ✅ Arreglado |
+| El golpe especial del jefe sale en inglés en el resumen | ✅ Arreglado |
+| En el móvil, los avisos del borde tapan nombres de fichas | ✅ Arreglado |
+| La Luz no da su +2 al examinar | ✅ Arreglado |
+| En 1387, «La tienda de mando» sale sin la capitana Keller ni su escolta | ✅ Arreglado |
+| Los sitios donde 1387 se calla o se atasca (38 apuntados por el bot) | ✅ Arreglado |
+| **Los ataques del grupo no sumaban el bonificador de competencia** (+2 a nivel 1): un guerrero acertaba con +3 en vez de +5, alrededor del 50 % en vez del 65 % contra CA 13. Además, un 1 natural no siempre fallaba en el cálculo | ✅ Arreglado |
+| Atacar a un enemigo desde el menú, y que se note quién se lleva el golpe | ✅ Arreglado |
+| Golpes y muertes que apenas se notan | ✅ Arreglado |
+| Al atacar, la ficha hace la embestida al tirar el dado y otra vez al golpear: debe ser una sola, al golpear | ✅ Arreglado |
+| El menú de acciones tapa el centro del tablero y las fichas que brillan | ✅ Arreglado |
+| Al matar al último enemigo la pelea acaba de golpe, antes de que se vea el ataque | ✅ Arreglado |
+| Tras la conversación del muelle sale una caja vacía con «Continuar», «Salir del tablero» y «Buscar trampas» antes de la ventana de la pelea; debe ir directo a esa ventana, y en todas las campañas | ✅ Arreglado |
+| Los avisos verdes y naranjas tapan el título de la tarjeta del final, de la victoria y del Salón de la fama (H18) | ✅ Arreglado |
+| Los dados de la iniciativa salen de uno en uno y la barra ya deja atacar entre medias (H19) | ✅ Arreglado |
+| La rareza del botín sale en inglés («common») en el texto (H20) | ✅ Arreglado |
+| A veces no sale la escena del principio de Strahd (H15), la puerta de la taberna aparece antes de «Empezar» (H17) y «Volver al gremio» falla a veces (H13) | ✅ Arreglado |
+| Al volver al gremio no pasa el tiempo y se arrastra el cansancio de Barovia (H16) | ✅ Arreglado |
+| En la campaña del Gem, la trampa del sótano se pisa sin verla: el sótano sale «A oscuras» por la luz de la mazmorra nueva (E2.1) | Abierto: lo mira el agente del modo guiado |
 
 **Después de este roadmap, en este orden** (lo dijiste el 2026-10-02):
 1. **Escribir bien las tres campañas experimentales**, con la calidad de 1387 y Strahd: *El mundo tras la pantalla* (isekai), *Las tierras del ocaso* (fantasía épica) y *La costa que no duerme* (terror). Cada una tendrá:
