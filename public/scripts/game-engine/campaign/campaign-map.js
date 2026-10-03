@@ -273,7 +273,7 @@ export function explainLock(map, locationId, context) {
     }
     if (location.requiresBondRank != null && location.requiresBondWith != null
         && context.getBondRank(location.requiresBondWith) < location.requiresBondRank) {
-        reasons.push(`Requiere vínculo ${location.requiresBondRank} con ${location.requiresBondWith}.`);
+        reasons.push(`Requiere rango ${location.requiresBondRank} con ${location.requiresBondWith}.`);
     }
 
     return reasons;

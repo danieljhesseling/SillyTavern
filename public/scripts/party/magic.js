@@ -11,7 +11,7 @@
 import { POPUP_TYPE, Popup } from '../popup.js';
 import { chat_metadata, saveMetadata } from '../../script.js';
 import { loadWorldInfo, saveWorldInfo, METADATA_KEY } from '../world-info.js';
-import { getAbilityModifier, removeItemFromInventory, addItemToInventory, createItem } from '../dnd-system.js';
+import { removeItemFromInventory, addItemToInventory, createItem } from '../dnd-system.js';
 import { asAbility } from '../game-engine/compendio/skills.js';
 import { rollDiceDetailed, getDistanceInFeet, getPlayerAttackBonus } from './combat-rules.js';
 import { setCell as setTerrainCell, getCell, TERRAIN_TYPES } from '../game-engine/board/terrain.js';
@@ -27,6 +27,7 @@ import { isIndoors, isNight } from '../game-engine/world/visibility.js';
 import { fireAt } from '../game-engine/board/living-terrain.js';
 import { WATCH, readWanted, magicIsCrime } from '../game-engine/campaign/crime.js';
 import { noteDealt } from '../game-engine/combat/tally.js';
+import { enemyAttackBonus } from '../game-engine/combat/ai-2024.js';
 import { hasAction, useAction } from '../game-engine/combat/turn-machine.js';
 import { getActiveRuleset } from '../game-engine/rules/ruleset.js';
 import { normalizeAbilities, canUseAbility, planAbilityUse, spendAbilityUse, knownAbilities, conditionSaid } from '../game-engine/rules/abilities.js';
@@ -1618,7 +1619,8 @@ export function resolveAbilityOnBoard({ actor, side, ability, subject }) {
                     : side === 'party'
                         // Una técnica del grupo ataca como su arma: característica y competencia.
                         ? getPlayerAttackBonus(actor, ability.rangeFeet)
-                        : Math.max(getAbilityModifier(actor.strength || 10), getAbilityModifier(actor.dexterity || 10)),
+                        // Tanda 22: la de un enemigo, con su competencia por desafío, como su golpe.
+                        : enemyAttackBonus(actor),
                 targetAc: friendly || target === actor ? 10 : getTargetArmorClass(target, actor).ac,
                 saveModifier: abilityModifier(target, ability.saveAbility),
             });

@@ -20,6 +20,7 @@ export { applyCampaignRuleset } from './party/world.js';
 export { notePlot, beginCampaignPlot, plotEndingTitle, campaignChronicle } from './party/plot.js';
 export { applyModeExtras } from './party/modes.js';
 export { postJourney, scheduleGuildVisitor } from './party/narration.js';
+export { passGuildDays } from './party/time.js';
 export {
     loadDndCatalog, adoptVeteranGear, giveStartingGear, setPartyFromWorldEntries, memberFromEntry, partySnapshot,
     adoptCarriedParty, addPartyMember, removePartyMember, updatePartyMemberFromPersona, getActivePartyLeader,

@@ -835,11 +835,11 @@
       "arrivals": [
         {
           "place": "El Cruce de Caminos",
-          "line": "(Grimm se para, mira el camino del sur y aprieta el dibujo que lleva en el pecho.)"
+          "line": "Mm…"
         },
         {
           "place": "El Peaje Norte",
-          "line": "(Grimm escupe al ver los estandartes negros. Es lo más parecido a una frase que le habéis oído.)"
+          "line": "Hmf."
         }
       ]
     }
@@ -1151,6 +1151,7 @@
   "bestiary": [
     {
       "name": "Campesino desesperado",
+      "aspecto": "Hombre de unos cincuenta, flaco y encorvado, con los ojos hundidos y barba gris descuidada. Ropa de lana parda llena de remiendos y una horca oxidada en las manos.",
       "hp": 8,
       "armorClass": 10,
       "cr": 0.125,
@@ -1181,6 +1182,7 @@
     },
     {
       "name": "Perro del Cuervo",
+      "aspecto": "Hombre de unos treinta y cinco, ancho y sucio, con los ojos inyectados en sangre y una cicatriz en la ceja. Cota de mallas abollada y una capa negra con un cuervo bordado.",
       "hp": 22,
       "armorClass": 14,
       "cr": 1,
@@ -1196,6 +1198,7 @@
     },
     {
       "name": "Garth el Sanguinario",
+      "aspecto": "Hombre de unos cuarenta y cinco, enorme, calvo y con media oreja cortada. Barba negra trenzada, cota de mallas sucia y un hacha de dos manos al hombro.",
       "hp": 35,
       "armorClass": 15,
       "cr": 2,
@@ -1253,6 +1256,7 @@
     },
     {
       "name": "Rompehielos de Keller",
+      "aspecto": "Soldado del norte cubierto de acero de la cabeza a los pies: yelmo cerrado con visera de rendijas, armadura negra escarchada y una maza pesada.",
       "hp": 40,
       "armorClass": 16,
       "cr": 2,
@@ -1268,6 +1272,7 @@
     },
     {
       "name": "Sombra, el espía",
+      "aspecto": "Hombre joven, de cara pálida y afilada, bajo una capucha negra cerrada que no deja ver el pelo. Ropa negra ceñida; un ojo inyectado en sangre y un hilo de sangre por la mejilla.",
       "hp": 30,
       "armorClass": 15,
       "cr": 2,
@@ -1312,6 +1317,7 @@
     },
     {
       "name": "Alguacil Torres",
+      "aspecto": "Hombre de unos cuarenta, fornido, con una barba pelirroja espesa y el ceño fruncido bajo un casco de hierro redondo con ala. Peto de hierro con una placa de latón en el pecho.",
       "hp": 45,
       "armorClass": 14,
       "cr": 3,
@@ -1327,6 +1333,7 @@
     },
     {
       "name": "Capitana Keller",
+      "aspecto": "Mujer de unos treinta, con el pelo rubio largo en una trenza sobre el hombro y los ojos color ámbar. Armadura negra pulida con hombreras redondas, ribetes dorados, un emblema dorado en el pecho y cuello de piel blanca.",
       "hp": 80,
       "armorClass": 17,
       "cr": 5,
@@ -1343,6 +1350,7 @@
     },
     {
       "name": "Lord Vane",
+      "aspecto": "Hombre de unos sesenta, delgado y pálido, con el pelo gris largo y lacio y barba gris. Ropa azul oscuro con cuello de piel gris y ribete dorado; se tapa la boca con un pañuelo de seda granate.",
       "hp": 60,
       "armorClass": 16,
       "cr": 5,
@@ -1589,7 +1597,8 @@
           "skill": "persuasion",
           "dc": 15,
           "success": {
-            "text": "Los guardias se miran y bajan las lanzas. Torres grita, pero nadie le sigue. Aprovechas el momento, saltas por la ventana y caes en la paja del establo.",
+            "who": "Alguacil Torres",
+            "text": "¿Qué hacéis? ¡Prendedle! ¿Nadie? ¡Cobardes! ¡Se escapa por la ventana!",
             "effects": [
               {
                 "rumor": "r-traicion-en-la-puerta"
@@ -1600,13 +1609,19 @@
               }
             ]
           },
-          "failure": "Torres no deja hablar a nadie: «¡Prendedle!». Los guardias levantan las lanzas."
+          "failure": {
+            "who": "Alguacil Torres",
+            "text": "¡No le dejéis hablar! ¡Prendedle!"
+          }
         },
         {
           "kind": "pagar",
           "text": "Meterle unas monedas en la mano al guardia joven de la puerta",
           "gold": 5,
-          "success": "El chico cierra el puño y mira hacia el pasillo justo lo que tardas en llegar a la ventana. Cuando Torres se da la vuelta, ya estás en el tejado del establo."
+          "success": {
+            "who": "Alguacil Torres",
+            "text": "¿Dónde…? ¡Imbécil! ¿Qué mirabas? ¡Se te ha escapado por la ventana!"
+          }
         },
         {
           "kind": "huir",
@@ -1614,16 +1629,23 @@
           "skill": "athletics",
           "dc": 13,
           "resolves": true,
-          "success": "Rompes el cristal con el codo, ruedas por las tejas y caes sobre la paja. Cuando Torres se asoma, ya estás en el callejón.",
+          "success": {
+            "who": "Alguacil Torres",
+            "text": "¡Se ha tirado por la ventana! ¡Al callejón, rápido!"
+          },
           "partial": {
-            "text": "Saltas, pero el marco roto de la ventana te abre el brazo.",
+            "who": "Alguacil Torres",
+            "text": "¡Mirad, se ha cortado con el marco! ¡Seguid el rastro de sangre!",
             "effects": [
               {
                 "hurt": "1d4"
               }
             ]
           },
-          "failure": "El marco está clavado desde fuera. Torres te agarra por el cuello de la camisa."
+          "failure": {
+            "who": "Alguacil Torres",
+            "text": "Clavada desde fuera, listillo. ¡Te tengo!"
+          }
         }
       ],
       "parley": {
@@ -1632,7 +1654,8 @@
           "text": "Soltar el arma y levantar las manos",
           "resolves": true,
           "success": {
-            "text": "Torres te ata las manos y te baja a la bodega de la posada, a pan y agua. De madrugada alguien descorre el cerrojo sin decir nada: por la rendija de la cocina, Giles te hace una seña para que salgas.",
+            "who": "Giles",
+            "text": "Chist. Soy Giles. He descorrido el cerrojo de la bodega: sal por la cocina, rápido, antes de que vuelva Torres.",
             "effects": [
               {
                 "gold": -5
@@ -1651,28 +1674,47 @@
         "sobornar": {
           "text": "Ofrecerle a Torres lo que llevas para que mire a otro lado",
           "gold": 8,
-          "success": "Torres cuenta las monedas sin dejar de sudar. «Por la ventana. Y que no te vuelva a ver.»",
-          "failure": "Torres tira las monedas al suelo: «¿Me tomas por un ladrón?»."
+          "success": {
+            "who": "Alguacil Torres",
+            "text": "Por la ventana. Y que no te vuelva a ver."
+          },
+          "failure": {
+            "who": "Alguacil Torres",
+            "text": "¿Me tomas por un ladrón?"
+          }
         },
         "convencer": {
           "text": "Gritar a los guardias que miren la sangre del cáliz: está seca de días",
           "dc": 14,
           "success": {
-            "text": "Los guardias dudan y bajan las lanzas. Torres se queda solo y sale por la puerta, maldiciendo entre dientes.",
+            "who": "Alguacil Torres",
+            "text": "¿Bajáis las lanzas? ¿Por eso? …Esto no acaba aquí.",
             "effects": [
               {
                 "rumor": "r-traicion-en-la-puerta"
               }
             ]
           },
-          "partial": "Los guardias se miran entre ellos. Esta ronda, nadie ataca.",
-          "failure": "Torres grita más fuerte que tú: «¡No le escuchéis!»."
+          "partial": {
+            "who": "Alguacil Torres",
+            "text": "¿Qué os miráis? ¿Ahora dudáis? ¡Que es {un asesino|una asesina}!"
+          },
+          "failure": {
+            "who": "Alguacil Torres",
+            "text": "¡No le escuchéis!"
+          }
         },
         "engañar": {
           "text": "Señalar la ventana: «¡El que buscáis acaba de saltar al tejado!»",
           "dc": 13,
-          "success": "Los guardias corren a asomarse. Cuando se dan la vuelta, el cuarto está vacío.",
-          "failure": "Torres ni se gira. «Buen intento.»"
+          "success": {
+            "who": "Alguacil Torres",
+            "text": "¡Asomaos, rápido! …Ahí no hay nadie. ¿Y {el|la} de aquí? ¡Se ha esfumado!"
+          },
+          "failure": {
+            "who": "Alguacil Torres",
+            "text": "Buen intento."
+          }
         }
       },
       "mapId": "habitacion-de-la-posada",
@@ -1732,7 +1774,8 @@
           "skill": "persuasion",
           "dc": 13,
           "success": {
-            "text": "El más viejo de los furtivos escupe en la nieve y hace una seña. Se van entre los árboles; al darse la vuelta, a uno se le cae un trozo de cuero doblado.",
+            "who": "Furtivo de los Lobos",
+            "text": "Si no vienes a por nosotros, sigue tu camino. …Y eso que se nos ha caído, quédatelo.",
             "effects": [
               {
                 "give": "Mapa de la calzada imperial"
@@ -1743,19 +1786,28 @@
               }
             ]
           },
-          "failure": "«Eso dicen todos», gruñe el furtivo, y tensa el arco."
+          "failure": {
+            "who": "Furtivo de los Lobos",
+            "text": "Eso dicen todos."
+          }
         },
         {
           "kind": "pagar",
           "text": "Dejarles a los campesinos unas monedas para pan",
           "gold": 6,
-          "success": "Los campesinos cogen las monedas y se van sin mirar atrás. Los furtivos, solos, no se arriesgan."
+          "success": {
+            "who": "Furtivo de los Lobos",
+            "text": "Mira cómo se van los campesinos con tus monedas. Solos no nos la jugamos: sigue tu camino."
+          }
         },
         {
           "kind": "esconderse",
           "text": "Rodear los claros por la maleza, lejos del camino",
           "dc": 13,
-          "success": "Pasáis entre los helechos helados sin que cruja una rama. Desde lejos veis a los campesinos tiritando junto a una hoguera sin leña."
+          "success": {
+            "who": "{companero}",
+            "text": "Ni una rama. Mira allí, junto al camino: los campesinos, tiritando junto a una hoguera sin leña."
+          }
         }
       ],
       "parley": {
@@ -1764,7 +1816,8 @@
           "text": "Tirar el arma en la nieve",
           "resolves": false,
           "success": {
-            "text": "Los furtivos os atan a un pino y se llevan lo que lleváis. Al anochecer vuelve uno de los campesinos y os corta las cuerdas sin decir nada.",
+            "who": "Furtivo de los Lobos",
+            "text": "Al pino con ellos, y lo que lleven, para nosotros. Si tienen suerte, alguien los soltará antes de que se hielen.",
             "effects": [
               {
                 "gold": -6
@@ -1779,14 +1832,21 @@
         "sobornar": {
           "text": "Ofrecer a los campesinos unas monedas para pan, si se apartan",
           "gold": 6,
-          "success": "Los campesinos cogen las monedas y se van hacia la granja. Los furtivos, solos, escupen en la nieve y se pierden entre los árboles.",
-          "failure": "El furtivo grita a los campesinos: «¡Ese oro será nuestro de todas formas!»."
+          "success": {
+            "who": "Furtivo de los Lobos",
+            "text": "Los campesinos se van con tu oro. Bah. Solos no merece la pena. Vámonos."
+          },
+          "failure": {
+            "who": "Furtivo de los Lobos",
+            "text": "¡Ese oro será nuestro de todas formas!"
+          }
         },
         "convencer": {
           "text": "Gritarles que no vienes a por los Lobos, sino a por quien metió el cáliz en tu petate",
           "dc": 13,
           "success": {
-            "text": "El más viejo de los furtivos baja el arco y hace una seña. Se van entre los árboles; al darse la vuelta, a uno se le cae un trozo de cuero doblado.",
+            "who": "Furtivo de los Lobos",
+            "text": "Si buscas a quien te metió el cáliz, no es cosa nuestra. Vete. …Y eso que se ha caído, quédatelo.",
             "effects": [
               {
                 "give": "Mapa de la calzada imperial"
@@ -1797,14 +1857,26 @@
               }
             ]
           },
-          "partial": "Los furtivos dudan, con las flechas a medio tensar. Esta ronda, nadie dispara.",
-          "failure": "«Eso dicen todos.» Tensan los arcos."
+          "partial": {
+            "who": "Furtivo de los Lobos",
+            "text": "Quietos. Dejadle hablar… pero sin bajar los arcos."
+          },
+          "failure": {
+            "who": "Furtivo de los Lobos",
+            "text": "Eso dicen todos. ¡Tensad!"
+          }
         },
         "engañar": {
           "text": "Señalar el camino: «¡Los hombres de Vane vienen detrás de mí!»",
           "dc": 12,
-          "success": "Los furtivos se desvanecen entre los pinos sin esperar a verlos. Los campesinos corren detrás.",
-          "failure": "«Vane no manda a nadie al bosque en invierno.» Ahora atacan sin cuidarse."
+          "success": {
+            "who": "Furtivo de los Lobos",
+            "text": "¿Los de Vane? ¡Al bosque, todos! ¡Ya!"
+          },
+          "failure": {
+            "who": "Furtivo de los Lobos",
+            "text": "Vane no manda a nadie al bosque en invierno. ¡A por {él|ella}!"
+          }
         }
       },
       "mapId": "emboscada-en-el-bosque",
@@ -1877,20 +1949,27 @@
           "skill": "persuasion",
           "dc": 11,
           "success": {
-            "text": "El mayor baja la horca. «Entonces sigue tu camino antes de que cambie de idea.»",
+            "who": "Campesino desesperado",
+            "text": "Entonces sigue tu camino antes de que cambie de idea.",
             "effects": [
               {
                 "fame": 1
               }
             ]
           },
-          "failure": "«¡Todos decís lo mismo!» Levantan las horcas."
+          "failure": {
+            "who": "Campesino desesperado",
+            "text": "¡Todos decís lo mismo!"
+          }
         },
         {
           "kind": "pagar",
           "text": "Darles unas monedas para que pasen el invierno",
           "gold": 4,
-          "success": "Las cogen como quien coge un insulto, pero se apartan de la puerta."
+          "success": {
+            "who": "Campesino desesperado",
+            "text": "…Las cogemos. Pero no creas que te lo agradecemos. Pasa."
+          }
         },
         {
           "kind": "huir",
@@ -1904,7 +1983,8 @@
           "text": "Soltar el arma y enseñar las manos",
           "resolves": false,
           "success": {
-            "text": "Los campesinos os vacían la bolsa y os echan de la granja a pedradas. Nadie os sigue: solo querían que os fuerais.",
+            "who": "Campesino desesperado",
+            "text": "¡La bolsa! ¡Y fuera de nuestra granja! ¡Fuera, a pedradas si hace falta!",
             "effects": [
               {
                 "gold": -4
@@ -1918,28 +1998,47 @@
         "sobornar": {
           "text": "Dejar unas monedas en el suelo: para pan, no para leña",
           "gold": 4,
-          "success": "El mayor recoge las monedas y las aprieta en el puño. «Vete.» Los demás bajan las horcas.",
-          "failure": "«¡No queremos limosna!» Tira las monedas a la nieve."
+          "success": {
+            "who": "Campesino desesperado",
+            "text": "…Vete. Bajad las horcas."
+          },
+          "failure": {
+            "who": "Campesino desesperado",
+            "text": "¡No queremos limosna!"
+          }
         },
         "convencer": {
           "text": "Decirles que no vienes a por su leña",
           "dc": 11,
           "success": {
-            "text": "El mayor baja la horca. «Entonces sigue tu camino antes de que cambie de idea.»",
+            "who": "Campesino desesperado",
+            "text": "Entonces sigue tu camino antes de que cambie de idea.",
             "effects": [
               {
                 "fame": 1
               }
             ]
           },
-          "partial": "Se miran entre ellos. Esta ronda, nadie ataca.",
-          "failure": "«¡Eso dijeron los últimos!» Levantan las horcas."
+          "partial": {
+            "who": "Campesino desesperado",
+            "text": "Esperad… ¿Y si dice la verdad?"
+          },
+          "failure": {
+            "who": "Campesino desesperado",
+            "text": "¡Eso dijeron los últimos!"
+          }
         },
         "engañar": {
           "text": "Gritar que los de Keller vienen por el camino",
           "dc": 11,
-          "success": "Los campesinos sueltan las horcas y corren a esconderse en el sótano. La granja queda para vosotros.",
-          "failure": "«¡Mentira! ¡Keller está al norte!» Os atacan con más rabia."
+          "success": {
+            "who": "Campesino desesperado",
+            "text": "¿Los de Keller? ¡Al sótano, todos! ¡Soltad las horcas y corred!"
+          },
+          "failure": {
+            "who": "Campesino desesperado",
+            "text": "¡Mentira! ¡Keller está al norte!"
+          }
         }
       },
       "mapId": "los-campos-yermos",
@@ -2007,7 +2106,8 @@
           "skill": "persuasion",
           "dc": 14,
           "success": {
-            "text": "Los furtivos se miran, silban a los lobos y cargan con su parte. «No nos has visto.»",
+            "who": "Furtivo de los Lobos",
+            "text": "La mitad, entonces. Cargamos lo nuestro, y tú no nos has visto.",
             "effects": [
               {
                 "standing": "Los Lobos del Bosque",
@@ -2015,13 +2115,19 @@
               }
             ]
           },
-          "failure": "«¿La mitad? Nos lo llevamos todo.» Los lobos enseñan los dientes."
+          "failure": {
+            "who": "Furtivo de los Lobos",
+            "text": "¿La mitad? Nos lo llevamos todo."
+          }
         },
         {
           "kind": "esconderse",
           "text": "Llegar a la carga por detrás, con el viento de cara para que los lobos no os huelan",
           "dc": 14,
-          "success": "Los lobos levantan el hocico, pero el viento va hacia vosotros. Llegáis a la carga sin que nadie grite."
+          "success": {
+            "who": "{companero}",
+            "text": "Los lobos olfatean, pero el viento nos da de cara. Ya estamos en la carga, y nadie ha gritado."
+          }
         }
       ],
       "parley": {
@@ -2030,7 +2136,8 @@
           "text": "Soltar el arma y apartarte de la carga",
           "resolves": false,
           "success": {
-            "text": "Os quitan la bolsa y os echan del claro sin el hierro. Los lobos os siguen un trecho, enseñando los dientes.",
+            "who": "Furtivo de los Lobos",
+            "text": "La bolsa, y fuera del claro. El hierro se queda. Los lobos os acompañarán un trecho, por si acaso.",
             "effects": [
               {
                 "gold": -4
@@ -2044,14 +2151,21 @@
         "sobornar": {
           "text": "Ofrecerles plata por el hierro, como si fuera suyo",
           "gold": 10,
-          "success": "Cuentan la plata, silban a los lobos y se van. El hierro es vuestro.",
-          "failure": "«El hierro vale más que tu plata.» Los lobos gruñen."
+          "success": {
+            "who": "Furtivo de los Lobos",
+            "text": "Plata buena. El hierro es tuyo. ¡Vamos, lobos!"
+          },
+          "failure": {
+            "who": "Furtivo de los Lobos",
+            "text": "El hierro vale más que tu plata."
+          }
         },
         "convencer": {
           "text": "Proponerles la mitad del hierro si os dejan el resto",
           "dc": 13,
           "success": {
-            "text": "Los furtivos se miran, silban a los lobos y cargan con su parte. «No nos has visto.»",
+            "who": "Furtivo de los Lobos",
+            "text": "Trato. Cargamos nuestra parte… y tú no nos has visto.",
             "effects": [
               {
                 "standing": "Los Lobos del Bosque",
@@ -2059,14 +2173,26 @@
               }
             ]
           },
-          "partial": "Los furtivos sujetan a los lobos por el cuello mientras se lo piensan. Esta ronda, nadie ataca.",
-          "failure": "«¿La mitad? Nos lo quedamos todo.» Sueltan a los lobos."
+          "partial": {
+            "who": "Furtivo de los Lobos",
+            "text": "Sujetad a los lobos. Me lo estoy pensando."
+          },
+          "failure": {
+            "who": "Furtivo de los Lobos",
+            "text": "¿La mitad? Nos lo quedamos todo. ¡Soltad a los lobos!"
+          }
         },
         "engañar": {
           "text": "Gritar que ese hierro está maldito: salió de una tumba",
           "dc": 14,
-          "success": "Los furtivos se apartan de la carga como si quemara, llaman a los lobos y se van sin mirar atrás.",
-          "failure": "«Pues mejor: así nadie lo querrá.» Se ríen, y los lobos se lanzan."
+          "success": {
+            "who": "Furtivo de los Lobos",
+            "text": "¿De una tumba? ¡No lo toquéis! ¡Lobos, aquí! Nos vamos."
+          },
+          "failure": {
+            "who": "Furtivo de los Lobos",
+            "text": "Pues mejor: así nadie lo querrá. ¡Lobos!"
+          }
         }
       },
       "traps": [
@@ -2156,7 +2282,10 @@
           "kind": "pagar",
           "text": "Pagarle a Garth la deuda vieja, con intereses",
           "gold": 15,
-          "success": "Garth muerde una moneda, se ríe y hace una seña a los suyos. «Ahora estamos en paz. Hasta la próxima.»"
+          "success": {
+            "who": "Garth el Sanguinario",
+            "text": "Ahora estamos en paz. Hasta la próxima."
+          }
         },
         {
           "kind": "hablar",
@@ -2164,14 +2293,18 @@
           "skill": "persuasion",
           "dc": 15,
           "success": {
-            "text": "Garth escupe al agua sucia. «Por los viejos tiempos. Pero la próxima vez, pagas.»",
+            "who": "Garth el Sanguinario",
+            "text": "Por los viejos tiempos. Pero la próxima vez, pagas.",
             "effects": [
               {
                 "grudge": "Garth el Sanguinario"
               }
             ]
           },
-          "failure": "«Los viejos tiempos no me dan de comer.» Garth levanta el hacha."
+          "failure": {
+            "who": "Garth el Sanguinario",
+            "text": "Los viejos tiempos no me dan de comer."
+          }
         },
         {
           "kind": "huir",
@@ -2186,7 +2319,8 @@
           "text": "Tirar el arma al agua y decirle a Garth que cobre",
           "resolves": false,
           "success": {
-            "text": "Garth te registra los bolsillos, se queda con todo y te mete la cabeza en el agua sucia, una vez, para que te acuerdes. Luego se va riéndose.",
+            "who": "Garth el Sanguinario",
+            "text": "Todo lo que llevas, para mí. Y un chapuzón en el agua sucia, para que te acuerdes. ¡Ja!",
             "effects": [
               {
                 "gold": -10
@@ -2203,28 +2337,47 @@
         "sobornar": {
           "text": "Pagarle a Garth la deuda vieja, con intereses",
           "gold": 12,
-          "success": "Garth muerde una moneda y se ríe. «Ahora estamos en paz. Hasta la próxima.» Sus perros se apartan.",
-          "failure": "«Eso no paga ni los intereses.» Levanta el hacha."
+          "success": {
+            "who": "Garth el Sanguinario",
+            "text": "Ahora estamos en paz. Hasta la próxima. ¡Perros, apartaos!"
+          },
+          "failure": {
+            "who": "Garth el Sanguinario",
+            "text": "Eso no paga ni los intereses."
+          }
         },
         "convencer": {
           "text": "Recordarle que salisteis del mismo barro, y que sus perros sangran por una deuda vieja",
           "dc": 14,
           "success": {
-            "text": "Garth escupe al agua sucia y baja el hacha. «Por los viejos tiempos. Pero la próxima vez, pagas.»",
+            "who": "Garth el Sanguinario",
+            "text": "Por los viejos tiempos, va. Pero la próxima vez, pagas.",
             "effects": [
               {
                 "grudge": "Garth el Sanguinario"
               }
             ]
           },
-          "partial": "Garth duda, con el hacha en alto. Esta ronda no ataca.",
-          "failure": "«Los viejos tiempos no me dan de comer.» Garth carga."
+          "partial": {
+            "who": "Garth el Sanguinario",
+            "text": "Hmm… Déjame pensarlo."
+          },
+          "failure": {
+            "who": "Garth el Sanguinario",
+            "text": "Los viejos tiempos no me dan de comer."
+          }
         },
         "engañar": {
           "text": "Gritar que la guardia de Torres baja por la calle mayor",
           "dc": 13,
-          "success": "Los perros de Garth miran hacia la calle y salen corriendo por el agua. Garth maldice y se va detrás de ellos.",
-          "failure": "«Torres no pisa este callejón ni borracho.» Garth se ríe y aprieta el hacha."
+          "success": {
+            "who": "Garth el Sanguinario",
+            "text": "¿La guardia de Torres? ¡Eh, volved aquí, cobardes! …Malditos perros."
+          },
+          "failure": {
+            "who": "Garth el Sanguinario",
+            "text": "Torres no pisa este callejón ni borracho."
+          }
         }
       },
       "mapId": "callejon-del-barro",
@@ -2279,14 +2432,23 @@
           "text": "Gritarles que en la granja no queda nada que valga su sangre: ni grano ni leña",
           "skill": "persuasion",
           "dc": 16,
-          "success": "Un sargento de Keller se asoma al granero vacío, maldice y ordena seguir hacia el sur.",
-          "failure": "«¡Quemadla igual!» Las antorchas vuelan contra el tejado."
+          "success": {
+            "who": "Rompehielos de Keller",
+            "text": "Aquí no hay nada: ni grano ni leña. Maldita sea. ¡Seguimos hacia el sur!"
+          },
+          "failure": {
+            "who": "Rompehielos de Keller",
+            "text": "¡Quemadla igual!"
+          }
         },
         {
           "kind": "esconderse",
           "text": "Salir por la trampilla del sótano y dejarles la granja vacía",
           "dc": 14,
-          "success": "Cuando los de Keller revientan la puerta, dentro solo hay ceniza fría. Se van antes de que caiga la noche."
+          "success": {
+            "who": "Rompehielos de Keller",
+            "text": "¿Vacía? Solo hay ceniza fría… ¡Nos vamos antes de que caiga la noche!"
+          }
         }
       ],
       "parley": {
@@ -2295,7 +2457,8 @@
           "text": "Salir de la granja con las manos en alto",
           "resolves": false,
           "success": {
-            "text": "Los de Keller os vacían la bolsa y os tienen un día atados en el granero, sin agua. Luego os sueltan en el camino: no quieren bocas que alimentar.",
+            "who": "Rompehielos de Keller",
+            "text": "Vaciadles la bolsa y atadlos en el granero. Mañana, al camino: no quiero más bocas que alimentar.",
             "effects": [
               {
                 "gold": -8
@@ -2312,21 +2475,42 @@
         "sobornar": {
           "text": "Ofrecerle plata al sargento para que siga su camino hacia el sur",
           "gold": 12,
-          "success": "El sargento cuenta la plata, mira la granja vacía y da la orden: siguen hacia el sur.",
-          "failure": "«Keller paga mejor que tú.» Siguen con las antorchas."
+          "success": {
+            "who": "Rompehielos de Keller",
+            "text": "Plata… y una granja vacía. Seguimos hacia el sur."
+          },
+          "failure": {
+            "who": "Rompehielos de Keller",
+            "text": "Keller paga mejor que tú."
+          }
         },
         "convencer": {
           "text": "Gritarles que en la granja no queda nada que valga su sangre: ni grano ni leña",
           "dc": 14,
-          "success": "Un sargento se asoma al granero vacío, maldice y ordena seguir hacia el sur.",
-          "partial": "Los de Keller se paran a mirar el granero vacío. Esta ronda, nadie ataca.",
-          "failure": "«Pues entonces la quemamos con vosotros dentro.» Encienden más antorchas."
+          "success": {
+            "who": "Rompehielos de Keller",
+            "text": "Ni grano ni leña… Maldita sea. ¡Seguimos hacia el sur!"
+          },
+          "partial": {
+            "who": "Rompehielos de Keller",
+            "text": "Esperad. Mirad el granero… ¿De verdad está vacío?"
+          },
+          "failure": {
+            "who": "Rompehielos de Keller",
+            "text": "Pues entonces la quemamos con vosotros dentro."
+          }
         },
         "engañar": {
           "text": "Gritar desde el tejado que se ven antorchas de Vane en el camino",
           "dc": 13,
-          "success": "Los de Keller miran al camino y no esperan a contarlas: se retiran hacia el bosque antes de que les cierren el paso.",
-          "failure": "«Vane no tiene hombres para mandar aquí.» Cargan contra la puerta."
+          "success": {
+            "who": "Rompehielos de Keller",
+            "text": "¿Antorchas de Vane en el camino? ¡Al bosque, antes de que nos cierren el paso!"
+          },
+          "failure": {
+            "who": "Rompehielos de Keller",
+            "text": "Vane no tiene hombres para mandar aquí."
+          }
         }
       },
       "mapId": "los-campos-yermos",
@@ -2398,16 +2582,28 @@
           "text": "Espantarlos con antorchas y golpes en el hielo",
           "skill": "intimidation",
           "dc": 13,
-          "success": "Los lobos retroceden gruñendo, con el rabo entre las patas. El monje cruza el lago sin mirar atrás.",
-          "failure": "Tienen demasiada hambre para tener miedo. Se lanzan a por el monje."
+          "success": {
+            "who": "{companero}",
+            "text": "¡Mira cómo retroceden, con el rabo entre las patas! El monje ya cruza el lago."
+          },
+          "failure": {
+            "who": "{companero}",
+            "text": "Tienen demasiada hambre para tener miedo. ¡Van a por el monje!"
+          }
         },
         {
           "kind": "hablar",
           "text": "Tirarles la carne de las raciones lejos del monje",
           "skill": "survival",
           "dc": 12,
-          "success": "La manada se lanza a por la carne y se pelea por ella en la orilla. Para cuando acaban, el monje ya está al otro lado.",
-          "failure": "Uno coge la carne; los otros cuatro siguen mirando al monje."
+          "success": {
+            "who": "{companero}",
+            "text": "Se pelean por la carne en la orilla… y el monje ya está al otro lado."
+          },
+          "failure": {
+            "who": "{companero}",
+            "text": "Uno se ha quedado con la carne, pero los otros cuatro siguen mirando al monje."
+          }
         }
       ],
       "mapId": "el-hielo-quebradisimo",
@@ -2475,8 +2671,14 @@
           "text": "Hacerte pasar por un cazador que trae noticias del castillo",
           "skill": "deception",
           "dc": 14,
-          "success": "Los furtivos te escuchan, se miran y bajan de las empalizadas para llevar las noticias a su campamento.",
-          "failure": "«Tú no eres de aquí.» Te apuntan desde lo alto."
+          "success": {
+            "who": "Furtivo de los Lobos",
+            "text": "¿Noticias del castillo? Bajemos: esto tiene que oírlo el campamento."
+          },
+          "failure": {
+            "who": "Furtivo de los Lobos",
+            "text": "Tú no eres de aquí."
+          }
         },
         {
           "kind": "esconderse",
@@ -2490,7 +2692,8 @@
           "text": "Soltar el arma al pie de la empalizada",
           "resolves": false,
           "success": {
-            "text": "Os bajan a empujones, os quitan la bolsa y os dejan en el camino. «El peaje es nuestro.»",
+            "who": "Furtivo de los Lobos",
+            "text": "Abajo, la bolsa, y al camino. El peaje es nuestro.",
             "effects": [
               {
                 "gold": -6
@@ -2504,14 +2707,21 @@
         "sobornar": {
           "text": "Pagar el peaje, como cualquier viajero",
           "gold": 6,
-          "success": "El furtivo cuenta las monedas en la mano. «Pasa, y no mires atrás.» Bajan de las empalizadas.",
-          "failure": "«El peaje ha subido.» Tensan los arcos."
+          "success": {
+            "who": "Furtivo de los Lobos",
+            "text": "Pasa, y no mires atrás."
+          },
+          "failure": {
+            "who": "Furtivo de los Lobos",
+            "text": "El peaje ha subido."
+          }
         },
         "convencer": {
           "text": "Decirles que no vienes a por los Lobos: buscas a quien vendió el valle a Keller",
           "dc": 13,
           "success": {
-            "text": "Los furtivos bajan los arcos y se van hacia su campamento, a contar lo que has dicho.",
+            "who": "Furtivo de los Lobos",
+            "text": "¿Buscas a quien vendió el valle? Eso hay que contarlo en el campamento. Bajamos.",
             "effects": [
               {
                 "standing": "Los Lobos del Bosque",
@@ -2519,14 +2729,26 @@
               }
             ]
           },
-          "partial": "Se miran desde lo alto. Esta ronda, nadie dispara.",
-          "failure": "«Todos buscan a alguien.» Disparan."
+          "partial": {
+            "who": "Furtivo de los Lobos",
+            "text": "Quietos ahí arriba. Que siga hablando."
+          },
+          "failure": {
+            "who": "Furtivo de los Lobos",
+            "text": "Todos buscan a alguien. ¡Disparad!"
+          }
         },
         "engañar": {
           "text": "Hacerte pasar por un cazador que trae noticias del castillo",
           "dc": 13,
-          "success": "Los furtivos te escuchan, se miran y bajan de las empalizadas para llevar las noticias a su campamento.",
-          "failure": "«Ningún cazador lleva esas botas.» Tensan los arcos."
+          "success": {
+            "who": "Furtivo de los Lobos",
+            "text": "¿Noticias del castillo? Al campamento, rápido: que lo oigan todos."
+          },
+          "failure": {
+            "who": "Furtivo de los Lobos",
+            "text": "Ningún cazador lleva esas botas."
+          }
         }
       },
       "traps": [
@@ -2595,15 +2817,24 @@
           "kind": "pagar",
           "text": "Pagarles por las hierbas: que se queden con la carreta",
           "gold": 12,
-          "success": "Los del Cuervo cuentan las monedas en el hielo y se apartan. «Coge tus hierbas y lárgate.»"
+          "success": {
+            "who": "Perro del Cuervo",
+            "text": "Coge tus hierbas y lárgate."
+          }
         },
         {
           "kind": "hablar",
           "text": "Proponerles repartir: las hierbas para ti, la carreta y la mula para ellos",
           "skill": "persuasion",
           "dc": 14,
-          "success": "Se lo piensan, y a ninguno le apetece mojarse. «Trato hecho, pero date prisa.»",
-          "failure": "«Nos lo quedamos todo, y tu bolsa también.»"
+          "success": {
+            "who": "Perro del Cuervo",
+            "text": "Trato hecho, pero date prisa. Aquí nadie se moja."
+          },
+          "failure": {
+            "who": "Perro del Cuervo",
+            "text": "Nos lo quedamos todo, y tu bolsa también."
+          }
         },
         {
           "kind": "esconderse",
@@ -2617,7 +2848,8 @@
           "text": "Soltar el arma en el hielo",
           "resolves": false,
           "success": {
-            "text": "Os quitan la bolsa y os dejan sentados en el hielo mientras se llevan las hierbas. Uno se ríe: «Como en los viejos tiempos».",
+            "who": "Perro del Cuervo",
+            "text": "Sentaditos en el hielo mientras nos llevamos las hierbas. Como en los viejos tiempos, ¿eh?",
             "effects": [
               {
                 "gold": -8
@@ -2631,21 +2863,42 @@
         "sobornar": {
           "text": "Pagarles por las hierbas: que se queden con la carreta",
           "gold": 8,
-          "success": "Cuentan las monedas sobre el hielo y se apartan. «Coge tus hierbas y lárgate.»",
-          "failure": "«En el castillo pagan el triple por esas hierbas.» Siguen."
+          "success": {
+            "who": "Perro del Cuervo",
+            "text": "Contadas. Coge tus hierbas y lárgate."
+          },
+          "failure": {
+            "who": "Perro del Cuervo",
+            "text": "En el castillo pagan el triple por esas hierbas."
+          }
         },
         "convencer": {
           "text": "Proponerles repartir: las hierbas para ti, la carreta y la mula para ellos",
           "dc": 13,
-          "success": "Se lo piensan, y a ninguno le apetece mojarse. «Trato hecho, pero date prisa.»",
-          "partial": "El hielo cruje bajo sus botas. Se paran a mirar dónde pisan, y esta ronda no atacan.",
-          "failure": "«¿Para qué repartir, si podemos tenerlo todo?»"
+          "success": {
+            "who": "Perro del Cuervo",
+            "text": "Trato hecho, pero date prisa."
+          },
+          "partial": {
+            "who": "Perro del Cuervo",
+            "text": "¡Cuidado, que cruje! Quietos… Mirad dónde pisáis."
+          },
+          "failure": {
+            "who": "Perro del Cuervo",
+            "text": "¿Para qué repartir, si podemos tenerlo todo?"
+          }
         },
         "engañar": {
           "text": "Gritar que el hielo se está abriendo bajo la carreta",
           "dc": 13,
-          "success": "Los del Cuervo saltan hacia la orilla sin mirar. Cuando ven que el hielo aguanta, ya tienes las hierbas.",
-          "failure": "Uno pisa fuerte el hielo y se ríe. «Aguanta de sobra.» Ahora van a por ti sin cuidarse."
+          "success": {
+            "who": "Perro del Cuervo",
+            "text": "¿Que se abre? ¡A la orilla! …Eh, si aguanta. ¡Nos ha engañado, y ya tiene las hierbas!"
+          },
+          "failure": {
+            "who": "Perro del Cuervo",
+            "text": "Aguanta de sobra. ¡A por {él|ella}!"
+          }
         }
       },
       "mapId": "el-hielo-quebradisimo",
@@ -2705,14 +2958,18 @@
           "dc": 15,
           "resolves": false,
           "success": {
-            "text": "Sombra mira a los suyos, que ya retroceden hacia los túneles. Tira las dagas al suelo y se queda solo, con el plano apretado en el puño.",
+            "who": "Sombra, el espía",
+            "text": "¿Os vais? ¿Así me pagáis? …Está bien. Me rindo. Aquí tienes mis dagas.",
             "effects": [
               {
                 "milestone": "la-nieve-manchada"
               }
             ]
           },
-          "failure": "Sombra se ríe con una tos seca. «Mátalos», les dice a los suyos."
+          "failure": {
+            "who": "Sombra, el espía",
+            "text": "Ja… Matadlos."
+          }
         },
         {
           "kind": "huir",
@@ -2726,41 +2983,56 @@
           "text": "Ofrecer a los matones más plata que la que les paga Sombra",
           "gold": 12,
           "success": {
-            "text": "Los perros del Cuervo cogen la plata y se van por los túneles. Sombra se queda solo, tira las dagas y levanta las manos.",
+            "who": "Sombra, el espía",
+            "text": "¿Por esa plata me dejáis? Perros… Me rindo, me rindo.",
             "effects": [
               {
                 "milestone": "la-nieve-manchada"
               }
             ]
           },
-          "failure": "«Sombra paga en oro, no en calderilla.» Siguen."
+          "failure": {
+            "who": "Sombra, el espía",
+            "text": "Yo pago en oro, no en calderilla."
+          }
         },
         "convencer": {
           "text": "Cerrarle la salida a Sombra y decirle que sus matones ya le han vendido",
           "dc": 14,
           "success": {
-            "text": "Sombra mira a los suyos, que ya retroceden hacia los túneles. Tira las dagas al suelo y se queda solo, con el plano apretado en el puño.",
+            "who": "Sombra, el espía",
+            "text": "¿Ya retrocedéis? Cobardes… Está bien: solo no puedo. Me rindo.",
             "effects": [
               {
                 "milestone": "la-nieve-manchada"
               }
             ]
           },
-          "partial": "Sombra mira a sus matones, y sus matones le miran a él. Esta ronda, nadie ataca.",
-          "failure": "Sombra sonríe. «Mis perros saben quién les paga.»"
+          "partial": {
+            "who": "Sombra, el espía",
+            "text": "¿Qué me miráis? …¿Qué os ha dicho?"
+          },
+          "failure": {
+            "who": "Sombra, el espía",
+            "text": "Mis perros saben quién les paga."
+          }
         },
         "engañar": {
           "text": "Gritar a los matones que Sombra trabaja para Keller y que también les venderá a ellos",
           "dc": 14,
           "success": {
-            "text": "Los perros del Cuervo se vuelven hacia Sombra con las armas en alto. Sombra tira las dagas y se te rinde a ti antes que a ellos.",
+            "who": "Sombra, el espía",
+            "text": "¡Bajad las armas, imbéciles! ¡Es mentira! …Me rindo. A ti, antes que a ellos.",
             "effects": [
               {
                 "milestone": "la-nieve-manchada"
               }
             ]
           },
-          "failure": "«Todos trabajamos para alguien.» Siguen."
+          "failure": {
+            "who": "Sombra, el espía",
+            "text": "Todos trabajamos para alguien."
+          }
         },
         "no": [
           "entregarse"
@@ -2841,8 +3113,14 @@
           "text": "Subir a la torre y hacer sonar el cuerno de retirada de Keller",
           "skill": "deception",
           "dc": 16,
-          "success": "La infantería duda, mira atrás y retrocede hacia el barro. Los rompehielos, solos, no se arriesgan a cruzar.",
-          "failure": "Los rompehielos conocen su propio cuerno: ese no es. Cargan contra la empalizada."
+          "success": {
+            "who": "Rompehielos de Keller",
+            "text": "¿El cuerno de retirada? La infantería ya da media vuelta… Solos no cruzamos. ¡Atrás!"
+          },
+          "failure": {
+            "who": "Rompehielos de Keller",
+            "text": "Ese no es nuestro cuerno. ¡A la empalizada!"
+          }
         },
         {
           "kind": "huir",
@@ -2855,15 +3133,30 @@
         "convencer": {
           "text": "Gritar a los jóvenes de la infantería que Keller los manda delante para que mueran ellos",
           "dc": 15,
-          "success": "La infantería duda, mira atrás y retrocede hacia el barro. Los rompehielos, solos, no se arriesgan a cruzar.",
-          "partial": "Los jóvenes del norte se miran entre ellos. Esta ronda, no atacan.",
-          "failure": "«¡Por la Casa Keller!» Cargan con más rabia."
+          "success": {
+            "who": "Rompehielos de Keller",
+            "text": "¡Volved aquí, chavales! …Se vuelven al barro. Y solos no cruzamos esto."
+          },
+          "partial": {
+            "who": "Rompehielos de Keller",
+            "text": "¿Qué hacéis mirándoos? ¡Adelante! …¿Nadie?"
+          },
+          "failure": {
+            "who": "Rompehielos de Keller",
+            "text": "¡Por la Casa Keller! ¡Cargad!"
+          }
         },
         "engañar": {
           "text": "Hacer sonar el cuerno de retirada de Keller desde la torre",
           "dc": 14,
-          "success": "La infantería oye la retirada, duda y retrocede hacia el barro. Los rompehielos se van detrás, maldiciendo.",
-          "failure": "Los rompehielos conocen ese cuerno, y no es el suyo. Ahora vienen a por ti sin cuidarse."
+          "success": {
+            "who": "Rompehielos de Keller",
+            "text": "¿La retirada? Malditos críos, ya se vuelven al barro… ¡Atrás todos!"
+          },
+          "failure": {
+            "who": "Rompehielos de Keller",
+            "text": "Conozco ese cuerno, y no es el nuestro. ¡A por {él|ella}!"
+          }
         },
         "no": [
           "entregarse",
@@ -2936,7 +3229,8 @@
           "skill": "persuasion",
           "dc": 14,
           "success": {
-            "text": "Los furtivos miran el barro, luego te miran a ti, y se van río arriba.",
+            "who": "Furtivo de los Lobos",
+            "text": "¿Se traga a los caballos? …Río arriba, entonces.",
             "effects": [
               {
                 "standing": "Los Lobos del Bosque",
@@ -2944,13 +3238,19 @@
               }
             ]
           },
-          "failure": "«¿Y por qué íbamos a fiarnos de ti?» Siguen avanzando."
+          "failure": {
+            "who": "Furtivo de los Lobos",
+            "text": "¿Y por qué íbamos a fiarnos de ti?"
+          }
         },
         {
           "kind": "pagar",
           "text": "Pagarles el paso del cruce, como si fuera suyo",
           "gold": 10,
-          "success": "Cogen el dinero y se quedan en la otra orilla, riéndose de ti."
+          "success": {
+            "who": "Furtivo de los Lobos",
+            "text": "Gracias por el paso. ¡Ja! Que lo disfrutes."
+          }
         }
       ],
       "parley": {
@@ -2959,7 +3259,8 @@
           "text": "Soltar el arma en el barro del cruce",
           "resolves": false,
           "success": {
-            "text": "Los furtivos cruzan el fango a sus anchas y os dejan atados al poste del cruce, sin la bolsa. Un arriero os suelta a la mañana siguiente.",
+            "who": "Furtivo de los Lobos",
+            "text": "Atadlos al poste y llevaos la bolsa. Algún arriero los soltará mañana.",
             "effects": [
               {
                 "gold": -6
@@ -2974,14 +3275,21 @@
         "sobornar": {
           "text": "Pagarles para que crucen río arriba",
           "gold": 8,
-          "success": "Cogen el dinero y se van río arriba, lejos del cruce.",
-          "failure": "«Ya cruzaremos por donde queramos.»"
+          "success": {
+            "who": "Furtivo de los Lobos",
+            "text": "Dinero bien ganado. Río arriba, chicos."
+          },
+          "failure": {
+            "who": "Furtivo de los Lobos",
+            "text": "Ya cruzaremos por donde queramos."
+          }
         },
         "convencer": {
           "text": "Avisarles de que el fango del cruce se traga a los caballos",
           "dc": 13,
           "success": {
-            "text": "Los furtivos miran el barro, luego te miran a ti, y se van río arriba.",
+            "who": "Furtivo de los Lobos",
+            "text": "¿El fango se traga a los caballos? …Río arriba, entonces.",
             "effects": [
               {
                 "standing": "Los Lobos del Bosque",
@@ -2989,14 +3297,26 @@
               }
             ]
           },
-          "partial": "Uno de ellos se hunde hasta la rodilla en el fango y los demás se paran a sacarlo. Esta ronda, no atacan.",
-          "failure": "«Conocemos este barro mejor que tú.»"
+          "partial": {
+            "who": "Furtivo de los Lobos",
+            "text": "¡Me hundo! ¡Sacadme de aquí!"
+          },
+          "failure": {
+            "who": "Furtivo de los Lobos",
+            "text": "Conocemos este barro mejor que tú."
+          }
         },
         "engañar": {
           "text": "Gritar que la crecida baja por el río",
           "dc": 13,
-          "success": "Los furtivos miran río arriba, oyen el agua y salen del cruce a toda prisa.",
-          "failure": "«El río baja así desde hace una semana.» Siguen cruzando."
+          "success": {
+            "who": "Furtivo de los Lobos",
+            "text": "¿La crecida? ¡Fuera del cruce, rápido!"
+          },
+          "failure": {
+            "who": "Furtivo de los Lobos",
+            "text": "El río baja así desde hace una semana."
+          }
         }
       },
       "mapId": "el-barrizal-final",
@@ -3060,7 +3380,8 @@
           "skill": "persuasion",
           "dc": 18,
           "success": {
-            "text": "La Capitana Keller te mira un largo rato sin decir nada. Luego ordena desmontar la tienda. «Volveremos en primavera. O no.»",
+            "who": "Capitana Keller",
+            "text": "…Desmontad la tienda. Volveremos en primavera. O no.",
             "effects": [
               {
                 "standing": "La Casa Keller",
@@ -3068,7 +3389,10 @@
               }
             ]
           },
-          "failure": "Keller sonríe por primera vez. «Tú no negocias en nombre de nadie.»"
+          "failure": {
+            "who": "Capitana Keller",
+            "text": "Tú no negocias en nombre de nadie."
+          }
         },
         {
           "kind": "huir",
@@ -3082,7 +3406,8 @@
           "text": "Ofrecerle a Keller retirarse con honor: el valle no vale su ejército",
           "dc": 15,
           "success": {
-            "text": "La Capitana Keller te mira un largo rato sin bajar la pica. Luego ordena desmontar la tienda. «Volveremos en primavera. O no.»",
+            "who": "Capitana Keller",
+            "text": "El valle no vale mi ejército, dices. Puede ser. ¡Desmontad la tienda! Volveremos en primavera… o no.",
             "effects": [
               {
                 "standing": "La Casa Keller",
@@ -3090,14 +3415,26 @@
               }
             ]
           },
-          "partial": "Keller levanta la mano y su escolta se para. Te escucha, sin bajar la pica. Esta ronda, nadie ataca.",
-          "failure": "«El norte no se retira.» Keller avanza con la pica."
+          "partial": {
+            "who": "Capitana Keller",
+            "text": "Alto. Que hable. Pero la pica no se baja."
+          },
+          "failure": {
+            "who": "Capitana Keller",
+            "text": "El norte no se retira."
+          }
         },
         "engañar": {
           "text": "Decirle que Vane ha cerrado el paso del sur a su espalda: si no se va hoy, se queda sin camino",
           "dc": 16,
-          "success": "Keller mira hacia el sur, aprieta los dientes y da la orden de levantar el campamento antes del anochecer.",
-          "failure": "«Mis exploradores vieron el paso abierto esta mañana.» Keller carga."
+          "success": {
+            "who": "Capitana Keller",
+            "text": "¿El paso del sur, cerrado? …¡Levantad el campamento antes de que anochezca!"
+          },
+          "failure": {
+            "who": "Capitana Keller",
+            "text": "Mis exploradores vieron el paso abierto esta mañana."
+          }
         },
         "no": [
           "entregarse",
@@ -3159,8 +3496,14 @@
           "text": "Pedirle a Vane que abra las puertas: el valle ya ha decidido",
           "skill": "persuasion",
           "dc": 17,
-          "success": "Vane tose sangre en el pañuelo y se ríe. «Que así sea.» Deja caer la ropera, y los alabarderos se apartan de las puertas.",
-          "failure": "«Mientras me quede aliento, esta es mi casa.» Los alabarderos cierran filas."
+          "success": {
+            "who": "Lord Vane",
+            "text": "Ja… Que así sea. Apartaos de las puertas."
+          },
+          "failure": {
+            "who": "Lord Vane",
+            "text": "Mientras me quede aliento, esta es mi casa. ¡Cerrad filas!"
+          }
         },
         {
           "kind": "huir",
@@ -3173,21 +3516,42 @@
         "sobornar": {
           "text": "Ofrecer a los alabarderos la paga que Vane ya no puede darles",
           "gold": 30,
-          "success": "Los alabarderos se miran, bajan las armas y se apartan de las puertas. Vane se queda solo, tose en el pañuelo y deja caer la ropera.",
-          "failure": "«Somos leales, no mercenarios.» Cierran filas."
+          "success": {
+            "who": "Lord Vane",
+            "text": "¿Os apartáis? ¿Por su plata? …Ya no me queda nadie. Ahí tenéis mi ropera."
+          },
+          "failure": {
+            "who": "Lord Vane",
+            "text": "Mis alabarderos son leales, no mercenarios."
+          }
         },
         "convencer": {
           "text": "Pedirle a Vane que abra las puertas: el valle ya ha decidido",
           "dc": 15,
-          "success": "Vane tose sangre en el pañuelo y se ríe. «Que así sea.» Deja caer la ropera, y los alabarderos se apartan de las puertas.",
-          "partial": "Vane levanta la mano y sus alabarderos se quedan quietos. Esta ronda, nadie ataca.",
-          "failure": "«El valle no decide nada: lo decido yo.» Vane levanta la ropera."
+          "success": {
+            "who": "Lord Vane",
+            "text": "El valle ha decidido, ¿eh? Que así sea. Abrid las puertas."
+          },
+          "partial": {
+            "who": "Lord Vane",
+            "text": "Quietos. Quiero oír lo que dice."
+          },
+          "failure": {
+            "who": "Lord Vane",
+            "text": "El valle no decide nada: lo decido yo."
+          }
         },
         "engañar": {
           "text": "Gritar a los alabarderos que Vane ya se ha vendido a Keller",
           "dc": 16,
-          "success": "Los alabarderos miran a Vane, y Vane no dice nada. Uno a uno, se apartan de las puertas. Vane tira la ropera al barro.",
-          "failure": "Vane se ríe hasta toser. «Mis hombres me conocen mejor que tú.»"
+          "success": {
+            "who": "Lord Vane",
+            "text": "¿Vendido a Keller, yo? …¿Me miráis así? Idos, entonces. Idos todos."
+          },
+          "failure": {
+            "who": "Lord Vane",
+            "text": "Mis hombres me conocen mejor que tú."
+          }
         },
         "no": [
           "entregarse"
@@ -3258,7 +3622,8 @@
           "skill": "intimidation",
           "dc": 15,
           "success": {
-            "text": "Los lobos grandes aguantan un momento y luego se dan la vuelta. La manada los sigue calle abajo.",
+            "who": "{companero}",
+            "text": "¡Funciona! Los grandes se dan la vuelta, y la manada los sigue calle abajo.",
             "effects": [
               {
                 "attitude": 1,
@@ -3266,7 +3631,10 @@
               }
             ]
           },
-          "failure": "El lobo alfa ni se inmuta: los demás no comen hasta que él come, y tiene hambre."
+          "failure": {
+            "who": "{companero}",
+            "text": "El alfa ni se inmuta. Los demás no comen hasta que come él… y tiene hambre."
+          }
         },
         {
           "kind": "esconderse",
@@ -3274,7 +3642,8 @@
           "skill": "athletics",
           "dc": 12,
           "success": {
-            "text": "Los lobos arañan la puerta hasta el amanecer y se van con la primera luz.",
+            "who": "Giles",
+            "text": "¿Oís cómo arañan la puerta? Aguantad… Ya clarea: se van con la primera luz.",
             "effects": [
               "time",
               {
@@ -3348,7 +3717,8 @@
           "skill": "deception",
           "dc": 15,
           "success": {
-            "text": "La vanguardia se repliega a las torres del norte, y de ahí al paso. El peaje vuelve a ser vuestro sin sangre.",
+            "who": "Rompehielos de Keller",
+            "text": "¿Cien hombres? ¡Atrás, a las torres del norte! ¡Y de ahí, al paso!",
             "effects": [
               {
                 "standing": "La Casa Keller",
@@ -3356,7 +3726,10 @@
               }
             ]
           },
-          "failure": "Desde las torres se ve el camino entero, y está vacío. «¡A por ellos!»"
+          "failure": {
+            "who": "Rompehielos de Keller",
+            "text": "Desde las torres se ve el camino entero, y está vacío. ¡A por ellos!"
+          }
         },
         {
           "kind": "huir",
@@ -3369,15 +3742,25 @@
         "convencer": {
           "text": "Gritarles que el peaje no vale su sangre: que vuelvan a las torres antes de que llegue Vane",
           "dc": 15,
-          "success": "La vanguardia se repliega a las torres del norte, y de ahí al paso. El peaje vuelve a ser vuestro sin más sangre.",
-          "partial": "Los de Keller se miran entre la nieve. Esta ronda, nadie ataca.",
-          "failure": "«Hemos cruzado las montañas a pie. No nos vamos.»"
+          "success": {
+            "who": "Rompehielos de Keller",
+            "text": "El peaje no vale nuestra sangre, no. ¡Replegaos a las torres, y de ahí al paso!"
+          },
+          "partial": {
+            "who": "Rompehielos de Keller",
+            "text": "Quietos… Dejad que hable."
+          },
+          "failure": {
+            "who": "Rompehielos de Keller",
+            "text": "Hemos cruzado las montañas a pie. No nos vamos."
+          }
         },
         "engañar": {
           "text": "Gritar que Vane viene detrás con cien hombres",
           "dc": 14,
           "success": {
-            "text": "La vanguardia se repliega a las torres del norte, y de ahí al paso. El peaje vuelve a ser vuestro.",
+            "who": "Rompehielos de Keller",
+            "text": "¿Vane con cien hombres? ¡A las torres, y de ahí al paso! ¡Rápido!",
             "effects": [
               {
                 "standing": "La Casa Keller",
@@ -3385,7 +3768,10 @@
               }
             ]
           },
-          "failure": "«Vane no tiene cien hombres ni en sueños.» Ahora atacan sin cuidarse."
+          "failure": {
+            "who": "Rompehielos de Keller",
+            "text": "Vane no tiene cien hombres ni en sueños. ¡A por ellos!"
+          }
         },
         "no": [
           "entregarse",
@@ -4770,23 +5156,24 @@
       "name": "Finn conoce el hielo",
       "weight": 8,
       "when": { "momento": "llegada", "sitio": "El Lago Helado" },
+      "who": "Finn",
       "text": "Finn, el pescador del lago, recoge los sedales al veros llegar. Dice que conoce el hielo mejor que su propia barca: por dónde aguanta un caballo y por dónde se abre bajo una bota.",
       "options": [
         {
           "label": "Pagarle para que os guíe cuando haga falta",
           "cost": { "oro": 3 },
           "effects": ["guia:Finn"],
-          "then": "Finn se guarda las monedas. «Cuando queráis cruzar hacia la ermita, venid a buscarme. Pisad donde yo pise y no os pasará nada.»"
+          "then": "Cuando queráis cruzar hacia la ermita, venid a buscarme. Pisad donde yo pise y no os pasará nada."
         },
         {
           "label": "Preguntarle qué hay bajo el hielo",
           "check": { "skill": "insight", "dc": 12 },
-          "success": { "effects": ["rumor"], "then": "Baja la voz y os cuenta lo que ha visto en el fondo, hacia el centro del lago." },
-          "fail": { "effects": ["hora"], "then": "Se pone a hablar de peces y de inviernos de antes, y se os va la tarde." }
+          "success": { "effects": ["rumor"], "then": "Acercaos, que esto no lo cuento a voces. Hacia el centro del lago, en el fondo, he visto algo…" },
+          "fail": { "effects": ["hora"], "then": "¿Bajo el hielo? Peces, muchos peces. Ah, ¡el invierno del sesenta! Ese sí que fue frío… Ya os cuento, ya." }
         },
         {
           "label": "Seguir a lo vuestro",
-          "then": "Finn vuelve a sus agujeros de pesca sin decir nada más."
+          "then": "Como queráis. Yo sigo con lo mío."
         }
       ]
     },
@@ -4795,24 +5182,26 @@
       "name": "Los hombres de Vane os paran",
       "weight": 5,
       "when": { "momento": "llegada", "faccion": "leales-de-montesclaros", "reputacionAqui": [-1, -1] },
+      "who": "Un hombre de Vane",
       "text": "Tres hombres con el emblema de {bando} os cortan el paso a la entrada. Dicen que el invierno es largo y que los forasteros pagan su parte.",
       "options": [
         {
           "label": "Pagar lo que piden",
           "cost": { "oro": 4 },
           "effects": ["faccion:leales-de-montesclaros:+1"],
-          "then": "Cuentan las monedas dos veces y os dejan pasar. Uno hasta os saluda al iros."
+          "then": "Cuentan bien… Pasad. Y buen camino."
         },
         {
           "label": "Negarse a pagar",
           "check": { "skill": "persuasion", "dc": 13 },
-          "success": { "then": "Os miran de arriba abajo, se encogen de hombros y os dejan pasar sin cobrar." },
-          "fail": { "effects": ["faccion:leales-de-montesclaros:-1", "herida:1d4"], "then": "Hay empujones antes de que os dejen ir. Se acordarán de vuestra cara." }
+          "success": { "then": "Bah. Pasad, pasad. Hoy no tengo ganas de pelea." },
+          "fail": { "effects": ["faccion:leales-de-montesclaros:-1", "herida:1d4"], "then": "¡Fuera de aquí! Y me acordaré de vuestra cara." }
         },
         {
           "label": "Dar un rodeo por el barro",
           "effects": ["hora"],
-          "then": "Os cuesta la tarde entera, pero no les dais ni una moneda."
+          "who": "{companero}",
+          "then": "Una tarde entera por el barro… pero no les hemos dado ni una moneda."
         }
       ]
     },
@@ -4821,22 +5210,23 @@
       "name": "Los Lobos os piden ayuda",
       "weight": 5,
       "when": { "momento": "viaje", "reputacion": { "los-lobos-del-bosque": [1, 5] } },
+      "who": "Un muchacho de los Lobos",
       "text": "Camino de {destino}, un muchacho de {bando} sale de entre los pinos. Tienen a un herido que no llegará vivo al campamento a pie, y los hombres de Vane vigilan el camino.",
       "options": [
         {
           "label": "Llevar al herido con vosotros",
           "effects": ["dia", "faccion:los-lobos-del-bosque:+1", "faccion:leales-de-montesclaros:-1"],
-          "then": "Lo dejáis a la entrada del bosque, donde esperan los suyos. Os lo agradecen con un gesto; en el castillo lo sabrán pronto."
+          "then": "Aquí, a la entrada del bosque, nos esperan los nuestros. Gracias. …En el castillo lo sabrán pronto: tened cuidado."
         },
         {
           "label": "Darles vendas y seguir",
           "cost": { "oro": 2 },
           "effects": ["faccion:los-lobos-del-bosque:+1"],
-          "then": "El muchacho coge las vendas sin dar las gracias y desaparece entre los árboles."
+          "then": "Vendas. Algo es algo."
         },
         {
           "label": "No meterse",
-          "then": "El muchacho escupe al suelo y se vuelve por donde vino."
+          "then": "Ya veo. Igual que todos."
         }
       ]
     },
@@ -4845,21 +5235,23 @@
       "name": "Las avanzadas de Keller",
       "weight": 4,
       "when": { "momento": "semana", "reloj": { "la-casa-keller": [2, 99] } },
+      "who": "Un leñador",
       "text": "Llegan noticias del norte: {bando} ha movido sus avanzadas más cerca del paso. Un leñador dice que sabe dónde acampan.",
       "options": [
         {
           "label": "Avisar a los hombres de Vane",
           "effects": ["reloj:la-casa-keller:-1", "faccion:leales-de-montesclaros:+1", "faccion:la-casa-keller:-1"],
-          "then": "Vane manda una patrulla y las avanzadas se retiran. En el norte ya saben quién dio el aviso."
+          "then": "Vane ha mandado una patrulla y las avanzadas se han retirado. Pero en el norte ya saben quién dio el aviso."
         },
         {
           "label": "Venderle el dato a Keller",
           "effects": ["oro:+1d6", "faccion:la-casa-keller:+1"],
-          "then": "Un jinete de Keller os paga en plata buena, sin preguntar nada."
+          "who": "Un jinete de Keller",
+          "then": "Plata buena, como se prometió. Y no preguntamos nada."
         },
         {
           "label": "Callar",
-          "then": "Mejor no meterse en lo que se avecina."
+          "then": "Haces bien. Mejor no meterse en lo que se avecina."
         }
       ]
     }
@@ -5220,18 +5612,19 @@
                 "later": {
                   "days": 5,
                   "name": "Garret no olvida",
+                  "who": "Garret",
                   "text": "Garret, el guardia del rastrillo, te sale al paso con la capucha calada. Por las dos monedas de la otra vez, te trae algo que no debería contarte.",
                   "options": [
                     {
                       "label": "Escucharle",
                       "effects": ["rumor"],
-                      "then": "Te cuenta quién entra y quién sale del castillo de noche, y a qué hora cambian la guardia."
+                      "then": "Te cuento quién entra y quién sale del castillo de noche, y a qué hora cambia la guardia. Pero tú no me has oído."
                     },
                     {
                       "label": "Darle otras dos monedas",
                       "cost": { "oro": 2 },
                       "effects": ["rumor", "fama:+1"],
-                      "then": "Se le suelta la lengua del todo. En el cuartel ya dicen que eres de fiar."
+                      "then": "Con esto se me suelta la lengua del todo. En el cuartel ya dicen que eres de fiar, ¿sabes?"
                     }
                   ]
                 }
@@ -5316,18 +5709,19 @@
                 "later": {
                   "days": 3,
                   "name": "Los graneros vacíos",
+                  "who": "Giles",
                   "text": "Llegan noticias del pueblo: los graneros están medio vacíos y la cola del pan da la vuelta a la plaza. Hay quien dice que aquella noche tú viste algo y callaste.",
                   "options": [
                     {
                       "label": "Mandar al pueblo lo que podáis",
                       "cost": { "oro": 4 },
                       "effects": ["fama:+1"],
-                      "then": "No llega para todos, pero esa noche algunos niños cenan caliente."
+                      "then": "No llega para todos, pero esta noche algunos críos cenan caliente. Gracias."
                     },
                     {
                       "label": "Callar y seguir con lo vuestro",
                       "effects": ["fama:-1"],
-                      "then": "Un viejo escupe al suelo cuando pasáis. En el pueblo ya no os saludan igual."
+                      "then": "¿Has visto a ese viejo escupir al pasar? En el pueblo ya no os saludan igual."
                     }
                   ]
                 }
@@ -5350,17 +5744,18 @@
                 "later": {
                   "days": 4,
                   "name": "La flecha en la puerta",
+                  "who": "{companero}",
                   "text": "Una flecha se clava en la puerta, a un palmo de tu cara. Lleva atado un trapo con una marca de garra: los Lobos no olvidan a quien les cerró los graneros.",
                   "options": [
                     {
                       "label": "Leer lo que dice el trapo",
                       "effects": ["rumor"],
-                      "then": "Debajo de la garra hay algo escrito con carbón: dónde os esperan. Ya sabéis por dónde no ir."
+                      "then": "Debajo de la garra hay algo escrito con carbón: dónde nos esperan. Ya sabemos por dónde no ir."
                     },
                     {
                       "label": "Vigilar toda la noche",
                       "cost": { "horas": 2 },
-                      "then": "No viene nadie. Por la mañana estáis {cansados|cansadas}, pero {enteros|enteras}."
+                      "then": "No ha venido nadie en toda la noche. Estamos {cansados|cansadas}, pero {enteros|enteras}."
                     }
                   ]
                 }
@@ -6010,7 +6405,8 @@
         "act": 3,
         "title": "El valle arde",
         "hint": "",
-        "scene": "Los Lobos del Bosque no han necesitado a nadie. Han bajado de noche, han abierto las puertas desde dentro y han colgado a Lord Vane de su propio rastrillo.",
+        "pov": "Karl",
+        "scene": "No hemos necesitado a nadie. Bajamos de noche, abrimos las puertas desde dentro, y Lord Vane cuelga ya de su propio rastrillo.",
         "opens": {
           "kind": "clock",
           "faction": "los-lobos-del-bosque"
@@ -6031,7 +6427,8 @@
         "act": 3,
         "title": "El yugo llega del norte",
         "hint": "",
-        "scene": "La Casa Keller no ha esperado a nadie. Sus estandartes negros ya ondean sobre El Pueblo de Barro, y los que no juran lealtad cuelgan de los árboles del camino.",
+        "pov": "Elara Keller",
+        "scene": "La Casa Keller no espera a nadie. Mis estandartes ya ondean sobre El Pueblo de Barro, y el que no jura lealtad cuelga de los árboles del camino.",
         "opens": {
           "kind": "clock",
           "faction": "la-casa-keller"
@@ -6227,7 +6624,8 @@
     "endings": {
       "yugo-de-hierro": {
         "title": "El yugo de hierro",
-        "scene": "La bandera negra ondea sobre las ruinas humeantes del castillo de Vane. La Capitana Keller te tira a los pies una bolsa pesada, con más oro del que has visto en tu vida. A tu alrededor, los soldados de Vane cuelgan de las almenas y los campesinos reconstruyen el peaje bajo el látigo. Eres {rico|rica} y has sobrevivido al invierno. Pero al marcharte, la gente aparta la mirada: eres {el mercenario|la mercenaria} que vendió el valle a los Keller.",
+        "who": "Elara Keller",
+        "scene": "Ahí tienes tu paga: más oro del que has visto en tu vida. Mira a tu alrededor: los soldados de Vane cuelgan de las almenas, y los campesinos levantan otra vez el peaje, a látigo. Has sobrevivido al invierno y eres {rico|rica}. Pero cuando te marches, verás que la gente aparta la mirada: para ellos eres {el mercenario|la mercenaria} que vendió el valle a los Keller.",
         "epilogues": [
           { "who": "La Casa Keller", "text": "La Casa Keller se queda con el valle. Cobra el peaje el doble y a eso lo llama orden." },
           { "who": "Lord Edmund Vane", "text": "Lord Vane no llega a la primavera: los Keller lo cuelgan de su propia muralla." },
@@ -6243,10 +6641,11 @@
           "visitor": {
             "days": 3,
             "name": "Un enviado de los Keller",
+            "who": "Un enviado de los Keller",
             "text": "Un hombre con el escudo negro de los Keller os espera en la taberna. Dice que el Duque no olvida a quien le sirve bien, y deja una bolsa sobre la mesa.",
             "options": [
-              { "label": "Aceptar la bolsa", "effects": ["oro:+2d6", "fama:-1"], "then": "Os la guardáis. En la mesa de al lado, alguien escupe al suelo." },
-              { "label": "Devolvérsela", "effects": ["fama:+1"], "then": "Se encoge de hombros y se va. Al salir, dice que el Duque tiene buena memoria." }
+              { "label": "Aceptar la bolsa", "effects": ["oro:+2d6", "fama:-1"], "then": "Sabia decisión. Y no hagas caso a ese de la mesa de al lado, que escupe por envidia." },
+              { "label": "Devolvérsela", "effects": ["fama:+1"], "then": "Como quieras. Pero el Duque tiene buena memoria." }
             ]
           },
           "offers": [
@@ -6256,7 +6655,8 @@
       },
       "status-quo-de-sangre": {
         "title": "El status quo de sangre",
-        "scene": "Lord Vane tose sangre sobre sus alfombras, pero respira. Los Keller han vuelto a las montañas y los Lobos han caído en el bosque. Tu paga llega en un cofre de plata fina. El valle sigue siendo de los Montesclaros, aunque los campos estén yermos y apenas quede quien los trabaje. Has cumplido como {un profesional|una profesional}. Te marchas por el paso del sur y dejas atrás un cementerio gobernado por un noble endeudado.",
+        "who": "Lord Edmund Vane",
+        "scene": "Toso sangre sobre mis alfombras, pero respiro. Los Keller han vuelto a sus montañas y los Lobos se pudren en el bosque. Tu paga: un cofre de plata fina. El valle sigue siendo de los Montesclaros, aunque los campos estén yermos y apenas quede quien los trabaje. Has cumplido como {un profesional|una profesional}. Vete por el paso del sur, y no mires atrás: aquí solo queda un cementerio con un noble endeudado.",
         "epilogues": [
           { "who": "Leales de Montesclaros", "text": "Los Montesclaros conservan el valle, pero con las arcas vacías y los campos sin nadie que los trabaje." },
           { "who": "Lord Edmund Vane", "text": "Lord Vane sube otra vez los impuestos para pagar la guerra. Nadie se atreve a quejarse." },
@@ -6272,14 +6672,15 @@
           "visitor": {
             "days": 4,
             "name": "Una mujer del bosque",
+            "who": "Una mujer del bosque",
             "text": "Una mujer con una capa de piel de lobo pregunta por ti en el muelle. Su hermano cayó en el bosque de Vane, y quiere saber quién dio la orden.",
             "options": [
-              { "label": "Contarle la verdad", "effects": ["fama:+1"], "then": "Te escucha sin llorar. Se va sin decir nada, pero no saca el cuchillo." },
+              { "label": "Contarle la verdad", "effects": ["fama:+1"], "then": "…Gracias por no mentirme. Hoy no sacaré el cuchillo." },
               {
                 "label": "Decirle que no sabes nada",
                 "check": { "skill": "deception", "dc": 12 },
-                "success": { "then": "Se lo cree, o hace como que se lo cree, y se pierde entre la gente del muelle." },
-                "fail": { "effects": ["herida:1d4"], "then": "No se lo cree. Antes de irse te deja un corte en el brazo, para que te acuerdes." }
+                "success": { "then": "Ya. Seguiré preguntando por ahí, entonces." },
+                "fail": { "effects": ["herida:1d4"], "then": "Mientes. Toma: esto, para que te acuerdes de mi hermano." }
               }
             ]
           },
@@ -6290,7 +6691,8 @@
       },
       "anarquia-del-barro": {
         "title": "La anarquía del barro",
-        "scene": "Ya no hay señores en el valle de Vane. Karl el Sordo y los suyos han pasado a cuchillo a los nobles y han echado a los invasores. El castillo es una ruina saqueada donde los campesinos se reparten el grano de los señores. Para ti no hay bolsa de oro: solo un abrazo tosco, una buena armadura arrancada a un oficial de Keller y un caballo para cruzar el paso. Dejas atrás un lugar sin ley, libre pero hambriento, y una leyenda: la {del lobo solitario|de la loba solitaria} que derribó a los Montesclaros.",
+        "who": "Karl",
+        "scene": "Ya no hay señores en el valle. Mis Lobos han pasado a cuchillo a los nobles y hemos echado a los de Keller. El castillo es una ruina, y el grano de los señores se reparte entre los campesinos. Para ti no hay bolsa de oro, lo siento: un abrazo, esta armadura que le quité a un oficial de Keller y un caballo para cruzar el paso. Esto queda sin ley, libre pero con hambre. Y tú te vas con una leyenda: la {del lobo solitario|de la loba solitaria} que derribó a los Montesclaros.",
         "epilogues": [
           { "who": "Karl", "text": "Karl el Sordo reparte el grano del castillo en la plaza, y no deja que nadie le llame señor." },
           { "who": "Los Lobos del Bosque", "text": "Los Lobos del Bosque bajan a vivir al pueblo. Los primeros meses hay más peleas que pan." },
@@ -6306,10 +6708,11 @@
           "visitor": {
             "days": 3,
             "name": "Un recado de Karl",
+            "who": "Un chaval del bosque",
             "text": "Un chaval flaco que huele a bosque os busca en el muelle. Trae un saco de parte de Karl el Sordo: pieles, carne seca y un recado. «Si algún día necesitáis arcos, el bosque os debe una.»",
             "options": [
-              { "label": "Aceptar el saco", "effects": ["comida", "oro:+1d6"], "then": "Las pieles se venden bien en el puerto, y la carne da para varios días." },
-              { "label": "Decirle que se lo quede", "effects": ["fama:+1"], "then": "El chaval sonríe: «Karl ya dijo que diríais eso.» Y se va silbando." }
+              { "label": "Aceptar el saco", "effects": ["comida", "oro:+1d6"], "then": "Las pieles se venden bien aquí, en el puerto, y la carne os da para unos días. ¡Lo dice Karl!" },
+              { "label": "Decirle que se lo quede", "effects": ["fama:+1"], "then": "¡Karl ya dijo que diríais eso!" }
             ]
           },
           "offers": [

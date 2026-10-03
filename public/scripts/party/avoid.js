@@ -45,7 +45,7 @@ import { raiseFame } from './town.js';
 import { getCurrentWorldFactions, shiftFactionStanding } from './factions.js';
 import { advanceCampaignDay } from './time.js';
 import { deliverTakenContract } from './contracts.js';
-import { noteRollInWindow, postCombatNarration, postForModel } from './narration.js';
+import { noteRollInWindow, offlineGame, postCombatNarration, postForModel, speakerFor } from './narration.js';
 import { brawlOf } from '../game-engine/combat/brawl.js';
 import { brawlTalk } from './brawl.js';
 
@@ -227,8 +227,8 @@ export async function openAvoidChoice({ auto = false, onFight = null } = {}) {
     const leader = leaderOf(foes);
     /** @type {ReturnType<typeof exitPlan>|null} */
     let plan = null;
-    /** Lo que pasó, para el registro (la nota corta) y para la novela (lo que se lee). */
-    const told = { note: '', show: '' };
+    /** Lo que pasó, para el registro (la nota corta) y para la novela (lo que se lee y quién lo dice). */
+    const told = { note: '', show: '', who: '' };
     const fight = onFight ?? ((/** @type {any[]} */ awake, /** @type {{enemiesFirst?: boolean}} */ how) => startWaitingFight(awake, how));
     const { picked } = await openExitScene({
         title: text(board.name),
@@ -258,10 +258,16 @@ export async function openAvoidChoice({ auto = false, onFight = null } = {}) {
             const outcome = result.lines.slice(result.rolls.length);
             told.note = `🗝️ [TABLERO] ${chip.label}: ${chip.text}. ${[...result.rolls.map(r => r.said), ...outcome].join(' ')}`;
             told.show = outcome.join('\n\n');
+            // Tanda 22 (D-J60): lo que pasa lo dice quien está allí, si la rama dice quién
+            // («{companero}»: uno de los tuyos; a solas, nadie, y va al aviso).
+            const who = result.voice ? speakerFor(result.voice.who, `${board.name}|${id}`) : '';
+            const voice = who && result.voice ? { who, text: result.voice.text } : null;
+            told.who = voice?.who ?? '';
             return {
                 said: chip.text,
                 rolls: result.rolls.map(r => r.said),
-                lines: outcome,
+                lines: voice ? outcome.filter(line => line !== voice.text) : outcome,
+                say: voice ? [voice] : [],
                 notes,
                 next: plan.fight ? '¡A pelear!' : plan.leave ? 'Salir del tablero' : 'Seguir',
             };
@@ -279,7 +285,8 @@ export async function openAvoidChoice({ auto = false, onFight = null } = {}) {
         return 'pelea';
     }
     // D-J45: lo que pasó se cuenta en la novela, y «Continuar» sigue el hilo como tras ganar.
-    await postForModel(told.note, { show: told.show }).catch(error => console.error('[salidas] no se pudo contar la salida', error));
+    await postForModel(told.note, { show: told.show, ...(told.who && offlineGame() ? { speaker: told.who } : {}) })
+        .catch(error => console.error('[salidas] no se pudo contar la salida', error));
     const kind = /** @type {keyof typeof AVOID_KINDS} */ (options.find(o => o.id === picked)?.kind ?? 'hablar');
     if (done.passed) passBoard(`Pasasteis sin pelear (${AVOID_KINDS[kind]?.label.toLowerCase() ?? 'hablar'})`);
     else leaveBoard();
@@ -373,10 +380,14 @@ export async function openParleyChoice() {
             told = outcome.join('\n\n');
             postCombatNarration(`🗣️ [COMBAT] ${chip.label}: ${chip.text}. ${[...done.rolls.map(r => r.said), ...outcome].join(' ')}`);
             const plan = parleyPlan(done);
+            // Tanda 22 (D-J60): lo que pasa lo dice quien está allí, si la rama dice quién.
+            const who = done.voice ? speakerFor(done.voice.who, `${text(board?.name)}|${id}`) : '';
+            const voice = who && done.voice ? { who, text: done.voice.text } : null;
             return {
                 said: chip.text,
                 rolls: done.rolls.map(r => r.said),
-                lines: outcome,
+                lines: voice ? outcome.filter(line => line !== voice.text) : outcome,
+                say: voice ? [voice] : [],
                 notes,
                 next: plan.end ? 'Seguir' : 'Volver a la pelea',
             };

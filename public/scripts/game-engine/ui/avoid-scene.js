@@ -54,7 +54,9 @@ function el(tag, className = '', content = '') {
  * @typedef {Object} ExitOutcome Lo que pasó al elegir, para enseñarlo.
  * @property {string} said Lo que has hecho, en tu boca.
  * @property {string[]} rolls Las tiradas, ya escritas.
- * @property {string[]} lines Lo que pasa.
+ * @property {string[]} lines Lo que pasa, sin nadie que lo diga (al aviso de fuera de la caja).
+ * @property {Array<{who: string, text: string}>} [say] Tanda 22 (D-J60): lo que pasa, dicho por
+ *   alguien que está allí (quien manda, uno de los tuyos): en la caja, con su nombre y su cara.
  * @property {string[]} notes Lo que ha cambiado (el oro, un día, quién os mira peor…).
  * @property {string} next La ficha que sigue: «¡A pelear!», «Seguir», «Salir del tablero».
  */
@@ -129,16 +131,23 @@ export async function openExitScene({
 
     // La cara de quien manda: la de su paquete, o su dibujo de criatura; si no, la silueta.
     const who = text(speaker);
-    // J13.7: por lo que es hasta que se presente.
-    plate.textContent = shownName(who);
-    plate.hidden = !who;
-    portrait.hidden = !who;
-    if (who) {
-        const url = portraitFor({ name: who, pack }) || firstArt('creature', { name: who });
+    /**
+     * Quien sale en grande y en la placa: quien manda al abrir; tanda 22, quien dice lo que pasa.
+     *
+     * @param {string} name
+     */
+    const showSpeaker = (name) => {
+        // J13.7: por lo que es hasta que se presente.
+        plate.textContent = shownName(name);
+        plate.hidden = !name;
+        portrait.hidden = !name;
+        portrait.textContent = '';
+        if (!name) return;
+        const url = portraitFor({ name, pack }) || firstArt('creature', { name });
         if (url) {
             const image = /** @type {HTMLImageElement} */ (el('img', 'pixel-art qd-pixel'));
             image.src = url;
-            image.alt = who;
+            image.alt = name;
             image.addEventListener('error', () => {
                 image.remove();
                 portrait.appendChild(el('i', 'fa-solid fa-user qd-silhouette'));
@@ -147,7 +156,8 @@ export async function openExitScene({
         } else {
             portrait.appendChild(el('i', 'fa-solid fa-user qd-silhouette'));
         }
-    }
+    };
+    showSpeaker(who);
 
     const shown = exitChips(choices);
     let busy = false;
@@ -240,6 +250,16 @@ export async function openExitScene({
                 p.appendChild(document.createTextNode(text(outcome.said)));
                 lines.appendChild(p);
             }
+            // Tanda 22 (D-J60): lo que pasa, dicho por quien está allí, con su nombre; en grande, el último que habla.
+            const spoken = (outcome.say ?? []).filter(line => text(line?.who) && text(line?.text));
+            for (const line of spoken) {
+                const p = el('p', 'qd-line qd-say ps-say');
+                p.dataset.who = text(line.who);
+                p.appendChild(el('span', 'qd-who', shownName(text(line.who))));
+                p.appendChild(document.createTextNode(text(line.text)));
+                lines.appendChild(p);
+            }
+            if (spoken.length > 0 && text(spoken[spoken.length - 1].who) !== who) showSpeaker(text(spoken[spoken.length - 1].who));
             asideNow = [];
             for (const roll of outcome.rolls ?? []) note('roll', roll);
             for (const said of outcome.lines ?? []) note('note', said);

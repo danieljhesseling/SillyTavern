@@ -109,6 +109,8 @@ const key = (value) => text(value).toLowerCase();
  * @property {string} ending El título del final, si se llegó a uno.
  * @property {number} [day] D-J12: el día de su calendario la última vez que se volvió de ella.
  *   Lo que se vivió allí también pasa para quien descansa en el gremio (`hubDay`).
+ * @property {number} [synced] H16: los días vividos allí que ya han pasado de verdad en el reloj
+ *   del gremio (al volver, `homecomingDays`). `hubDay` ya no los suma otra vez.
  * @property {string} [name] D-J35: cómo se llamaba en el tablón. Si la quitas del tablón (una
  *   añadida por ti), su tarjeta sigue en este gremio con este nombre, para seguirla.
  * @property {string} [chapter] J9.3: por qué capítulo ibais al volver de ella («Capítulo 2 de 5:
@@ -148,12 +150,14 @@ export function readHub(raw) {
         const day = Math.max(0, Math.floor(Number(/** @type {any} */ (value)?.day) || 0));
         const name = text(/** @type {any} */ (value)?.name);
         const chapter = text(/** @type {any} */ (value)?.chapter).slice(0, 140);
+        const synced = Math.max(0, Math.floor(Number(/** @type {any} */ (value)?.synced) || 0));
         campaigns[text(id)] = {
             worldName,
             chat: readChat(/** @type {any} */ (value)?.chat),
             finished: Boolean(/** @type {any} */ (value)?.finished),
             ending: text(/** @type {any} */ (value)?.ending),
             ...(day > 0 ? { day } : {}),
+            ...(synced > 0 ? { synced } : {}),
             ...(name ? { name } : {}),
             ...(chapter ? { chapter } : {}),
         };
@@ -343,9 +347,33 @@ export function withHubCampaign(hub, id, patch) {
  * @returns {number}
  */
 export function hubDay({ hub, day }) {
+    // H16: lo que ya pasó de verdad en el reloj del gremio al volver (`synced`) no se suma otra vez.
     const away = Object.values(readHub(hub).campaigns)
-        .reduce((sum, campaign) => sum + Math.max(0, (campaign.day ?? 1) - 1), 0);
+        .reduce((sum, campaign) => sum + Math.max(0, (campaign.day ?? 1) - 1 - (campaign.synced ?? 0)), 0);
     return Math.max(1, Math.floor(Number(day) || 1)) + away;
+}
+
+/**
+ * H16: los días que pasan en el gremio al volver de una campaña. Hasta ahora el reloj del gremio
+ * se quedaba donde se dejó: se volvía de Barovia tras un mes y en casa seguía siendo el día 3.
+ * Pasan lo vivido allí desde la última vuelta (lo que el reloj del gremio aún no tiene) y el
+ * viaje, de ida y de vuelta (el de ida tampoco lo contaba nadie: la campaña empieza en su día 1).
+ *
+ * @param {Object} input
+ * @param {any} input.hub El gremio, antes de apuntar esta vuelta.
+ * @param {string} input.id La campaña de la que se vuelve.
+ * @param {number} input.day El día de su calendario al volver.
+ * @param {number} [input.journey] Los días de camino de ida (`journeyDays`); 0 si no lo dice.
+ * @returns {{lived: number, travel: number, total: number, synced: number}} `synced`: lo que hay
+ *   que apuntarle a la campaña (`withHubCampaign`), para que `hubDay` no lo cuente dos veces.
+ */
+export function homecomingDays({ hub, id, day, journey = 0 }) {
+    const was = readHub(hub).campaigns[text(id)];
+    const before = Math.max(0, Math.floor(Number(was?.synced) || 0));
+    const now = Math.max(0, Math.floor(Number(day) || 1) - 1);
+    const lived = Math.max(0, now - before);
+    const travel = 2 * Math.max(0, Math.floor(Number(journey) || 0));
+    return { lived, travel, total: lived + travel, synced: Math.max(before, now) };
 }
 
 /** Los números que se escriben con letra: «nueve días» se lee mejor que «9 días». */

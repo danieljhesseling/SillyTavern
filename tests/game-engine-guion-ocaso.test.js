@@ -9,6 +9,7 @@ import { checkWorldDensity } from '../public/scripts/game-engine/campaign/world-
 import { unreachableBoards } from '../public/scripts/game-engine/campaign/guided-mode.js';
 import { checkCompanionStories } from '../public/scripts/game-engine/campaign/companion-stories.js';
 import { readPlot, startPlot, plotEvent, readPlotState, chooseEnding } from '../public/scripts/game-engine/campaign/plot.js';
+import { changeStanding, readFactions } from '../public/scripts/game-engine/campaign/factions.js';
 
 // «Las tierras del ocaso» (tanda 20): las rondas de wiki/guiones/ocaso son la fuente, y
 // public/mundos/ocaso.pack.json es lo que sale de ellas con el conversor.
@@ -105,7 +106,8 @@ describe('Las tierras del ocaso: el guion y su paquete', () => {
         expect(readPlotState(state).open).toEqual(expect.arrayContaining(['bandera-brezo', 'bandera-oramar', 'bandera-hondaroca']));
         // La respuesta «Con la de Oramar» de la escena del refugio cumple su hito.
         const chosen = go({ kind: 'milestone', id: 'bandera-oramar' });
-        expect(chosen.changes.standing).toEqual({ 'casa-oramar': 6, 'casa-brezo': -6, 'casa-hondaroca': -6 });
+        // La bandera pesa, pero no lo decide todo: +4 a la casa elegida y −2 a las otras dos.
+        expect(chosen.changes.standing).toEqual({ 'casa-oramar': 4, 'casa-brezo': -2, 'casa-hondaroca': -2 });
         expect(readPlotState(state).closed).toEqual(expect.arrayContaining(['bandera-brezo', 'bandera-hondaroca']));
         go({ kind: 'win', board: 'La cornisa de las grullas', place: 'La Atalaya de la Grulla' });
         const last = go({ kind: 'win', board: 'El fanal de la Atalaya', place: 'La Atalaya de la Grulla' });
@@ -116,5 +118,30 @@ describe('Las tierras del ocaso: el guion y su paquete', () => {
             { id: 'casa-hondaroca', name: 'Casa Hondaroca', reputation: -4 },
         ];
         expect(chooseEnding(last.changes, factions)).toBe('paso-oramar');
+    });
+
+    test('lo hecho antes de la bandera aún puede cambiar el final', () => {
+        const plot = readPlot(pack.plot);
+        const milestone = (/** @type {string} */ id) => plot.milestones.find(m => m.id === id);
+        const fanal = milestone('m-fanal');
+        /** Lo que pensaban antes, y luego la bandera, movida como la mueve el juego (`shiftFactionStanding`). */
+        const ending = (/** @type {Record<string, number>} */ before, /** @type {string} */ banner) => {
+            let factions = readFactions(pack.world.factions.map((/** @type {any} */ f) => ({ ...f, reputation: before[f.id] ?? 0 })));
+            for (const [id, amount] of Object.entries(milestone(banner)?.changes.standing ?? {})) factions = changeStanding(factions, id, amount);
+            return chooseEnding(fanal?.changes ?? { ending: '', endingBy: {} }, factions);
+        };
+        // Sin nada antes, manda la bandera.
+        expect(ending({}, 'bandera-brezo')).toBe('paso-brezo');
+        expect(ending({}, 'bandera-oramar')).toBe('paso-oramar');
+        expect(ending({}, 'bandera-hondaroca')).toBe('paso-abierto');
+        // Con Brezo muy a favor (encargos, tratos, pueblos), la grulla sola no basta.
+        expect(ending({ 'casa-brezo': 5, 'casa-oramar': -5 }, 'bandera-hondaroca')).toBe('paso-brezo');
+        // Y quien se ganó a Hondaroca y fue contra Oramar acaba con el paso abierto aunque suba con Oramar.
+        expect(ending({ 'casa-hondaroca': 5, 'casa-brezo': 5, 'casa-oramar': -5 }, 'bandera-oramar')).toBe('paso-abierto');
+    });
+
+    test('la moneda es la del juego: monedas, no sueldos', () => {
+        expect(JSON.stringify(pack)).not.toMatch(/sueldos/);
+        expect(JSON.stringify(pack)).toMatch(/monedas/);
     });
 });

@@ -88,7 +88,8 @@ function findSpeaker(messages, known) {
         avatar,
         rank,
         known: Boolean(member),
-        rankLabel: rank > 0 ? `Vínculo ${rank}` : '',
+        // Tanda 22: todo dice «Rango», como en Persona (no «Vínculo 3»).
+        rankLabel: rank > 0 ? `Rango ${rank}` : '',
     };
 }
 

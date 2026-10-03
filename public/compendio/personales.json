@@ -16,7 +16,7 @@
           "kind": "viaje",
           "to": "Robledo",
           "days": 6,
-          "text": "Salís hacia el norte con Gerd. Seis días de caminos de barro y de posadas pequeñas, con Gerd hablando de su madre a todas horas.",
+          "text": "Al norte, a Robledo. Seis días de barro y de posadas pequeñas. Y te voy a hablar de mi madre todo el camino, ya te aviso.",
           "next": "casa"
         },
         {
@@ -26,7 +26,8 @@
           "backdrop": "plaza",
           "beats": [
             {
-              "text": "Robledo son veinte casas de piedra, un molino y, en lo alto, la casa grande del señor. En su puerta, una mujer mayor friega los escalones de rodillas."
+              "who": "Gerd el Mellado",
+              "text": "Ahí está Robledo: veinte casas de piedra, el molino y, arriba, la casa grande del señor. Y esa que friega los escalones de rodillas… es mi madre."
             },
             {
               "who": "Gerd el Mellado",
@@ -34,7 +35,8 @@
               "text": "Madre…"
             },
             {
-              "text": "La mujer levanta la cabeza. Tarda un momento en reconocerle. Luego suelta el cepillo y abraza a Gerd como si fuera un crío."
+              "who": "Aurelia",
+              "text": "¿Gerd? ¿Eres tú, hijo? ¡Ven aquí, ven! ¡Ay, que estás en los huesos!"
             },
             {
               "who": "Aurelia",
@@ -60,7 +62,8 @@
           "backdrop": "posada",
           "beats": [
             {
-              "text": "Lope está en la venta del cruce, cargando sacos en sus mulas. Cuando ve a Gerd se le cae uno al suelo."
+              "who": "Gerd el Mellado",
+              "text": "Ahí lo tienes: Lope, cargando sus mulas en la venta del cruce. Mira cómo se le cae el saco al verme."
             },
             {
               "who": "Lope",
@@ -85,12 +88,14 @@
                     "dc": 13,
                     "success": {
                       "reply": {
-                        "text": "Los cuñados de Lope se levantan de la mesa, te miran y se vuelven a sentar. Lope sale de la venta sin que nadie le defienda."
+                        "who": "Lope",
+                        "text": "¿Ni vosotros me defendéis? …Está bien, Gerd. Vamos ante el señor."
                       }
                     },
                     "failure": {
                       "reply": {
-                        "text": "Tres mozos del molino se levantan de la mesa, con los puños cerrados y un garrote. Son los cuñados de Lope."
+                        "who": "Gerd el Mellado",
+                        "text": "Cuidado: esos tres mozos del molino son sus cuñados. Y uno lleva garrote."
                       }
                     }
                   }
@@ -132,7 +137,7 @@
         {
           "id": "pelea",
           "kind": "tablero",
-          "text": "Los cuñados de Lope no van a dejar que se lo lleven. Pelea en el patio de la venta.",
+          "text": "Sus cuñados no van a dejar que nos lo llevemos. Al patio de la venta: esto se arregla ahí.",
           "board": {
             "id": "venta_del_cruce",
             "name": "La venta del cruce",
@@ -259,7 +264,7 @@
           "kind": "viaje",
           "to": "Hoz",
           "days": 3,
-          "text": "Tres días tierra adentro, por bosques cada vez más espesos. Nella camina delante, sin hablar, y cada poco se para a escuchar.",
+          "text": "Tres días tierra adentro, y el bosque se va cerrando. Yo voy delante: si me paro, tú te paras y escuchas.",
           "next": "hoz"
         },
         {
@@ -269,7 +274,8 @@
           "backdrop": "plaza",
           "beats": [
             {
-              "text": "Hoz es un pueblo de leñadores a la sombra del bosque del barón. En cada pared hay un cartel con la cara de Nella, peor dibujada todavía que el del puerto."
+              "who": "Nella Tresflechas",
+              "text": "Hoz. Leñadores, el bosque del barón… y mi cara en cada pared. Peor dibujada todavía que la del puerto."
             },
             {
               "who": "Nella Tresflechas",
@@ -277,7 +283,8 @@
               "text": "Aquí me ha puesto bizca. Eso ya es personal."
             },
             {
-              "text": "Al fondo de la plaza está la cárcel del barón: una torre baja con una sola ventana con rejas. Por la ventana asoma un chico de orejas de soplillo."
+              "who": "Nella Tresflechas",
+              "text": "Esa torre del fondo es la cárcel del barón. ¿Ves la ventana con rejas? El de las orejas de soplillo es Tobías."
             },
             {
               "who": "El alguacil",
@@ -323,14 +330,16 @@
           "title": "La cárcel de noche",
           "beats": [
             {
-              "text": "Es noche cerrada. Nella silba bajito y los dos perros del barón se acercan moviendo la cola. Ni un ladrido."
+              "who": "Nella Tresflechas",
+              "text": "Chist. Mira: los perros del barón me conocen. Un silbido y vienen moviendo la cola. Ni un ladrido."
             },
             {
               "who": "Nella Tresflechas",
               "text": "Buenos chicos. Ahora, la puerta de atrás. Dentro hay un guarda, y a estas horas suele dormir."
             },
             {
-              "text": "La puerta de atrás es vieja y tiene los goznes oxidados.",
+              "who": "Nella Tresflechas",
+              "text": "La puerta de atrás es vieja, y esos goznes están oxidados. Despacio, o se oirá en todo el pueblo.",
               "options": [
                 {
                   "id": "colarse",
@@ -340,12 +349,14 @@
                     "dc": 13,
                     "success": {
                       "reply": {
-                        "text": "La puerta ni cruje. Tobías se despierta y Nella le tapa la boca antes de que grite su nombre."
+                        "who": "Nella Tresflechas",
+                        "text": "Ni un crujido. ¡Tobías! Chist, no grites, que soy yo."
                       }
                     },
                     "failure": {
                       "reply": {
-                        "text": "Un gozne chirría. Dentro, alguien grita: «¡Guardias!»"
+                        "who": "Nella Tresflechas",
+                        "text": "¡Maldito gozne! Ya nos han oído: dentro están llamando a los guardias."
                       }
                     }
                   }
@@ -354,7 +365,8 @@
                   "id": "forzar",
                   "text": "Rompes la cerradura de una patada.",
                   "reply": {
-                    "text": "El golpe despierta a medio pueblo. Se encienden luces en la torre."
+                    "who": "Nella Tresflechas",
+                    "text": "¡Menudo golpe! Has despertado a medio pueblo. Ya encienden luces en la torre."
                   }
                 }
               ]
@@ -372,7 +384,7 @@
         {
           "id": "guardas",
           "kind": "tablero",
-          "text": "Los guardas del barón bajan de la torre con antorchas. Hay que sacar a Tobías como sea.",
+          "text": "Ahí bajan los guardas del barón, con antorchas. Me da igual cómo: Tobías sale de aquí esta noche.",
           "board": {
             "id": "carcel_del_baron",
             "name": "La cárcel del barón",
@@ -498,7 +510,7 @@
           "kind": "viaje",
           "to": "Valdés",
           "days": 1,
-          "text": "Salís por el camino de la costa, hacia Valdés. Osric apenas habla. Cada poco toca la bolsa del anillo, como para comprobar que sigue ahí.",
+          "text": "Por la costa, hasta Valdés. No esperes que hable mucho. …Sigue aquí, el anillo. Lo compruebo, nada más.",
           "next": "guardia"
         },
         {
@@ -507,14 +519,16 @@
           "title": "La guardia",
           "beats": [
             {
-              "text": "La primera noche acampáis junto a unas rocas. Osric no se tumba: se sienta con la espalda contra una piedra y la espada sobre las rodillas."
+              "who": "Osric Mediapaga",
+              "text": "Acampamos aquí, junto a las rocas. Yo no me tumbo: me siento contra esta piedra, con la espada en las rodillas."
             },
             {
               "who": "Osric Mediapaga",
               "text": "Dormid. Esta noche la guardia la hago yo. Entera."
             },
             {
-              "text": "Pasada la medianoche, Osric te toca el hombro. Entre los árboles se mueven sombras: cuatro, quizá cinco."
+              "who": "Osric Mediapaga",
+              "text": "Despierta. Sin ruido. Entre los árboles hay sombras: cuatro, quizá cinco."
             },
             {
               "who": "Osric Mediapaga",
@@ -537,12 +551,14 @@
                     "dc": 12,
                     "success": {
                       "reply": {
-                        "text": "Las sombras se paran. Luego se van por donde han venido. Osric no suelta la espada hasta el amanecer."
+                        "who": "Osric Mediapaga",
+                        "text": "Se paran… y se van por donde han venido. Duerme tú. Yo no suelto la espada hasta que amanezca."
                       }
                     },
                     "failure": {
                       "reply": {
-                        "text": "Las sombras no se van. Vienen."
+                        "who": "Osric Mediapaga",
+                        "text": "No se van. Vienen. ¡Arriba todos!"
                       }
                     }
                   }
@@ -562,7 +578,7 @@
         {
           "id": "campamento",
           "kind": "tablero",
-          "text": "Los bandidos salen de entre los árboles. Esta vez, Osric está despierto.",
+          "text": "Ahí salen de entre los árboles. Esta vez estoy despierto.",
           "board": {
             "id": "rocas_del_camino",
             "name": "Las rocas del camino",
@@ -633,7 +649,7 @@
           "kind": "viaje",
           "to": "Valdés",
           "days": 1,
-          "text": "Al día siguiente llegáis a Valdés: un pueblo blanco sobre un acantilado. La casa de la viuda tiene una torre pequeña, la misma que lleva grabada el anillo.",
+          "text": "Valdés: el pueblo blanco del acantilado. ¿Ves la casa de la torre pequeña? Es la misma torre del anillo.",
           "next": "viuda"
         },
         {
@@ -642,14 +658,16 @@
           "title": "La viuda",
           "beats": [
             {
-              "text": "Os abre una mujer de pelo blanco, muy derecha. Mira a Osric y le reconoce al momento."
+              "who": "Osric Mediapaga",
+              "text": "Es ella, doña Leonor. El pelo blanco y tan derecha como entonces. Me ha reconocido en cuanto me ha visto."
             },
             {
               "who": "Doña Leonor",
               "text": "Tú eras el escolta de mi marido. Once años sin saber de ti."
             },
             {
-              "text": "Osric saca el anillo de plata con la torre y se lo pone en la mano. Luego te mira a ti. No le salen las palabras."
+              "who": "Osric Mediapaga",
+              "text": "Señora… esto es suyo. El anillo de la torre."
             },
             {
               "who": "Osric Mediapaga",

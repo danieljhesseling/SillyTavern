@@ -23,7 +23,7 @@ import {
 } from '../game-engine/combat/maneuvers.js';
 import {
     enemyWeapon, enemyPotions, chooseEnemyAction2024, chooseEnemyBefore2024, chooseEnemySlot, enemySaveDC, masteryLine,
-    pushTrail,
+    pushTrail, enemyAttackBonus, enemyAttackHits,
 } from '../game-engine/combat/ai-2024.js';
 import {
     masteryFires, grazeDamage, toppled, cleaveTarget, combineEdge, noteVex, takeVex, turnFlags, markTurn,
@@ -191,15 +191,17 @@ function enemyStrike(enemy, target, { weapon = null, noModifier = false } = {}) 
     const d20 = attackRoll.total;
     const abilityMod = Math.max(getAbilityModifier(enemy.strength || 10), getAbilityModifier(enemy.dexterity || 10));
     // R7: con su líder cerca, pega mejor. R6: y un jefe enfurecido, más. J4.6: y el ajuste
-    // al nivel del grupo, si el tablero es de otro nivel.
-    const attackMod = abilityMod + (Number(/** @type {any} */ (enemy).rage) || 0) + (Number(/** @type {any} */ (enemy).levelHit) || 0) + leaderBonus(
+    // al nivel del grupo, si el tablero es de otro nivel. Tanda 22: y su competencia, por su
+    // desafío, como en los bloques de 5e (+2 hasta el 4, +3 hasta el 8…).
+    const attackMod = enemyAttackBonus(enemy) + (Number(/** @type {any} */ (enemy).rage) || 0) + (Number(/** @type {any} */ (enemy).levelHit) || 0) + leaderBonus(
         { id: String(enemy.instanceId), x: Number(enemy.gridX) || 0, y: Number(enemy.gridY) || 0 },
         getAliveEnemies().map(e => ({ id: String(e.instanceId), x: Number(e.gridX) || 0, y: Number(e.gridY) || 0, hp: Number(e.currentHp) || 0, role: String(/** @type {any} */ (e).role ?? '') })),
     );
     const attackTotal = d20 + attackMod;
     const { ac: targetAc, cover: targetCover } = getTargetArmorClass(target, enemy);
     const isCrit = d20 === 20;
-    const wouldHit = isCrit || attackTotal >= targetAc;
+    // Tanda 22: un 1 natural falla siempre, también para ellos.
+    const wouldHit = enemyAttackHits({ natural: d20, total: attackTotal, ac: targetAc });
     // J19.7: quien sabe Escudo lo levanta si con él el golpe ya no entra (un crítico entra igual).
     const shield = wouldHit && !isCrit ? shieldAgainst(target, { attackTotal, targetAc }) : { blocked: false, lines: [] };
     const isHit = wouldHit && !shield.blocked;

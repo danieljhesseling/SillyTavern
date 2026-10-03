@@ -3144,6 +3144,7 @@
           "skill": "persuasion",
           "dc": 13,
           "success": {
+            "who": "Desvelado",
             "text": "¿Va a llover mañana…? Hace tanto frío aquí abajo… Habla más. Habla hasta que amanezca.",
             "effects": [
               {
@@ -3153,14 +3154,18 @@
             ]
           },
           "partial": {
-            "text": "Calla… otra vez calla… ¿Por qué te callas? Dos suben un poco más por el poste antes de quedarse quietos.",
+            "who": "Desvelado",
+            "text": "Calla… otra vez calla… ¿Por qué te callas? Subimos un poco más… solo un poco.",
             "effects": [
               {
                 "hurt": "1d4"
               }
             ]
           },
-          "failure": "No te oímos. No te oímos. ¡Sube, que no nos oye!"
+          "failure": {
+            "who": "Desvelado",
+            "text": "No te oímos. No te oímos. ¡Sube, que no nos oye!"
+          }
         }
       ],
       "parley": {
@@ -3174,9 +3179,18 @@
           "text": "Ponerte a hablarles en voz alta, de lo que sea, sin parar",
           "dc": 13,
           "resolves": true,
-          "success": "Así… así… Cuéntanos más. Ya no subimos. Nos quedamos aquí, escuchando, hasta que salga el sol.",
-          "partial": "Se te quiebra la voz… pero te oímos. Esta ronda nadie sube más.",
-          "failure": "Más alto. ¡Más alto! No te oímos con el agua."
+          "success": {
+            "who": "Desvelado",
+            "text": "Así… así… Cuéntanos más. Ya no subimos. Nos quedamos aquí, escuchando, hasta que salga el sol."
+          },
+          "partial": {
+            "who": "Desvelado",
+            "text": "Se te quiebra la voz… pero te oímos. Esta ronda nadie sube más."
+          },
+          "failure": {
+            "who": "Desvelado",
+            "text": "Más alto. ¡Más alto! No te oímos con el agua."
+          }
         }
       }
     },
@@ -3245,6 +3259,7 @@
           "skill": "persuasion",
           "dc": 14,
           "success": {
+            "who": "Desvelado",
             "text": "Los críos no… los críos no hablan… tú sí. Quédate tú, y los críos que se vayan a dormir.",
             "effects": [
               {
@@ -3253,7 +3268,10 @@
               }
             ]
           },
-          "failure": "Falta uno. Falta uno. ¡Nos lo debéis!"
+          "failure": {
+            "who": "Desvelado",
+            "text": "Falta uno. Falta uno. ¡Nos lo debéis!"
+          }
         },
         {
           "kind": "esconderse",
@@ -3261,8 +3279,14 @@
           "skill": "stealth",
           "dc": 14,
           "resolves": false,
-          "success": "¿Dónde están los niños? ¿Dónde…? Se han ido. Volveremos mañana.",
-          "failure": "¡Ahí! ¡Se los llevan!"
+          "success": {
+            "who": "Desvelado",
+            "text": "¿Dónde están los niños? ¿Dónde…? Se han ido. Volveremos mañana."
+          },
+          "failure": {
+            "who": "Desvelado",
+            "text": "¡Ahí! ¡Se los llevan!"
+          }
         }
       ],
       "parley": {
@@ -3275,15 +3299,27 @@
           "text": "Decirles que vas a buscar al que falta, y que dejen a los niños",
           "dc": 14,
           "resolves": true,
-          "success": "¿Lo buscarás? ¿De verdad? Entonces esperamos. Los críos, a casa.",
-          "failure": "Todos dicen que lo buscarán. Nadie baja nunca."
+          "success": {
+            "who": "Desvelado",
+            "text": "¿Lo buscarás? ¿De verdad? Entonces esperamos. Los críos, a casa."
+          },
+          "failure": {
+            "who": "Desvelado",
+            "text": "Todos dicen que lo buscarán. Nadie baja nunca."
+          }
         },
         "engañar": {
           "text": "Gritarles que Mateo ya ha vuelto al agua",
           "dc": 15,
           "resolves": true,
-          "success": "¿Ha vuelto…? Vamos a verle. Vamos a verle todos.",
-          "failure": "Mentira. Mateo está en tierra. Lo oímos llorar desde aquí."
+          "success": {
+            "who": "Desvelado",
+            "text": "¿Ha vuelto…? Vamos a verle. Vamos a verle todos."
+          },
+          "failure": {
+            "who": "Desvelado",
+            "text": "Mentira. Mateo está en tierra. Lo oímos llorar desde aquí."
+          }
         }
       }
     },
@@ -3389,6 +3425,7 @@
           "text": "Ofrecerle al Gallo veinte monedas por la caja",
           "gold": 20,
           "success": {
+            "who": "El Gallo",
             "text": "¿Veinte? Por una caja de papeles que no sé leer… Trato. Y dile a la vieja Arrieta que ya no le cobro.",
             "effects": [
               {
@@ -3403,6 +3440,7 @@
           "skill": "deception",
           "dc": 15,
           "success": {
+            "who": "El Gallo",
             "text": "Si la vieja ya no paga, esa caja no vale nada. Llévatela, y que te aproveche.",
             "effects": [
               {
@@ -3410,7 +3448,10 @@
               }
             ]
           },
-          "failure": "¿Me tomas por tonto? Kikirikí, muchachos. A por ellos."
+          "failure": {
+            "who": "El Gallo",
+            "text": "¿Me tomas por tonto? Kikirikí, muchachos. A por ellos."
+          }
         }
       ],
       "parley": {
@@ -3420,6 +3461,7 @@
           "gold": 15,
           "resolves": true,
           "success": {
+            "who": "El Gallo",
             "text": "Quince, y la caja es tuya. Nunca me gustó la letra de ese cura.",
             "effects": [
               {
@@ -3427,13 +3469,17 @@
               }
             ]
           },
-          "failure": "¿Quince? Eso me lo saco en una noche. Seguid."
+          "failure": {
+            "who": "El Gallo",
+            "text": "¿Quince? Eso me lo saco en una noche. Seguid."
+          }
         },
         "convencer": {
           "text": "Decirle que en esa caja está lo que hace subir a los muertos",
           "dc": 15,
           "resolves": true,
           "success": {
+            "who": "El Gallo",
             "text": "Pues que se la lleve otro. Yo vendo aguardiente, no muertos. Toma la caja, y fuera de mi cala.",
             "effects": [
               {
@@ -3441,20 +3487,33 @@
               }
             ]
           },
-          "partial": "Los míos se lo piensan. Esta ronda nadie dispara.",
-          "failure": "Los muertos no pagan. La vieja sí. Seguid."
+          "partial": {
+            "who": "El Gallo",
+            "text": "Quietos, muchachos… Que lo piense. Nadie dispara todavía."
+          },
+          "failure": {
+            "who": "El Gallo",
+            "text": "Los muertos no pagan. La vieja sí. Seguid."
+          }
         },
         "engañar": {
           "text": "Gritarle que viene la milicia de costa por el acantilado",
           "dc": 16,
           "resolves": false,
-          "success": "¡La milicia! ¡Por el agua, deprisa! ¡Dejad todo!",
-          "failure": "Aquí no sube la milicia ni borracha."
+          "success": {
+            "who": "El Gallo",
+            "text": "¡La milicia! ¡Por el agua, deprisa! ¡Dejad todo!"
+          },
+          "failure": {
+            "who": "El Gallo",
+            "text": "Aquí no sube la milicia ni borracha."
+          }
         },
         "entregarse": {
           "text": "Soltar las armas y pedir que os dejen ir",
           "resolves": false,
           "success": {
+            "who": "El Gallo",
             "text": "Fuera, y sin la caja. Y la bolsa se queda aquí, por las molestias.",
             "effects": [
               {
@@ -3558,6 +3617,7 @@
           "skill": "persuasion",
           "dc": 15,
           "success": {
+            "who": "Lucio con el arpón",
             "text": "¿Los niños…? ¿Lo pone ahí, de verdad? …Bajad. Bajad todos. Por mi padre que esto no se ha acabado.",
             "effects": [
               {
@@ -3566,15 +3626,24 @@
               }
             ]
           },
-          "failure": "Eso lo escribió el cura de la vieja Arrieta. ¡Apartaos de la puerta!"
+          "failure": {
+            "who": "Lucio con el arpón",
+            "text": "Eso lo escribió el cura de la vieja Arrieta. ¡Apartaos de la puerta!"
+          }
         },
         {
           "kind": "hablar",
           "text": "Decirles a los hombres de Lucio que se vayan a casa con sus hijos",
           "skill": "intimidation",
           "dc": 16,
-          "success": "Lucio, yo me voy. Tengo dos críos en casa, y no los quiero ver en el agua.",
-          "failure": "¡Nadie se va! Por mi padre que hoy se acaba."
+          "success": {
+            "who": "{companero}",
+            "text": "¿Has oído? «Lucio, yo me voy: tengo dos críos en casa.» Se van, uno detrás de otro. Lucio se queda solo."
+          },
+          "failure": {
+            "who": "Lucio con el arpón",
+            "text": "¡Nadie se va! Por mi padre que hoy se acaba."
+          }
         }
       ],
       "parley": {
@@ -3583,14 +3652,24 @@
           "text": "Hablarle de su padre: Mateo remó la barca, pero no firmó",
           "dc": 14,
           "resolves": true,
-          "success": "Mi padre remó. Solo remó… y lo he enterrado en tierra para nada. Vámonos. Vámonos, he dicho.",
-          "partial": "Lucio baja el arpón un momento. Esta ronda, nadie ataca la puerta.",
-          "failure": "¡No hables de mi padre!"
+          "success": {
+            "who": "Lucio con el arpón",
+            "text": "Mi padre remó. Solo remó… y lo he enterrado en tierra para nada. Vámonos. Vámonos, he dicho."
+          },
+          "partial": {
+            "who": "Lucio con el arpón",
+            "text": "Mi padre… Esperad. Bajad los arpones un momento."
+          },
+          "failure": {
+            "who": "Lucio con el arpón",
+            "text": "¡No hables de mi padre!"
+          }
         },
         "entregarse": {
           "text": "Abrir la puerta y apartaros",
           "resolves": false,
           "success": {
+            "who": "Lucio con el arpón",
             "text": "Apartaos. Y que conste que a vosotros no os quería hacer nada.",
             "effects": [
               {
@@ -3710,6 +3789,7 @@
           "skill": "stealth",
           "dc": 13,
           "success": {
+            "who": "Ahogado viejo",
             "text": "¿Quién anda…? Nadie. El agua. Solo el agua.",
             "effects": [
               {
@@ -3717,7 +3797,10 @@
               }
             ]
           },
-          "failure": "¿Quién pisa mi barco? ¡Fuera de la Esperanza!"
+          "failure": {
+            "who": "Ahogado viejo",
+            "text": "¿Quién pisa mi barco? ¡Fuera de la Esperanza!"
+          }
         }
       ]
     },
@@ -3807,8 +3890,14 @@
           "text": "Gritarle a Antón que la marea ya está subiendo y que él no es de aquí: a él sí lo ahoga",
           "skill": "intimidation",
           "dc": 15,
-          "success": "¿Sube…? ¡Sube! Que la señora haga lo que quiera. ¡Yo me voy de aquí!",
-          "failure": "La marea sube cuando lo diga la señora. Cogedlos."
+          "success": {
+            "who": "Antón el capataz",
+            "text": "¿Sube…? ¡Sube! Que la señora haga lo que quiera. ¡Yo me voy de aquí!"
+          },
+          "failure": {
+            "who": "Antón el capataz",
+            "text": "La marea sube cuando lo diga la señora. Cogedlos."
+          }
         }
       ],
       "parley": {
@@ -3817,23 +3906,44 @@
           "text": "Gritar que el agua ya entra por la Boca",
           "dc": 13,
           "resolves": true,
-          "success": "¡El agua! ¡Fuera, fuera todos! ¡La niña, dejad a la niña!",
-          "failure": "El agua aún no ha llegado a las argollas. Seguid."
+          "success": {
+            "who": "Antón el capataz",
+            "text": "¡El agua! ¡Fuera, fuera todos! ¡La niña, dejad a la niña!"
+          },
+          "failure": {
+            "who": "Antón el capataz",
+            "text": "El agua aún no ha llegado a las argollas. Seguid."
+          }
         },
         "sobornar": {
           "text": "Ofrecerle cuarenta monedas para que se vaya de Mareaviva esta misma noche",
           "gold": 40,
           "resolves": true,
-          "success": "Cuarenta, y no me volvéis a ver. La Salazón, para quien la quiera.",
-          "failure": "La señora me deja la Salazón entera. Cuarenta monedas no son nada."
+          "success": {
+            "who": "Antón el capataz",
+            "text": "Cuarenta, y no me volvéis a ver. La Salazón, para quien la quiera."
+          },
+          "failure": {
+            "who": "Antón el capataz",
+            "text": "La señora me deja la Salazón entera. Cuarenta monedas no son nada."
+          }
         },
         "convencer": {
           "text": "Decirle que la señora le va a dejar ahí abajo cuando suba la marea",
           "dc": 15,
           "resolves": true,
-          "success": "Es verdad… a mí nunca me dijo cómo se sale de aquí. Me voy.",
-          "partial": "Antón mira hacia la Boca. Esta ronda, no da órdenes.",
-          "failure": "La señora no miente. La señora nunca miente."
+          "success": {
+            "who": "Antón el capataz",
+            "text": "Es verdad… a mí nunca me dijo cómo se sale de aquí. Me voy."
+          },
+          "partial": {
+            "who": "Antón el capataz",
+            "text": "¿Dejarme ahí abajo…? Quietos. Dejadme pensar."
+          },
+          "failure": {
+            "who": "Antón el capataz",
+            "text": "La señora no miente. La señora nunca miente."
+          }
         }
       }
     },
@@ -3947,6 +4057,7 @@
           "skill": "persuasion",
           "dc": 18,
           "success": {
+            "who": "La Vecina",
             "text": "Por las buenas… Lo que se dio por las buenas, por las buenas se devuelve. Pasa, niña. Pasa sola.",
             "effects": [
               {
@@ -3955,7 +4066,10 @@
               }
             ]
           },
-          "failure": "Si te quitas, me quedo sola. Otra vez sola. No. No."
+          "failure": {
+            "who": "La Vecina",
+            "text": "Si te quitas, me quedo sola. Otra vez sola. No. No."
+          }
         }
       ]
     },
@@ -4056,6 +4170,7 @@
           "skill": "persuasion",
           "dc": 18,
           "success": {
+            "who": "El patrón de la galerna",
             "text": "Mis hombres… mis hombres os oyen. Les estáis llamando por su nombre. Podemos dormir, entonces. Podemos dormir.",
             "effects": [
               {
@@ -4064,7 +4179,10 @@
               }
             ]
           },
-          "failure": "¡Treinta años solos en el agua! ¡Ahora nos oís! ¡Ahora!"
+          "failure": {
+            "who": "El patrón de la galerna",
+            "text": "¡Treinta años solos en el agua! ¡Ahora nos oís! ¡Ahora!"
+          }
         }
       ],
       "parley": {
@@ -4078,9 +4196,18 @@
           "text": "Decirle al patrón que sus hombres ya no se quedan solos: el pueblo vela por ellos",
           "dc": 16,
           "resolves": true,
-          "success": "Entonces suelto el poste. Que alguien les hable cuando yo me duerma.",
-          "partial": "El patrón se queda mirando a las Rezadoras. Esta ronda, nadie sube.",
-          "failure": "Eso dijeron hace treinta años. Y aquí seguimos."
+          "success": {
+            "who": "El patrón de la galerna",
+            "text": "Entonces suelto el poste. Que alguien les hable cuando yo me duerma."
+          },
+          "partial": {
+            "who": "El patrón de la galerna",
+            "text": "Las Rezadoras… ¿nos hablan a nosotros? Quietos, hombres. Escuchad."
+          },
+          "failure": {
+            "who": "El patrón de la galerna",
+            "text": "Eso dijeron hace treinta años. Y aquí seguimos."
+          }
         }
       }
     },
@@ -4190,6 +4317,7 @@
           "skill": "persuasion",
           "dc": 17,
           "success": {
+            "who": "Lucio con el arpón",
             "text": "Con su nombre… Que lo digan en voz alta, entonces. Mateo Iturbe. Que lo diga todo el pueblo. …Llevaosla.",
             "effects": [
               {
@@ -4198,7 +4326,10 @@
               }
             ]
           },
-          "failure": "Treinta años callados, y ahora queréis decir su nombre. ¡Fuera de aquí!"
+          "failure": {
+            "who": "Lucio con el arpón",
+            "text": "Treinta años callados, y ahora queréis decir su nombre. ¡Fuera de aquí!"
+          }
         }
       ],
       "parley": {
@@ -4207,9 +4338,18 @@
           "text": "Prometerle una cruz con el nombre de su padre en el cementerio",
           "dc": 15,
           "resolves": true,
-          "success": "Una cruz con su nombre. La primera de verdad. …Vale. Pero la caja la llevo yo hasta el borde.",
-          "partial": "Lucio duda. Esta ronda, sus hombres no se mueven.",
-          "failure": "Una cruz encima de una caja vacía. ¡Como todas!"
+          "success": {
+            "who": "Lucio con el arpón",
+            "text": "Una cruz con su nombre. La primera de verdad. …Vale. Pero la caja la llevo yo hasta el borde."
+          },
+          "partial": {
+            "who": "Lucio con el arpón",
+            "text": "Una cruz… Quietos. Dejadme pensarlo."
+          },
+          "failure": {
+            "who": "Lucio con el arpón",
+            "text": "Una cruz encima de una caja vacía. ¡Como todas!"
+          }
         },
         "no": [
           "sobornar"
@@ -4454,14 +4594,23 @@
           "text": "Decirles que en las cajas solo hay piedras, y que el mar se lleva a los que roban a los muertos",
           "skill": "intimidation",
           "dc": 12,
-          "success": "¿Piedras…? ¿Y lo del mar? Nos vamos. Nos vamos ya, que este pueblo da miedo.",
-          "failure": "Eso dicen todos los que quieren el oro para ellos."
+          "success": {
+            "who": "Saqueador de tumbas",
+            "text": "¿Piedras…? ¿Y lo del mar? Nos vamos. Nos vamos ya, que este pueblo da miedo."
+          },
+          "failure": {
+            "who": "Saqueador de tumbas",
+            "text": "Eso dicen todos los que quieren el oro para ellos."
+          }
         },
         {
           "kind": "pagar",
           "text": "Darles cinco monedas para el camino",
           "gold": 5,
-          "success": "Cinco monedas sin cavar más. Trato hecho. Aquí no hemos estado."
+          "success": {
+            "who": "Saqueador de tumbas",
+            "text": "Cinco monedas sin cavar más. Trato hecho. Aquí no hemos estado."
+          }
         }
       ],
       "parley": {
@@ -4470,6 +4619,7 @@
           "text": "Dejarles cavar y marcharos",
           "resolves": false,
           "success": {
+            "who": "Saqueador de tumbas",
             "text": "Así me gusta. Cada uno a lo suyo.",
             "effects": [
               {
@@ -4483,8 +4633,14 @@
           "text": "Gritar que el enterrador viene con la Cofradía",
           "dc": 11,
           "resolves": true,
-          "success": "¡La Cofradía! ¡Corred!",
-          "failure": "Ese viejo no sube la cuesta ni con la Cofradía empujando."
+          "success": {
+            "who": "Saqueador de tumbas",
+            "text": "¡La Cofradía! ¡Corred!"
+          },
+          "failure": {
+            "who": "Saqueador de tumbas",
+            "text": "Ese viejo no sube la cuesta ni con la Cofradía empujando."
+          }
         }
       }
     },
@@ -4654,6 +4810,7 @@
           "skill": "persuasion",
           "dc": 13,
           "success": {
+            "who": "Arponera de Arenales",
             "text": "Por fin alguien de fuera lo dice. Soltad al chico. Que se vaya a contárselo a los suyos.",
             "effects": [
               {
@@ -4662,13 +4819,19 @@
               }
             ]
           },
-          "failure": "Palabras. De Mareaviva siempre llegan palabras."
+          "failure": {
+            "who": "Arponera de Arenales",
+            "text": "Palabras. De Mareaviva siempre llegan palabras."
+          }
         },
         {
           "kind": "pagar",
           "text": "Pagar la ronda de toda la lonja",
           "gold": 8,
-          "success": "Una ronda de Mareaviva. Ya era hora de que pagaran algo. Soltad al chico."
+          "success": {
+            "who": "Arponera de Arenales",
+            "text": "Una ronda de Mareaviva. Ya era hora de que pagaran algo. Soltad al chico."
+          }
         }
       ],
       "parley": {
@@ -4678,6 +4841,7 @@
           "dc": 13,
           "resolves": true,
           "success": {
+            "who": "Arponera de Arenales",
             "text": "Si lo averiguas, vuelve y nos lo cuentas. A nosotras primero.",
             "effects": [
               {
@@ -4686,15 +4850,27 @@
               }
             ]
           },
-          "partial": "Las arponeras bajan los arpones. Esta ronda, nadie tira.",
-          "failure": "Eso dijo el maestro hace siete años. Y mira cómo acabó."
+          "partial": {
+            "who": "Arponera de Arenales",
+            "text": "Bajad los arpones, chicas. Que hable."
+          },
+          "failure": {
+            "who": "Arponera de Arenales",
+            "text": "Eso dijo el maestro hace siete años. Y mira cómo acabó."
+          }
         },
         "sobornar": {
           "text": "Pagar los platos rotos y una ronda",
           "gold": 12,
           "resolves": true,
-          "success": "Con eso pagamos los platos. Y la ronda nos la bebemos a tu salud.",
-          "failure": "Esto no se arregla con monedas."
+          "success": {
+            "who": "Arponera de Arenales",
+            "text": "Con eso pagamos los platos. Y la ronda nos la bebemos a tu salud."
+          },
+          "failure": {
+            "who": "Arponera de Arenales",
+            "text": "Esto no se arregla con monedas."
+          }
         }
       }
     },
@@ -4790,6 +4966,7 @@
           "skill": "stealth",
           "dc": 14,
           "success": {
+            "who": "Contrabandista de la cala",
             "text": "¿Has oído algo? Ratas. En esta cripta hay más ratas que muertos.",
             "effects": [
               {
@@ -4797,7 +4974,10 @@
               }
             ]
           },
-          "failure": "¡Alguien ha bajado! ¡Las luces!"
+          "failure": {
+            "who": "Contrabandista de la cala",
+            "text": "¡Alguien ha bajado! ¡Las luces!"
+          }
         }
       ],
       "parley": {
@@ -4807,6 +4987,7 @@
           "gold": 10,
           "resolves": true,
           "success": {
+            "who": "Contrabandista de la cala",
             "text": "Diez monedas por una barca de palo. Para ti. Y la cripta, ni la has visto.",
             "effects": [
               {
@@ -4814,13 +4995,17 @@
               }
             ]
           },
-          "failure": "El Gallo nos mata si vendemos algo sin él."
+          "failure": {
+            "who": "Contrabandista de la cala",
+            "text": "El Gallo nos mata si vendemos algo sin él."
+          }
         },
         "engañar": {
           "text": "Decirles que las Rezadoras han maldecido lo que se sacó del osario",
           "dc": 14,
           "resolves": true,
           "success": {
+            "who": "Contrabandista de la cala",
             "text": "Yo ya decía que esa barca daba mal fario. Toma, toma, quédatela.",
             "effects": [
               {
@@ -4828,7 +5013,10 @@
               }
             ]
           },
-          "failure": "Las viejas maldicen mucho y no pasa nada."
+          "failure": {
+            "who": "Contrabandista de la cala",
+            "text": "Las viejas maldicen mucho y no pasa nada."
+          }
         }
       }
     },
@@ -4909,6 +5097,7 @@
           "skill": "stealth",
           "dc": 14,
           "success": {
+            "who": "Estibador de la Salazón",
             "text": "Aquí no hay nadie. Cerrad la compuerta y a dormir.",
             "effects": [
               {
@@ -4916,7 +5105,10 @@
               }
             ]
           },
-          "failure": "¡Alguien ha entrado por el agua! ¡Los ganchos!"
+          "failure": {
+            "who": "Estibador de la Salazón",
+            "text": "¡Alguien ha entrado por el agua! ¡Los ganchos!"
+          }
         },
         {
           "kind": "hablar",
@@ -4924,6 +5116,7 @@
           "skill": "deception",
           "dc": 15,
           "success": {
+            "who": "Estibador de la Salazón",
             "text": "Si lo manda la señora… el libro está en el cofre. Pero que conste que nosotros solo cargamos.",
             "effects": [
               {
@@ -4931,7 +5124,10 @@
               }
             ]
           },
-          "failure": "La señora no manda a nadie. La señora manda a Antón."
+          "failure": {
+            "who": "Estibador de la Salazón",
+            "text": "La señora no manda a nadie. La señora manda a Antón."
+          }
         }
       ],
       "parley": {
@@ -4941,6 +5137,7 @@
           "gold": 10,
           "resolves": true,
           "success": {
+            "who": "Estibador de la Salazón",
             "text": "Una noche pagada sin cargar. Coge lo que quieras, que no hemos visto nada.",
             "effects": [
               {
@@ -4948,12 +5145,16 @@
               }
             ]
           },
-          "failure": "Antón se entera de todo."
+          "failure": {
+            "who": "Estibador de la Salazón",
+            "text": "Antón se entera de todo."
+          }
         },
         "entregarse": {
           "text": "Soltar las armas y dejar que os echen por la compuerta",
           "resolves": false,
           "success": {
+            "who": "Estibador de la Salazón",
             "text": "Al agua, y que os lleve la marea. A vosotros sí os puede ahogar.",
             "effects": [
               {
@@ -5040,16 +5241,28 @@
           "text": "Subir pegados a la roca, por la parte que no se ve desde arriba",
           "skill": "stealth",
           "dc": 14,
-          "success": "Nada en el atajo. Ni una cabra.",
-          "failure": "¡Fiuuu! ¡Gente subiendo por el atajo!"
+          "success": {
+            "who": "Contrabandista de la cala",
+            "text": "Nada en el atajo. Ni una cabra."
+          },
+          "failure": {
+            "who": "Contrabandista de la cala",
+            "text": "¡Fiuuu! ¡Gente subiendo por el atajo!"
+          }
         },
         {
           "kind": "hablar",
           "text": "Decirles que el Gallo ya no manda en la cala",
           "skill": "intimidation",
           "dc": 15,
-          "success": "Si el Gallo ya no paga, yo no vigilo. Sube, sube.",
-          "failure": "Eso lo tendrá que decir el Gallo."
+          "success": {
+            "who": "Contrabandista de la cala",
+            "text": "Si el Gallo ya no paga, yo no vigilo. Sube, sube."
+          },
+          "failure": {
+            "who": "Contrabandista de la cala",
+            "text": "Eso lo tendrá que decir el Gallo."
+          }
         }
       ],
       "parley": {
@@ -5058,8 +5271,14 @@
           "text": "Pagar el peaje del atajo",
           "gold": 8,
           "resolves": true,
-          "success": "El peaje de siempre. Sube, y no mires abajo.",
-          "failure": "Hoy el peaje es más caro. Mucho más."
+          "success": {
+            "who": "Contrabandista de la cala",
+            "text": "El peaje de siempre. Sube, y no mires abajo."
+          },
+          "failure": {
+            "who": "Contrabandista de la cala",
+            "text": "Hoy el peaje es más caro. Mucho más."
+          }
         }
       }
     }
@@ -7644,6 +7863,7 @@
                   "days": 2,
                   "on": "siempre",
                   "name": "Las quince monedas",
+                  "who": "Jacinto Larrañaga",
                   "text": "Jacinto Larrañaga te corta el paso en la plaza: «Te pagamos para que te fueras, y sigues aquí.»",
                   "options": [
                     {
@@ -7654,14 +7874,14 @@
                       "effects": [
                         "faccion:+1"
                       ],
-                      "then": "Jacinto se las guarda sin contarlas: «Al menos eres {honrado|honrada}.»"
+                      "then": "Al menos eres {honrado|honrada}."
                     },
                     {
                       "label": "Quedártelas y seguir a lo tuyo",
                       "effects": [
                         "fama:-1"
                       ],
-                      "then": "Jacinto escupe al suelo: «Pues que lo sepa todo el pueblo.»"
+                      "then": "Pues que lo sepa todo el pueblo."
                     }
                   ]
                 }
@@ -7918,14 +8138,16 @@
                       "effects": [
                         "pista"
                       ],
-                      "then": "Lucio no abre la puerta. Desde dentro grita: «Ya no hablo con nadie que me mande a la Cofradía.»"
+                      "who": "Lucio Iturbe",
+                      "then": "¡Ya no hablo con nadie que me mande la Cofradía! ¡Fuera de mi puerta!"
                     },
                     {
                       "label": "Avisar a Jacinto",
                       "effects": [
                         "faccion:+1"
                       ],
-                      "then": "Jacinto asiente despacio: «Nosotros nos ocupamos.» No suena a nada bueno."
+                      "who": "Jacinto Larrañaga",
+                      "then": "Nosotros nos ocupamos."
                     }
                   ]
                 }
@@ -8999,7 +9221,8 @@
     "endings": {
       "la-costa-duerme": {
         "title": "La costa duerme",
-        "scene": "Ane pone la mano blanca sobre la pared y la aparta. La tinta se borra. Esa noche nadie sube por los postes del embarcadero viejo, y en Mareaviva se duerme de un tirón por primera vez en treinta años. Al amanecer, Ane tiene el pelo blanco. La bahía es un mar como todos: desde hoy, aquí también se puede uno ahogar.",
+        "who": "Ane Goikoa",
+        "scene": "Pongo la mano en la pared… y la aparto. Mira: la tinta se borra. Esta noche nadie subirá por los postes del embarcadero viejo, y en Mareaviva se dormirá de un tirón por primera vez en treinta años. ¿Tengo el pelo blanco? Da igual. La bahía ya es un mar como todos: desde hoy, aquí también se puede uno ahogar.",
         "epilogues": [
           {
             "who": "Ane Goikoa",
@@ -9025,7 +9248,8 @@
       },
       "un-trato-nuevo": {
         "title": "Un trato nuevo",
-        "scene": "Esa noche las Rezadoras se sientan en el embarcadero viejo y le hablan al agua hasta el amanecer. Uno a uno, los muertos sueltan los postes y se hunden despacio, por fin dormidos. La Vecina acepta: compañía de vivos, una noche cada uno, por turnos, para siempre. En Mareaviva sigue sin ahogarse nadie, pero ahora todo el pueblo sabe por qué, y lo paga despierto.",
+        "who": "Engracia Sarasola",
+        "scene": "Esta noche nos sentamos en el embarcadero viejo y le hablamos al agua hasta el amanecer. Mira: uno a uno, los muertos sueltan los postes y se hunden despacio. Por fin duermen. La Vecina acepta: compañía de vivos, una noche cada uno, por turnos, para siempre. En Mareaviva seguirá sin ahogarse nadie, pero ahora todo el pueblo sabe por qué, y lo paga despierto.",
         "epilogues": [
           {
             "who": "Ane Goikoa",
@@ -9051,7 +9275,8 @@
       },
       "el-trato-sigue": {
         "title": "El trato sigue",
-        "scene": "Con la caja de Mateo atada a una piedra, el mar se cierra sobre el último que faltaba. La marea baja esa misma noche, los niños duermen en sus camas y en la bahía no se ahoga nadie. Todo sigue como estaba: la suerte, la Vela y los muertos despiertos bajo el embarcadero. Hasta el día en que Ane Goikoa se muera.",
+        "who": "Jacinto Larrañaga",
+        "scene": "La caja de Mateo, atada a una piedra, y el mar se cierra sobre el último que faltaba. Esta noche baja la marea, los críos dormirán en sus camas y en la bahía no se ahogará nadie. Todo sigue como estaba: la suerte, la Vela y los muertos despiertos bajo el embarcadero. Hasta el día en que se muera Ane Goikoa.",
         "epilogues": [
           {
             "who": "Ane Goikoa",

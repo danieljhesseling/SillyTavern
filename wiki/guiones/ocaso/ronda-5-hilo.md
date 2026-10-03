@@ -4,7 +4,7 @@
 >
 > **Cómo se juega el hilo.** La escena de un hito sale al abrirse, salvo la de un «llegar a», que sale al llegar. Por eso cada escena la dice quien está donde estás tú cuando sale: la de la pelea de la calzada la cuenta la alcaldesa de Los Sauces antes de salir; la de la cámara de Fullero, el caminero, al acabar la pelea de la calzada.
 >
-> **La bandera.** Al llegar al refugio, la refugiera pregunta con qué bandera subes. Es la decisión que no tiene vuelta atrás: cada respuesta cumple su hito de bandera (`bandera-brezo`, `bandera-oramar` o `bandera-hondaroca`), que cierra los otros dos y pone a esa casa muy a favor y a las otras dos muy en contra. El fanal, al final, se enciende con la bandera de la casa que mejor te mira (`final_segun`).
+> **La bandera.** Al llegar al refugio, la refugiera pregunta con qué bandera subes. Es la decisión que no tiene vuelta atrás: cada respuesta cumple su hito de bandera (`bandera-brezo`, `bandera-oramar` o `bandera-hondaroca`), que cierra los otros dos, sube 4 a esa casa y baja 2 a las otras dos. El fanal, al final, se enciende con la bandera de la casa que mejor te mira (`final_segun`): casi siempre la que llevaste, pero lo que hiciste antes (encargos, tratos, pueblos) aún puede darle la vuelta.
 >
 > **El nivel no sube por los hitos** (D-J59): sale de pelear, de los encargos y de las misiones de los compañeros. La Atalaya es para nivel 5 y es dura.
 
@@ -70,7 +70,7 @@ hito:
     backdrop: posada
     beats:
       - who: Brígida Cantueso
-        text: "Ya está fuera. Soy Brígida, llevo la posada. Al viejo lo tienes en la mesa del fondo, y la sopa son dos sueldos."
+        text: "Ya está fuera. Soy Brígida, llevo la posada. Al viejo lo tienes en la mesa del fondo, y la sopa son dos monedas."
       - who: Rufino Albarda
         mood: alegre
         text: "Primero, gracias. Segundo, me presento: Rufino Albarda, notario del rey. Tercero, gracias otra vez."
@@ -96,7 +96,7 @@ hito:
           - id: cobrar
             text: "Lo llevo, pero el camino es largo. ¿Cuánto pagas?"
             effects: [{ gold: 20 }, { attitude: -1 }]
-            reply: { who: Rufino Albarda, mood: enfadado, text: "Veinte sueldos, que es lo que llevo. Primero me salvas y luego me cobras. Muy del reino, eso." }
+            reply: { who: Rufino Albarda, mood: enfadado, text: "Veinte monedas, que es lo que llevo. Primero me salvas y luego me cobras. Muy del reino, eso." }
           - id: quien
             text: "¿Quién quiere que no llegues?"
             effects: [{ clue: "Las tres casas y los mercenarios de capa gris quieren el sello del notario." }]
@@ -188,9 +188,9 @@ hito:
             effects: [{ clue: "En el tramo roto de la calzada, la cuneta tiene zarzas para esconderse, pero da al barranco." }]
             reply: { who: Herminia Sauce, text: "Cuidado con el barranco. Las zarzas no avisan de dónde se acaba el suelo." }
           - id: un-saco
-            text: "Dejo dos sueldos para los huérfanos del molino."
+            text: "Dejo dos monedas para los huérfanos del molino."
             effects: [{ gold: -2 }, { attitude: 1 }]
-            reply: { who: Herminia Sauce, mood: alegre, text: "Dos sueldos son dos sueldos. Te debo una, {forastero|forastera}." }
+            reply: { who: Herminia Sauce, mood: alegre, text: "Dos monedas son dos monedas. Te debo una, {forastero|forastera}." }
 
 ## Acto 2: Las tres casas
 
@@ -276,7 +276,7 @@ hito:
         text: "{Hijo|Hija}, soy la madre Orosia, del templo de la Ribera. Si ese libro dice lo que creo, ven a leerlo conmigo."
       - who: Madre Orosia
         mood: triste
-        text: "Mira esta hoja. Cuarenta sueldos al mes de Brezo, cuarenta de Oramar, treinta de Hondaroca. Y abajo: «entregar en el campamento bajo el collado de la ermita»."
+        text: "Mira esta hoja. Cuarenta monedas al mes de Brezo, cuarenta de Oramar, treinta de Hondaroca. Y abajo: «entregar en el campamento bajo el collado de la ermita»."
         options:
           - id: a-brezo
             text: "Brezo tiene que saber que Oramar paga al Cierzo contra ella."
@@ -304,12 +304,12 @@ hito:
         mood: triste
         text: "Media ración, desde agosto. Si vienes a comer, llegas tarde. Ordoño Galindo, castellano de esta torre."
       - who: Ilduara de Brezo
-        text: "Doce sueldos el saco, catorce si lo pide Oramar. Y tú traes en el dedo algo que vale más que todo mi granero."
+        text: "Doce monedas el saco, catorce si lo pide Oramar. Y tú traes en el dedo algo que vale más que todo mi granero."
         alt:
           - if: { chose: nunca }
             text: "Me han contado que le dijiste que no a Oramar en su propia ciudad. Eso lo apunto a tu favor."
       - who: Ilduara de Brezo
-        text: "Ilduara de Brezo. Debo cuatro mil sueldos a Oramar, al último sueldo. Si tengo el paso, las tierras altas comen este invierno."
+        text: "Ilduara de Brezo. Debo cuatro mil monedas a Oramar, a la última moneda. Si tengo el paso, las tierras altas comen este invierno."
       - who: Ilduara de Brezo
         mood: enfadado
         text: "Si lo tiene Oramar, mi gente paga el grano a precio de hambre. Eso no es política. Es aritmética."
@@ -317,7 +317,7 @@ hito:
           - id: tambien-pagas
             text: "El libro de Fullero dice que tú también pagas al Cierzo."
             effects: [{ attitude: -1 }]
-            reply: { who: Ilduara de Brezo, mood: enfadado, text: "Cuarenta sueldos al mes, para que despejaran el camino. No lo han despejado. También eso está en mis cuentas." }
+            reply: { who: Ilduara de Brezo, mood: enfadado, text: "Cuarenta monedas al mes, para que despejaran el camino. No lo han despejado. También eso está en mis cuentas." }
           - id: brezales
             text: "¿Y Los Brezales? ¿También fue aritmética?"
             check:
@@ -515,7 +515,7 @@ hito:
   cambia:
     cierra: [bandera-oramar, bandera-hondaroca]
     abre_hito: [m-cornisa]
-    reputacion: { casa-brezo: 6, casa-oramar: -6, casa-hondaroca: -6 }
+    reputacion: { casa-brezo: 4, casa-oramar: -2, casa-hondaroca: -2 }
   pista: "Sube a la Atalaya con la bandera de Brezo."
   escena: "Subes al paso con la bandera morada de Brezo. Si el fanal arde con ella, las tierras altas comerán este invierno, y las bajas pagarán el grano a su precio."
   paquete:
@@ -542,7 +542,7 @@ hito:
   cambia:
     cierra: [bandera-brezo, bandera-hondaroca]
     abre_hito: [m-cornisa]
-    reputacion: { casa-oramar: 6, casa-brezo: -6, casa-hondaroca: -6 }
+    reputacion: { casa-oramar: 4, casa-brezo: -2, casa-hondaroca: -2 }
   pista: "Sube a la Atalaya con la bandera de Oramar."
   escena: "Subes al paso con el barco azul de Oramar. Si el fanal arde con él, pasará quien pague, y Oramar pondrá precio a la sal y al grano de todo el reino."
   paquete:
@@ -569,7 +569,7 @@ hito:
   cambia:
     cierra: [bandera-brezo, bandera-oramar]
     abre_hito: [m-cornisa]
-    reputacion: { casa-hondaroca: 6, casa-brezo: -6, casa-oramar: -6 }
+    reputacion: { casa-hondaroca: 4, casa-brezo: -2, casa-oramar: -2 }
   pista: "Sube a la Atalaya con la grulla blanca de Hondaroca."
   escena: "Subes al paso con la grulla blanca de Hondaroca, la de hace sesenta años. Si el fanal arde con ella, los enanos guardarán el paso igual para todas las casas, como dice la Carta."
   paquete:
@@ -739,14 +739,16 @@ hito:
 
 ## Los finales
 
-El fanal se enciende con la bandera de la casa que mejor te mira, que es la que llevaste: Brezo, Oramar o la grulla de Hondaroca. Cada final dice qué fue de la gente que pesó.
+El fanal se enciende con la bandera de la casa que mejor te mira: casi siempre la que llevaste (Brezo, Oramar o la grulla de Hondaroca), salvo que lo hecho antes pese más. Cada final dice qué fue de la gente que pesó.
 
 final:
   id: paso-brezo
   titulo: El paso de Brezo
-  escena: "El fanal de la Atalaya arde con la bandera morada de Brezo, y se ve desde todo el valle. Este invierno las tierras altas comen. Las bajas pagan el grano a precio de Brezo, y en Vadoancho los barcos siguen amarrados."
+  escena: "Mirad el fanal de la Atalaya: arde con la bandera morada de Brezo, y se ve desde todo el valle. Este invierno las tierras altas comen. Las bajas pagarán el grano a precio de Brezo, y en Vadoancho los barcos se quedan amarrados."
+  paquete:
+    who: "Ilduara de Brezo"
   epilogos:
-    - { quien: ilduara, texto: "Doña Ilduara salda la deuda con Oramar a cambio del grano de las tierras bajas. Lo apunta todo, al último sueldo, y no perdona ni uno." }
+    - { quien: ilduara, texto: "Doña Ilduara salda la deuda con Oramar a cambio del grano de las tierras bajas. Lo apunta todo, a la última moneda, y no perdona ni una." }
     - { quien: sancho, texto: "Sancho de Brezo manda la guardia del paso. Aprende a contar raciones antes que lanzas." }
     - { quien: herminia, texto: "Herminia Sauce esconde otra vez un tercio de la cosecha. Esta vez, para pagar el grano de Brezo en primavera." }
     - { quien: casa-oramar, texto: "Casa Oramar compra en silencio las deudas de los pueblos de abajo. Espera al deshielo." }
@@ -755,7 +757,9 @@ final:
 final:
   id: paso-oramar
   titulo: El paso de Oramar
-  escena: "El fanal de la Atalaya arde con el barco azul de Oramar. Por el paso sube y baja quien paga, y paga todo el mundo. Los seis barcos de Vadoancho zarpan al día siguiente, con el precio ya puesto."
+  escena: "El fanal de la Atalaya arde con el barco azul de Oramar. Por el paso sube y baja quien paga, y pagará todo el mundo. Mañana zarpan los seis barcos de Vadoancho, con el precio ya puesto."
+  paquete:
+    who: "Tristán Oramar"
   epilogos:
     - { quien: tristan, texto: "Don Tristán Oramar pone precio a la sal y al grano de medio reino. A ti te invita a cenar cada vez que pasas por Vadoancho." }
     - { quien: lupe, texto: "Lupe Garbanzo sube la sal al paso antes que la nieve, con peaje y con factura. Gana menos y duerme más." }
@@ -766,7 +770,9 @@ final:
 final:
   id: paso-abierto
   titulo: El paso abierto
-  escena: "El fanal de la Atalaya arde con la grulla blanca de Hondaroca, la de hace sesenta años. Los enanos vuelven a la puerta de la Atalaya y la guardan igual para todos, como dice la Carta. Por el paso suben carros de las tres casas, y nadie paga más que nadie."
+  escena: "Mira el fanal: arde con la grulla blanca de Hondaroca, la de hace sesenta años. Mi gente vuelve a la puerta de la Atalaya, y la guardará igual para todos, como dice la Carta. Por el paso subirán carros de las tres casas, y nadie pagará más que nadie."
+  paquete:
+    who: "Gudrun Hondaroca"
   epilogos:
     - { quien: gudrun, texto: "Gudrun Hondaroca cierra cada noche la puerta de su abuelo y la abre cada mañana, a quien llegue." }
     - { quien: dagna, texto: "Dagna Hondaroca devuelve el oro de Oramar. Golpea la mesa al hacerlo, pero lo devuelve." }

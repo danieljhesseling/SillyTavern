@@ -33,7 +33,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 // D-J62, el modo guiado: a quien pide la historia se le habla desde «Lo que pide la historia».
-import { pasoDeLaHistoria, salirDelTablero } from './e2e-guiado.mjs';
+import { alSitio, buscarEnElPueblo, pasoDeLaHistoria, salirDelSitio, salirDelTablero } from './e2e-guiado.mjs';
 import { entrarEnLaPelea } from './e2e-entrar-pelea.mjs';
 
 const ROOT = new URL('..', import.meta.url).pathname.replace(/^[/]([A-Za-z]:)/, '$1');
@@ -144,6 +144,14 @@ try {
     });
     const chatTexts = () => page.evaluate(() => (window.SillyTavern.getContext().chat || []).map((/** @type {any} */ m) => String(m.extra?.display_text ?? m.mes ?? '')));
     const chips = () => page.evaluate(() => [...document.querySelectorAll('#game-shell .gs-chip-action')].map(c => (c.textContent || '').trim()));
+    /**
+     * D-J61: los gestos de los retratos están apagados (`PORTRAIT_MOODS`, wiki/LO_OCULTO.md): la cara
+     * es la de siempre. Encendidos, la del gesto (`giles--alegre.png`).
+     */
+    const moodFace = async (/** @type {string} */ src, /** @type {string} */ base, /** @type {string} */ mood) => {
+        const moodsOn = await page.evaluate(async () => Boolean((await import('/scripts/game-engine/ui/pixel-art.js')).PORTRAIT_MOODS?.on));
+        return new RegExp(`${base}${moodsOn ? `--${mood}` : `(--${mood})?`}\\.png$`).test(String(src ?? ''));
+    };
     const clickChip = (/** @type {RegExp} */ pattern) => page.evaluate((source) => {
         const chip = [...document.querySelectorAll('#game-shell .gs-chip-action')].find(b => new RegExp(source).test(b.textContent || ''));
         if (chip instanceof window.HTMLElement) chip.click();
@@ -260,7 +268,7 @@ try {
     const calizFrames = await playScene(['gritar']);
     const torres = calizFrames.find(f => f.plate === 'Torres');
     check('J9.2: Torres habla con su cara de enfadado y su nombre en la placa; la escena trae su decisión',
-        Boolean(torres) && torres.mood === 'enfadado' && /alguacil-torres--enfadado\.png$/.test(torres.face) && calizFrames.some(f => f.options.some((/** @type {any} */ o) => o.id === 'gritar')),
+        Boolean(torres) && torres.mood === 'enfadado' && await moodFace(torres.face, 'alguacil-torres', 'enfadado') && calizFrames.some(f => f.options.some((/** @type {any} */ o) => o.id === 'gritar')),
         JSON.stringify(torres ?? calizFrames.map(f => f.plate)));
     await page.waitForTimeout(1200);
     let now = await meta();
@@ -331,7 +339,7 @@ try {
     const escapeFrames = await playScene(['llamar']);
     const gilesGlad = escapeFrames.find(f => f.plate === 'Giles');
     check('J9.2: la decisión de la huida tiene respuesta: Giles, con su cara de alegre',
-        Boolean(gilesGlad) && gilesGlad.mood === 'alegre' && /giles--alegre\.png$/.test(gilesGlad.face), JSON.stringify(gilesGlad ?? escapeFrames.map(f => f.plate)));
+        Boolean(gilesGlad) && gilesGlad.mood === 'alegre' && await moodFace(gilesGlad.face, 'giles', 'alegre'), JSON.stringify(gilesGlad ?? escapeFrames.map(f => f.plate)));
 
     // --- J8: la escena acaba en la charla de Giles, que cumple el hito cuando lo cuenta -------
     const gilesTalk = await until(async () => (await story())?.id === 'giles-lo-que-vio', 10000);
@@ -367,20 +375,33 @@ try {
         const place = wi.getCurrentWorldLocationMaps().find((/** @type {any} */ l) => l.name === 'El Pueblo de Barro');
         return (place?.sights ?? []).map((/** @type {any} */ s) => ({ label: `${String(s.verbo).charAt(0).toUpperCase()}${String(s.verbo).slice(1)} ${s.text}`, found: s.found }));
     });
-    const lookChip = await until(async () => (await chips()).some(c => sightsHere.some((/** @type {any} */ s) => s.label === c)), 10000);
-    const offered = (await chips()).filter(c => sightsHere.some((/** @type {any} */ s) => s.label === c));
+    // En la fila (con conexión, o con el modo guiado apagado) o, con el modo guiado (D-J62), en el
+    // sitio del pueblo al que pertenece.
+    const isSight = (/** @type {string} */ label) => sightsHere.some((/** @type {any} */ s) => s.label === label);
+    const inRow = await until(async () => (await chips()).some(isSight), 5000);
+    const lookAct = inRow ? null : await buscarEnElPueblo(page, act => isSight(act.label));
+    const offered = inRow ? (await chips()).find(isSight) ?? '' : lookAct?.label ?? '';
     check('J10.2: en El Pueblo de Barro se ofrece examinar lo que el paquete escribe para él (sus «sights»)',
-        lookChip && offered.length >= 1, JSON.stringify({ chips: await chips(), sights: sightsHere.map((/** @type {any} */ s) => s.label) }));
+        Boolean(offered), JSON.stringify({ chips: await chips(), lookAct, sights: sightsHere.map((/** @type {any} */ s) => s.label) }));
     await shoot('mirar');
-    const sight = sightsHere.find((/** @type {any} */ s) => s.label === offered[0]);
+    const sight = sightsHere.find((/** @type {any} */ s) => s.label === offered);
     await loadedDice(true);
-    await clickChip(new RegExp(`^${String(offered[0] ?? '---').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`));
+    if (inRow) await clickChip(new RegExp(`^${offered.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`));
+    else await page.locator(`#game-shell .gs-town-scene .gs-town-act[data-action="${lookAct?.id ?? '---'}"]`).first().click({ timeout: 5000 }).catch(() => {});
     await page.waitForTimeout(1500);
     await clearDice();
     await loadedDice(false);
     const foundShown = (await chatTexts()).some(t => t.includes(String(sight?.found ?? '---')));
-    check('J10.2: con la tirada buena, se ve lo que hay (su «found»), y la ficha ya no sale hoy',
-        foundShown && !(await chips()).includes(String(offered[0])), JSON.stringify({ found: sight?.found, chips: await chips() }));
+    // Lo mirado ya no se ofrece hoy (en la fila, o en su sitio).
+    let lookAgain = false;
+    if (inRow) lookAgain = (await chips()).includes(offered);
+    else {
+        await alSitio(page);
+        lookAgain = Boolean(await buscarEnElPueblo(page, act => act.id === lookAct?.id));
+        await salirDelSitio(page);
+    }
+    check('J10.2: con la tirada buena, se ve lo que hay (su «found»), y ya no se ofrece hoy',
+        foundShown && !lookAgain, JSON.stringify({ found: sight?.found, lookAgain, chips: await chips() }));
 
     // --- D-J36: «Hablar» con Giles abre su charla; «Otras cosas», la de siempre ----------------
     await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/hablar Giles'));
@@ -410,7 +431,7 @@ try {
         return { plate: (document.querySelector('#game-shell .gs-vn-nameplate')?.textContent || '').trim(), src: image?.getAttribute('src') || '' };
     });
     check('Expresiones: lo que dice Giles sale a su nombre, con el gesto de cómo os mira (alegre), y la novela pinta esa cara',
-        said.some(m => m.name === 'Giles' && m.mood === 'alegre') && novelFace.plate === 'Giles' && /giles--alegre\.png$/.test(novelFace.src),
+        said.some(m => m.name === 'Giles' && m.mood === 'alegre') && novelFace.plate === 'Giles' && await moodFace(novelFace.src, 'giles', 'alegre'),
         JSON.stringify({ said, novelFace }));
     await shoot('cara');
 
@@ -578,7 +599,7 @@ try {
     now = await meta();
     check('Gremio: Tomás grita con su cara; «Yo me encargo» hace que os mire mejor, y la escena queda jugada',
         // J13.7: antes de presentarse, su placa dice lo que es («Posadero»); la cara es la suya.
-        pierFrames.some(f => /^(Tomás|Posadero)$/.test(f.plate) && /retratos\/gremio\/tomas--/.test(f.face)) && now.played.includes('el-muelle') && Number(now.attitudes['Tomás']) >= 1,
+        pierFrames.some(f => /^(Tomás|Posadero)$/.test(f.plate) && /retratos\/gremio\/tomas(--|\.png$)/.test(f.face)) && now.played.includes('el-muelle') && Number(now.attitudes['Tomás']) >= 1,
         JSON.stringify({ plates: pierFrames.map(f => `${f.plate}:${f.mood}`), played: now.played, attitudes: now.attitudes }));
 
     // La pelea del muelle: ganarla abre la escena de la charla con Tomás, tras el panel de victoria.

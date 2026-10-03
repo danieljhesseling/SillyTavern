@@ -133,6 +133,8 @@ export function statusMarkers(conditions) {
  * @property {boolean} bloodied     Below half, the point where tactics usually change.
  * @property {Array<{key: string, icon: string, label: string}>} statuses
  * @property {string} avatar       Su cara, si la tiene (idea 5). Vacío: se pinta la inicial.
+ * @property {{successes: number, failures: number, stable: boolean}|null} dying Tanda 22: uno de los
+ *   tuyos en el suelo (a 0 PG y sin morir): sus salvaciones de muerte, para los puntos de su fila.
  */
 
 /**
@@ -198,6 +200,11 @@ export function buildTracker({ turnOrder, currentTurnIndex, round = 1, party = [
             bloodied: Boolean(actor) && maxHp > 0 && hp > 0 && hp <= maxHp / 2,
             statuses: statusMarkers(conditions),
             avatar: String(actor?.avatar ?? '').trim(),
+            dying: !entry?.isEnemy && actor && hp <= 0 && !actor.dead && Number(actor.maxHp) > 0 ? {
+                successes: Math.max(0, Math.min(3, Math.floor(Number(actor.deathSaves?.successes) || 0))),
+                failures: Math.max(0, Math.min(3, Math.floor(Number(actor.deathSaves?.failures) || 0))),
+                stable: Boolean(actor.deathSaves?.stable),
+            } : null,
         };
     });
 

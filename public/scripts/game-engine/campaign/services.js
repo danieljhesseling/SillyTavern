@@ -18,6 +18,8 @@
  * Ver wiki/archivo/ROADMAP_MUNDOS_VIVOS.md, fase L.
  */
 
+import { DIRECT_SOCIAL_BUTTONS } from './invitations.js';
+
 /** Lo que trae cada tipo de localidad cuando la localidad no dice nada. */
 export const SERVICES_BY_TYPE = {
     city: ['posada', 'herreria', 'tienda', 'templo', 'tablon'],
@@ -112,7 +114,10 @@ export function serviceActions({
                 `Un descanso largo, con puerta. ${INN_PRICES.room * heads} de oro.`, INN_PRICES.room * heads));
             actions.push(action('inn-meal', 'Comer caliente',
                 `Se acaba el hambre y la sed de todos. ${INN_PRICES.meal * heads} de oro.`, INN_PRICES.meal * heads));
-            for (const companion of companions.slice(0, 3)) {
+            // Tanda 22 (D-J63): «Invitar a una ronda a X» era otro botón directo para subir el
+            // rango; como en Persona, se queda con alguien desde su saludo. Se esconde con los
+            // demás botones directos (wiki/LO_OCULTO.md), sin borrarse.
+            for (const companion of DIRECT_SOCIAL_BUTTONS ? companions.slice(0, 3) : []) {
                 actions.push(action(`inn-round:${companion.id}`, `Invitar a una ronda a ${companion.name}`,
                     `Una tarde con ${companion.name}: gasta un bloque del día y acerca el vínculo. ${INN_PRICES.round} de oro.`,
                     INN_PRICES.round, companion.id));

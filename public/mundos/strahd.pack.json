@@ -1017,7 +1017,7 @@
   "bestiary": [
     {
       "name": "Strahd von Zarovich",
-      "hp": 90,
+      "hp": 120,
       "armorClass": 16,
       "cr": 6,
       "profile": "skirmisher",
@@ -1052,6 +1052,7 @@
       "profile": "aggressive",
       "attackRangeFeet": 5,
       "description": "Antiguos aventureros derrotados por Strahd, ahora convertidos en monstruos pálidos y sedientos de sangre que trepan por los techos.",
+      "aspecto": "Hombre de edad imposible de decir, con la piel gris azulada, los ojos rojos sin párpados y la boca llena de colmillos. Restos de una armadura de aventurero hecha jirones.",
       "abilities": [
         "hab-embate"
       ]
@@ -1111,6 +1112,7 @@
       "profile": "aggressive",
       "attackRangeFeet": 5,
       "description": "Licántropos salvajes que adoran a la Madre Noche y emergen de la niebla para masacrar adultos y secuestrar niños.",
+      "aspecto": "Hombre de unos cuarenta a medio transformar: hocico de lobo, pelo gris por la cara y los brazos, ojos amarillos y dientes largos. Camisa de lana rota por los hombros.",
       "boss": true,
       "abilities": [
         "hab-furia",
@@ -1125,6 +1127,7 @@
       "profile": "skirmisher",
       "attackRangeFeet": 30,
       "description": "Brujas horribles que operan desde el Viejo Mascahuesos, robando niños para hornear sus siniestros pasteles de los sueños.",
+      "aspecto": "Vieja horrible de piel morada y arrugada, con el pelo negro enredado, nariz ganchuda y uñas largas y negras. Delantal de panadera manchado de harina y de algo peor.",
       "boss": true,
       "abilities": [
         "rayo_de_fuego",
@@ -1148,6 +1151,7 @@
       "profile": "guardian",
       "attackRangeFeet": 5,
       "description": "Un caballero no-muerto de la Orden del Dragón de Plata, que vaga lleno de odio aniquilando a los siervos del vampiro.",
+      "aspecto": "Caballero muerto de piel gris y ojos de luz azul fría. Armadura de placas con un dragón de plata grabado en el peto, abollada y cubierta de verdín.",
       "boss": true,
       "abilities": [
         "hab-embate",
@@ -1168,7 +1172,8 @@
         "romper_rodilla"
       ],
       "description": "El jefe de la manada de hombres lobo: enorme, con la barba llena de sangre seca. Pelea medio hombre, medio lobo.",
-      "weakness": "Se enfada si le desafían delante de la manada, y entonces ataca al que le ha desafiado sin mirar a nadie más."
+      "weakness": "Se enfada si le desafían delante de la manada, y entonces ataca al que le ha desafiado sin mirar a nadie más.",
+      "aspecto": "Hombre enorme de unos cuarenta, con la melena y la barba negras llenas de sangre seca y los ojos amarillos. Pecho desnudo lleno de cicatrices y una capa de piel de lobo."
     },
     {
       "name": "Baba Lysaga",
@@ -1184,7 +1189,8 @@
         "hab-esfumarse"
       ],
       "description": "Una vieja flaquísima y durísima, la partera que trajo al conde al mundo. Dice que es su verdadera madre.",
-      "weakness": "Odia a los cuervos. Si oye uno, se distrae buscándolo."
+      "weakness": "Odia a los cuervos. Si oye uno, se distrae buscándolo.",
+      "aspecto": "Vieja flaquísima, de piel cetrina y arrugada, con el pelo blanco ralo y los ojos hundidos y brillantes. Vestido negro raído y un collar de huesos pequeños."
     },
     {
       "name": "Espantapájaros",
@@ -1223,7 +1229,8 @@
         "lanzar_tierra"
       ],
       "description": "Un adorador del conde, descalzo y cubierto de barro gris, que se ríe como un loco.",
-      "weakness": "Si caen todas sus plantas, huye hacia la colina."
+      "weakness": "Si caen todas sus plantas, huye hacia la colina.",
+      "aspecto": "Hombre de unos treinta, descalzo y cubierto de barro gris de la cabeza a los pies, con el pelo enmarañado lleno de ramitas y una sonrisa de loco. Túnica de arpillera."
     },
     {
       "name": "Plaga de agujas",
@@ -1598,8 +1605,14 @@
           "text": "Plantarle cara a la bruja delante de todos: que salga de la taberna",
           "skill": "intimidation",
           "dc": 13,
-          "success": "La bruja sisea, recoge sus harapos y se escurre por la puerta de atrás; el muerto la sigue arrastrando los pies. Los parroquianos vuelven a respirar.",
-          "failure": "La bruja se ríe con la boca negra y levanta las manos."
+          "success": {
+            "who": "Bruja Baroviana",
+            "text": "¿Delante de todos? Bah… Me voy. Muerto, ¡detrás de mí!"
+          },
+          "failure": {
+            "who": "Bruja Baroviana",
+            "text": "Ji, ji… ¿Y quién me va a echar? ¿Tú?"
+          }
         },
         {
           "kind": "huir",
@@ -1612,28 +1625,47 @@
         "sobornar": {
           "text": "Ofrecerle a la bruja unas monedas para que se vaya con su muerto",
           "gold": 6,
-          "success": "La bruja muerde una moneda, sonríe sin dientes y se escurre por la puerta de atrás. El muerto la sigue, arrastrando los pies.",
-          "failure": "«El conde paga en cosas mejores que la plata.» Sisea un conjuro."
+          "success": {
+            "who": "Bruja Baroviana",
+            "text": "Plata de verdad… Ji. Me voy por detrás. Muerto, ¡vamos!"
+          },
+          "failure": {
+            "who": "Bruja Baroviana",
+            "text": "El conde paga en cosas mejores que la plata."
+          }
         },
         "convencer": {
           "text": "Decirle delante de todos que aquí el conde no la protege: la aldea entera la está mirando",
           "dc": 14,
           "success": {
-            "text": "La bruja mira a los parroquianos, que se han levantado de sus mesas. Recoge sus harapos y se va por la puerta de atrás, con el muerto detrás.",
+            "who": "Bruja Baroviana",
+            "text": "¿Qué miráis todos? …Está bien, está bien. Me voy por la puerta de atrás. Muerto, ¡sígueme!",
             "effects": [
               {
                 "fame": 1
               }
             ]
           },
-          "partial": "La bruja duda y mira a los parroquianos. Esta ronda, no ataca.",
-          "failure": "«Aquí todos son del conde, aunque no lo sepan.» Se ríe con la boca negra."
+          "partial": {
+            "who": "Bruja Baroviana",
+            "text": "¿Toda la aldea mirando? Hmm… Esperad."
+          },
+          "failure": {
+            "who": "Bruja Baroviana",
+            "text": "Aquí todos son del conde, aunque no lo sepan."
+          }
         },
         "engañar": {
           "text": "Gritar que el cura viene por la calle con agua bendita",
           "dc": 13,
-          "success": "La bruja escupe, se tapa la cara con la capucha y sale corriendo por la puerta de atrás. El muerto se queda quieto, sin nadie que le mande, y se desploma.",
-          "failure": "«Ese cura no sale de su iglesia desde hace semanas.» Sisea, furiosa."
+          "success": {
+            "who": "Bruja Baroviana",
+            "text": "¿El cura? ¿Con agua bendita? ¡Me voy, me voy!"
+          },
+          "failure": {
+            "who": "Bruja Baroviana",
+            "text": "Ese cura no sale de su iglesia desde hace semanas."
+          }
         },
         "no": [
           "entregarse"
@@ -1699,13 +1731,17 @@
           "text": "Atrancar puertas y ventanas y apagar las velas: que pasen de largo",
           "dc": 12,
           "success": {
-            "text": "Los muertos arañan la puerta hasta el alba y luego vuelven a la niebla. Ireena no ha pegado ojo, pero está viva.",
+            "who": "Ireena Kolyana",
+            "text": "Ya clarea… Se vuelven a la niebla. No he pegado ojo, pero estamos vivos.",
             "effects": [
               "time",
               "time"
             ]
           },
-          "failure": "Una ventana cede. Las manos grises entran por el hueco."
+          "failure": {
+            "who": "Ireena Kolyana",
+            "text": "¡Esa ventana cede! ¡Las manos! ¡Ya entran!"
+          }
         },
         {
           "kind": "huir",
@@ -1761,8 +1797,14 @@
           "text": "Hablarle de su padre, que reza por él cada noche ahí arriba",
           "skill": "persuasion",
           "dc": 15,
-          "success": "Por un momento el hambre se le apaga en los ojos. Se encoge en el rincón de la celda y no se mueve mientras salís.",
-          "failure": "Solo oye el latido de vuestros cuellos."
+          "success": {
+            "who": "{companero}",
+            "text": "Mira: se le apaga el hambre en los ojos. Se encoge en el rincón… Salgamos despacio, sin dejar de mirarle."
+          },
+          "failure": {
+            "who": "{companero}",
+            "text": "No te oye. Solo oye el latido de nuestros cuellos."
+          }
         },
         {
           "kind": "huir",
@@ -1774,8 +1816,14 @@
         "convencer": {
           "text": "Recordarle el nombre de su padre y la luz de la iglesia",
           "dc": 15,
-          "success": "El engendro se tapa la cara con las manos y retrocede hasta el fondo de la celda. Ya no ataca.",
-          "partial": "Duda, con la boca abierta. Esta ronda, no ataca."
+          "success": {
+            "who": "{companero}",
+            "text": "Se tapa la cara con las manos y retrocede al fondo de la celda. Ya no ataca."
+          },
+          "partial": {
+            "who": "{companero}",
+            "text": "Duda, con la boca abierta… Esta vez no ataca."
+          }
         },
         "no": [
           "sobornar",
@@ -1854,8 +1902,14 @@
           "text": "Tirarles la carne del zurrón lejos del camino",
           "skill": "survival",
           "dc": 13,
-          "success": "Los lobos grises se lanzan a por la carne. El grande duda, gruñe y los sigue entre los árboles.",
-          "failure": "El lobo grande ni mira la carne: os mira a la garganta."
+          "success": {
+            "who": "{companero}",
+            "text": "¡Van a por la carne! El grande duda… gruñe… y los sigue entre los árboles."
+          },
+          "failure": {
+            "who": "{companero}",
+            "text": "El grande ni mira la carne. Nos mira a la garganta."
+          }
         },
         {
           "kind": "esconderse",
@@ -1917,7 +1971,10 @@
           "kind": "esconderse",
           "text": "Cruzar el puente pegados a la sombra de la muralla, sin mirar arriba",
           "dc": 15,
-          "success": "Las gárgolas siguen quietas en sus almenas. Cruzáis el umbral y la puerta se cierra sola a vuestra espalda."
+          "success": {
+            "who": "{companero}",
+            "text": "Las gárgolas siguen quietas. Ya estamos dentro… y la puerta se ha cerrado sola a nuestra espalda."
+          }
         },
         {
           "kind": "huir",
@@ -1978,8 +2035,14 @@
           "text": "Brindar en voz alta por el conde, como si fuerais sus invitados",
           "skill": "deception",
           "dc": 16,
-          "success": "Los engendros se detienen, se miran y se retiran a las sombras del techo: nadie toca a un invitado del conde.",
-          "failure": "Los engendros sonríen con demasiados dientes. «El conde no invita a nadie.»"
+          "success": {
+            "who": "Engendro Vampírico",
+            "text": "…Invitados del conde. Nadie toca a los invitados del conde. A las sombras."
+          },
+          "failure": {
+            "who": "Engendro Vampírico",
+            "text": "El conde no invita a nadie."
+          }
         },
         {
           "kind": "huir",
@@ -1992,8 +2055,14 @@
         "engañar": {
           "text": "Levantar la copa y brindar por el conde, como sus invitados",
           "dc": 16,
-          "success": "Los engendros se detienen, se miran y se retiran a las sombras del techo: nadie toca a un invitado del conde.",
-          "failure": "«El conde no tiene invitados. Tiene cena.»"
+          "success": {
+            "who": "Engendro Vampírico",
+            "text": "…Invitados del conde. Nadie toca a los invitados del conde. A las sombras."
+          },
+          "failure": {
+            "who": "Engendro Vampírico",
+            "text": "El conde no tiene invitados. Tiene cena."
+          }
         },
         "no": [
           "entregarse",
@@ -2071,14 +2140,18 @@
           "skill": "deception",
           "dc": 16,
           "success": {
-            "text": "La saga se relame y se da la vuelta hacia el horno. Os basta ese momento para abrir la trampilla y sacar a los niños.",
+            "who": "Saga Nocturna",
+            "text": "¿Una docena? Ji, ji… Ahora mismo te los saco del horno. No toques nada.",
             "effects": [
               {
                 "fame": 1
               }
             ]
           },
-          "failure": "La saga huele el miedo bajo tu sonrisa. «Tú no vienes a comprar.»"
+          "failure": {
+            "who": "Saga Nocturna",
+            "text": "Huelo el miedo debajo de esa sonrisa. Tú no vienes a comprar."
+          }
         },
         {
           "kind": "huir",
@@ -2091,28 +2164,47 @@
         "sobornar": {
           "text": "Ofrecerle oro a cambio de los niños",
           "gold": 25,
-          "success": "La saga sopesa el oro, se relame y abre la trampilla de una patada. «Llevaos a los críos. Ya encontraré otros.» Se va por la chimenea, y la bruja detrás.",
-          "failure": "«El oro no se come.» La saga se ríe, y el horno ruge."
+          "success": {
+            "who": "Saga Nocturna",
+            "text": "Oro bonito… Llevaos a los críos. Ya encontraré otros."
+          },
+          "failure": {
+            "who": "Saga Nocturna",
+            "text": "El oro no se come."
+          }
         },
         "convencer": {
           "text": "Decirle que el pueblo entero sabe ya lo de los pasteles y vendrá con antorchas",
           "dc": 16,
           "success": {
-            "text": "La saga mira por la ventana y luego al horno. Escupe al fuego, coge su saco y se va por la chimenea. Los niños están en la trampilla, vivos.",
+            "who": "Saga Nocturna",
+            "text": "¿Con antorchas? Malditos aldeanos… Me llevo mi saco. Quedaos con los críos de la trampilla.",
             "effects": [
               {
                 "fame": 1
               }
             ]
           },
-          "partial": "La saga se para a escuchar el ruido de fuera. Esta ronda, no ataca.",
-          "failure": "«Que vengan. Haré más pasteles.»"
+          "partial": {
+            "who": "Saga Nocturna",
+            "text": "¿Qué es ese ruido de fuera? Chist…"
+          },
+          "failure": {
+            "who": "Saga Nocturna",
+            "text": "Que vengan. Haré más pasteles."
+          }
         },
         "engañar": {
           "text": "Hacerte pasar por cliente: pedirle una docena de pasteles y pagar después",
           "dc": 16,
-          "success": "La saga se relame y se da la vuelta hacia el horno. Os basta ese momento para abrir la trampilla y sacar a los niños por la ventana.",
-          "failure": "«A mí no se me engaña dentro de mi casa.» Ahora ataca sin cuidarse."
+          "success": {
+            "who": "Saga Nocturna",
+            "text": "¿Y pagas después? Ji… Bueno, ahora te los saco del horno."
+          },
+          "failure": {
+            "who": "Saga Nocturna",
+            "text": "A mí no se me engaña dentro de mi casa."
+          }
         },
         "no": [
           "entregarse"
@@ -2192,21 +2284,26 @@
           "skill": "intimidation",
           "dc": 14,
           "success": {
-            "text": "Los lobos grises huyen entre los puestos; el grande se queda solo y acaba yéndose con ellos. La gente os aplaude desde las ventanas.",
+            "who": "{companero}",
+            "text": "¡Huyen entre los puestos! El grande se queda solo… y se va con ellos. ¡Mira, la gente aplaude desde las ventanas!",
             "effects": [
               {
                 "fame": 1
               }
             ]
           },
-          "failure": "El lobo grande no le teme al fuego. Salta por encima de la hoguera."
+          "failure": {
+            "who": "{companero}",
+            "text": "¡El grande no le teme al fuego! ¡Salta por encima de la hoguera!"
+          }
         },
         {
           "kind": "esconderse",
           "text": "Meter a la gente en las casas y atrancar las puertas",
           "dc": 12,
           "success": {
-            "text": "Los lobos rondan la plaza vacía y se van con el amanecer.",
+            "who": "{companero}",
+            "text": "Rondan la plaza vacía… y con el amanecer se van. Todos a salvo dentro de las casas.",
             "effects": [
               "time"
             ]
@@ -2264,7 +2361,10 @@
           "kind": "esconderse",
           "text": "Pasar de puntillas entre las cajas hasta el cuarto del fondo",
           "dc": 13,
-          "success": "Nada se mueve dentro de las cajas. Salís con los huesos del santo envueltos en una manta."
+          "success": {
+            "who": "{companero}",
+            "text": "Nada se mueve dentro de las cajas. Ya tenemos los huesos del santo, envueltos en la manta. Vámonos."
+          }
         },
         {
           "kind": "huir",
@@ -2335,7 +2435,10 @@
           "kind": "esconderse",
           "text": "Cruzar el barro cuando la bruja entre en la choza y sacar la gema por la ventana",
           "dc": 15,
-          "success": "Los espantapájaros siguen mirando al camino. La gema sale por la ventana envuelta en un trapo, y salís detrás de ella."
+          "success": {
+            "who": "{companero}",
+            "text": "Los espantapájaros siguen mirando al camino. ¡La gema ya está fuera, por la ventana! Salgamos detrás."
+          }
         },
         {
           "kind": "huir",
@@ -2348,9 +2451,18 @@
         "engañar": {
           "text": "Gritarle que su hijo, el conde, la llama al castillo",
           "dc": 17,
-          "success": "Baba Lysaga se queda quieta, con los ojos muy abiertos. «¿Me llama? ¿A mí?» Silba a sus espantapájaros y se va cojeando por el barro, hacia el castillo. La gema se queda en la choza.",
-          "partial": "Baba Lysaga duda, con la cabeza ladeada. Esta ronda, no ataca.",
-          "failure": "«Mi hijo nunca me llama.» Grita, y los espantapájaros se lanzan."
+          "success": {
+            "who": "Baba Lysaga",
+            "text": "¿Me llama? ¿A mí? ¡Mi niño me llama! ¡Espantapájaros, conmigo, al castillo!"
+          },
+          "partial": {
+            "who": "Baba Lysaga",
+            "text": "¿Mi hijo? ¿Me llama a mí…?"
+          },
+          "failure": {
+            "who": "Baba Lysaga",
+            "text": "Mi hijo nunca me llama."
+          }
         },
         "no": [
           "entregarse",
@@ -2427,8 +2539,14 @@
           "text": "Unirte al canto como uno más y acercarte a la gema",
           "skill": "deception",
           "dc": 15,
-          "success": "Los druidas, en trance, ni os miran. Cogéis la gema de los pies del muñeco de ramas y bajáis la colina sin correr.",
-          "failure": "Uno de los druidas deja de cantar y os señala con el dedo lleno de barro."
+          "success": {
+            "who": "{companero}",
+            "text": "Están en trance: ni nos miran. Ya tengo la gema. Bajemos la colina sin correr."
+          },
+          "failure": {
+            "who": "Druida de Yester",
+            "text": "¡Tú no cantas como nosotros!"
+          }
         },
         {
           "kind": "huir",
@@ -2442,15 +2560,30 @@
           "text": "Plantarte junto al muñeco de ramas con una antorcha: si no se van, arde",
           "skill": "intimidation",
           "dc": 15,
-          "success": "Los druidas dejan de reír. Se apartan del muñeco, despacio, y bajan la colina sin daros la espalda. La gema sigue a sus pies.",
-          "partial": "Los druidas se quedan quietos, mirando la antorcha. Esta ronda, nadie ataca.",
-          "failure": "Los druidas se ríen más fuerte. «¡Quémalo! ¡Volverá a crecer!»"
+          "success": {
+            "who": "Druida de Yester",
+            "text": "Atrás… atrás todos. Que no queme al Señor de las Ramas."
+          },
+          "partial": {
+            "who": "Druida de Yester",
+            "text": "La antorcha… Quietos todos."
+          },
+          "failure": {
+            "who": "Druida de Yester",
+            "text": "¡Quémalo! ¡Volverá a crecer!"
+          }
         },
         "engañar": {
           "text": "Unirte al canto como uno más y acercarte a la gema",
           "dc": 15,
-          "success": "Los druidas vuelven al trance y dejan de miraros. Cogéis la gema de los pies del muñeco y bajáis la colina sin correr.",
-          "failure": "Te equivocas de verso. Los druidas se giran todos a la vez."
+          "success": {
+            "who": "{companero}",
+            "text": "Vuelven al trance y ya no nos miran. Ya tengo la gema. Bajemos sin correr."
+          },
+          "failure": {
+            "who": "Druida de Yester",
+            "text": "¡Ese verso no es! ¡No es de los nuestros!"
+          }
         },
         "no": [
           "entregarse",
@@ -2522,13 +2655,17 @@
           "text": "Encerraros en la torre y no hacer ruido hasta el alba",
           "dc": 13,
           "success": {
-            "text": "La manada da vueltas al islote toda la noche. Con la primera luz se cansa y se va.",
+            "who": "{companero}",
+            "text": "Han dado vueltas al islote toda la noche… y con la primera luz se han cansado y se han ido.",
             "effects": [
               "time",
               "time"
             ]
           },
-          "failure": "Los murciélagos entran por una aspillera, chillando. Os han encontrado."
+          "failure": {
+            "who": "{companero}",
+            "text": "¡Murciélagos por la aspillera! ¡Nos han encontrado!"
+          }
         },
         {
           "kind": "huir",
@@ -2542,15 +2679,30 @@
           "text": "Plantarte en la puerta de la torre con la plata en la mano: el primero que entre, la prueba",
           "skill": "intimidation",
           "dc": 16,
-          "success": "El hombre lobo mira la plata y enseña los dientes, pero no se acerca. Aúlla a su manada, y la manada se va con él a la niebla.",
-          "partial": "La manada da vueltas sin acercarse. Esta ronda, no atacan.",
-          "failure": "El hombre lobo se ríe con su boca de lobo y carga."
+          "success": {
+            "who": "Hombre Lobo",
+            "text": "Grrr… Plata. No vale la pena. ¡Manada, a la niebla!"
+          },
+          "partial": {
+            "who": "Hombre Lobo",
+            "text": "Grrr… Esperad. Dad vueltas."
+          },
+          "failure": {
+            "who": "Hombre Lobo",
+            "text": "Ja, ja… ¿Una moneda de plata? ¡A por {él|ella}!"
+          }
         },
         "engañar": {
           "text": "Aullar desde lo alto de la torre como la manada de Kiril",
           "dc": 15,
-          "success": "El hombre lobo levanta el hocico, duda y se lleva a su manada por el camino de tierra, hacia el bosque.",
-          "failure": "El hombre lobo conoce ese aullido, y no es de los suyos. Ahora ataca sin cuidarse."
+          "success": {
+            "who": "Hombre Lobo",
+            "text": "¿La manada de Kiril? …Nos vamos al bosque. Ahora."
+          },
+          "failure": {
+            "who": "Hombre Lobo",
+            "text": "Ese aullido no es de los nuestros."
+          }
         },
         "no": [
           "entregarse",
@@ -2617,14 +2769,18 @@
           "text": "Abrir las jaulas de los niños mientras Kiril reza a la estatua",
           "dc": 16,
           "success": {
-            "text": "Sacáis a los niños uno a uno, tapándoles la boca con la mano. Kiril no se da la vuelta.",
+            "who": "{companero}",
+            "text": "Uno a uno, con la mano en la boca… Ya están todos fuera. Kiril ni se ha dado la vuelta.",
             "effects": [
               {
                 "fame": 1
               }
             ]
           },
-          "failure": "Un niño llora. Kiril se gira despacio, ya medio lobo."
+          "failure": {
+            "who": "Kiril Stoyanovich",
+            "text": "¿Un llanto? …¿Quién está ahí?"
+          }
         },
         {
           "kind": "huir",
@@ -2639,21 +2795,34 @@
           "skill": "intimidation",
           "dc": 17,
           "success": {
-            "text": "Kiril mira la plata, mira las jaulas y escupe. «Volveré a por ellos.» Se va por el fondo de la cueva con sus lobos. Los niños salen de las jaulas uno a uno.",
+            "who": "Kiril Stoyanovich",
+            "text": "Plata… Volveré a por ellos. ¡Lobos, por el fondo!",
             "effects": [
               {
                 "fame": 1
               }
             ]
           },
-          "partial": "Kiril gruñe y da un paso atrás. Esta ronda, no ataca.",
-          "failure": "Kiril se golpea el pecho. «La plata no asusta a la Madre Noche.» Carga."
+          "partial": {
+            "who": "Kiril Stoyanovich",
+            "text": "Grrr… Atrás. Por ahora."
+          },
+          "failure": {
+            "who": "Kiril Stoyanovich",
+            "text": "La plata no asusta a la Madre Noche."
+          }
         },
         "engañar": {
           "text": "Gritar que los del pueblo vienen por la entrada con plata y fuego",
           "dc": 16,
-          "success": "Kiril olfatea hacia la entrada, duda y se va con sus lobos por un túnel del fondo. Las jaulas quedan solas.",
-          "failure": "Kiril olfatea el aire y se ríe. «Aquí solo huele a gente de fuera.»"
+          "success": {
+            "who": "Kiril Stoyanovich",
+            "text": "¿Plata y fuego por la entrada? …Al túnel del fondo, lobos. Ya."
+          },
+          "failure": {
+            "who": "Kiril Stoyanovich",
+            "text": "Aquí solo huele a gente de fuera."
+          }
         },
         "no": [
           "entregarse",
@@ -2721,15 +2890,24 @@
           "kind": "esconderse",
           "text": "Tapar a los caballos con mantas y cruzar despacio, contra el viento",
           "dc": 13,
-          "success": "Los lobos husmean hacia otro lado. El carro del vino llega al otro lado del camino sin un rasguño."
+          "success": {
+            "who": "{companero}",
+            "text": "Husmean hacia otro lado. El carro ya está al otro lado del camino, sin un rasguño."
+          }
         },
         {
           "kind": "hablar",
           "text": "Tirarles la carne del carro lejos del camino",
           "skill": "survival",
           "dc": 13,
-          "success": "Los lobos se lanzan a por la carne entre los árboles. Las figuras de ramas se quedan quietas, sin nadie a quien seguir.",
-          "failure": "Los lobos prefieren los caballos."
+          "success": {
+            "who": "{companero}",
+            "text": "¡Van a por la carne! Y las figuras de ramas se quedan quietas, sin nadie a quien seguir."
+          },
+          "failure": {
+            "who": "{companero}",
+            "text": "¡Prefieren los caballos!"
+          }
         }
       ]
     },
@@ -2782,7 +2960,8 @@
           "skill": "persuasion",
           "dc": 14,
           "success": {
-            "text": "El caballero baja la espada. «Entonces id. Y no volváis hasta que esté hecho.»",
+            "who": "Revenant",
+            "text": "Entonces id. Y no volváis hasta que esté hecho.",
             "effects": [
               {
                 "standing": "La Orden del Dragón de Plata",
@@ -2790,7 +2969,10 @@
               }
             ]
           },
-          "failure": "«Eso dijeron los últimos.» Levanta la espada."
+          "failure": {
+            "who": "Revenant",
+            "text": "Eso dijeron los últimos."
+          }
         },
         {
           "kind": "huir",
@@ -2804,7 +2986,8 @@
           "text": "Decirle al caballero que venís a acabar con el vampiro, como su orden",
           "dc": 15,
           "success": {
-            "text": "El caballero baja la espada. «Entonces id. Y no volváis hasta que esté hecho.»",
+            "who": "Revenant",
+            "text": "Como mi orden… Entonces id. Y no volváis hasta que esté hecho.",
             "effects": [
               {
                 "standing": "La Orden del Dragón de Plata",
@@ -2812,8 +2995,14 @@
               }
             ]
           },
-          "partial": "El caballero se queda quieto, con la espada en alto, escuchando. Esta ronda, no ataca.",
-          "failure": "«Eso dijeron los últimos.» Levanta la espada."
+          "partial": {
+            "who": "Revenant",
+            "text": "…Habla. Te escucho."
+          },
+          "failure": {
+            "who": "Revenant",
+            "text": "Eso dijeron los últimos."
+          }
         },
         "no": [
           "entregarse",
@@ -2886,8 +3075,14 @@
           "text": "Plantarle cara a la bruja: sin ella, los lobos no se quedan",
           "skill": "intimidation",
           "dc": 14,
-          "success": "La bruja maldice, se sube la capucha y se pierde entre las viñas. Los lobos la siguen.",
-          "failure": "La bruja silba, y los lobos salen de entre las cepas."
+          "success": {
+            "who": "Bruja Baroviana",
+            "text": "Maldito seas… Me voy. ¡Lobos, conmigo!"
+          },
+          "failure": {
+            "who": "Bruja Baroviana",
+            "text": "¡Ji! ¡Lobos, salid de las cepas!"
+          }
         },
         {
           "kind": "huir",
@@ -2900,22 +3095,43 @@
         "sobornar": {
           "text": "Ofrecerle a la bruja monedas y una botella para que se lleve a sus lobos",
           "gold": 8,
-          "success": "La bruja coge las monedas y la botella, y silba a sus lobos. Se pierden entre las viñas.",
-          "failure": "«El conde me dará la bodega entera.» Los lobos gruñen."
+          "success": {
+            "who": "Bruja Baroviana",
+            "text": "Monedas y una botella… Me voy. ¡Lobos, aquí!"
+          },
+          "failure": {
+            "who": "Bruja Baroviana",
+            "text": "El conde me dará la bodega entera."
+          }
         },
         "convencer": {
           "text": "Plantarle cara a la bruja: sin ella, los lobos no se quedan",
           "skill": "intimidation",
           "dc": 14,
-          "success": "La bruja maldice, se sube la capucha y se pierde entre las viñas. Los lobos la siguen.",
-          "partial": "La bruja retrocede un paso, y los lobos con ella. Esta ronda, no atacan.",
-          "failure": "La bruja se ríe y señala hacia ti: los lobos se lanzan."
+          "success": {
+            "who": "Bruja Baroviana",
+            "text": "Maldito seas… Está bien, me voy. ¡Lobos, conmigo!"
+          },
+          "partial": {
+            "who": "Bruja Baroviana",
+            "text": "Atrás, lobos… Atrás, he dicho."
+          },
+          "failure": {
+            "who": "Bruja Baroviana",
+            "text": "¡Ji, ji! ¡A por {él|ella}, lobos!"
+          }
         },
         "engañar": {
           "text": "Gritar que los de la bodega sueltan a sus perros",
           "dc": 13,
-          "success": "Los lobos levantan las orejas y miran hacia la bodega. La bruja no se arriesga: silba y se van entre las viñas.",
-          "failure": "«En esa bodega no queda ni un perro.» Los lobos atacan sin cuidarse."
+          "success": {
+            "who": "Bruja Baroviana",
+            "text": "¿Perros de la bodega? No me arriesgo. ¡Lobos, nos vamos!"
+          },
+          "failure": {
+            "who": "Bruja Baroviana",
+            "text": "En esa bodega no queda ni un perro."
+          }
         },
         "no": [
           "entregarse"
@@ -2980,8 +3196,14 @@
           "text": "Hacer sonar la campana de la puerta y encender antorchas en la muralla",
           "skill": "intimidation",
           "dc": 16,
-          "success": "El hombre lobo aúlla, mira las antorchas y se lleva a su manada a la niebla. Las puertas se abren.",
-          "failure": "El hombre lobo se ríe con una boca que ya no es humana."
+          "success": {
+            "who": "Hombre Lobo",
+            "text": "Grrr… Fuego y campanas. ¡A la niebla, manada!"
+          },
+          "failure": {
+            "who": "Hombre Lobo",
+            "text": "¿Una campana? Ja, ja… Me reiré mientras toca."
+          }
         },
         {
           "kind": "huir",
@@ -2995,15 +3217,30 @@
           "text": "Hacer sonar la campana de la puerta y pedir antorchas en la muralla",
           "skill": "intimidation",
           "dc": 16,
-          "success": "El hombre lobo aúlla, mira las antorchas y se lleva a su manada a la niebla. Las puertas se abren.",
-          "partial": "El hombre lobo retrocede ante el fuego. Esta ronda, no ataca.",
-          "failure": "Cuatro antorchas no asustan a un hombre lobo. Salta hacia ti."
+          "success": {
+            "who": "Hombre Lobo",
+            "text": "Grrr… Demasiadas antorchas. ¡A la niebla, manada!"
+          },
+          "partial": {
+            "who": "Hombre Lobo",
+            "text": "Grrr… Fuego. Atrás, atrás."
+          },
+          "failure": {
+            "who": "Hombre Lobo",
+            "text": "Cuatro antorchas no asustan a un hombre lobo."
+          }
         },
         "engañar": {
           "text": "Gritar a la muralla que tiren ya la plata",
           "dc": 15,
-          "success": "El hombre lobo mira a la muralla, gruñe y se lleva a su manada a la niebla antes de comprobarlo.",
-          "failure": "Desde la muralla no cae nada. El hombre lobo se ríe y carga."
+          "success": {
+            "who": "Hombre Lobo",
+            "text": "¿Plata? ¡A la niebla, manada! ¡Ya!"
+          },
+          "failure": {
+            "who": "Hombre Lobo",
+            "text": "De la muralla no cae nada. Ja, ja…"
+          }
         },
         "no": [
           "entregarse",
@@ -3064,7 +3301,10 @@
           "kind": "huir",
           "text": "Correr escaleras arriba antes de que se cierre la cripta",
           "dc": 16,
-          "failure": "La reja de la cripta baja sola a vuestra espalda. Strahd sonríe."
+          "failure": {
+            "who": "Strahd von Zarovich",
+            "text": "¿Ya os vais? La reja baja sola. Quedaos un poco más."
+          }
         }
       ],
       "parley": {
@@ -4941,6 +5181,7 @@
           "Argynvostholt"
         ]
       },
+      "who": "Nikolai",
       "text": "Un barquero de manos agrietadas, Nikolai, vende pescado ahumado junto al camino. Cuenta que el viejo de la torre del lago se fue sin pagarle, y que su barca es la única que llega al islote.",
       "options": [
         {
@@ -4951,7 +5192,7 @@
           "effects": [
             "llave:La barca de Nikolai"
           ],
-          "then": "Nikolai cuenta las monedas y os da la mano. «Cuando queráis ir a la torre, la barca es vuestra. Remad despacio: los lobos rondan la orilla.»"
+          "then": "Cuando queráis ir a la torre, la barca es vuestra. Remad despacio: los lobos rondan la orilla."
         },
         {
           "label": "Convencerle de que os la preste",
@@ -4963,15 +5204,15 @@
             "effects": [
               "llave:La barca de Nikolai"
             ],
-            "then": "Se rasca la barba y acaba diciendo que sí: si alguien tiene que ir a esa torre, mejor que sea gente con armas."
+            "then": "Bueno… Si alguien tiene que ir a esa torre, mejor que sea gente con armas. La barca es vuestra."
           },
           "fail": {
-            "then": "Nikolai niega con la cabeza. Sin paga, no hay barca."
+            "then": "No. Sin paga, no hay barca."
           }
         },
         {
           "label": "Dejarlo estar",
-          "then": "Nikolai vuelve a su pescado sin insistir."
+          "then": "Como queráis. Pescado ahumado, ¿alguien? ¿No?"
         }
       ]
     },
@@ -4988,6 +5229,7 @@
           ]
         }
       },
+      "who": "{companero}",
       "text": "Camino de {destino}, una nube de murciélagos os sigue a plena luz, demasiado baja y demasiado callada. {bando} sabe por dónde vais.",
       "options": [
         {
@@ -4995,7 +5237,7 @@
           "effects": [
             "hora"
           ],
-          "then": "Esperáis quietos, con el corazón en la boca, hasta que la nube se aleja hacia el castillo."
+          "then": "Quietos bajo los árboles… Ya se alejan hacia el castillo. Respira."
         },
         {
           "label": "Espantarlos con fuego",
@@ -5007,13 +5249,13 @@
             "effects": [
               "reloj:la-corte-de-strahd:-1"
             ],
-            "then": "Se dispersan chillando. Esta vez el conde no sabrá dónde dormís."
+            "then": "¡Se dispersan chillando! Esta vez el conde no sabrá dónde dormimos."
           },
           "fail": {
             "effects": [
               "herida:1d4"
             ],
-            "then": "Os caen encima un momento y dejan mordiscos antes de irse."
+            "then": "¡Ay! Nos han dejado unos cuantos mordiscos antes de irse."
           }
         }
       ]
@@ -5030,6 +5272,7 @@
           5
         ]
       },
+      "who": "Una mujer vistani",
       "text": "Desde lo de la tienda de Madam Eva, {bando} os tratan como a gente de la casa. Una mujer os sirve té dulce junto al fuego y os habla de los senderos del valle.",
       "options": [
         {
@@ -5039,14 +5282,14 @@
             "comida",
             "faccion:los-vistani:+1"
           ],
-          "then": "Hay música, pan y risas. Por un rato, Barovia parece menos gris."
+          "then": "Música, pan y risas, ¿lo veis? Por un rato, Barovia parece menos gris."
         },
         {
           "label": "Preguntar por los senderos",
           "effects": [
             "rumor"
           ],
-          "then": "Os cuenta por dónde no pasan los lobos, y dónde es mejor no dormir."
+          "then": "Por el sendero del molino no pasan los lobos. Y no durmáis nunca junto al río: ahí es mejor no dormir."
         }
       ]
     }
@@ -5390,6 +5633,7 @@
                 "later": {
                   "days": 4,
                   "name": "Donavich, antes del alba",
+                  "who": "Donavich",
                   "text": "Donavich llama a vuestra puerta antes de que amanezca. Tiene los ojos rojos de no dormir: «Doru no para de gritar. ¿Habéis encontrado esa otra forma?»",
                   "options": [
                     {
@@ -5398,14 +5642,14 @@
                         "comida",
                         "fama:+1"
                       ],
-                      "then": "Asiente despacio. Os da de comer antes de que salgáis, aunque en la iglesia no sobra nada."
+                      "then": "Sí… Tenéis razón. Comed algo antes de iros, aunque en la iglesia no sobra nada."
                     },
                     {
                       "label": "Decirle que no la hay",
                       "effects": [
                         "rumor"
                       ],
-                      "then": "Se sienta en el escalón y se tapa la cara. Después os cuenta todo lo que sabe de lo que le pasó a su hijo en el castillo."
+                      "then": "Mi hijo… Os contaré todo lo que sé de lo que le pasó en el castillo. Sentaos."
                     }
                   ]
                 }
@@ -6146,8 +6390,9 @@
         "act": 3,
         "title": "La puerta sin pomo",
         "hint": "",
-        "scene": "Tanteáis la pared a la izquierda de la puerta de hierro hasta dar con una piedra que se hunde al apretarla. La puerta se abre sin ruido. Dentro no hay nadie: polvo y un fuego apagado hace semanas. Bajo un tablón suelto del suelo, el viejo cazador dejó un estuche de repuesto: estacas, agua bendita y un espejo de plata.",
+        "scene": "Tantea la pared a la izquierda de la puerta de hierro… Ahí: esa piedra se hunde. ¿Ves? Se abre sin ruido. Dentro no hay nadie: polvo y un fuego apagado hace semanas. Y bajo este tablón suelto, el viejo cazador dejó un estuche de repuesto: estacas, agua bendita y un espejo de plata.",
         "hidden": true,
+        "pov": "Ezmerelda d'Avenir",
         "opens": {
           "kind": "start"
         },
@@ -6173,7 +6418,8 @@
     "endings": {
       "barovia-libre": {
         "title": "Barovia, libre",
-        "scene": "Strahd cae sobre las losas de su cripta y no se levanta. Arriba, por primera vez en siglos, la niebla empieza a abrirse y entra un poco de sol en el valle. La gente de Barovia sale a mirarlo sin creérselo.",
+        "who": "Ireena Kolyana",
+        "scene": "Ya no se levanta. Mira arriba: por primera vez en siglos la niebla se abre y entra el sol en el valle. La gente sale de casa a mirarlo, sin creérselo.",
         "epilogues": [
           {
             "who": "Ireena Kolyana",
@@ -6203,6 +6449,7 @@
           "visitor": {
             "days": 4,
             "name": "Una carta de Ismark",
+            "who": "Ismark Kolyanovich",
             "text": "Un mensajero cubierto de barro trae una carta con el sello de la Aldea de Barovia. La firma Ismark, el nuevo burgomaestre.",
             "options": [
               {
@@ -6210,14 +6457,14 @@
                 "effects": [
                   "fama:+1"
                 ],
-                "then": "Ismark os da las gracias y dice que en Barovia siempre tendréis casa. En la taberna se brinda por el gremio."
+                "then": "«Gracias, amigos. En Barovia siempre tendréis casa.» …Y en la taberna ya se brinda por el gremio."
               },
               {
                 "label": "Leerla a solas con los tuyos",
                 "effects": [
                   "vinculo:+1"
                 ],
-                "then": "Al final de la carta, Ireena ha añadido una línea con su letra: que ya duerme con la ventana abierta."
+                "then": "«Mi hermana me pide que añada una línea: que ya duerme con la ventana abierta.»"
               }
             ]
           },
@@ -6231,7 +6478,8 @@
       },
       "la-orden-descansa": {
         "title": "La orden descansa",
-        "scene": "Strahd cae en su cripta. Esa noche, en lo alto de Argynvostholt, se enciende una luz de plata que se ve desde todo el valle. Los caballeros muertos dejan las armas en el patio y por fin se quedan quietos. La niebla se retira de los pasos, y quien quiere, puede irse.",
+        "who": "Rudolph van Richten",
+        "scene": "Se acabó: Strahd no volverá a levantarse. ¿Veis esa luz de plata en lo alto de Argynvostholt? Los caballeros muertos dejan las armas en el patio: por fin descansan. Y la niebla se retira de los pasos. Quien quiera irse de Barovia, ya puede.",
         "epilogues": [
           {
             "who": "Vladimir Horngaard",
@@ -6261,6 +6509,7 @@
           "visitor": {
             "days": 5,
             "name": "Ezmerelda pasa por el puerto",
+            "who": "Ezmerelda d'Avenir",
             "text": "Ezmerelda d'Avenir entra en la taberna con la capa llena de polvo del camino. Va detrás de otro monstruo, y ha venido a veros antes de seguir.",
             "options": [
               {
@@ -6268,7 +6517,7 @@
                 "effects": [
                   "rumor"
                 ],
-                "then": "Os habla de algo que ataca a los pastores en otra tierra, y os deja dicho dónde encontrarla si un día queréis ayudar."
+                "then": "Algo ataca a los pastores en otra tierra, lejos de aquí. Os dejo dicho dónde encontrarme, por si un día queréis ayudar."
               },
               {
                 "label": "Invitarla a cenar",
@@ -6278,7 +6527,7 @@
                 "effects": [
                   "fama:+1"
                 ],
-                "then": "Come como quien lleva semanas en el camino. Al irse, deja pagada vuestra cena."
+                "then": "Llevaba semanas comiendo en el camino. La cena la pago yo, ni se os ocurra."
               }
             ]
           },
@@ -6292,7 +6541,8 @@
       },
       "la-caravana-se-va": {
         "title": "La caravana se va",
-        "scene": "Strahd cae en su cripta. Antes de que amanezca, los vistani recogen el campamento y se van por el camino del este: saben que la gente del valle no les perdonará haber servido al conde. Madam Eva es la última en subir al carro. La niebla se abre detrás de ellos.",
+        "who": "Madam Eva",
+        "scene": "El conde no volverá a levantarse. Mi gente recoge el campamento antes de que amanezca y se va por el camino del este: los del valle no nos perdonarán haberle servido. Yo subiré la última al carro… Mira: la niebla se abre detrás de nosotros.",
         "epilogues": [
           {
             "who": "Madam Eva",
@@ -6322,6 +6572,7 @@
           "visitor": {
             "days": 3,
             "name": "Una carta de la baraja",
+            "who": "Madam Eva",
             "text": "Una mujer vieja con un pañuelo de colores os espera en el muelle. Saca una carta de una baraja gastada y os la tiende sin decir nada.",
             "options": [
               {
@@ -6329,14 +6580,14 @@
                 "effects": [
                   "rumor"
                 ],
-                "then": "En la carta hay una torre dibujada. Detrás, alguien ha escrito el nombre de un pueblo de la costa donde piden ayuda."
+                "then": "La torre. Detrás tiene escrito el nombre de un pueblo de la costa donde piden ayuda. Las cartas no mienten."
               },
               {
                 "label": "No cogerla",
                 "effects": [
                   "fama:+1"
                 ],
-                "then": "Sonríe como quien ya sabía la respuesta y se va hacia los carros. En el muelle se habla de ello toda la tarde."
+                "then": "Ya sabía tu respuesta. Las cartas también."
               }
             ]
           },

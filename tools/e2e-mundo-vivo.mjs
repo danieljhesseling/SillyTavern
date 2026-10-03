@@ -31,6 +31,7 @@ import { createRequire } from 'node:module';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { apagarModoGuiado, enElGremio, salirDelTablero } from './e2e-guiado.mjs';
 
 const ROOT = new URL('..', import.meta.url).pathname.replace(/^[/]([A-Za-z]:)/, '$1');
 const argAfter = (/** @type {string} */ flag) => (process.argv.includes(flag) ? process.argv[process.argv.indexOf(flag) + 1] : '');
@@ -147,12 +148,6 @@ try {
         };
     });
     const chatTexts = () => page.evaluate(() => (window.SillyTavern.getContext().chat || []).map((/** @type {any} */ m) => String(m.extra?.display_text ?? m.mes ?? '')));
-    const chips = () => page.evaluate(() => [...document.querySelectorAll('#game-shell .gs-chip-action')].map(c => (c.textContent || '').trim()));
-    const clickChip = (/** @type {RegExp} */ pattern) => page.evaluate((source) => {
-        const chip = [...document.querySelectorAll('#game-shell .gs-chip-action')].find(b => new RegExp(source).test(b.textContent || ''));
-        if (chip instanceof window.HTMLElement) chip.click();
-        return Boolean(chip);
-    }, pattern.source);
     const sceneNow = () => page.evaluate(() => document.querySelector('#game-shell')?.getAttribute('data-scene') || '');
     const carryOn = async (/** @type {string} */ wanted) => {
         await until(async () => {
@@ -297,6 +292,9 @@ try {
         await page.click('.popup-button-ok');
     }
     await page.waitForSelector('#game-shell', { timeout: 90000 });
+    // D-J62: lo que se mira aquí (la columna «Viajar», «Viajar aquí» en el mapa) lo esconde el modo
+    // guiado, sin borrarlo (wiki/LO_OCULTO.md): se prueba con él apagado.
+    check('el modo guiado, apagado para probar lo que esconde', await apagarModoGuiado(page));
 
     // === 1. «Jugar sin conexión», Irene, y saltar la prueba =======================================
     const offline = page.locator('#game-shell .gs-menu-btn').filter({ hasText: 'Jugar sin conexión' });
@@ -311,8 +309,9 @@ try {
     await pickHeroCard(page, 'class', 'Guerrero');
     await page.locator('.hc-root .hc-enter').click();
     await until(async () => /Gremio/.test((await state()).world), 90000);
-    await until(async () => (await chips()).some(c => /^Saltar la prueba$/.test(c)), 30000);
-    await clickChip(/^Saltar la prueba$/);
+    // D-J62: «Saltar la prueba» está en la Casa del Gremio, fuera del tablero del muelle.
+    await salirDelTablero(page);
+    await until(() => enElGremio(page, 'hub-skip'), 30000);
     await page.waitForSelector('.popup:has-text("¿Saltar la prueba?")', { timeout: 10000 }).catch(() => {});
     await page.locator('.popup-button-ok:visible').first().click({ timeout: 5000 }).catch(() => {});
     await page.waitForTimeout(1500);
@@ -327,8 +326,8 @@ try {
     });
 
     // === 2. El tablón: 1387, y fuera del tablero del principio ====================================
-    await until(async () => (await chips()).some(c => /Tablón de campañas/.test(c)), 15000);
-    await clickChip(/Tablón de campañas/);
+    // D-J62: el tablón de campañas está en la Casa del Gremio.
+    await until(() => enElGremio(page, 'hub-board'), 15000);
     await page.waitForSelector('.hb-root [data-campaign="1387"]', { timeout: 15000 });
     await page.locator('.hb-root [data-campaign="1387"]').click();
     const in1387 = await until(async () => /1387/.test((await state()).world), 150000);

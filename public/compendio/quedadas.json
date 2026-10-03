@@ -4034,17 +4034,17 @@
             {
               "text": "¿Todo el sueldo? ¿Y tú de qué vas a comer?",
               "bond": 0,
-              "then": "(Se encoge de hombros y se da una palmada en la barriga.)"
+              "then": "Hm."
             },
             {
               "text": "Es tu familia, ¿verdad?",
               "bond": 1,
-              "then": "(Grimm asiente despacio y se le escapa media sonrisa.)"
+              "then": "Mm."
             },
             {
               "text": "Con lo que te pago, no les llegará para mucho.",
               "bond": -1,
-              "then": "(Grimm se guarda el dibujo y deja de mirarte.)",
+              "then": "Hmf.",
               "mood": "enfadado"
             }
           ]
@@ -4073,17 +4073,17 @@
             {
               "text": "Tumbas al borracho de un puñetazo y le quitas el dibujo.",
               "bond": 1,
-              "then": "(Grimm te mira con los ojos muy abiertos. Luego asiente, despacio.)"
+              "then": "¿Mm? …Mm."
             },
             {
               "text": "Recuperas el dibujo y sacas a Grimm de allí.",
               "bond": 1,
-              "then": "(Grimm se deja llevar. En la puerta, te aprieta el hombro.)"
+              "then": "Mm."
             },
             {
               "text": "Te quedas en tu sitio. No es asunto tuyo.",
               "bond": -1,
-              "then": "(Grimm recoge el dibujo del suelo y sale sin mirarte.)",
+              "then": "Mm…",
               "mood": "triste"
             }
           ]
@@ -4111,18 +4111,18 @@
             {
               "text": "¿Dos dedos? ¿El doble de paga? Primero te curo. Luego hablamos de dinero.",
               "bond": 0,
-              "then": "(Se deja vendar, pero no baja los dos dedos.)"
+              "then": "Mm. Mm."
             },
             {
               "text": "¿El doble esta semana, por ese tajo? Hecho. Te lo has ganado.",
               "bond": 1,
               "gold": -5,
-              "then": "(Grimm guarda las monedas y te da una palmada en la espalda que casi te tumba.)"
+              "then": "¡Mm!"
             },
             {
               "text": "¿El doble? No. Es tu trabajo. Cobras lo de siempre.",
               "bond": -1,
-              "then": "(Grimm baja la mano despacio y se da la vuelta.)",
+              "then": "Hmf.",
               "mood": "enfadado"
             }
           ]
@@ -4150,12 +4150,12 @@
             {
               "text": "Tienes el pellejo más duro que una bota.",
               "bond": 0,
-              "then": "(Grimm resopla. Casi parece una risa.)"
+              "then": "Hm, hm."
             },
             {
               "text": "Quieto, que no tengo toda la noche.",
               "bond": -1,
-              "then": "(Grimm se pone rígido y mira al fuego.)",
+              "then": "Hmf.",
               "mood": "enfadado"
             }
           ]
@@ -4171,12 +4171,12 @@
             {
               "text": "Cuando quieras, Grimm.",
               "bond": 1,
-              "then": "(Grimm asiente y te devuelve la bota.)"
+              "then": "Mm. Tú también."
             },
             {
               "text": "¿Tanto silencio para esto?",
               "bond": -1,
-              "then": "(Grimm se encoge de hombros y no vuelve a abrir la boca.)"
+              "then": "Hmf."
             }
           ]
         }
@@ -4199,17 +4199,17 @@
             {
               "text": "«Hemos llegado a la capital, estamos a salvo». ¡Tu familia, Grimm! Me alegro mucho.",
               "bond": 1,
-              "then": "(Grimm sonríe. Es una sonrisa enorme, como él.)"
+              "then": "A salvo. Mm."
             },
             {
               "text": "Dice que ya no necesitan tu plata. Entonces, ¿te vas con ellos?",
               "bond": 0,
-              "then": "(Grimm niega con la cabeza.)"
+              "then": "No. Contigo."
             },
             {
               "text": "Si ya no les hace falta tu plata, ya no te hace falta cobrar tanto.",
               "bond": -1,
-              "then": "(Grimm resopla y te quita la carta de la mano.)",
+              "then": "Hmf. Trae.",
               "mood": "enfadado"
             }
           ]
@@ -4220,7 +4220,7 @@
             {
               "text": "Ya no tienes por qué quedarte.",
               "bond": 0,
-              "then": "(Grimm no contesta. Tampoco se mueve de tu lado.)"
+              "then": "Mm."
             },
             {
               "text": "Hasta el paso, Grimm.",

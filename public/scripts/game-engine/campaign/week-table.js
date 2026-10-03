@@ -195,7 +195,7 @@ export function standingsOf({ guild = null, factions = [], fame = null, places =
     add('Cómo les va a los sitios', (places ?? []).filter(p => fortuneOf(p) !== 0).map(p => `${text(p.name)}: ${fortuneOf(p) > 0 ? 'les va mejor gracias a vosotros' : 'lo están pasando mal'} (${fortuneOf(p) > 0 ? '+' : ''}${fortuneOf(p)})`));
     add('Dónde os buscan', Object.entries(readWanted(wanted)).filter(([, n]) => n > 0).map(([place, n]) => `${place}: ${n >= 2 ? 'os paran los guardias' : 'os tienen fichados'} (${n})`));
     add('La gente', Object.entries(readAttitudes(attitudes).values).map(([name, value]) => `${name}: ${describeAttitude(value)}`));
-    add('Los compañeros', (companions ?? []).filter(c => Number(c.rank) > 0).map(c => `${text(c.name)}: vínculo ${Number(c.rank)}`));
+    add('Los compañeros', (companions ?? []).filter(c => Number(c.rank) > 0).map(c => `${text(c.name)}: rango ${Number(c.rank)}`));
     return out;
 }
 

@@ -181,6 +181,7 @@
     },
     {
       "name": "Bandido contrabandista",
+      "aspecto": "Hombre de unos treinta, moreno y curtido por el mar, con un pañuelo rojo en la cabeza y barba de días. Camisa a rayas remangada, chaleco de cuero y un garfio de estibador en la mano.",
       "hp": 11,
       "armorClass": 12,
       "cr": 0.125,
@@ -208,6 +209,7 @@
     },
     {
       "name": "Bandido del camino",
+      "aspecto": "Hombre de unos treinta, flaco, con la cara tapada hasta la nariz con un trapo pardo y una capucha raída. Jubón de cuero remendado y una espada corta mellada.",
       "hp": 11,
       "armorClass": 12,
       "cr": 0.125,
@@ -254,16 +256,28 @@
           "text": "Plantarte delante y decirle que suelte la bolsa",
           "skill": "intimidation",
           "dc": 10,
-          "success": "El ratero mira tu arma, suelta la bolsa de Tomás y sale corriendo por las tablas del embarcadero.",
-          "failure": "El ratero saca el cuchillo de pescador: «¡Apártate!»."
+          "success": {
+            "who": "Ratero del muelle",
+            "text": "¡Vale, vale! ¡Ahí tienes la bolsa del posadero! ¡Yo no he visto nada!"
+          },
+          "failure": {
+            "who": "Ratero del muelle",
+            "text": "¡Apártate! Tengo cuchillo y sé usarlo."
+          }
         },
         {
           "kind": "hablar",
           "text": "Ofrecerle que se vaya sin que nadie le persiga si devuelve la bolsa",
           "skill": "persuasion",
           "dc": 11,
-          "success": "El chico duda, tira la bolsa a tus pies y desaparece entre las barcas.",
-          "failure": "«¿Y quién me lo asegura?» Aprieta el cuchillo."
+          "success": {
+            "who": "Ratero del muelle",
+            "text": "¿Sin nadie detrás de mí? …Toma, ahí la tienes. ¡Y no me sigas!"
+          },
+          "failure": {
+            "who": "Ratero del muelle",
+            "text": "¿Y quién me lo asegura? ¡Nadie! ¡Atrás!"
+          }
         }
       ],
       "parley": {
@@ -271,21 +285,42 @@
         "sobornar": {
           "text": "Tirarle unas monedas: que deje la bolsa y se vaya",
           "gold": 2,
-          "success": "El chico coge las monedas al vuelo, deja la bolsa en las tablas y se escurre entre las barcas.",
-          "failure": "«¿Eso es todo?» Escupe a tus pies y aprieta el cuchillo."
+          "success": {
+            "who": "Ratero del muelle",
+            "text": "¡Hecho! La bolsa te la dejo en las tablas. Un placer."
+          },
+          "failure": {
+            "who": "Ratero del muelle",
+            "text": "¿Eso es todo? ¡Con eso no como ni hoy!"
+          }
         },
         "convencer": {
           "text": "Decirle que aún está a tiempo: si suelta la bolsa, nadie le persigue",
           "dc": 10,
-          "success": "Al chico le tiembla el cuchillo. Deja la bolsa en las tablas, se tira al agua y nada hasta las barcas.",
-          "partial": "El chico duda y mira el agua. Esta ronda no ataca.",
-          "failure": "«¡Mentira! ¡Me colgarán igual!» Se lanza a por ti."
+          "success": {
+            "who": "Ratero del muelle",
+            "text": "Vale… vale. Te la dejo aquí. Me voy por el agua, ¡y que nadie me siga!"
+          },
+          "partial": {
+            "who": "Ratero del muelle",
+            "text": "¿Y si es verdad? No sé… Espera, déjame pensar."
+          },
+          "failure": {
+            "who": "Ratero del muelle",
+            "text": "¡Mentira! ¡Me colgarán igual! ¡Antes te rajo!"
+          }
         },
         "engañar": {
           "text": "Gritar que la guardia del puerto viene por las tablas",
           "dc": 10,
-          "success": "El chico mira por encima de tu hombro, tira la bolsa y salta al agua. Cuando saca la cabeza, ya está al otro lado del muelle.",
-          "failure": "«¡Aquí la guardia no baja hasta la noche!» Se ríe y aprieta el cuchillo."
+          "success": {
+            "who": "Ratero del muelle",
+            "text": "¿La guardia? ¡Toma tu bolsa! ¡Yo me largo!"
+          },
+          "failure": {
+            "who": "Ratero del muelle",
+            "text": "¡Aquí la guardia no baja hasta la noche! Buen intento."
+          }
         },
         "no": ["entregarse"]
       },
@@ -314,8 +349,14 @@
           "text": "Espantarlas con la antorcha y un par de golpes en los barriles",
           "skill": "intimidation",
           "dc": 12,
-          "success": "Las ratas chillan y se meten por un agujero de la pared. La bodega queda limpia, y Brunilda lo oye desde arriba.",
-          "failure": "Las ratas están acorraladas entre los barriles: saltan a por ti."
+          "success": {
+            "who": "Brunilda",
+            "text": "¡Eso es, que corran! Desde aquí arriba las oigo meterse por el agujero de la pared. ¡Bodega limpia!"
+          },
+          "failure": {
+            "who": "{companero}",
+            "text": "¡Cuidado! Están acorraladas entre los barriles. ¡Saltan!"
+          }
         }
       ],
       "locationName": "Puerto Alba",
@@ -344,14 +385,23 @@
           "text": "Decirles que la guardia del puerto viene detrás de vosotros",
           "skill": "deception",
           "dc": 12,
-          "success": "Cargan los fardos a toda prisa y reman mar adentro. La cala queda vacía.",
-          "failure": "El del arco se ríe desde las rocas: «Aquí no viene la guardia ni de día»."
+          "success": {
+            "who": "Bandido contrabandista",
+            "text": "¿La guardia? ¡Los fardos a la barca, rápido! ¡Remad!"
+          },
+          "failure": {
+            "who": "Bandido contrabandista",
+            "text": "¿La guardia? Aquí no viene la guardia ni de día."
+          }
         },
         {
           "kind": "pagar",
           "text": "Comprarles la carga a mitad de precio, a cambio de que se vayan",
           "gold": 8,
-          "success": "Se llevan el oro, empujan la barca al agua y no vuelven."
+          "success": {
+            "who": "Bandido contrabandista",
+            "text": "Trato hecho: la carga es tuya. Y esta cala ya no la pisamos."
+          }
         }
       ],
       "parley": {
@@ -360,28 +410,50 @@
           "text": "Clavar el arma en la arena y levantar las manos",
           "resolves": false,
           "success": {
-            "text": "Os atan a una barca varada y os vacían la bolsa. Se van con la marea. De madrugada, un pescador os encuentra y os corta las cuerdas.",
+            "who": "Bandido contrabandista",
+            "text": "Atadlos a esa barca varada y vaciadles la bolsa. Nos vamos con la marea. Ya os soltará algún pescador.",
             "effects": [{ "gold": -6 }, "time", { "fame": -1 }]
           }
         },
         "sobornar": {
           "text": "Tirarles una bolsa: que cojan lo suyo y se vayan",
           "gold": 10,
-          "success": "El del arco cuenta las monedas desde las rocas y da un silbido. Empujan la barca al agua y se van remando.",
-          "failure": "«Con eso no pagas ni la barca.» Siguen."
+          "success": {
+            "who": "Bandido contrabandista",
+            "text": "Contadas. ¡Eh, todos a la barca! Nos vamos."
+          },
+          "failure": {
+            "who": "Bandido contrabandista",
+            "text": "Con eso no pagas ni la barca."
+          }
         },
         "convencer": {
           "text": "Decirles que la cala ya está vista: mañana la vigilará la guardia del puerto",
           "dc": 13,
-          "success": "Se miran entre ellos. Cargan lo que pueden en la barca y reman mar adentro. No volverán a esta cala.",
-          "partial": "Bajan las armas un momento para mirar hacia el puerto. Esta ronda, nadie ataca.",
-          "failure": "«Pues que venga. Para entonces ya no estaremos, y tú tampoco.»"
+          "success": {
+            "who": "Bandido contrabandista",
+            "text": "Si la cala está vista, está quemada. Cargad lo que podáis y remad. Aquí no volvemos."
+          },
+          "partial": {
+            "who": "Bandido contrabandista",
+            "text": "¿Vista? Quietos todos… ¿Se ve a alguien en el puerto?"
+          },
+          "failure": {
+            "who": "Bandido contrabandista",
+            "text": "Pues que venga. Para entonces ya no estaremos, y tú tampoco."
+          }
         },
         "engañar": {
           "text": "Señalar el acantilado: «¡Ahí arriba están los del gremio!»",
           "dc": 13,
-          "success": "El del arco se gira, ve sombras en lo alto y no espera a saber de quién son. Empujan la barca y se van.",
-          "failure": "«Ahí arriba solo hay gaviotas.» Ahora vienen a por ti sin cuidarse."
+          "success": {
+            "who": "Bandido contrabandista",
+            "text": "¿Los del gremio? ¡Hay sombras ahí arriba! ¡A la barca, ya!"
+          },
+          "failure": {
+            "who": "Bandido contrabandista",
+            "text": "Ahí arriba solo hay gaviotas. ¡Ahora vas a ver!"
+          }
         }
       },
       "locationName": "La cala del norte",
@@ -412,14 +484,23 @@
           "text": "Quemar las telarañas de la escalera con una antorcha",
           "skill": "intimidation",
           "dc": 12,
-          "success": "Las arañas huyen hacia lo alto y se meten por las grietas del tejado. El farero está atado en su cuarto, vivo.",
-          "failure": "Las telarañas arden, pero las arañas bajan por la pared, directas a por ti."
+          "success": {
+            "who": "{companero}",
+            "text": "¡Huyen hacia el tejado! Y arriba… ¡el farero, atado pero vivo!"
+          },
+          "failure": {
+            "who": "{companero}",
+            "text": "¡Arden, pero las arañas bajan por la pared! ¡Vienen a por ti!"
+          }
         },
         {
           "kind": "esconderse",
           "text": "Subir pegados a la pared, sin tocar los hilos",
           "dc": 13,
-          "success": "Llegáis arriba sin que tiemble un hilo. El farero está atado en su cuarto, vivo, y bajáis con él igual de despacio."
+          "success": {
+            "who": "{companero}",
+            "text": "Arriba, y sin tocar un hilo. Ahí está el farero, atado pero vivo. Lo bajamos igual de despacio."
+          }
         }
       ],
       "locationName": "El faro viejo",
@@ -450,14 +531,23 @@
           "text": "Decirles que se larguen con lo que ya han robado antes de que llegue la guardia",
           "skill": "persuasion",
           "dc": 12,
-          "success": "Los salteadores se miran, recogen lo que pueden y se pierden por los acantilados.",
-          "failure": "«¿Y si nos quedamos también con lo tuyo?»"
+          "success": {
+            "who": "Bandido del camino",
+            "text": "Tiene razón. Coged lo que podáis y por los acantilados. ¡Vamos!"
+          },
+          "failure": {
+            "who": "Bandido del camino",
+            "text": "¿Y si nos quedamos también con lo tuyo?"
+          }
         },
         {
           "kind": "pagar",
           "text": "Pagarles para que se vayan a otro camino",
           "gold": 6,
-          "success": "Cogen las monedas y se van hacia el interior. El carro de Ramiro podrá pasar."
+          "success": {
+            "who": "Bandido del camino",
+            "text": "Con esto nos vamos tierra adentro. Que pase vuestro carro."
+          }
         }
       ],
       "parley": {
@@ -466,28 +556,50 @@
           "text": "Soltar el arma en el camino",
           "resolves": false,
           "success": {
-            "text": "Os quitan la bolsa y os dejan atados a un pino, junto al camino. Al anochecer pasa un carbonero y os suelta sin hacer preguntas.",
+            "who": "Bandido del camino",
+            "text": "La bolsa, y al pino con ellos. Alguien pasará antes de que se haga de noche.",
             "effects": [{ "gold": -6 }, "time", { "fame": -1 }]
           }
         },
         "sobornar": {
           "text": "Pagarles para que se vayan a robar a otro camino",
           "gold": 8,
-          "success": "Cuentan las monedas, se ríen y se pierden por los acantilados. El carro podrá pasar.",
-          "failure": "«¿Y por qué no nos lo quedamos todo?» Siguen."
+          "success": {
+            "who": "Bandido del camino",
+            "text": "¡Ja! Más fácil que robarlo. Andando, a otro camino."
+          },
+          "failure": {
+            "who": "Bandido del camino",
+            "text": "¿Y por qué no nos lo quedamos todo?"
+          }
         },
         "convencer": {
           "text": "Decirles que el carbón no vale nada sin carro, y que el gremio volverá con más gente",
           "dc": 13,
-          "success": "Los salteadores se miran, se encogen de hombros y se van monte arriba con lo que llevan.",
-          "partial": "Dudan, con las armas a medio bajar. Esta ronda, no atacan.",
-          "failure": "«El gremio no sale de la taberna.» Siguen."
+          "success": {
+            "who": "Bandido del camino",
+            "text": "Bah. Sin carro, el carbón no vale nada. Monte arriba, que esto no compensa."
+          },
+          "partial": {
+            "who": "Bandido del camino",
+            "text": "¿Más gente del gremio? Esperad… quietos un momento."
+          },
+          "failure": {
+            "who": "Bandido del camino",
+            "text": "El gremio no sale de la taberna."
+          }
         },
         "engañar": {
           "text": "Gritar que ya bajan los carboneros con las hachas",
           "dc": 12,
-          "success": "Miran hacia el monte, oyen ruido entre los árboles y salen corriendo hacia el acantilado.",
-          "failure": "«Los carboneros no se juegan el pellejo por nadie.» Ahora vienen a por ti sin cuidarse."
+          "success": {
+            "who": "Bandido del camino",
+            "text": "¿Los carboneros? ¡Se oye algo entre los árboles! ¡Corred!"
+          },
+          "failure": {
+            "who": "Bandido del camino",
+            "text": "Los carboneros no se juegan el pellejo por nadie. ¡A por {él|ella}!"
+          }
         }
       },
       "locationName": "El camino de la costa",
@@ -517,13 +629,17 @@
           "text": "Esperar escondidos tras el muro hasta que salga el sol",
           "dc": 11,
           "success": {
-            "text": "Os agazapáis tras el muro. Con la primera luz, los ahogados vuelven arrastrándose a sus tumbas y la tierra se cierra sobre ellos.",
+            "who": "{companero}",
+            "text": "Quietos tras el muro… Ya clarea. Mira: vuelven a sus tumbas arrastrándose, y la tierra se cierra encima.",
             "effects": [
               "time",
               "time"
             ]
           },
-          "failure": "Uno de los ahogados se para, huele el aire y se da la vuelta hacia el muro."
+          "failure": {
+            "who": "{companero}",
+            "text": "Ese se ha parado. Está oliendo el aire… ¡Viene hacia el muro!"
+          }
         },
         {
           "kind": "huir",
@@ -559,8 +675,14 @@
           "text": "Espantarlos con fuego y ruido hasta el monte",
           "skill": "intimidation",
           "dc": 12,
-          "success": "La manada huye hacia el monte, blanca de sal, y no vuelve a bajar a las chozas.",
-          "failure": "Los lobos rodean el fuego buscando al que se queda atrás."
+          "success": {
+            "who": "{companero}",
+            "text": "¡Mira cómo corren hacia el monte! Esos no vuelven a bajar a las chozas."
+          },
+          "failure": {
+            "who": "{companero}",
+            "text": "No se asustan. Están rodeando el fuego… buscan al que se quede atrás."
+          }
         },
         {
           "kind": "huir",
@@ -1323,10 +1445,11 @@
                 "later": {
                   "days": 3,
                   "name": "Un regalo de Tomás",
+                  "who": "Tomás",
                   "text": "Tomás te espera en la puerta de la taberna con un paquete envuelto en tela: «Para el camino. Es lo menos, después de lo del muelle.»",
                   "options": [
-                    { "label": "Aceptarlo", "effects": ["comida", "cura:1d6"], "then": "Pan, queso curado y un frasco de licor de hierbas que cura de verdad." },
-                    { "label": "Pedirle que te cuente lo que sabe", "effects": ["rumor"], "then": "Se sienta contigo y te cuenta lo que se dice del gremio y de sus campañas." }
+                    { "label": "Aceptarlo", "effects": ["comida", "cura:1d6"], "then": "Pan, queso curado y un frasco de licor de hierbas. Ese cura de verdad, ya verás." },
+                    { "label": "Pedirle que te cuente lo que sabe", "effects": ["rumor"], "then": "Siéntate, que te cuento lo que se dice del gremio y de sus campañas. Aquí se oye todo." }
                   ]
                 } },
               { "id": "cuanto-pagas", "text": "¿Y cuánto me das si te la devuelvo?", "effects": [{ "gold": 3 }, { "attitude": -1 }],
@@ -1334,10 +1457,11 @@
                 "later": {
                   "days": 2,
                   "name": "Lo que cuenta Tomás",
+                  "who": "Tomás",
                   "text": "En la taberna, Tomás cuenta a quien quiera oírle que le cobraste por devolverle su propia bolsa. Algunos se ríen. Otros te miran de reojo.",
                   "options": [
-                    { "label": "Invitar a una ronda para arreglarlo", "cost": { "oro": 2 }, "effects": ["fama:+1"], "then": "Tomás acepta la jarra y cambia de tema. De lo del muelle ya no se habla." },
-                    { "label": "Dejar que hable", "effects": ["fama:-1"], "then": "Mañana lo sabrá medio puerto." }
+                    { "label": "Invitar a una ronda para arreglarlo", "cost": { "oro": 2 }, "effects": ["fama:+1"], "then": "Bueno, bueno… A tu salud. Y de lo del muelle, ni una palabra más." },
+                    { "label": "Dejar que hable", "effects": ["fama:-1"], "then": "Pues que se entere medio puerto. ¡Cobrarme por mi propia bolsa!" }
                   ]
                 } }
             ]

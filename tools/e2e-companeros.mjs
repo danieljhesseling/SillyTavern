@@ -28,6 +28,7 @@ import { createRequire } from 'node:module';
 import { createWriteStream, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { enElGremio, pulsarALaVista, salirDelTablero, volverAlGremio } from './e2e-guiado.mjs';
 
 const ROOT = new URL('..', import.meta.url).pathname.replace(/^[/]([A-Za-z]:)/, '$1');
 const argAfter = (/** @type {string} */ flag) => (process.argv.includes(flag) ? process.argv[process.argv.indexOf(flag) + 1] : '');
@@ -343,10 +344,12 @@ try {
     await until(async () => /Gremio/.test((await state()).world), 60000);
     await until(() => chatHas(/Al ladrón/), 20000);
     await page.waitForTimeout(800);
-    await clickChip(/^Saltar la prueba$/);
+    // D-J62: «Saltar la prueba» está en la Casa del Gremio, fuera del tablero del muelle.
+    await salirDelTablero(page);
+    await until(() => enElGremio(page, 'hub-skip'), 15000);
     await page.waitForSelector('.popup:has-text("¿Saltar la prueba?")', { timeout: 10000 });
     await page.locator('.popup-button-ok:visible').first().click({ timeout: 5000 }).catch(() => {});
-    await until(() => chatHas(/apunta tu nombre en el libro del gremio/), 15000);
+    await until(() => chatHas(/apunta tu nombre en el libro del gremio|Te saltas «|Ya subes|tengo el libro abierto/), 15000);
     await page.waitForTimeout(800);
     await dropToasts();
 
@@ -362,7 +365,8 @@ try {
 
     // 2. Contratar a Gerd, a Nella y a Osric, con sus botones.
     for (const name of ['Gerd el Mellado', 'Nella Tresflechas', 'Osric Mediapaga']) {
-        await clickChip(/Contratar mercenarios/);
+        // D-J62: contratar, en la Casa del Gremio.
+        await enElGremio(page, 'hub-hire');
         await page.waitForSelector(`.hb-root [data-hireling="${name}"]`, { timeout: 15000 });
         await page.locator(`.hb-root [data-hireling="${name}"]`).click();
         await until(async () => (await state()).party.some(m => m.name === name), 10000);
@@ -590,7 +594,7 @@ try {
             check('J14.9: tras los días de las misiones, nadie del grupo ha caído de hambre por el camino',
                 alive.length === 4 && alive.every(m => !m.dead && m.hunger < 72), JSON.stringify(alive));
         }
-        await clickChip(/Tablón de campañas/);
+        await enElGremio(page, 'hub-board');
         await page.waitForSelector('.hb-root [data-campaign="1387"]', { timeout: 15000 });
         await page.locator('.hb-root [data-campaign="1387"]').click();
         const in1387 = await until(async () => /1387/.test((await state()).world), 120000);
@@ -622,9 +626,15 @@ try {
             await clearDice();
             await clearPopups();
             await carryOn('exploration');
-            await page.locator('#game-shell .gs-place', { hasText: to }).first().click({ timeout: 8000 });
-            await page.waitForSelector('.popup:visible .tr-pace-normal', { timeout: 8000 });
-            await page.locator('.popup:visible .tr-pace-normal').click({ timeout: 5000 });
+            // D-J62: con el modo guiado no hay columna «Viajar»: «Ir a…» si lo pide la historia; si
+            // no, su orden (lo que se mira aquí es lo que se dice por el camino, no adónde se va).
+            const card = page.locator('#game-shell .gs-place', { hasText: to });
+            if (await card.count() > 0) await card.first().click({ timeout: 8000 });
+            else if (!(await pulsarALaVista(page, new RegExp(`^(Ir a|Volver a) ${to.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`)))) {
+                void page.evaluate((t) => window.SillyTavern.getContext().executeSlashCommandsWithOptions(`/go ${t}`), to);
+            }
+            await page.waitForSelector('.popup:visible .tr-pace-normal', { timeout: 8000 }).catch(() => {});
+            await page.locator('.popup:visible .tr-pace-normal').click({ timeout: 5000 }).catch(() => {});
             for (let i = 0; i < 12; i++) {
                 await page.waitForTimeout(700);
                 if (await page.locator('.popup:visible .tr-detour').count() > 0) await page.locator('.popup:visible .tr-detour').first().click();
@@ -676,7 +686,8 @@ try {
         await page.evaluate(() => window.localStorage.setItem('sillytavern_gameSucesos', 'on'));
         await carryOn('exploration');
         // «Acampar aquí», en la fila o en «+N más».
-        let camp = await clickChip(/^Acampar aquí$/);
+        // D-J62: con el modo guiado, acampar está en la tarjeta «Descansar» del sitio.
+        let camp = await clickChip(/^Acampar aquí$/) || await pulsarALaVista(page, /^Acampar aquí$/);
         if (!camp) {
             await clickChip(/\+\d+ más$/);
             camp = await page.locator('.popup[open] .hp-item[data-chip="camp"]').click({ timeout: 5000 }).then(() => true).catch(() => false);
@@ -740,7 +751,7 @@ try {
         await dropToasts();
         await clearPopups();
         await carryOn('exploration');
-        let home = await clickChip(/^Volver al gremio$/);
+        let home = await clickChip(/^Volver al gremio$/) || await volverAlGremio(page);
         if (!home) {
             await clickChip(/\+\d+ más$/);
             home = await page.locator('.popup[open] .hp-item[data-chip="hub-home"]').click({ timeout: 5000 }).then(() => true).catch(() => false);

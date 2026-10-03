@@ -24,6 +24,7 @@ import { createRequire } from 'node:module';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { enElGremio, salirDelTablero } from './e2e-guiado.mjs';
 
 const ROOT = new URL('..', import.meta.url).pathname.replace(/^[/]([A-Za-z]:)/, '$1');
 const argAfter = (/** @type {string} */ flag) => (process.argv.includes(flag) ? process.argv[process.argv.indexOf(flag) + 1] : '');
@@ -241,11 +242,12 @@ try {
         return Boolean(chip);
     }, pattern.source);
     await carryOn('combat');
-    await until(() => page.evaluate(() => [...document.querySelectorAll('#game-shell .gs-chip-action')].some(c => /^Saltar la prueba$/.test((c.textContent || '').trim()))), 15000);
-    await clickChip(/^Saltar la prueba$/);
+    // D-J62: «Saltar la prueba» está en la Casa del Gremio, fuera del tablero del muelle.
+    await salirDelTablero(page);
+    await until(() => enElGremio(page, 'hub-skip'), 15000);
     await page.waitForSelector('.popup:has-text("¿Saltar la prueba?")', { timeout: 10000 }).catch(() => {});
     await page.locator('.popup-button-ok:visible').first().click({ timeout: 5000 }).catch(() => {});
-    await until(() => chatHas(/apunta tu nombre en el libro del gremio|moja la pluma/), 15000);
+    await until(() => chatHas(/apunta tu nombre en el libro del gremio|moja la pluma|Te saltas «|Ya subes|tengo el libro abierto/), 15000);
     await page.waitForTimeout(1000);
     await page.evaluate(() => document.querySelectorAll('.wm-dice-overlay.active .wm-dice-next').forEach(b => /** @type {HTMLElement} */ (b).click()));
     await carryOn('exploration');

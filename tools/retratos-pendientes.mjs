@@ -69,6 +69,19 @@ function speakers(pack) {
         if (text(m?.pov)) out.add(text(m.pov));
     }
     for (const talk of Array.isArray(pack?.dialogues) ? pack.dialogues : []) if (text(talk?.speaker)) out.add(text(talk.speaker));
+    // Tanda 22 (D-J60): y quien dice lo que pasa al evitar una pelea o al hablar en mitad de ella
+    // (quien manda del tablero, o el `who` de la rama).
+    for (const board of Array.isArray(pack?.boards) ? pack.boards : []) {
+        const leader = text(board?.parley?.leader);
+        if (leader) out.add(leader);
+        const ways = [...(Array.isArray(board?.avoid) ? board.avoid : []), ...Object.values(board?.parley && typeof board.parley === 'object' ? board.parley : {})];
+        for (const way of ways) {
+            for (const key of ['success', 'partial', 'failure']) {
+                const who = text(way?.[key]?.who).replace(/\{leader\}/g, leader);
+                if (who && who !== '{companero}') out.add(who);
+            }
+        }
+    }
     return out;
 }
 

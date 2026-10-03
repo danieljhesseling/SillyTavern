@@ -40,6 +40,18 @@ export const NARRATOR = 'Narrador';
 /** La etiqueta de lo que dices tú. */
 export const HERO = 'Tú';
 
+/**
+ * Tanda 22 (D-J60): lo que dice uno de los tuyos, el que toque al jugar (lo que se ve al mirar, la
+ * trampa que se ve venir). A solas, quien esté allí.
+ */
+export const COMPANION = 'Uno de los tuyos';
+
+/** Tanda 22: lo que se lee en una tarjeta (un suceso, lo que vuelve días después, una visita). */
+export const ON_CARD = 'En la tarjeta';
+
+/** Tanda 22: el `who` que quiere decir «uno de los tuyos» (al huir, al esconderse, ante bichos que no hablan). */
+export const COMPANION_SLOT = '{companero}';
+
 /** El formato de la marca de cada línea: `[#id~huella]`. */
 export const MARK = /\s*\[#([^\]~]+)~([0-9a-z]{1,8})\]\s*$/;
 
@@ -327,6 +339,8 @@ function createWriter(pack) {
     const speaker = (who) => {
         const name = text(who);
         if (!name) return NARRATOR;
+        // Tanda 22: «{companero}» es uno de los tuyos, el que toque al jugar.
+        if (name === COMPANION_SLOT) return COMPANION;
         const person = findPerson(name, people);
         if (!person) return name;
         if (knowsName(person.name, { state: known, people })) return person.name;
@@ -476,16 +490,20 @@ function replies(w, reply, { id, path, doc, who, depth, pre = '' }) {
  */
 function walkCard(w, card, { id, path, doc, depth, title = 'Días después' }) {
     if (!isObject(card)) return;
-    w.line({ id: `${id}/titulo`, value: card.name, src: at([...path, 'name'], doc), label: title, depth, kind: 'pantalla' });
-    w.line({ id, value: card.text, src: at([...path, 'text'], doc), label: NARRATOR, depth });
+    // Tanda 22 (D-J60): la tarjeta se queda como tarjeta (se lee en pantalla); lo que pasa al elegir
+    // lo dice quien está en ella (`who`), o quien diga la opción.
+    const cardWho = text(card.who);
+    w.line({ id: `${id}/titulo`, value: card.name, src: at([...path, 'name'], doc), label: title, pre: cardWho ? `Con ${w.speaker(cardWho)}` : '', depth, kind: 'pantalla' });
+    w.line({ id, value: card.text, src: at([...path, 'text'], doc), label: ON_CARD, depth, kind: 'pantalla' });
     listOf(card.options).forEach((option, k) => {
         if (!isObject(option)) return;
         const oid = `${id}/${k + 1}`;
         const base = [...path, 'options', k];
+        const who = (/** @type {any} */ branch) => w.speaker(text(branch?.who) || text(option.who) || cardWho);
         w.line({ id: oid, value: option.label, src: at([...base, 'label'], doc), label: HERO, depth: depth + 1, bullet: true });
-        w.line({ id: `${oid}/r`, value: option.then, src: at([...base, 'then'], doc), label: NARRATOR, depth: depth + 2, bullet: true });
+        w.line({ id: `${oid}/r`, value: option.then, src: at([...base, 'then'], doc), label: who(null), depth: depth + 2, bullet: true });
         for (const [key, word, said] of [['success', 'bien', 'Si sale bien'], ['fail', 'mal', 'Si sale mal']]) {
-            w.line({ id: `${oid}/${word}`, value: option[key]?.then, src: at([...base, key, 'then'], doc), label: NARRATOR, pre: said, depth: depth + 2, bullet: true });
+            w.line({ id: `${oid}/${word}`, value: option[key]?.then, src: at([...base, key, 'then'], doc), label: who(option[key]), pre: said, depth: depth + 2, bullet: true });
         }
     });
 }
@@ -595,8 +613,10 @@ function talkBeats(w, beats, { id, path, doc, who, depth = 0 }) {
  * @param {string} input.id
  * @param {Array<string|number>} input.path
  * @param {string} input.doc
+ * @param {string} [input.owner] De quién es la misión: dice lo de cada paso (el camino, la pelea)
+ *   si el paso no dice otro (`who`). Tanda 22 (D-J60).
  */
-function walkPersonalQuest(w, quest, { id, path, doc }) {
+function walkPersonalQuest(w, quest, { id, path, doc, owner = '' }) {
     if (!isObject(quest)) return;
     w.line({ id: `${id}/titulo`, value: quest.title, src: at([...path, 'title'], doc), label: 'Misión personal', type: 'apartado', kind: 'pantalla' });
     w.line({ id: `${id}/donde`, value: quest.where, src: at([...path, 'where'], doc), label: 'Dónde', kind: 'pantalla' });
@@ -612,7 +632,8 @@ function walkPersonalQuest(w, quest, { id, path, doc }) {
         const sid = `${id}/${slug(step.id) || k + 1}`;
         const base = [...path, 'steps', k];
         w.line({ id: `${sid}/titulo`, value: step.title, src: at([...base, 'title'], doc), label: 'Paso', kind: 'pantalla' });
-        w.line({ id: sid, value: step.text, src: at([...base, 'text'], doc), label: NARRATOR });
+        // Tanda 22 (D-J60): lo del paso (el camino, la pelea) lo dice quien lleva la misión, o el suyo.
+        w.line({ id: sid, value: step.text, src: at([...base, 'text'], doc), label: w.speaker(text(step.who) || text(quest.who) || owner) });
         sceneBeats(w, step.beats, { id: sid, path: [...base, 'beats'], doc });
         w.line({ id: `${sid}/recuerdo`, value: step.effects?.memory, src: at([...base, 'effects', 'memory'], doc), label: 'Diario', kind: 'pantalla' });
     });
@@ -779,6 +800,10 @@ function walkBoard(w, pack, index, placed, questsPlaced) {
         questsPlaced.add(q);
         walkQuest(w, quest, q);
     });
+    // Tanda 22 (D-J60): lo que pasa lo dice quien la rama dice (`who`: quien manda, la persona con la
+    // que hablas, uno de los tuyos); `{leader}` es quien manda del tablero.
+    const leader = isObject(board.parley) ? text(board.parley.leader) : '';
+    const branchWho = (/** @type {any} */ branch) => w.speaker(text(branch?.who).replace(/\{leader\}/g, leader));
     listOf(board.avoid).forEach((way, k) => {
         if (!isObject(way)) return;
         const aid = `${bid}/evitar${k + 1}`;
@@ -787,7 +812,7 @@ function walkBoard(w, pack, index, placed, questsPlaced) {
         for (const [key, word, said] of OUTCOMES) {
             const branch = way[key];
             if (typeof branch === 'string') w.line({ id: `${aid}/${word}`, value: branch, src: at([...path, key]), label: NARRATOR, pre: said, depth: 1, bullet: true });
-            else if (isObject(branch)) w.line({ id: `${aid}/${word}`, value: branch.text, src: at([...path, key, 'text']), label: NARRATOR, pre: said, depth: 1, bullet: true });
+            else if (isObject(branch)) w.line({ id: `${aid}/${word}`, value: branch.text, src: at([...path, key, 'text']), label: branchWho(branch), pre: said, depth: 1, bullet: true });
         }
     });
     if (isObject(board.parley)) {
@@ -800,13 +825,14 @@ function walkBoard(w, pack, index, placed, questsPlaced) {
             for (const [branchKey, word, said] of OUTCOMES) {
                 const branch = way[branchKey];
                 if (typeof branch === 'string') w.line({ id: `${pid}/${word}`, value: branch, src: at([...path, branchKey]), label: NARRATOR, pre: said, depth: 1, bullet: true });
-                else if (isObject(branch)) w.line({ id: `${pid}/${word}`, value: branch.text, src: at([...path, branchKey, 'text']), label: NARRATOR, pre: said, depth: 1, bullet: true });
+                else if (isObject(branch)) w.line({ id: `${pid}/${word}`, value: branch.text, src: at([...path, branchKey, 'text']), label: branchWho(branch), pre: said, depth: 1, bullet: true });
             }
         }
     }
+    // Tanda 22 (D-J60): la trampa a la vista la dice quien la ve, uno de los tuyos («¡Ojo! …»).
     listOf(board.traps).forEach((trap, k) => {
         if (!isObject(trap)) return;
-        w.line({ id: `${bid}/trampa${k + 1}`, value: trap.tell, src: at([...base, 'traps', k, 'tell']), label: NARRATOR, pre: `Trampa «${text(trap.name)}»`, kind: 'narrador' });
+        w.line({ id: `${bid}/trampa${k + 1}`, value: trap.tell, src: at([...base, 'traps', k, 'tell']), label: COMPANION, pre: `Trampa «${text(trap.name)}», al verla` });
     });
 }
 
@@ -927,7 +953,9 @@ function walkEndings(w, pack) {
         const base = ['plot', 'endings', key];
         w.line({ id: `${fid}/titulo`, value: ending.title, src: at([...base, 'title']), label: 'Final', type: 'seccion', kind: 'pantalla' })
             ?? w.plain('seccion', `Final: ${key}`);
-        w.line({ id: `${fid}/escena`, value: ending.scene, src: at([...base, 'scene']), label: NARRATOR });
+        // Tanda 22 (D-J60): el final lo cuenta quien está allí (`who`).
+        w.line({ id: `${fid}/escena`, value: ending.scene, src: at([...base, 'scene']), label: w.speaker(ending.who) });
+        if (text(ending.who)) w.hear(ending.who, ending.scene);
         listOf(ending.epilogues).forEach((epilogue, k) => {
             w.line({ id: `${fid}/epilogo${k + 1}`, value: epilogue?.text, src: at([...base, 'epilogues', k, 'text']), label: 'Qué fue de', pre: text(epilogue?.who), kind: 'pantalla' });
         });
@@ -1056,7 +1084,8 @@ function walkWorld(w, pack, compendio, campaign, phrasesPlaced) {
             const sid = `${lid}/mirar${k + 1}`;
             const verb = text(sight.verbo) || 'mirar';
             w.line({ id: sid, value: sight.text, src: at([...base, 'sights', k, 'text']), label: HERO, pre: verb.charAt(0).toUpperCase() + verb.slice(1), bullet: true });
-            w.line({ id: `${sid}/visto`, value: sight.found, src: at([...base, 'sights', k, 'found']), label: NARRATOR, pre: 'Lo que ves', depth: 1, bullet: true });
+            // Tanda 22 (D-J60): lo que se ve lo dice quien está (su `who`) o uno de los tuyos.
+            w.line({ id: `${sid}/visto`, value: sight.found, src: at([...base, 'sights', k, 'found']), label: text(sight.who) ? w.speaker(sight.who) : COMPANION, pre: 'Lo que se ve', depth: 1, bullet: true });
         });
         listOf(place.routes).forEach((route, k) => {
             w.line({ id: `${lid}/camino-${slug(route?.to) || k + 1}`, value: route?.gateNote, src: at([...base, 'routes', k, 'gateNote']), label: 'En pantalla', pre: `Camino a ${text(route?.to)}`, kind: 'pantalla' });
@@ -1120,7 +1149,7 @@ function walkCompanions(w, pack, compendio, campaign, charlasPlaced) {
             listOf(conf.scenes).forEach((scene, k) => {
                 if (!isObject(scene)) return;
                 const sid = `${kid}/vinculo${text(scene.rank) || k + 1}`;
-                w.plain('nota', `Vínculo ${text(scene.rank)}`);
+                w.plain('nota', `Rango ${text(scene.rank)}`);
                 w.line({ id: `${sid}/titulo`, value: scene.title, src: at([...base, 'scenes', k, 'title']), label: 'Título', kind: 'pantalla' });
                 // J13.9: con su conversación escrita (aquí, en `beats`, o como quedada en quedadas.json),
                 // la escena en prosa es solo su resumen: sin conexión se juega la conversación, y la
@@ -1136,7 +1165,7 @@ function walkCompanions(w, pack, compendio, campaign, charlasPlaced) {
                     walkRomanceScene(w, scene, { id: `${kid}/romance/${slug(scene?.kind) || 'escena'}${text(scene?.step)}${k + 1}`, path: [...base, 'romance', 'escenas', k], doc: 'pack', who: name });
                 });
             }
-            walkPersonalQuest(w, conf.misionPersonal, { id: `${kid}/mision`, path: [...base, 'misionPersonal'], doc: 'pack' });
+            walkPersonalQuest(w, conf.misionPersonal, { id: `${kid}/mision`, path: [...base, 'misionPersonal'], doc: 'pack', owner: name });
         }
         // Lo del compendio: su ficha, sus charlas, sus quedadas, su romance y su misión.
         rowsOf('companeros').forEach((row, r) => {
@@ -1157,7 +1186,7 @@ function walkCompanions(w, pack, compendio, campaign, charlasPlaced) {
                 const base = ['rows', r, 'unlock'];
                 w.line({ id: `${qid}/nombre`, value: row.unlock.label, src: at([...base, 'label'], 'quedadas'), label: 'Lo que abre el vínculo', kind: 'pantalla' });
                 w.line({ id: `${qid}/describe`, value: row.unlock.describe, src: at([...base, 'describe'], 'quedadas'), label: 'En pantalla', depth: 1, kind: 'pantalla' });
-                if (isObject(row.unlock.quest)) walkPersonalQuest(w, row.unlock.quest, { id: `${qid}/mision`, path: [...base, 'quest'], doc: 'quedadas' });
+                if (isObject(row.unlock.quest)) walkPersonalQuest(w, row.unlock.quest, { id: `${qid}/mision`, path: [...base, 'quest'], doc: 'quedadas', owner: name });
             }
         });
         rowsOf('charlas').forEach((row, r) => {
@@ -1171,7 +1200,7 @@ function walkCompanions(w, pack, compendio, campaign, charlasPlaced) {
         });
         rowsOf('personales').forEach((row, r) => {
             if (!mine(row, name)) return;
-            walkPersonalQuest(w, row, { id: `PM:${text(row.id) || r + 1}`, path: ['rows', r], doc: 'personales' });
+            walkPersonalQuest(w, row, { id: `PM:${text(row.id) || r + 1}`, path: ['rows', r], doc: 'personales', owner: name });
         });
     }
 }

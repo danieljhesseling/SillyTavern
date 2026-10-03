@@ -60,7 +60,7 @@ import {
 import { getPlot } from './plot.js';
 import { changeAttitude, companionCards, offerPersonalQuests } from './companions.js';
 import { partyPurse, payFromParty } from './roster.js';
-import { lastVoicedLine, postCombatNarration } from './narration.js';
+import { lastVoicedLine, postCombatNarration, standInsHere } from './narration.js';
 import { festivalHere } from './town.js';
 import { romanceMeetup, romanceAfterMeetup, romanceWantsFor, romanceLabelFor, romanceDateFor, packRomance, unpackRomance } from './romance.js';
 
@@ -556,7 +556,7 @@ export async function meetSomeone(name = '', place = '') {
                     ...p,
                     placeLabel: placeLabel(p.place, location),
                     // J14.10: y cómo va el romance, si hay («Pareja»).
-                    rankLabel: [`Vínculo ${rankOf(bondKeyForHere(p))}`, romanceLabelFor(p.name)].filter(Boolean).join(' · '),
+                    rankLabel: [`Rango ${rankOf(bondKeyForHere(p))}`, romanceLabelFor(p.name)].filter(Boolean).join(' · '),
                     className: card?.className || text(p.source?.className || p.source?.charClass),
                     gender: card?.gender || text(p.source?.gender),
                 };
@@ -617,6 +617,8 @@ async function playMeetup(who, place) {
         town: text(location?.name || currentLocationName),
         night: slot.id === 'night',
         placeLabel: placeLabel(place, location),
+        // Tanda 22: quien sale por lo que es («el tabernero»), con la cara de quien lo es aquí.
+        standIns: standInsHere(),
         summarize: (choices) => {
             const outcome = sceneOutcome({ scene, choices, likedPlace: Boolean(card?.likes?.includes(place)), fits });
             const applied = applyMeetup({ bonds: getCampaignBonds(), bondKey, outcome, data, name: who.name });

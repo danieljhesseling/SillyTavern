@@ -10,7 +10,8 @@
  * Con las reglas del juego, no las del manual:
  *
  * - **Los enemigos** pegan como en `party/enemy-turn.js`: un d20 con su modificador (los de
- *   un paquete no traen Fuerza ni Destreza, así que +0) y el daño de su desafío (la tabla de
+ *   un paquete no traen Fuerza ni Destreza, así que +0) más su competencia por desafío (+2
+ *   hasta el 4, +3 hasta el 8…, tanda 22) y el daño de su desafío (la tabla de
  *   `getEnemyDamageFormula`). Un jefe contesta una vez por ronda (idea 24): pega dos veces.
  * - **El grupo** es el de siempre en D&D: guerrero, clérigo, pícaro y mago, con la vida de su
  *   dado de golpe, su modificador (+3, y +1 a nivel 4 y a nivel 8), su competencia al atacar
@@ -178,7 +179,8 @@ export function simEnemies(placements, bestiary, abilities = []) {
             maxHp: hp,
             hp,
             ac: Math.max(5, Number(row?.armorClass ?? row?.ac) || (11 + Math.floor(cr / 2))),
-            attack: Math.max(modOf(strength), modOf(dexterity)),
+            // Tanda 22: con su competencia, como en `party/enemy-turn.js`.
+            attack: Math.max(modOf(strength), modOf(dexterity)) + proficiencyBonus(Math.max(1, Math.ceil(cr))),
             damage,
             damageBonus: Math.max(0, modOf(strength)),
             attacks: row?.boss || placement?.boss ? 2 : 1,

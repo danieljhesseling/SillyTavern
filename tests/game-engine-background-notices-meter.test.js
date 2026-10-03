@@ -74,7 +74,7 @@ describe('bandeja y grupo', () => {
         const row = glanceRow({ name: 'Bruna', hp: 4, maxHp: 20, gold: 7, activeConditions: ['Prone'] },
             { injuries: ['Pierna rota — speed -10 · 3 día(s)'], needs: 'Acusa hambre (1).', rank: 3 });
         expect(row).toMatchObject({ name: 'Bruna', hp: '4/20', pct: 20, state: 'hurt', gold: 7 });
-        expect(row.lines).toEqual(['Heridas: Pierna rota — speed -10 · 3 día(s)', 'Acusa hambre (1).', 'Estado: Prone', 'Vínculo: rango 3']);
+        expect(row.lines).toEqual(['Heridas: Pierna rota — speed -10 · 3 día(s)', 'Acusa hambre (1).', 'Estado: Prone', 'Rango 3']);
         expect(glanceRow({ name: 'X', hp: 0, maxHp: 10 }, { injuries: [], needs: '', rank: 0 }).state).toBe('down');
     });
 });

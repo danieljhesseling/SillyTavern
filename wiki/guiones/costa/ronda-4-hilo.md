@@ -133,14 +133,15 @@ hito:
               on: siempre
               name: Las quince monedas
               text: 'Jacinto Larrañaga te corta el paso en la plaza: «Te pagamos para que te fueras, y sigues aquí.»'
+              who: "Jacinto Larrañaga"
               options:
                 - label: 'Devolverle las quince monedas'
                   cost: { oro: 15 }
                   effects: ['faccion:+1']
-                  then: 'Jacinto se las guarda sin contarlas: «Al menos eres {honrado|honrada}.»'
+                  then: "Al menos eres {honrado|honrada}."
                 - label: 'Quedártelas y seguir a lo tuyo'
                   effects: ['fama:-1']
-                  then: 'Jacinto escupe al suelo: «Pues que lo sepa todo el pueblo.»'
+                  then: "Pues que lo sepa todo el pueblo."
           - id: posada-preguntar
             text: 'Le pregunto a Maite, en voz baja, a quién le toca velar esta noche.'
             effects:
@@ -282,10 +283,12 @@ hito:
                 - label: 'Ir a hablar con Lucio antes de que haga una tontería'
                   cost: { horas: 2 }
                   effects: ['pista']
-                  then: 'Lucio no abre la puerta. Desde dentro grita: «Ya no hablo con nadie que me mande a la Cofradía.»'
+                  who: "Lucio Iturbe"
+                  then: "¡Ya no hablo con nadie que me mande la Cofradía! ¡Fuera de mi puerta!"
                 - label: 'Avisar a Jacinto'
                   effects: ['faccion:+1']
-                  then: 'Jacinto asiente despacio: «Nosotros nos ocupamos.» No suena a nada bueno.'
+                  who: "Jacinto Larrañaga"
+                  then: "Nosotros nos ocupamos."
 
 hito:
   id: la-marea-que-no-baja
@@ -882,7 +885,9 @@ Cada final tiene su escena y sus epílogos: los cinco compañeros, la gente que 
 final:
   id: la-costa-duerme
   titulo: La costa duerme
-  escena: 'Ane pone la mano blanca sobre la pared y la aparta. La tinta se borra. Esa noche nadie sube por los postes del embarcadero viejo, y en Mareaviva se duerme de un tirón por primera vez en treinta años. Al amanecer, Ane tiene el pelo blanco. La bahía es un mar como todos: desde hoy, aquí también se puede uno ahogar.'
+  escena: "Pongo la mano en la pared… y la aparto. Mira: la tinta se borra. Esta noche nadie subirá por los postes del embarcadero viejo, y en Mareaviva se dormirá de un tirón por primera vez en treinta años. ¿Tengo el pelo blanco? Da igual. La bahía ya es un mar como todos: desde hoy, aquí también se puede uno ahogar."
+  paquete:
+    who: "Ane Goikoa"
   epilogos:
     - quien: ane
       texto: 'Ane Goikoa sigue subiendo los ciento cuarenta y dos escalones cada noche, con el pelo blanco. Ya no cuenta las barcas: las espera.'
@@ -898,7 +903,9 @@ final:
 final:
   id: un-trato-nuevo
   titulo: Un trato nuevo
-  escena: 'Esa noche las Rezadoras se sientan en el embarcadero viejo y le hablan al agua hasta el amanecer. Uno a uno, los muertos sueltan los postes y se hunden despacio, por fin dormidos. La Vecina acepta: compañía de vivos, una noche cada uno, por turnos, para siempre. En Mareaviva sigue sin ahogarse nadie, pero ahora todo el pueblo sabe por qué, y lo paga despierto.'
+  escena: "Esta noche nos sentamos en el embarcadero viejo y le hablamos al agua hasta el amanecer. Mira: uno a uno, los muertos sueltan los postes y se hunden despacio. Por fin duermen. La Vecina acepta: compañía de vivos, una noche cada uno, por turnos, para siempre. En Mareaviva seguirá sin ahogarse nadie, pero ahora todo el pueblo sabe por qué, y lo paga despierto."
+  paquete:
+    who: "Engracia Sarasola"
   epilogos:
     - quien: ane
       texto: 'Ane Goikoa conserva su mano blanca. La primera noche de cada mes le toca la Vela, y le cuenta a la Vecina las barcas que han entrado.'
@@ -914,7 +921,9 @@ final:
 final:
   id: el-trato-sigue
   titulo: El trato sigue
-  escena: 'Con la caja de Mateo atada a una piedra, el mar se cierra sobre el último que faltaba. La marea baja esa misma noche, los niños duermen en sus camas y en la bahía no se ahoga nadie. Todo sigue como estaba: la suerte, la Vela y los muertos despiertos bajo el embarcadero. Hasta el día en que Ane Goikoa se muera.'
+  escena: "La caja de Mateo, atada a una piedra, y el mar se cierra sobre el último que faltaba. Esta noche baja la marea, los críos dormirán en sus camas y en la bahía no se ahogará nadie. Todo sigue como estaba: la suerte, la Vela y los muertos despiertos bajo el embarcadero. Hasta el día en que se muera Ane Goikoa."
+  paquete:
+    who: "Jacinto Larrañaga"
   epilogos:
     - quien: ane
       texto: 'Ane Goikoa sigue contando barcas. Ahora sabe que cada noche que vive es una noche más de trato, y duerme todavía peor.'

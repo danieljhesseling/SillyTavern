@@ -97,11 +97,11 @@ charla:
   start: inicio
   nodes:
     - id: inicio
-      line: "La cama, cuatro sueldos la noche. El susto, gratis. Soy Brígida, por si no te acuerdas, y llevo la cuenta de todo lo que pasa en esta posada."
+      line: "La cama, cuatro monedas la noche. El susto, gratis. Soy Brígida, por si no te acuerdas, y llevo la cuenta de todo lo que pasa en esta posada."
       again:
         - if: { milestone: m-fanal }
-          text: "¡Mira quién vuelve! Desde que arde el fanal, entra gente otra vez. Eso son cuatro sueldos... para ti, tres."
-        - "Cuatro sueldos la cama, como ayer. ¿Qué te pongo?"
+          text: "¡Mira quién vuelve! Desde que arde el fanal, entra gente otra vez. Eso son cuatro monedas... para ti, tres."
+        - "Cuatro monedas la cama, como ayer. ¿Qué te pongo?"
         - "Otra vez por aquí. La cuenta sigue abierta, y la sopa, caliente."
       more: ["¿Algo más? Lo apunto.", "Tú dirás. La tiza está lista."]
       options:
@@ -116,12 +116,12 @@ charla:
             dc: 13
             success: { next: pajar }
             failure:
-              reply: { text: "Es para el gato. Come mucho, el gato. Eso son cuatro sueldos por meterte donde no te llaman.", mood: enfadado }
+              reply: { text: "Es para el gato. Come mucho, el gato. Eso son cuatro monedas por meterte donde no te llaman.", mood: enfadado }
         - id: cama
           text: "Una cama para esta noche."
           if: { gold: 4 }
           effects: [{ gold: -4 }, time]
-          reply: { text: "Cuatro sueldos. Sábanas limpias, las del martes. Que descanses.", mood: alegre }
+          reply: { text: "Cuatro monedas. Sábanas limpias, las del martes. Que descanses.", mood: alegre }
         - id: adios
           text: "Hasta luego, Brígida."
           end: true
@@ -289,7 +289,7 @@ charla:
   start: inicio
   nodes:
     - id: inicio
-      line: "Dos nevadas más y no sube ni una cabra. Nieves Albar, refugiera. Cama, sopa y leña: ocho sueldos."
+      line: "Dos nevadas más y no sube ni una cabra. Nieves Albar, refugiera. Cama, sopa y leña: ocho monedas."
       again:
         - if: { milestone: m-fanal }
           text: "Ha nevado tres veces desde que arde el fanal, y ya no tengo miedo de que me quemen el refugio. Pasa."
@@ -311,7 +311,7 @@ charla:
           text: "Me quedo esta noche."
           if: { gold: 8 }
           effects: [{ gold: -8 }, time]
-          reply: { text: "Ocho sueldos. Duermes junto a la chimenea, que es donde no entra el viento.", mood: alegre }
+          reply: { text: "Ocho monedas. Duermes junto a la chimenea, que es donde no entra el viento.", mood: alegre }
         - id: adios
           text: "Me voy, Nieves."
           end: true

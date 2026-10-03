@@ -232,7 +232,7 @@ hito:
         options:
           - id: registro-medianoche
             text: "Entramos a medianoche, con el cambio de guardia."
-            reply: { who: Pelayo Ojeda, text: "Medianoche. Ni un minuto antes, que los de la tarde llevan ballesta." }
+            reply: { who: Pelayo Ojeda, text: "Medianoche. Ni un minuto antes: a esa hora solo quedan tres celadores, y ninguno lleva ballesta." }
           - id: registro-ya
             text: "Entramos ya, antes de que te lo pienses mejor."
             effects: [{ attitude: -1 }]
@@ -472,7 +472,7 @@ hito:
         mood: enfadado
         text: "En la escalera hay un rellano. Arriba, los peldaños dan ventaja. Aguantad ahí hasta que pasen todos."
       - who: Valeria Cerrojo
-        text: "Y cuidado con el huésped a sueldo: nivel nueve, y siempre pega al más débil."
+        text: "Y cuidado con el huésped mercenario: nivel nueve, y siempre pega al más débil."
         options:
           - id: escalera-alli
             text: "Allí estaremos."

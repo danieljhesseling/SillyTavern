@@ -67,7 +67,7 @@ import {
 } from './player-actions.js';
 import { attackHindrance, boardVisibility, getActiveBoardContext, archetypeOf } from './board.js';
 import { checkScenarioOutcome, endCombat, judgeCurrentScenario } from './combat-flow.js';
-import { floatOnToken, showCombatDiceRoll } from './combat-log.js';
+import { floatOnToken, initiativeShowing, showCombatDiceRoll } from './combat-log.js';
 import { postCombatNarration, soundCue } from './narration.js';
 import { savePartyState } from './roster.js';
 import { renderLocationMapsPreview } from './board-view.js';
@@ -485,10 +485,13 @@ function slotGems(member) {
 export function buildCombatBarSnapshot({ full = true } = {}) {
     const entry = getCurrentTurnEntry();
     const member = getCurrentActingMember();
-    const isPlayerTurn = Boolean(combatEncounter.active && entry && !entry.isEnemy && member);
+    // H19 (tanda 22): mientras sale la tarjeta de la iniciativa, la barra espera: no es turno de nadie.
+    const rolling = initiativeShowing();
+    const isPlayerTurn = Boolean(combatEncounter.active && entry && !entry.isEnemy && member) && !rolling;
     const round = Number(combatEncounter.round) || 1;
     const blank = {
-        active: Boolean(combatEncounter.active), isPlayerTurn: false, turnLabel: entry ? `Turno de ${entry.name}` : 'Combate en curso', actorName: String(entry?.name ?? ''),
+        active: Boolean(combatEncounter.active), isPlayerTurn: false,
+        turnLabel: rolling ? 'Tirando la iniciativa' : entry ? `Turno de ${entry.name}` : 'Combate en curso', actorName: String(entry?.name ?? ''),
         ready: { action: false, bonus: false, reaction: false }, move: { left: 0, speed: 0 },
         posture: { prone: false, standCost: 0, canStand: false, standWhy: '' }, canAuto: false, canParley: false, hasMastery: false,
         weapon: null, spareWeapons: [], swap: { ok: false, reason: 'No es tu turno.' }, enemies: [], adjacentAllies: [], dying: [],

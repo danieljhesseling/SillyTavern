@@ -99,7 +99,8 @@ describe('para qué nivel es la campaña', () => {
         const atFive = fightFor('cripta_strahd', 5, 4);
         expect(atFive.adjustment).toMatchObject({ steps: -1, hpFactor: 0.88, damage: -1, minions: 0 });
         expect(atFive.placements.map(p => p.name)).toEqual(['Strahd von Zarovich', 'Engendro Vampírico']);
-        expect(atFive.enemies[0].maxHp).toBe(Math.round(90 * 0.88));
+        // Tanda 22: Strahd sube de 90 a 120 PG (mejoras.json).
+        expect(atFive.enemies[0].maxHp).toBe(Math.round(120 * 0.88));
     });
 
     test('el nivel del grupo es la media de los que pelean', () => {
@@ -204,7 +205,7 @@ describe('la cara del tablero no cambia', () => {
         const crypt = fightFor('cripta_strahd', 1);
         expect(crypt.adjustment.minions).toBe(-1);
         expect(crypt.placements.map(p => p.name)).toEqual(['Strahd von Zarovich', 'Engendro Vampírico']);
-        expect(crypt.enemies[0].maxHp).toBe(Math.round(90 * LEVEL_LIMITS.hp.min));
+        expect(crypt.enemies[0].maxHp).toBe(Math.round(120 * LEVEL_LIMITS.hp.min));
         // El Revenant, solo y jefe: con nivel 9 no le sale un compañero.
         const yard = fightFor('patio_argynvostholt', 9);
         expect(yard.placements.map(p => p.name)).toEqual(['Revenant']);

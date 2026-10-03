@@ -227,13 +227,14 @@
       "short": "Grimm",
       "campaign": "1387",
       "wants": "coin",
+      "callaHasta": 8,
       "likes": ["cobrar", "ayudar"],
       "dislikes": ["pagar", "desairar"],
       "guild": {
         "rank": 5,
         "never": "",
-        "yes": "Voy.",
-        "no": "Mi familia. Al sur.",
+        "yes": "¡Mm!",
+        "no": "Mm…",
         "places": { "morning": "muelle", "afternoon": "herreria", "night": "posada" },
         "likes": ["muelle"]
       }

@@ -934,6 +934,8 @@ try {
     // fichas del grupo están en ese tablero (se viaja de vecino en vecino).
     await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/go Castillo de Vane'));
     await page.waitForTimeout(2500);
+    // J12.21: si quedó abierta la pantalla de victoria de la tanda de profundidad, su ✕.
+    await page.locator('.vo-layer .vo-close').first().click({ timeout: 2000 }).catch(() => {});
     await page.evaluate(() => { /** @type {any} */ (window).toastr?.clear(); });
     await page.evaluate(() => /** @type {HTMLElement|null} */ (document.activeElement)?.blur());
     await page.keyboard.press('2');
@@ -952,9 +954,9 @@ try {
             })),
         };
     });
-    check('tras viajar a Castillo de Vane y entrar en un tablero, el grupo está en él',
-        moved.here === 'Castillo de Vane' && Boolean(moved.board) && moved.members.length > 0 && moved.members.every(m => m.token),
-        JSON.stringify(moved));
+    const movedOk = moved.here === 'Castillo de Vane' && Boolean(moved.board) && moved.members.length > 0 && moved.members.every(m => m.token);
+    if (!movedOk && captura) await page.screenshot({ path: `${captura}.castillo.png` }).catch(() => {});
+    check('tras viajar a Castillo de Vane y entrar en un tablero, el grupo está en él', movedOk, JSON.stringify(moved));
 
     console.log('\n--- problemas ---');
     console.log(problems.length ? problems.join('\n') : '(ninguno)');
@@ -1219,21 +1221,83 @@ async function depthRound(page) {
             return { me: { x: Number(me.mapPosition?.gridX) || 0, y: Number(me.mapPosition?.gridY) || 0 }, foe: { name: String(foe.name), x: foe.gridX, y: foe.gridY } };
         });
     };
-    /** Usar algo contra el guardia como quien juega: su ficha y el botón. */
+    const capturaR = process.argv.includes('--captura') ? (process.argv[process.argv.indexOf('--captura') + 1] || 'titulo.png') : '';
+    /**
+     * J12.21: la pantalla de victoria (una capa encima del tablero) se cierra con su ✕; pulsar
+     * fuera de ella también la cierra, y ese clic se perdía (no abría la ficha del enemigo).
+     */
+    const closeOutcome = async () => {
+        for (let i = 0; i < 3; i++) {
+            const shown = await page.evaluate(() => Boolean(document.querySelector('.vo-layer')));
+            if (!shown) return;
+            await page.locator('.vo-layer .vo-close').first().click({ timeout: 2000 }).catch(async () => { await page.keyboard.press('Escape').catch(() => {}); });
+            await page.waitForTimeout(400);
+        }
+    };
+    /**
+     * Usar algo contra el guardia como quien juega. J12.20: los botones de la barra (Atacar, Magia,
+     * Acciones, Adicional) abren el muelle táctico a la izquierda; se busca la tarjeta por su nombre
+     * y, debajo, el guardia. Si no está en el muelle, su ficha y el botón de su tarjeta.
+     */
     const useOnFoe = async (/** @type {string} */ what) => {
+        await closeOutcome();
         await page.evaluate(async () => (await import('/scripts/party.js')).refreshBoardView());
         await page.waitForTimeout(600);
         await clearToasts();
-        await page.locator('.wm-token-enemy').filter({ visible: true }).first().click({ timeout: 6000 }).catch(() => {});
-        await page.waitForSelector('.tc-card', { timeout: 8000 }).catch(() => {});
-        const buttons = await page.evaluate(() => [...document.querySelectorAll('.tc-btn')].map(b => (b.textContent || '').trim()));
-        await page.locator('.tc-btn').filter({ hasText: what }).first().click({ timeout: 5000 }).catch(() => {});
+        /** @type {string[]} */
+        const buttons = [];
+        let via = '';
+        await page.waitForSelector('#game-shell .gs-actions-buttons .gs-btn[data-menu]:not([disabled])', { timeout: 6000 }).catch(() => {});
+        const menus = await page.evaluate(() => [...document.querySelectorAll('#game-shell .gs-actions-buttons .gs-btn[data-menu]')]
+            .filter(b => !(/** @type {HTMLButtonElement} */ (b).disabled)).map(b => b.getAttribute('data-menu') || ''));
+        for (const menu of menus) {
+            await page.locator(`#game-shell .gs-actions-buttons .gs-btn[data-menu="${menu}"]`).first().click({ timeout: 4000 }).catch(() => {});
+            await page.waitForSelector(`.gs-dock[data-menu="${menu}"]`, { timeout: 3000 }).catch(() => {});
+            /** @type {string[]} */
+            const names = await page.evaluate(() => [...document.querySelectorAll('.gs-dock .gs-card .gs-card-name-text')].map(n => (n.textContent || '').trim()));
+            buttons.push(...names.map(n => `${menu}: ${n}`));
+            const cardHere = page.locator('.gs-dock .gs-card:not(.gs-card-target):not([disabled])').filter({ has: page.locator('.gs-card-name-text', { hasText: what }) });
+            if (await cardHere.count() === 0) continue;
+            await cardHere.first().click({ timeout: 4000 }).catch(() => {});
+            await page.waitForTimeout(300);
+            // Sus objetivos, debajo de la tarjeta (J12.18), o en el paso siguiente: el guardia. En
+            // Atacar, los objetivos del arma en mano van sueltos en la lista: esos no.
+            const aimed = await page.evaluate((w) => {
+                const body = document.querySelector('.gs-dock .gs-grimoire-body');
+                const mine = [...document.querySelectorAll('.gs-dock .gs-grimoire-body > .gs-card.gs-card-open')]
+                    .find(c => (c.querySelector('.gs-card-name-text')?.textContent || '').includes(w));
+                let scope = mine ? null : body;
+                for (let n = mine?.nextElementSibling ?? null; n && !scope; n = n.nextElementSibling) {
+                    if (n.classList.contains('gs-card-unfold')) scope = n;
+                    else if (n.classList.contains('gs-card')) break;
+                }
+                const target = [...(scope?.querySelectorAll('.gs-card-target') ?? [])]
+                    .find(b => !(/** @type {any} */ (b).disabled) && /Guardia/.test(b.textContent || ''));
+                /** @type {any} */ (target)?.click();
+                return Boolean(target);
+            }, what);
+            if (aimed) via = `muelle: ${menu}`;
+            break;
+        }
+        if (!via) {
+            // Sin muelle (o sin la tarjeta en él), la ficha del enemigo y el botón de su tarjeta.
+            await page.keyboard.press('Escape').catch(() => {});
+            await closeOutcome();
+            await page.locator('.wm-token-enemy').filter({ visible: true }).first().click({ timeout: 6000 }).catch(() => {});
+            await page.waitForSelector('.tc-card', { timeout: 8000 }).catch(() => {});
+            buttons.push(...await page.evaluate(() => [...document.querySelectorAll('.tc-btn')].map(b => `ficha: ${(b.textContent || '').trim()}`)));
+            if (await page.locator('.tc-btn').filter({ hasText: what }).first().click({ timeout: 5000 }).then(() => true).catch(() => false)) via = 'ficha';
+        }
         await page.waitForTimeout(1500);
         await clearDice();
         // El mensaje entero de lo que se usó: si falla, que se vea qué dijo el juego.
         const said = await page.evaluate((w) => (window.SillyTavern.getContext().chat || [])
             .map((/** @type {any} */ m) => String(m.mes || '')).filter(t => t.includes(`usa ${w}`)).pop() || '', what);
-        return { buttons, said };
+        if (!said && capturaR) {
+            const slug = what.toLowerCase().normalize('NFD').replace(/[^a-z]+/g, '-');
+            await page.screenshot({ path: `${capturaR}.r-${slug}.png` }).catch(() => {});
+        }
+        return { via, buttons, said };
     };
     const cellAt = (/** @type {{x: number, y: number}} */ at) => page.evaluate(async (c) => {
         const wi = await import('/scripts/world-info.js');
@@ -1250,7 +1314,7 @@ async function depthRound(page) {
     const coldCell = cold ? await cellAt(cold.foe) : '';
     check('R4 + R3: el cono de escarcha hiela el charco donde está el guardia, y se dice',
         /usa Cono de escarcha/.test(cone.said) && coldCell === 'ice' && /❄️ El agua se hiela/u.test(cone.said),
-        JSON.stringify({ cold, coldCell, buttons: cone.buttons, said: cone.said.slice(0, 700) }));
+        JSON.stringify({ cold, coldCell, via: cone.via, buttons: cone.buttons, said: cone.said.slice(0, 700) }));
 
     // R6: el fuego revienta un barril pegado al guardia; y el guardia, jefe y malherido,
     // cambia una vez al empezar la ronda.
@@ -1274,7 +1338,7 @@ async function depthRound(page) {
     const phase = await lastLine(/^👑 \[COMBAT\] /);
     check('R6: el fuego revienta un barril y alcanza a quien está al lado; y el jefe malherido cambia una vez',
         Boolean(boom) && /(se enfurece|se acorrala|da una voz)/.test(phase),
-        JSON.stringify({ fire, barrelAt, barrel: await cellAt(barrelAt), buttons: flask.buttons, said: flask.said.slice(0, 700), boom: boom.slice(0, 200), phase: phase.slice(0, 160) }));
+        JSON.stringify({ fire, barrelAt, barrel: await cellAt(barrelAt), via: flask.via, buttons: flask.buttons, said: flask.said.slice(0, 700), boom: boom.slice(0, 200), phase: phase.slice(0, 160) }));
 
     // R6: un cofre al lado del héroe se abre pulsándolo.
     await slash('/combat-stop');
@@ -1287,6 +1351,7 @@ async function depthRound(page) {
     await page.evaluate(async () => (await import('/scripts/party.js')).refreshBoardView());
     await page.waitForTimeout(800);
     await clearToasts();
+    await closeOutcome();
     const chestCell = await cellInfo('chest');
     // Fuera de pelea el cofre se pulsa en el Tablero: en Diálogo no hay tablero (J18.3).
     await page.locator('#game-shell .gs-scene-btn[data-scene="combat"]').click({ timeout: 5000 }).catch(() => {});

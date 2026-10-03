@@ -110,7 +110,7 @@ const SIMPLE_ASKS = ['arrive', 'win', 'defeat', 'talk', 'check', 'contract'];
  * @property {string} title
  * @property {'written'|'faction'} source
  * @property {Milestone[]} milestones
- * @property {Record<string, {title: string, scene: string, epilogues?: Array<{who: string, text: string}>, legacy?: any}>} endings
+ * @property {Record<string, {title: string, scene: string, who?: string, epilogues?: Array<{who: string, text: string}>, legacy?: any}>} endings
  *   Lo que se cuenta en cada final; `epilogues`, qué fue de la gente (J4.5).
  * @property {Array<{text: string, milestone: string}>} omens Idea 114: el presagio del principio.
  * @property {any} [villain] Idea 115: el villano que se deja ver entre actos.
@@ -269,7 +269,7 @@ export function readPlot(raw) {
         .map((/** @type {any} */ m, /** @type {number} */ i) => readMilestone(m, i, ceiling))
         .filter(/** @returns {m is Milestone} */ m => m !== null);
     if (milestones.length === 0) return null;
-    /** @type {Record<string, {title: string, scene: string, epilogues?: Array<{who: string, text: string}>, legacy?: any}>} */
+    /** @type {Record<string, {title: string, scene: string, who?: string, epilogues?: Array<{who: string, text: string}>, legacy?: any}>} */
     const endings = {};
     for (const [id, ending] of Object.entries(raw.endings ?? {})) {
         if (text(id) && ending && typeof ending === 'object') {
@@ -279,8 +279,11 @@ export function readPlot(raw) {
             // J11.4: lo que el gremio recordará de este final (`legacy`, o `legado`), tal cual:
             // lo lee `guild-memory.js`.
             const legacy = /** @type {any} */ (ending).legacy ?? /** @type {any} */ (ending).legado;
+            // Tanda 22 (D-J60): quién cuenta el final; sin conexión, la escena la dice él.
+            const who = text(/** @type {any} */ (ending).who ?? /** @type {any} */ (ending).quien);
             endings[text(id)] = {
                 title: text(/** @type {any} */ (ending).title), scene: text(/** @type {any} */ (ending).scene),
+                ...(who ? { who } : {}),
                 ...(epilogues.length > 0 ? { epilogues } : {}),
                 ...(legacy && typeof legacy === 'object' && !Array.isArray(legacy) ? { legacy } : {}),
             };

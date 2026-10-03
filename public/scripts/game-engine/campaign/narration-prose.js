@@ -217,6 +217,24 @@ function initiativeProse(lines) {
 const diceWords = (n) => (n === 1 ? 'un dado de golpe' : `${countWord(n)} dados de golpe`);
 
 /**
+ * La rareza del botín, en castellano (H20: salía «un objeto common»). Lo corriente no se dice:
+ * «llevaba encima una bolsa de canicas» y ya.
+ *
+ * @param {string} rarity
+ * @returns {string}
+ */
+function rarityWords(rarity) {
+    const key = text(rarity).toLocaleLowerCase('es').replace(/[\s_-]+/g, ' ');
+    if (/^(?:common|com[uú]n|corriente)$/u.test(key)) return '';
+    if (/^(?:uncommon|poco com[uú]n)$/u.test(key)) return 'poco común';
+    if (/^(?:very rare|muy rar[ao])$/u.test(key)) return 'muy raro';
+    if (/^(?:rare|rar[ao])$/u.test(key)) return 'raro';
+    if (/^(?:legendary|legendari[ao])$/u.test(key)) return 'legendario';
+    if (/^(?:artifact|artefacto)$/u.test(key)) return 'único';
+    return /^[a-z ]+$/u.test(key) ? '' : key;
+}
+
+/**
  * El descanso (`describeRest`: «Descanso largo.» y una línea por persona), contado.
  *
  * @param {'corto'|'largo'} kind
@@ -383,7 +401,10 @@ const LINE_RULES = [
         const loot = `Botín: ${goldWords(gold)} y ${xp} puntos de experiencia`;
         return gold === goldEach && xp === xpEach ? `${loot}.` : `${loot}. A cada superviviente le tocan ${goldEach} de oro y ${xpEach} de experiencia.`;
     }],
-    [/^(.+?) llevaba: (.+?) \(([^)0-9]+)\)\.?$/u, (f) => `${f[1]} llevaba encima ${f[2]}, un objeto ${f[3].toLocaleLowerCase('es')}.`],
+    [/^(.+?) llevaba: (.+?) \(([^)0-9]+)\)\.?$/u, (f) => {
+        const rarity = rarityWords(f[3]);
+        return rarity ? `${f[1]} llevaba encima ${f[2]}, un objeto ${rarity}.` : `${f[1]} llevaba encima ${f[2]}.`;
+    }],
     [/^(.+?) sube al nivel (\d+) · \+(\d+) PG · \+(\d+) dado\(s\) de golpe(?: · ([^.]+?))?\.\s*(.*)$/u, (f) => {
         const points = f[5] ? /^(\d+) punto\(s\) de característica$/u.exec(f[5]) : null;
         const more = points ? `, y tiene ${Number(points[1]) === 1 ? 'un punto' : `${countWord(Number(points[1]))} puntos`} de característica para repartir` : f[5] ? `, y ${f[5]}` : '';

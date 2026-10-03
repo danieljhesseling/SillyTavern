@@ -1,6 +1,7 @@
 import { describe, test, expect } from '@jest/globals';
 import {
     ENEMY_WEAPONS, weaponsIn, enemyWeapon, proficiencyFromCr, enemySaveDC, failChance, enemyPotions, pushTrail,
+    enemyAttackBonus, enemyAttackHits,
     chooseEnemyAction2024, chooseEnemyBefore2024, chooseEnemySlot, masteryLine, LEDGE_FEET,
 } from '../public/scripts/game-engine/combat/ai-2024.js';
 import { masteryOf } from '../public/scripts/game-engine/rules/weapon-mastery.js';
@@ -62,6 +63,19 @@ describe('el arma de un enemigo, de su ficha o de lo que dice de él', () => {
 });
 
 describe('las cuentas de un enemigo', () => {
+    test('tanda 22: atacan con característica y competencia, y un 1 natural falla siempre', () => {
+        // Un lobo (Des 15, desafío 1/4): +2 y +2. Strahd (Fue 18, desafío 15): +4 y +5.
+        expect(enemyAttackBonus({ strength: 12, dexterity: 15, cr: 0.25 })).toBe(4);
+        expect(enemyAttackBonus({ strength: 18, dexterity: 18, cr: 15 })).toBe(9);
+        // Sin características (un paquete), solo la competencia.
+        expect(enemyAttackBonus({ cr: 0.5 })).toBe(2);
+        expect(enemyAttackBonus({ cr: 5 })).toBe(3);
+        expect(enemyAttackHits({ natural: 1, total: 30, ac: 12 })).toBe(false);
+        expect(enemyAttackHits({ natural: 20, total: 21, ac: 30 })).toBe(true);
+        expect(enemyAttackHits({ natural: 10, total: 14, ac: 14 })).toBe(true);
+        expect(enemyAttackHits({ natural: 10, total: 13, ac: 14 })).toBe(false);
+    });
+
     test('competencia por desafío y la CD de 8 + característica + competencia', () => {
         expect(proficiencyFromCr(0.25)).toBe(2);
         expect(proficiencyFromCr(5)).toBe(3);

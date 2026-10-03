@@ -15,7 +15,7 @@
  */
 
 import { RANK_UP_LINE, sceneStep, sceneView, startScene } from '../campaign/meetups.js';
-import { firstArt, loadPixelManifest, pixelManifest } from './pixel-art.js';
+import { firstArt, loadPixelManifest, pixelManifest, slugify, PIXEL_BASE } from './pixel-art.js';
 import { hearLine, knowsName, meetPerson, shownName, shownText } from './shown-names.js';
 import { asideBox, fillAside, splitLines } from './vn-aside.js';
 
@@ -47,6 +47,45 @@ export function portraitFor({ name = '', pack = '', mood = '', className = '', g
     return firstArt('portrait', { name, pack, mood }, manifest)
         || firstArt('mercenary', { name, mood }, manifest)
         || (className ? firstArt('hero', { className, gender, name, race }, manifest) : '');
+}
+
+/** Lo que va delante de quien sale por lo que es: «el tabernero», «un bandido». */
+const ROLE_ARTICLE = /^(?:el|la|los|las|un|una|unos|unas)\s+/iu;
+
+/**
+ * Tanda 22: la cara de alguien que habla en una quedada sin ser de los tuyos (el tabernero, un
+ * mercenario borracho, un bandido). Si no tiene retrato propio, el de **la misma persona** en
+ * esa campaña:
+ *
+ * - quien está allí haciendo eso (`standIns`: el tabernero de la posada de aquí es Tomás);
+ * - la gente de la campaña que se llama así y algo más («el tabernero» es «El tabernero Giles»);
+ * - el dibujo de la criatura, sin el artículo («un bandido» es el bandido del bestiario).
+ *
+ * Sin ninguno, la silueta: va a `wiki/PIXELLAB_PENDIENTE.md`.
+ *
+ * @param {string} name
+ * @param {{pack?: string, standIns?: Record<string, string>}} [input] `standIns`: por lo que es, en
+ *   minúsculas («el tabernero»), quién lo hace aquí.
+ * @param {any} [manifest]
+ * @returns {string}
+ */
+export function guestPortrait(name, { pack = '', standIns = {} } = {}, manifest = pixelManifest()) {
+    const said = text(name);
+    if (!said) return '';
+    const own = portraitFor({ name: said, pack }, manifest);
+    if (own) return own;
+    const stand = text(standIns?.[said.toLocaleLowerCase('es')]);
+    const standing = stand && stand !== said ? portraitFor({ name: stand, pack }, manifest) : '';
+    if (standing) return standing;
+    const files = manifest?.files instanceof Set ? manifest.files : new Set();
+    const head = slugify(said);
+    if (pack && head) {
+        const prefix = `retratos/${slugify(pack)}/${head}-`;
+        const same = [...files].filter(f => f.startsWith(prefix) && !f.slice(prefix.length).includes('--')).sort()[0];
+        if (same) return `${PIXEL_BASE}${same}`;
+    }
+    const bare = said.replace(ROLE_ARTICLE, '');
+    return firstArt('creature', { name: said }, manifest) || (bare !== said ? firstArt('creature', { name: bare }, manifest) : '');
 }
 
 /**
@@ -176,11 +215,13 @@ function drawPortrait(holder, url, alt) {
  * @param {Array<{name: string, short?: string, className?: string, gender?: string}>} [input.cast] J14.7 y J14.8:
  *   en una escena con varios (la noche, una charla de pareja), quién sale. Cada paso pone en la placa
  *   y en el retrato a quien habla en él (`who` del paso), no siempre al mismo.
+ * @param {Record<string, string>} [input.standIns] Tanda 22: quién hace aquí de lo que dice un paso
+ *   («el tabernero»: el que lleva la posada de aquí), para su cara (`guestPortrait`).
  * @param {HTMLElement|null} [input.mount]
  * @returns {Promise<{finished: boolean, choices: Array<{beat: number, reply: number}>}>}
  */
 export async function openMeetupScene({
-    scene, person = {}, pack = '', place = '', town = '', night = false, placeLabel = '', summarize = null, canLeave = true, cast = [], mount = null,
+    scene, person = {}, pack = '', place = '', town = '', night = false, placeLabel = '', summarize = null, canLeave = true, cast = [], standIns = {}, mount = null,
 }) {
     await loadPixelManifest();
     const who = text(person?.name) || text(scene?.who);
@@ -288,7 +329,8 @@ export async function openMeetupScene({
             for (const line of beatLines(view)) if (line.kind === 'say') hearLine({ who: speaking.name, text: line.text });
             plate.textContent = knowsName(speaking.name) ? text(speaking.short) || speaking.name : shownName(speaking.name);
             root.dataset.speaker = speaking.name;
-            drawPortrait(portrait, portraitFor({ ...speaking, pack, mood: view.face }), speaking.name);
+            // Tanda 22: quien habla sin ser de los tuyos (el tabernero), con la cara de la misma persona.
+            drawPortrait(portrait, portraitFor({ ...speaking, pack, mood: view.face }) || guestPortrait(speaking.name, { pack, standIns }), speaking.name);
             // D-J60: en la caja, lo que dice quien está en la placa y lo que contestas; lo demás, al aviso.
             const split = splitLines(beatLines(view));
             for (const line of split.box) {

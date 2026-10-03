@@ -41,6 +41,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { entrarEnLaPelea } from './e2e-entrar-pelea.mjs';
+import { enElGremio, hablarCon, historiaAbierta, jugarHistoria, pasoDeLaHistoria, pulsarALaVista } from './e2e-guiado.mjs';
 
 const ROOT = new URL('..', import.meta.url).pathname.replace(/^[/]([A-Za-z]:)/, '$1');
 const argAfter = (/** @type {string} */ flag) => (process.argv.includes(flag) ? process.argv[process.argv.indexOf(flag) + 1] : '');
@@ -379,9 +380,12 @@ try {
     const talkWith = async (/** @type {string} */ name, /** @type {string} */ topic = '') => {
         await dropToasts();
         const chip = new RegExp(`^Hablar con (?:${name})$`);
-        await until(async () => (await chips()).some(c => chip.test(c)), 10000);
-        await clickChip(chip);
-        await page.waitForSelector('.popup:visible .tk-root', { timeout: 10000 }).catch(() => {});
+        // D-J62: con el modo guiado, «Hablar con…» no va en la fila: en lo que pide la historia, con
+        // la gente de aquí o dentro de su sitio del pueblo.
+        if (!(await until(async () => (await chips()).some(c => chip.test(c)), 3000) && await clickChip(chip))) await hablarCon(page, name);
+        await page.waitForSelector('.popup:visible .tk-root, dialog[open] .dw-root', { timeout: 10000 }).catch(() => {});
+        // Una charla escrita (Brunilda): se juega entera; con el modo guiado, a la bodega se baja así.
+        if (await historiaAbierta(page)) await jugarHistoria(page, ['quiero-entrar', 'prueba-voy', 'voy-ya', 'bajo-a-la-bodega', 'bajar']);
         if (topic) {
             await page.locator(`.popup:visible .tk-root .tk-topic[data-topic="${topic}"]`).first().click({ timeout: 5000 }).catch(() => {});
             await page.waitForTimeout(900);
@@ -398,8 +402,11 @@ try {
     await page.waitForTimeout(600);
     await look('hablar con Brunilda');
     await carryOn('exploration');
-    await until(async () => (await chips()).some(c => /^Entrar en La bodega del gremio$/.test(c)), 10000);
-    await clickChip(/^Entrar en La bodega del gremio$/);
+    // D-J62: con el modo guiado ya se ha bajado hablando con Brunilda («Bajo a la bodega»).
+    if ((await state()).board !== 'La bodega del gremio') {
+        await until(async () => (await chips()).some(c => /^Entrar en La bodega del gremio$/.test(c)), 10000);
+        await clickChip(/^Entrar en La bodega del gremio$/);
+    }
     await until(async () => (await state()).board === 'La bodega del gremio', 10000);
     await entrarEnLaPelea(page);
     await winFight();
@@ -429,7 +436,7 @@ try {
     // D-J54: un mercenario que se une lo dice él; un encargo del tablón te lo da Brunilda.
     await enterPlace('gremio');
     await placeOpen('hub-hire');
-    if (await page.locator('.hb-root [data-hireling]').count() === 0) await clickChip(/Contratar mercenarios/);
+    if (await page.locator('.hb-root [data-hireling]').count() === 0) await enElGremio(page, 'hub-hire');
     await page.waitForSelector('.hb-root [data-hireling]', { timeout: 15000 }).catch(() => {});
     await page.locator('.hb-root [data-hireling]').first().click({ timeout: 5000 }).catch(() => {});
     const hired = await until(async () => (await page.evaluate(async () => (await import('/scripts/party.js')).getPartyMembersSnapshot().length)) >= 2, 10000);
@@ -508,7 +515,10 @@ try {
         .filter(c => !(/** @type {HTMLButtonElement} */ (c).disabled))
         .map(c => (c.querySelector('.gs-place-name')?.textContent || '').trim()).find(Boolean) || '');
     if (target) {
-        await page.locator('#game-shell .gs-place', { hasText: target }).first().click({ timeout: 8000 }).catch(() => {});
+        // D-J62: con el modo guiado no hay columna «Viajar»: «Ir a…» el sitio del encargo, en lo que pide la historia.
+        if (!(await page.locator('#game-shell .gs-place', { hasText: target }).first().click({ timeout: 4000 }).then(() => true).catch(() => false))) {
+            if (!(await pasoDeLaHistoria(page, `story:go:${target}`, { ms: 4000 }))) await pasoDeLaHistoria(page, /^story:go:/);
+        }
         await page.waitForSelector('.popup:visible .tr-pace-normal', { timeout: 8000 }).catch(() => {});
         await page.locator('.popup:visible .tr-pace-normal').click({ timeout: 5000 }).catch(() => {});
         for (let i = 0; i < 20; i++) {
@@ -519,7 +529,7 @@ try {
     }
     await page.waitForTimeout(1200);
     await look(`el viaje de ${from} a ${target}`);
-    check('un viaje con un clic en «Viajar», al sitio del encargo', Boolean(target) && (await state()).place === target, JSON.stringify({ from, target, now: await state() }));
+    check('un viaje con un clic («Viajar», o «Ir a…» con el modo guiado), al sitio del encargo', Boolean(target) && (await state()).place === target, JSON.stringify({ from, target, now: await state() }));
     if (await sceneNow() === 'dialogue') {
         const roadBox = await boxNow();
         check('el viaje se lee en la caja sin etiquetas (J13.1, J18.10)', roadBox.every(l => !badIn(l)), JSON.stringify(roadBox));
@@ -538,7 +548,7 @@ try {
         const acts = (await placeScene()).acts;
         const camp = acts.find(a => a.id === 'chip:camp') ?? acts.find(a => a.id === 'clock:long');
         if (camp) await placeOpen(camp.id);
-    } else if (!(await clickChip(/^Acampar aquí$/))) {
+    } else if (!(await clickChip(/^Acampar aquí$/)) && !(await pulsarALaVista(page, /^Acampar aquí$/))) {
         // En «+N más», que abre su lista.
         await clickChip(/^\+\d+ más$/);
         await page.locator('.popup:visible .hp-item[data-chip="camp"]').first().click({ timeout: 5000 }).catch(() => {});

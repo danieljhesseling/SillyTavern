@@ -31,6 +31,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { entrarEnLaPelea } from './e2e-entrar-pelea.mjs';
+import { buscarEnElPueblo, enElGremio, entrarEnSitio, opcionesALaVista, pasoDeLaHistoria, salirDelTablero } from './e2e-guiado.mjs';
 
 const ROOT = new URL('..', import.meta.url).pathname.replace(/^[/]([A-Za-z]:)/, '$1');
 const argAfter = (/** @type {string} */ flag) => (process.argv.includes(flag) ? process.argv[process.argv.indexOf(flag) + 1] : '');
@@ -343,27 +344,29 @@ try {
         && afterTalk.won.some((/** @type {string} */ k) => k.endsWith(`::${DOCK}`)) && afterTalk.done.includes('el-muelle'),
         JSON.stringify({ convinced, afterTalk: { ...afterTalk, hero: undefined } }));
 
-    // 3. Saltar la prueba (J2.3): al pueblo.
+    // 3. Saltar la prueba (J2.3): al pueblo. D-J62: está en la Casa del Gremio, fuera del muelle.
     await carryOn();
-    await until(async () => (await chips()).some(c => /^Saltar la prueba$/.test(c)), 20000);
-    await clickChip(/^Saltar la prueba$/);
+    await salirDelTablero(page);
+    await until(() => enElGremio(page, 'hub-skip'), 20000);
     await page.waitForSelector('.popup:has-text("¿Saltar la prueba?")', { timeout: 10000 }).catch(() => {});
     await page.locator('.popup-button-ok:visible').first().click({ timeout: 5000 }).catch(() => {});
-    await until(() => chatHas(/apunta tu nombre en el libro del gremio|moja la pluma/), 20000);
+    await until(() => chatHas(/apunta tu nombre en el libro del gremio|moja la pluma|Te saltas «|Ya subes|tengo el libro abierto/), 20000);
     await page.waitForTimeout(1200);
     await page.evaluate(() => document.querySelectorAll('.popup:not([closing]) .popup-button-ok').forEach(b => /** @type {HTMLElement} */ (b).click()));
     await carryOn();
     await page.waitForTimeout(800);
 
-    // 4. J10.2: en la plaza, lo que se puede mirar es de Puerto Alba, no del compendio.
-    const plaza = await chips();
-    const portChip = plaza.find(c => PORT_LOOKS.test(c)) ?? '';
-    await shoot('la plaza de Puerto Alba, con lo que se puede mirar en la fila');
-    check('J10.2: en la plaza de Puerto Alba, la fila ofrece mirar cosas del puerto, y no las genéricas del compendio',
-        Boolean(portChip) && !plaza.some(c => /carteles viejos del muro|callejones de detrás/.test(c)), JSON.stringify(plaza));
+    // 4. J10.2: en Puerto Alba, lo que se puede mirar es de Puerto Alba, no del compendio. D-J62: con
+    // el modo guiado no va en la fila: va en el sitio del pueblo al que pertenece (las barcas, en el muelle).
+    const portAct = await buscarEnElPueblo(page, act => PORT_LOOKS.test(act.label));
+    const portChip = portAct?.label ?? '';
+    const plaza = await opcionesALaVista(page);
+    await shoot('el sitio de Puerto Alba con lo que se puede mirar del puerto');
+    check('J10.2: en Puerto Alba se ofrece mirar cosas del puerto, en su sitio (D-J62), y no las genéricas del compendio',
+        Boolean(portChip) && !plaza.some(c => /carteles viejos del muro|callejones de detrás/.test(c)), JSON.stringify({ portAct, plaza }));
     await dice(0.999);
     const beforeLook = await chatLength();
-    await clickChip(new RegExp(`^${portChip}$`));
+    await page.locator(`#game-shell .gs-town-scene .gs-town-act[data-action="${portAct?.id ?? '---'}"]`).first().click({ timeout: 5000 }).catch(() => {});
     await page.waitForTimeout(800);
     await clearDice();
     const seenPort = await until(async () => PORT_FOUND.test(await chatSince(beforeLook)), 10000);
@@ -373,7 +376,7 @@ try {
     check(`J10.2: «${portChip}» tira y, si sale, cuenta lo que se ve`, seenPort, (await chatSince(beforeLook)).slice(0, 400));
 
     // 5. J3.11: dentro de «La Casa del Gremio», la parte «Mirar».
-    await page.locator('#game-shell .gs-town-place[data-place="gremio"]').click({ timeout: 8000 }).catch(() => {});
+    await entrarEnSitio(page, 'gremio');
     await until(async () => (await placeScene())?.place === 'gremio', 8000);
     const hall = await placeScene();
     const hallLooks = (hall?.groups.Mirar ?? []).map(a => a.label);
@@ -431,7 +434,8 @@ try {
         await until(async () => !(await state()).board, 8000);
         await carryOn();
         if (!await clickChip(new RegExp(`^Entrar en ${CELLAR}$`))) {
-            await page.locator('#game-shell .gs-board').filter({ hasText: CELLAR }).first().click({ timeout: 5000 }).catch(() => {});
+            // D-J62: con el modo guiado no hay «Tableros de aquí»: «Ir a…» en lo que pide la historia.
+            if (!await pasoDeLaHistoria(page, `story:board:${CELLAR}`)) await page.locator('#game-shell .gs-board').filter({ hasText: CELLAR }).first().click({ timeout: 5000 }).catch(() => {});
         }
         inCellar = await until(async () => (await state()).board === CELLAR, 15000);
     }

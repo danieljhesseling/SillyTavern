@@ -27,7 +27,7 @@ import { createWriteStream, mkdtempSync, rmSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 // D-J62, el modo guiado: sin la fila libre ni «Tableros de aquí»/«Viajar»; se va adonde manda la historia.
-import { pasoDeLaHistoria, pasosDeLaHistoria, viajarAPasoNormal } from './e2e-guiado.mjs';
+import { buscarEnElPueblo, pasoDeLaHistoria, pasosDeLaHistoria, salirDelTablero, viajarAPasoNormal } from './e2e-guiado.mjs';
 
 const ROOT = new URL('..', import.meta.url).pathname.replace(/^[/]([A-Za-z]:)/, '$1');
 const argAfter = (/** @type {string} */ flag) => (process.argv.includes(flag) ? process.argv[process.argv.indexOf(flag) + 1] : '');
@@ -144,11 +144,6 @@ try {
             done: Array.isArray(meta.plotState?.done) ? meta.plotState.done : [],
         };
     });
-    const clickChip = (/** @type {RegExp} */ pattern) => page.evaluate((source) => {
-        const chip = [...document.querySelectorAll('#game-shell .gs-chip-action')].find(b => new RegExp(source).test(b.textContent || ''));
-        if (chip instanceof HTMLElement) chip.click();
-        return Boolean(chip);
-    }, pattern.source);
     const chatHas = (/** @type {RegExp} */ pattern) => page.evaluate((source) => (window.SillyTavern.getContext().chat || [])
         .some((/** @type {any} */ m) => new RegExp(source).test(String(m.extra?.display_text || m.mes || ''))), pattern.source);
     const toasts = () => page.evaluate(() => [...document.querySelectorAll('#toast-container .toast')].map(t => (t.textContent || '').replace(/\s+/g, ' ').trim()));
@@ -276,11 +271,8 @@ try {
     check('empieza en el muelle de Puerto Alba, con la prueba por hacer', now.board === 'El muelle de Puerto Alba' && now.party[0]?.name === 'Mara', JSON.stringify(now));
 
     // 2. D-J28: en la prueba, la sala solo deja saltarla. Se sale del muelle, se entra en la sala y se vuelve.
-    // «Salir del tablero», en la fila o, si no cabe (con «Evitar la pelea» y las trampas), en «+N más».
-    if (!(await clickChip(/^Salir del tablero$/))) {
-        await clickChip(/\+\d+ más$/);
-        await page.locator('.popup[open] .hp-item[data-chip="leave"]').click({ timeout: 5000 }).catch(() => {});
-    }
+    // «Salir del tablero»: en la fila (con el modo guiado se queda) o el botón de arriba a la izquierda.
+    await salirDelTablero(page);
     await page.waitForTimeout(600);
     const inHallTrial = await enterPlace('gremio');
     const trialHall = await placeScene();
@@ -294,7 +286,7 @@ try {
     await act('hub-skip');
     await page.waitForSelector('.popup:has-text("¿Saltar la prueba?")', { timeout: 10000 }).catch(() => {});
     await page.locator('.popup-button-ok:visible').first().click({ timeout: 5000 }).catch(() => {});
-    await until(() => chatHas(/apunta tu nombre en el libro del gremio/), 15000);
+    await until(() => chatHas(/apunta tu nombre en el libro del gremio|Te saltas «|Ya subes|tengo el libro abierto/), 15000);
     await page.waitForTimeout(1000);
     await clearDice();
     await shot('saltada');
@@ -584,11 +576,23 @@ try {
     await carryOn('exploration');
     await page.locator('#game-shell .gs-town-back').click({ timeout: 3000 }).catch(() => {});
     await until(() => page.evaluate(() => document.querySelectorAll('#game-shell .gs-town-place').length > 0), 10000);
-    const meetButton = page.locator('#game-shell .gs-town-loose .gs-town-act[data-chip^="quedar:"]').first();
-    const meetWho = String(await meetButton.getAttribute('data-chip', { timeout: 5000 }).catch(() => ''));
+    // D-J63: sin el botón «Quedar con …»: se pulsa a la persona (por el pueblo o dentro de su sitio),
+    // saluda, y se elige «Pasar el rato».
+    let meetButton = page.locator('#game-shell .gs-town-loose .gs-town-act[data-chip^="quedar:"], #game-shell .gs-town-loose .gs-town-act[data-chip^="persona:"]').first();
+    let meetWho = String(await meetButton.getAttribute('data-chip', { timeout: 5000 }).catch(() => ''));
+    if (!meetWho) {
+        const inside = await buscarEnElPueblo(page, act => /^persona:/.test(act.id));
+        meetWho = inside?.id ?? '';
+        meetButton = page.locator(`#game-shell .gs-town-scene .gs-town-act[data-action="${meetWho || '---'}"]`).first();
+    }
     const slotBeforeMeet = await state();
     await meetButton.click({ timeout: 5000 }).catch(() => {});
-    const meetOpen = await page.waitForSelector('.qd-dialog[open] .qd-chip', { timeout: 15000 }).then(() => true).catch(() => false);
+    if (await page.waitForSelector('.qd-dialog[open] .qd-invite', { timeout: 8000 }).then(() => true).catch(() => false)) {
+        // Su charla corta, si la trae dentro del saludo, se contesta primero.
+        if (await page.locator('.qd-dialog[open] .qd-chip[data-choice="quedar"]').count() === 0) await page.locator('.qd-dialog[open] .qd-chip').first().click({ timeout: 5000 }).catch(() => {});
+        await page.locator('.qd-dialog[open] .qd-chip[data-choice="quedar"]').click({ timeout: 5000 }).catch(() => {});
+    }
+    const meetOpen = await page.waitForSelector('.qd-dialog[open] .qd-root:not(.qd-invite) .qd-chip', { timeout: 15000 }).then(() => true).catch(() => false);
     await shot('quedar');
     for (let i = 0; i < 16; i++) {
         if (!(await page.locator('.qd-dialog[open]').count())) break;
@@ -601,7 +605,7 @@ try {
         return after.slot !== slotBeforeMeet.slot || after.day !== slotBeforeMeet.day;
     }, 8000);
     const bonded = await chatHas(/💞 \[VÍNCULO\]/);
-    check('J14.3 y J15.4: «Quedar con …» en «Por el pueblo» abre su escena sin escribir la orden; al acabar, el vínculo sube y se va la parte del día',
+    check('J14.3, J15.4 y D-J63: pulsar a alguien de tu gente, «Pasar el rato», abre su escena sin escribir la orden; al acabar, el vínculo sube y se va la parte del día',
         Boolean(meetWho) && meetOpen && metSpent && bonded, JSON.stringify({ meetWho, meetOpen, metSpent, bonded }));
     await dropToasts();
 

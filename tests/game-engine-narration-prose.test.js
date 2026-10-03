@@ -52,6 +52,14 @@ describe('noteProse: the fight', () => {
         expect(read('💰 [COMBAT] Botín: 112 de oro y 50 PX (56 y 25 para cada superviviente).'))
             .toBe('Botín: 112 monedas de oro y 50 puntos de experiencia. A cada superviviente le tocan 56 de oro y 25 de experiencia.');
     });
+
+    test('la rareza del botín sale en castellano (H20), y lo corriente no se dice', () => {
+        expect(read('🎁 [COMBAT] Ratero llevaba: Bolsa de canicas (common).')).toBe('Ratero llevaba encima Bolsa de canicas.');
+        expect(read('🎁 [COMBAT] Ratero llevaba: Anillo de plata (uncommon).')).toBe('Ratero llevaba encima Anillo de plata, un objeto poco común.');
+        expect(read('🎁 [COMBAT] Bruja llevaba: Varita (very rare).')).toBe('Bruja llevaba encima Varita, un objeto muy raro.');
+        expect(read('🎁 [COMBAT] Bruja llevaba: Capa (rare).')).toBe('Bruja llevaba encima Capa, un objeto raro.');
+        expect(read('🎁 [COMBAT] Strahd llevaba: Espada (legendary).')).not.toMatch(/legendary/);
+    });
 });
 
 describe('noteProse: the town, the clock and the body', () => {

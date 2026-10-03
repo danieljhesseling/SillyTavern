@@ -240,7 +240,7 @@ try {
     await until(() => enElGremio(page, 'hub-skip'), 15000);
     await page.waitForSelector('.popup:has-text("¿Saltar la prueba?")', { timeout: 10000 }).catch(() => {});
     await page.locator('.popup-button-ok:visible').first().click({ timeout: 5000 }).catch(() => {});
-    const skipped = await until(() => chatHas(/apunta tu nombre en el libro del gremio/), 15000);
+    const skipped = await until(() => chatHas(/apunta tu nombre en el libro del gremio|Te saltas «|Ya subes|tengo el libro abierto/), 15000);
     check('en el gremio con Iria, y la prueba saltada', inHub && skipped, JSON.stringify(await state()));
     const hubWorld = (await state()).world;
 
@@ -478,7 +478,7 @@ try {
     await until(() => enElGremio(page, 'hub-skip'), 20000);
     await page.waitForSelector('.popup:has-text("¿Saltar la prueba?")', { timeout: 10000 }).catch(() => {});
     await page.locator('.popup-button-ok:visible').first().click({ timeout: 5000 }).catch(() => {});
-    await until(() => chatHas(/apunta tu nombre en el libro del gremio/), 15000);
+    await until(() => chatHas(/apunta tu nombre en el libro del gremio|Te saltas «|Ya subes|tengo el libro abierto/), 15000);
     const otherBoard = await openBoard();
     tiles = await boardTiles();
     const there = tiles.find(t => t.id === ID);

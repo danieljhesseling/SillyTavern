@@ -131,7 +131,7 @@ describe('the bond rank beside the portrait', () => {
         const bonds = { bonds: { 1: { points: 30 } } };
         const view = buildDialogueView({ messages: [{ name: 'Lyra' }], party, bonds });
         expect(view.speaker?.rank).toBeGreaterThan(1);
-        expect(view.speaker?.rankLabel).toBe(`Vínculo ${view.speaker?.rank}`);
+        expect(view.speaker?.rankLabel).toBe(`Rango ${view.speaker?.rank}`);
         expect(view.party[0].rank).toBe(view.speaker?.rank);
     });
 });

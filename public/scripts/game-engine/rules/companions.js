@@ -239,7 +239,7 @@ export function canControl(member, party, rules = null, bonds = null) {
     if (String(member?.casterId ?? '').trim()) {
         return { allowed: false, reason: `${name} va por su cuenta: lo lleva el juego.` };
     }
-    return { allowed: false, reason: `${name} se lleva solo hasta que seáis amigos (vínculo ${CONTROL_RANK}): hasta entonces, decide lo suyo.` };
+    return { allowed: false, reason: `${name} se lleva solo hasta que seáis amigos (rango ${CONTROL_RANK}): hasta entonces, decide lo suyo.` };
 }
 
 /**
@@ -250,5 +250,5 @@ export function canControl(member, party, rules = null, bonds = null) {
  * @returns {string}
  */
 export function describeMode(rules) {
-    return `Llevas al tuyo; a un compañero, desde que sois amigos (vínculo ${CONTROL_RANK}). Hasta entonces, decide él`;
+    return `Llevas al tuyo; a un compañero, desde que sois amigos (rango ${CONTROL_RANK}). Hasta entonces, decide él`;
 }

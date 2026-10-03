@@ -446,6 +446,9 @@ try {
     for (let i = 0; i < 30; i++) {
         g = await game();
         if (g.dialogs === 0) break;
+        // Sin nadie que cuente la llegada (D-J60), al acabar la escena se ve el tablero y la pelea se
+        // abre sola: su ventana de pelear o no ya no es de la escena.
+        if (await page.evaluate(() => Boolean(document.querySelector('dialog.ev-avoid[open]')))) break;
         f = await focus();
         if (!f.inDialog) lostInStory++;
         storySteps++;
@@ -454,32 +457,42 @@ try {
     await wait(1500);
     g = await game();
     f = await focus();
-    check('la escena del hilo se juega con Intro, con el foco siempre en ella', storySteps > 0 && lostInStory === 0 && g.dialogs === 0, JSON.stringify({ storySteps, lostInStory, g }));
-    check('de vuelta en el muelle, el foco está en lo principal de la escena (una ficha)', /gs-chip/.test(f.cls) && f.ring, JSON.stringify(f));
+    const decidingFirst = await page.evaluate(() => Boolean(document.querySelector('dialog.ev-avoid[open]')));
+    check('la escena del hilo se juega con Intro, con el foco siempre en ella', storySteps > 0 && lostInStory === 0 && (g.dialogs === 0 || decidingFirst), JSON.stringify({ storySteps, lostInStory, g }));
+    check('de vuelta en el muelle, el foco está en lo principal de la escena (una ficha, o «Pelear» si la pelea se abre sola)',
+        (/gs-chip/.test(f.cls) || (decidingFirst && f.inDialog && /Pelear/.test(f.text))) && f.ring, JSON.stringify(f));
     await shot('muelle');
     await screenChecks('el muelle');
+    // Sin pelear (--sin-pelea), la ventana del ratero (sin «Todavía no») no es de esta prueba: se cierra.
+    if (decidingFirst && !FIGHT) await page.evaluate(() => document.querySelectorAll('dialog.ev-avoid[open]').forEach(d => /** @type {any} */ (d).close()));
 
-    // 5. La pausa: Esc, foco dentro, Tab en círculo, Esc y el foco vuelve.
-    const beforePause = f;
-    await key('Escape', 700);
-    f = await focus();
-    const pauseRole = await page.evaluate(() => document.querySelector('#game-shell .gs-pause')?.getAttribute('role') || '');
-    check('Esc abre la pausa, que es una ventana (role="dialog") con el foco en «Continuar»', (await game()).paused === 1 && pauseRole === 'dialog' && /Continuar/.test(f.text), JSON.stringify({ pauseRole, f }));
-    let escaped = false;
-    for (let i = 0; i < 20; i++) {
-        await key('Tab', 60);
-        if (!(await page.evaluate(() => Boolean(document.activeElement?.closest('#game-shell .gs-pause'))))) escaped = true;
-    }
-    check('en la pausa, Tab da la vuelta sin salir de ella', !escaped);
-    await screenChecks('la pausa');
-    await key('Escape', 700);
-    f = await focus();
-    check('Esc cierra la pausa y el foco vuelve a donde estaba', (await game()).paused === 0 && f.text === beforePause.text, JSON.stringify({ before: beforePause.text, now: f.text }));
+    // 5. La pausa: Esc, foco dentro, Tab en círculo, Esc y el foco vuelve. Con la ventana de pelear o
+    // no delante (Esc no la cierra), después de la pelea.
+    const pauseChecks = async () => {
+        f = await focus();
+        const beforePause = f;
+        await key('Escape', 700);
+        f = await focus();
+        const pauseRole = await page.evaluate(() => document.querySelector('#game-shell .gs-pause')?.getAttribute('role') || '');
+        check('Esc abre la pausa, que es una ventana (role="dialog") con el foco en «Continuar»', (await game()).paused === 1 && pauseRole === 'dialog' && /Continuar/.test(f.text), JSON.stringify({ pauseRole, f }));
+        let escaped = false;
+        for (let i = 0; i < 20; i++) {
+            await key('Tab', 60);
+            if (!(await page.evaluate(() => Boolean(document.activeElement?.closest('#game-shell .gs-pause'))))) escaped = true;
+        }
+        check('en la pausa, Tab da la vuelta sin salir de ella', !escaped);
+        await screenChecks('la pausa');
+        await key('Escape', 700);
+        f = await focus();
+        check('Esc cierra la pausa y el foco vuelve a donde estaba', (await game()).paused === 0 && f.text === beforePause.text, JSON.stringify({ before: beforePause.text, now: f.text }));
+    };
+    if (!decidingFirst || !FIGHT) await pauseChecks();
 
     if (FIGHT) {
         // 6. La pelea del muelle, con el teclado. «Continuar» lleva al tablero, y la pelea se abre
-        // sola: primero la decisión (pelear u otra salida), luego colocar al grupo.
-        await key('Enter', 1500);
+        // sola: primero la decisión (pelear u otra salida), luego colocar al grupo. Si ya está
+        // abierta (al acabar la escena), sin «Continuar».
+        if (!decidingFirst) await key('Enter', 1500);
         await until(async () => (await page.evaluate(fightNow)).dialog !== '', 15000);
         f = await focus();
         const decision = (await page.evaluate(fightNow)).dialog;
@@ -676,6 +689,7 @@ try {
         await wait(800);
         f = await focus();
         check('lo que cuenta el hilo tras la pelea se pasa con Intro, con el foco en la escena; al acabar, el foco no se pierde', sceneSteps > 0 && lostAfterFight === 0 && !f.lost, JSON.stringify({ sceneSteps, lostAfterFight, f }));
+        if (decidingFirst) await pauseChecks();
     } else {
         // 6. Sin pelear: fuera del tablero del muelle (con el ratero esperando, la fila solo deja
         // salir).
@@ -786,11 +800,17 @@ try {
     check('«Volver a» los sitios del pueblo se alcanza con Tab', await keyTo(x => /gs-town-back/.test(x.cls), 40));
     await key('Enter', 1200);
     await until(async () => (await game()).places > 0, 8000);
-    const reachedMeet = await keyTo(x => /^quedar:/.test(x.data?.chip || ''), 60);
+    // D-J63: sin «Quedar con…»: se pulsa a la persona (`persona:…`), saluda, y «Pasar el rato».
+    const reachedMeet = await keyTo(x => /^(quedar|persona):/.test(x.data?.chip || ''), 60);
     const meetLabel = (await focus()).text;
-    check('«Quedar con…» se alcanza con Tab', reachedMeet, meetLabel);
+    check('a tu gente («Quedar con…»; D-J63, la persona) se la alcanza con Tab', reachedMeet, meetLabel);
     if (reachedMeet) {
         await key('Enter', 1500);
+        if (await until(() => page.evaluate(() => Boolean(document.querySelector('.qd-dialog[open] .qd-invite'))), 5000)) {
+            // Su charla corta, si la trae dentro del saludo, se contesta antes (1).
+            for (let i = 0; i < 3 && !(await keyTo(x => x.data?.choice === 'quedar', 12)); i++) await key('1', 700);
+            await key('Enter', 1500);
+        }
         await until(async () => (await page.evaluate(meetupNow)).open, 10000);
         await wait(500);
         let m = await page.evaluate(meetupNow);

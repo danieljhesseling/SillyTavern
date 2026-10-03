@@ -167,7 +167,7 @@ describe('los modos', () => {
             expect(canControl(party[1], party, rules, bonds).allowed).toBe(true);
             const nella = canControl(party[2], party, rules, bonds);
             expect(nella.allowed).toBe(false);
-            expect(nella.reason).toBe('Nella se lleva solo hasta que seáis amigos (vínculo 5): hasta entonces, decide lo suyo.');
+            expect(nella.reason).toBe('Nella se lleva solo hasta que seáis amigos (rango 5): hasta entonces, decide lo suyo.');
             for (const member of party) {
                 expect(canControl(member, party, rules, bonds).allowed).toBe(canPlayerControl(member, bonds, { party }));
             }
@@ -194,7 +194,7 @@ describe('los modos', () => {
     });
 
     test('contado donde se elige: igual en los dos modos (D-J32)', () => {
-        expect(describeMode({ mode: MODES.SOLO })).toBe('Llevas al tuyo; a un compañero, desde que sois amigos (vínculo 5). Hasta entonces, decide él');
+        expect(describeMode({ mode: MODES.SOLO })).toBe('Llevas al tuyo; a un compañero, desde que sois amigos (rango 5). Hasta entonces, decide él');
         expect(describeMode(null)).toBe(describeMode({ mode: MODES.SOLO }));
     });
 

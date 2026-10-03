@@ -22,6 +22,23 @@ Los retratos que faltan de cada campaña los lista `node tools/retratos-pendient
 - **Caras**: `Same character, same clothes, framing and colors; expression:` + `happy, a warm smile` (alegre), `angry, frowning, jaw clenched` (enfadado), `sad, worried eyes, mouth turned down` (triste).
 - **Dónde va**: `public/img/game-engine/pixel/retratos/1387/furtivo-de-los-lobos.png` y sus tres caras al lado.
 
+### La gente de paso en las quedadas y las noches (tanda 22)
+
+Hablan un momento en una quedada o en una noche en la posada y no son de ninguna campaña como personas con ficha. Los que ya tienen la cara de la misma persona no van aquí: «El tabernero» de 1387 sale con la de Giles; el de la noche, con la de quien lleva la posada de ese sitio (Tomás en el gremio); «Un bandido», con la del bandido del bestiario (`ui/meetup-scene.js`, `guestPortrait`). Estos no tienen ninguna y salen con la silueta.
+
+Prompt: la línea de estilo de su campaña + cómo es. Gremio: `Pixel art bust portrait, 128x160, transparent background, dark fantasy, muted palette with gold accents, no text, no frame.` 1387: `… late medieval, earthy realistic palette …`. Strahd: `… gothic horror, cold desaturated palette …`. Los de cualquier campaña, con la del gremio. Tamaño 128×160. Caras (para más adelante, D-J61): las tres frases de arriba, como `<archivo>--alegre.png`, `--enfadado.png` y `--triste.png`.
+
+| Quién | Campaña y escena | Cómo es | Dónde va |
+| :--- | :--- | :--- | :--- |
+| Un mercenario borracho | 1387 · Grimm, rango 4 («La provocación»), en la posada | Hombre de unos treinta y cinco, coloradote y despeinado, barba rala manchada de cerveza y sonrisa burlona. Jubón acolchado sucio con el cinto flojo y una jarra en la mano. | `retratos/1387/un-mercenario-borracho.png` |
+| Un vistani | Strahd · Ireena, rango 6, en el camino | Hombre de unos cuarenta, moreno y de bigote negro, pañuelo rojo anudado a la cabeza, aro de oro en una oreja y chaleco bordado sobre camisa blanca. Hace una reverencia. | `retratos/strahd/un-vistani.png` |
+| El buhonero | Gremio · la noche del buhonero, en la posada | Hombre de unos sesenta, flaco y risueño, barba blanca rala y sombrero de ala ancha con cintas de colores. Capa de viaje remendada y un fardo a la espalda lleno de agujas y carretes. | `retratos/gremio/el-buhonero.png` |
+| Rosalía | Gremio · la noche de la veterana, en la posada | Mujer de unos sesenta y cinco, ancha y de risa fácil, pelo gris corto y una cicatriz en la ceja. Jubón de cuero viejo y una espada larga más vieja que ella al hombro (lleva pierna de palo, no se ve en el busto). | `retratos/gremio/rosalia.png` |
+| La cómica | Gremio · la noche de los cómicos, en la posada | Mujer joven y vivaracha, pelo castaño recogido con un pañuelo amarillo, mejillas pintadas de rojo y un sombrero viejo en la mano para la colecta. | `retratos/gremio/la-comica.png` |
+| El chico del recado | Gremio · la noche del mensajero, en la posada | Chico de unos catorce, flaco y despeinado, con barro hasta en la cara, capa corta empapada y una carta sellada con lacre apretada contra el pecho. | `retratos/gremio/el-chico-del-recado.png` |
+| El viajero | Cualquier campaña · la noche del viajero, en la posada | Hombre de unos cincuenta, cara cansada y ojos que no paran de mirar a la puerta, barba corta gris, capa de viaje oscura con la capucha echada atrás. | `retratos/mercenarios/el-viajero.png` (vale para todas) |
+| La madre | Cualquier campaña · la noche de la familia, en la posada | Mujer de unos treinta, delgada y agotada, pañuelo de lana en la cabeza, toquilla raída sobre los hombros y la cara sucia del camino. | `retratos/mercenarios/la-madre.png` (vale para todas) |
+
 ## El mundo tras la pantalla (pantalla)
 
 Lo que le falta a `public/mundos/pantalla.pack.json` (tanda 20). Estilo de la campaña: isekai luminoso, colores vivos y limpios; los huéspedes llevan algo de nuestro mundo (un chándal, una chaqueta reflectante, una gorra). Las caras de los retratos están apagadas en el juego (D-J61): lo que hace falta es el retrato neutro; si se piden también las caras para más adelante, con las tres frases de arriba y `--alegre`, `--enfadado` y `--triste` al lado de cada archivo.
@@ -83,7 +100,7 @@ Prompt: `Pixel art side-view landscape, 320x180, bright fantasy, clean saturated
 
 ### Bichos (96×96, fondo transparente)
 
-Prompt: `Pixel art creature sprite, 96x96, transparent background, full body, facing left, bright fantasy, clean saturated palette, no text, no frame.` + cómo es. Sin el suyo, el juego enseña el dibujo de «enemigo sin dibujo» (el lobo repetido usa el lobo de siempre).
+Prompt: `Pixel art creature sprite, 96x96, transparent background, full body, facing left, bright fantasy, clean saturated palette, no text, no frame.` + cómo es. Sin el suyo, el juego enseña el dibujo de «enemigo sin dibujo» (el lobo repetido usa el lobo de siempre). El bandido del camino ya tiene el suyo (`bestias/bandido-del-camino.png`): no hace falta pedirlo.
 
 | Bicho | Cómo es | Dónde va |
 | :--- | :--- | :--- |
@@ -100,7 +117,7 @@ Prompt: `Pixel art creature sprite, 96x96, transparent background, full body, fa
 | Guardián de la Torre Tres | Un gigante de piedra con números grabados en el pecho. Despierta cuando alguien toca el corazón de su torre. | `bestias/guardian-de-la-torre-tres.png` |
 | Ahogado del espejo | Tu reflejo, mojado y con los ojos en blanco. Quiere llevarte al fondo del lago. | `bestias/ahogado-del-espejo.png` |
 | Sombra de nivel | Niveles quitados que no encontraron dueño: una forma oscura a la que se le caen los números. | `bestias/sombra-de-nivel.png` |
-| Huésped a sueldo | Un huésped que subió a nivel nueve en un mes y ahora vende su espada a la Contaduría. | `bestias/huesped-a-sueldo.png` |
+| Huésped mercenario | Un huésped que subió a nivel nueve en un mes y ahora vende su espada a la Contaduría. | `bestias/huesped-mercenario.png` |
 | Acogido en armas | Huéspedes de la Acogida con lo que han podido coger: palas, sartenes, una espada vieja. | `bestias/acogido-en-armas.png` |
 | El Contador Mayor | Leandro Tallada, con su barra de nivel doce. Debajo de los números comprados hay un hombre de nivel dos que tiene miedo. | `bestias/el-contador-mayor.png` |
 | Copia que sigue a Alma | Una copia sin cara con una manta de cuadros igual que la de Alma. | `bestias/copia-que-sigue-a-alma.png` |
@@ -293,6 +310,37 @@ Prompt: `Pixel art creature sprite, 96x96, transparent background, full body, fa
 | Antón el capataz (jefe) | Hombre de unos cuarenta, alto y ancho, cabeza afeitada, chaleco de cuero sobre camisa blanca empapada y un gancho de estibador en cada mano. | `bestias/anton-el-capataz.png` |
 | Pescador de Arenales | Hombre de unos treinta y cinco, delgado y quemado por el sol, gorra de lana azul, jersey remendado y un remo partido en las manos. | `bestias/pescador-de-arenales.png` |
 | Arponera de Arenales | Mujer de unos treinta, fuerte y morena, trenza larga, falda remangada sobre pantalón de faena y un haz de arpones cortos a la espalda. | `bestias/arponera-de-arenales.png` |
-| Saqueador de tumbas | Hombre de unos veinticinco, flaco y sucio, gorra calada, abrigo robado dos tallas grande y una pala de cavar al hombro. | `bestias/saqueador-de-tumbas.png` |
+| Saqueador de tumbas | Hombre de unos veinticinco, flaco y sucio, gorra calada, abrigo robado dos tallas grande y una pala de cavar al hombro. Es el mismo archivo que el saqueador de ocaso: un solo dibujo vale para las dos. | `bestias/saqueador-de-tumbas.png` |
+
+### Objetos (64×64, fondo transparente): 24
+
+Prompt: `Pixel art item icon, 64x64, transparent background, single object centered, gothic horror, cold desaturated palette, black outline, no text, no frame.` + cómo es. El juego busca primero el de la campaña (`objetos/costa/`, por su nombre); sin él, el del compendio o ninguno.
+
+| Objeto | Cómo es | Dónde va |
+| :--- | :--- | :--- |
+| Farol de la Vela | Un farol de aceite con el cristal ahumado que pasa de mano en mano cada noche. | `objetos/costa/farol-de-la-vela.png` |
+| Caja de Don Fermín | Una caja de hojalata con la tapa soldada. | `objetos/costa/caja-de-don-fermin.png` |
+| Cuaderno del farero | El cuaderno de Martín Goikoa, envuelto en hule. | `objetos/costa/cuaderno-del-farero.png` |
+| Carta de marear de Martín | Un pliego de piel con las rocas de la punta pintadas a mano y un camino marcado en rojo hasta el pecio de la Esperanza. | `objetos/costa/carta-de-marear-de-martin.png` |
+| Velas de la llamada | Dos velas gordas como un brazo, de cera negra. | `objetos/costa/velas-de-la-llamada.png` |
+| Arpón de ballenero | Un arpón de hierro de los de antes, afilado hace poco por Eusebio. | `objetos/costa/arpon-de-ballenero.png` |
+| Gancho de estibador | Un garfio de hierro con mango de madera, para cargar sacos de sal. | `objetos/costa/gancho-de-estibador.png` |
+| Cuchillo de redera | Una hoja corta y curva para cortar nudos. | `objetos/costa/cuchillo-de-redera.png` |
+| Bichero de barca | Una vara larga con un gancho de hierro en la punta. | `objetos/costa/bichero-de-barca.png` |
+| Chaquetón de hule | Un chaquetón de pescador encerado, tieso como una tabla. | `objetos/costa/chaqueton-de-hule.png` |
+| Peto de cuero salado | Un peto de cuero curtido en salmuera, duro como la madera. | `objetos/costa/peto-de-cuero-salado.png` |
+| Rosario de conchas | Un rosario de conchas blancas que tallaron las viudas de la galerna. | `objetos/costa/rosario-de-conchas.png` |
+| Exvoto de la Esperanza | Una barca de madera tallada, con «Esperanza» pintado en la proa. | `objetos/costa/exvoto-de-la-esperanza.png` |
+| Libro de cuentas de la Salazón | Un libro de tapas de hule con las cuentas de la sal que sale de noche: cuánto, adónde y quién lo cobra. | `objetos/costa/libro-de-cuentas-de-la-salazon.png` |
+| Silbato de hueso | El silbato del vigía de la cala. | `objetos/costa/silbato-de-hueso.png` |
+| Pañuelo azul de Remedios | Un pañuelo azul de mujer, desteñido por el agua. | `objetos/costa/panuelo-azul-de-remedios.png` |
+| Anillo de Joseba | Un anillo de hombre, de plata gastada. | `objetos/costa/anillo-de-joseba.png` |
+| Saco de sal sin marca | Un saco de sal gruesa de la Salazón, sin el sello de los Arrieta. | `objetos/costa/saco-de-sal-sin-marca.png` |
+| Aguardiente de la cala | Una botella de aguardiente de contrabando. | `objetos/costa/aguardiente-de-la-cala.png` |
+| Tabla de mareas de Bartolo | Una tabla de madera con las mareas del año grabadas a navaja. | `objetos/costa/tabla-de-mareas-de-bartolo.png` |
+| Llave de la compuerta | Una llave de hierro grande y oxidada. | `objetos/costa/llave-de-la-compuerta.png` |
+| Medalla de San Telmo | Una medalla de latón con el santo de los marineros. | `objetos/costa/medalla-de-san-telmo.png` |
+| Tinta de calamar | Un tarro de tinta negra y espesa que huele a mar. | `objetos/costa/tinta-de-calamar.png` |
+| Cesta de percebes | Percebes de la Boca del Bajo, los mejores de la costa. | `objetos/costa/cesta-de-percebes.png` |
 
 Después de dibujarlos: `node tools/pixel-manifest.mjs`.

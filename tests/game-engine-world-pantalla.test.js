@@ -203,4 +203,21 @@ describe('El mundo tras la pantalla, la campaña escrita', () => {
         // Los dos finales son para nivel 4 (D-J59).
         for (const id of ['q-enc-cumbre', 'q-enc-puerta']) expect(pack.quests.find((/** @type {any} */ q) => q.id === id).levels).toEqual([4, 4]);
     });
+
+    test('la sala del registro: de la puerta de atrás a la ventana sin muro en medio, el archivo sin cerrar y sin ballestero que huya', () => {
+        const board = pack.boards.find((/** @type {any} */ b) => b.id === 'enc-registro');
+        const exit = pack.quests.find((/** @type {any} */ q) => q.id === 'q-enc-registro').objectives.find((/** @type {any} */ o) => o.type === 'reach_cell').cell;
+        expect(board.map[exit.y][exit.x]).toBe('x');
+        // Se entra por la cocina: de cada casilla de salida a la ventana, la fila no tiene muro.
+        for (const start of board.partyStart) {
+            expect(start.y).toBe(exit.y);
+            expect(board.map[exit.y].slice(exit.x, start.x + 1)).not.toMatch(/[#DL]/);
+        }
+        // El cofre del libro, tras una puerta abierta: se llega andando, sin llave.
+        expect(board.map[4][2]).toBe('o');
+        // A medianoche no hay ballesta (lo dice Pelayo): nadie se queda lejos disparando.
+        expect(new Set(board.enemies.map((/** @type {any} */ e) => e.name))).toEqual(new Set(['Celador de la Contaduría']));
+        const said = sceneOptions('el-registro').find((/** @type {any} */ o) => o.id === 'registro-medianoche').reply.text;
+        expect(said).toContain('ninguno lleva ballesta');
+    });
 });

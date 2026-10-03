@@ -96,7 +96,7 @@ import {
     turnStartMagic, turnEndMagic, roundMagic, endOfFightMagic, livingSummons, canChooseControl, controlOf, setControl,
     CONTROL_LABELS,
 } from './spell-turn.js';
-import { showCombatDiceRoll } from './combat-log.js';
+import { showCombatDiceRoll, showInitiativeRolls } from './combat-log.js';
 import { stageTurn } from './combat-fx.js';
 // J12.21: la pantalla de victoria o de derrota.
 import { noteBeforeLoot, planOutcome } from './combat-outcome.js';
@@ -109,7 +109,7 @@ import { collectedHere, awardEncounterLoot, dropBoardKey, openChest } from './lo
 import {
     persistBoardTerrain, getActiveBoardContext, explodeBarrels, recordBoardWon, boardVisibility, isBoardWon,
 } from './board.js';
-import { renderLocationMapsPreview } from './board-view.js';
+import { lastWaiting, renderLocationMapsPreview } from './board-view.js';
 import { beginAmbushPlacement } from './fight-entry.js';
 import { lastLevelPlan, getLocationBoards, hereLocation, lastCompendium, saveCurrentBoard, lastHub, lastHubHome } from './world.js';
 import { getCampaignCalendar, getCampaignBonds, saveCampaignState, markLocationComplete } from './time.js';
@@ -129,28 +129,39 @@ import { brawlOf } from '../game-engine/combat/brawl.js';
 import { brawlTalk, endBrawl } from './brawl.js';
 
 /**
- * @param {string} name
- * @param {number} dexterity
- * @param {'ally'|'enemy'} actorType
+ * La iniciativa de alguien: el d20 y lo que suma. H19 (tanda 22): no sale aún; se apunta en
+ * `rows` y salen todas juntas en una tarjeta (`showInitiativeRolls`).
+ *
+ * @param {{id: string, name: string, dexterity: number, enemy: boolean, extra?: number}} who
+ *   `extra`: lo que suma además de la Destreza (la moral del grupo, quien vigila, una mejora).
+ * @param {import('./combat-log.js').InitiativeRow[]} rows
  * @returns {number}
  */
-function rollInitiativeWithPopover(name, dexterity, actorType) {
+function rollInitiative({ id, name, dexterity, enemy, extra = 0 }, rows) {
     const dexMod = getAbilityModifier(dexterity || 10);
-    const formula = `1d20${dexMod >= 0 ? '+' : ''}${dexMod}`;
-    const roll = rollDiceDetailed(formula, 20);
-    const total = roll.total;
-    const d20 = roll.natural ?? roll.rolls[0] ?? total;
-
-    showCombatDiceRoll({
-        title: `Iniciativa de ${name}`,
-        subtitle: actorType === 'enemy' ? 'Iniciativa de enemigo' : 'Iniciativa de aliado',
-        formula: roll.formula,
-        detail: `d20(${d20}) ${dexMod >= 0 ? '+' : ''}${dexMod} = ${total}`,
-        total,
-        glyph: 'init',
-    });
-
+    const roll = rollDiceDetailed(`1d20${dexMod >= 0 ? '+' : ''}${dexMod}`, 20);
+    const d20 = roll.natural ?? roll.rolls[0] ?? roll.total;
+    const total = roll.total + (Number(extra) || 0);
+    rows.push({ id: String(id), name: String(name), natural: Number(d20) || 0, modifier: dexMod + (Number(extra) || 0), total, enemy });
     return total;
+}
+
+/**
+ * H19: la tarjeta de la iniciativa, en el orden de la pelea; al cerrarla, la barra se enciende.
+ *
+ * @param {import('./combat-log.js').InitiativeRow[]} rows
+ * @param {string} [title]
+ */
+function showInitiativeInOrder(rows, title) {
+    const order = (combatEncounter.turnOrder ?? []).map(t => String(t.id));
+    const sorted = [...rows].sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
+    showInitiativeRolls(sorted, {
+        ...(title ? { title } : {}),
+        onDone: () => {
+            renderLocationMapsPreview();
+            if (isShellOpen()) refreshGameShell();
+        },
+    });
 }
 
 /**
@@ -363,9 +374,12 @@ export function buryMember(member, today, bonds) {
         iron: isIronRun(survivalNow(), chat_metadata?.[MODE_HISTORY_KEY] ?? null),
     });
     saveSettingsDebounced();
-    postCombatNarration(`🪦 [CAMPAÑA] ${epitaph}${inherited ? ` ${inherited}` : ''}`);
+    // Tanda 22 (D-J60): sin conexión, el epitafio no lo dice nadie: se ve en el tablero y queda
+    // en el Salón de la fama (y en el registro, para el Diario).
+    postCombatNarration(`🪦 [CAMPAÑA] ${epitaph}${inherited ? ` ${inherited}` : ''}`, { moment: 'muerte' });
     void postForModel(`[MUERTE] ${epitaph}${inherited ? ` ${inherited}` : ''} Ya no está: que se note en lo que cuentes, y que nadie le haga hablar.`, {
         show: [tellMoment('muerte', { quien: String(member?.name || ''), epitafio: String(epitaph || '') }), inherited].filter(Boolean).join(' '),
+        moment: 'muerte',
     })
         .catch(error => console.error('[party] death note failed', error));
 }
@@ -580,10 +594,13 @@ function arriveWaves() {
         const arrived = instancesFromPlacements((wave.names ?? []).slice(0, cells.length).map((/** @type {string} */ name, /** @type {number} */ i) => ({ name, ...cells[i] })));
         if (arrived.length > 0) {
             combatEncounter.enemies = [...combatEncounter.enemies, ...arrived];
+            /** @type {import('./combat-log.js').InitiativeRow[]} */
+            const rows = [];
             for (const enemy of arrived) {
-                const initiative = rollInitiativeWithPopover(enemy.name, enemy.dexterity || 10, 'enemy');
+                const initiative = rollInitiative({ id: enemy.instanceId, name: enemy.name, dexterity: enemy.dexterity || 10, enemy: true }, rows);
                 combatEncounter.turnOrder.push({ id: enemy.instanceId, name: enemy.name, initiative, isEnemy: true });
             }
+            showInitiativeInOrder(rows, 'Llegan refuerzos');
             postCombatNarration(`⚠️ [COMBAT] Llegan refuerzos: ${arrived.map(e => e.name).join(', ')}.`);
         }
         changed = true;
@@ -1167,8 +1184,16 @@ function levelPlacements(placements, level, templates) {
  * @returns {number} Cuantos han despertado.
  */
 export function wakeRoomEnemies(board, room) {
-    const placements = enemiesInRoom(room, board?.enemyPlacements ?? []);
-    if (placements.length === 0) return 0;
+    const inRoom = enemiesInRoom(room, board?.enemyPlacements ?? []);
+    if (inRoom.length === 0) return 0;
+    // Tanda 22 (H17): sin pelea en marcha, los que ya se veían en el tablero entran con la sala. Al
+    // abrir la puerta del fondo de la taberna antes de que saliera la pelea, peleaba solo el zombi
+    // de la sala; la bruja, a la vista, no entraba nunca, y la pelea no se acababa.
+    const same = (/** @type {any} */ a, /** @type {any} */ b) => a.name === b.name && Number(a.x) === Number(b.x) && Number(a.y) === Number(b.y);
+    const inSight = !combatEncounter.active && lastWaiting.board === currentBoardName
+        ? lastWaiting.placements.filter(p => !inRoom.some(q => same(p, q)))
+        : [];
+    const placements = [...inRoom, ...inSight];
     // Tanda 10: sin pelea en marcha es una emboscada: antes de la iniciativa, el grupo se coloca
     // alrededor de donde está (`fight-entry.js`), sin decisión previa.
     if (!combatEncounter.active && beginAmbushPlacement(placements)) return placements.length;
@@ -1186,11 +1211,14 @@ export function wakeRoomEnemies(board, room) {
         return woken.length;
     } else {
         combatEncounter.enemies = [...combatEncounter.enemies, ...woken];
+        /** @type {import('./combat-log.js').InitiativeRow[]} */
+        const rows = [];
         for (const enemy of woken) {
-            const initiative = rollInitiativeWithPopover(enemy.name, enemy.dexterity || 10, 'enemy');
+            const initiative = rollInitiative({ id: enemy.instanceId, name: enemy.name, dexterity: enemy.dexterity || 10, enemy: true }, rows);
             combatEncounter.turnOrder.push({ id: enemy.instanceId, name: enemy.name, initiative, isEnemy: true });
         }
         saveCombatState();
+        showInitiativeInOrder(rows, 'Se despierta la sala');
     }
 
     postCombatNarration(`⚠️ [COMBAT] Se despierta lo que dormia en la sala: ${names}.`);
@@ -1306,13 +1334,15 @@ function beginEncounterWith(newEnemies, { enemiesFirst = false, brawl = null } =
 
     /** @type {import('../dnd-system.js').TurnEntry[]} */
     const turnEntries = [];
+    /** H19: las tiradas, para la tarjeta de todos. @type {import('./combat-log.js').InitiativeRow[]} */
+    const initiativeRows = [];
     // Ideas 39 y 41: la moral del grupo y quien vigila mueven la iniciativa de todos.
     const morale = partyMorale();
     const sentinel = withJob(partyMembers, 'centinela') ? 1 : 0;
     // Quien ha muerto ya no pelea (idea 36): antes seguía tirando iniciativa, y un descanso
     // lo ponía en pie otra vez.
     for (const m of partyMembers.filter(member => !member.dead && !brawl?.watching.includes(String(member.id)))) {
-        const init = rollInitiativeWithPopover(m.name, m.dexterity || 10, 'ally') + morale.value + sentinel + perkBonus(m, 'initiative');
+        const init = rollInitiative({ id: String(m.id), name: m.name, dexterity: m.dexterity || 10, enemy: false, extra: morale.value + sentinel + perkBonus(m, 'initiative') }, initiativeRows);
         turnEntries.push({ id: String(m.id), name: m.name, initiative: init, isEnemy: false });
     }
     if (morale.value !== 0) postCombatNarration(`🫂 [COMBAT] Moral del grupo: ${morale.label}.`);
@@ -1333,7 +1363,7 @@ function beginEncounterWith(newEnemies, { enemiesFirst = false, brawl = null } =
 
     const enemies = [...combatEncounter.enemies, ...newEnemies];
     for (const e of enemies) {
-        const init = rollInitiativeWithPopover(e.name, e.dexterity || 10, 'enemy');
+        const init = rollInitiative({ id: e.instanceId, name: e.name, dexterity: e.dexterity || 10, enemy: true }, initiativeRows);
         turnEntries.push({ id: e.instanceId, name: e.name, initiative: init, isEnemy: true });
     }
 
@@ -1357,6 +1387,8 @@ function beginEncounterWith(newEnemies, { enemiesFirst = false, brawl = null } =
     });
 
     saveCombatState();
+    // H19 (tanda 22): todas las tiradas juntas, en el orden de la pelea; la barra espera a cerrarla.
+    showInitiativeInOrder(initiativeRows);
 
     // Build summary
     const summary = turnEntries.map((t, i) => `${i + 1}. ${t.name} (${t.initiative})${t.isEnemy ? ' ⚔️' : ''}`).join('\n');
@@ -2084,8 +2116,21 @@ function finishEscape(said) {
     savePartyState();
     renderPartyMembers();
     endCombat('fled');
+    leaveAfterFleeing();
     renderLocationMapsPreview();
     judgeDecision('retirada');
+}
+
+/**
+ * Tanda 22: tras huir, el grupo sale del tablero al sitio. Quedarse dentro, con los mismos
+ * esperando, era volver a la pelea de la que se acababa de huir.
+ */
+function leaveAfterFleeing() {
+    if (!currentBoardName || combatEncounter.active) return;
+    setCurrentBoardName('');
+    setCombatBoardSelection({ tokenId: null, boardName: '', locationName: '' });
+    saveCurrentBoard();
+    if (isShellOpen()) refreshGameShell();
 }
 
 /**
@@ -2124,6 +2169,7 @@ export async function retreatFromCombat() {
     savePartyState();
     renderPartyMembers();
     endCombat('fled');
+    leaveAfterFleeing();
     renderLocationMapsPreview();
     // Idea 28: huir también se juzga.
     judgeDecision('retirada');

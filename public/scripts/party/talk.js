@@ -65,7 +65,7 @@ import {
 } from './plot.js';
 import { noteDeed, refreshWorldMemoryPrompt, worldWrite } from './world-growth.js';
 import {
-    modelNarrates, narratorMode, noteRollInWindow, offlineGame, postCombatNarration, postForModel, showTip, storyWindowsOn,
+    modelNarrates, narratorMode, noteRollInWindow, offlineGame, postCombatNarration, postForModel, sayerHere, showTip, storyWindowsOn,
     tellMoment,
 } from './narration.js';
 import { payFromParty, savePartyState } from './roster.js';
@@ -889,8 +889,10 @@ export async function lookAt(value) {
         const found = lookFound(row, check.success === true);
         if (found) {
             noteDeed(`${lookLabel(row)}, en ${currentLocationName}: ${found}`);
+            // Tanda 22 (D-J60): sin conexión, lo que se ve lo dice uno de los tuyos (o quien esté allí).
+            const who = offlineGame() ? sayerHere({ prefer: String(/** @type {any} */ (row).who || ''), seed: String(row.id) }) : '';
             await postForModel(`[MIRAR] ${lookLabel(row)}, en ${currentLocationName}. Lo que se ve: ${found} Cuéntalo tal cual, sin añadir nada.`,
-                { show: `🔍 [CAMPAÑA] ${found}` })
+                { show: `🔍 [CAMPAÑA] ${found}`, ...(who ? { speaker: who } : {}) })
                 .catch(error => console.error('[party] look note failed', error));
         }
     } else {

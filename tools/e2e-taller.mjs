@@ -29,6 +29,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { Buffer } from 'node:buffer';
+import { enElGremio } from './e2e-guiado.mjs';
 
 const ROOT = new URL('..', import.meta.url).pathname.replace(/^[/]([A-Za-z]:)/, '$1');
 const argAfter = (/** @type {string} */ flag) => (process.argv.includes(flag) ? process.argv[process.argv.indexOf(flag) + 1] : '');
@@ -197,7 +198,8 @@ try {
     // 2. El tablón: «Taller de campañas», al lado de «Añadir una campaña».
     await page.waitForTimeout(800);
     await dropToasts();
-    if (!await clickChip(/Tablón de campañas/)) await slash('/campanas');
+    // D-J62: con el modo guiado, el tablón está en la Casa del Gremio.
+    if (!await clickChip(/Tablón de campañas/) && !await enElGremio(page, 'hub-board')) await slash('/campanas');
     const opened = await page.waitForSelector('.hb-root [data-campaign-workshop]', { timeout: 15000 }).then(() => true).catch(() => false);
     const order = await page.evaluate(() => [...document.querySelectorAll('.hb-root .hb-grid > *')].map(c => (c.hasAttribute('data-campaign-add') ? 'añadir' : c.hasAttribute('data-campaign-workshop') ? 'taller' : 'otra')));
     check('el tablón tiene «Taller de campañas», justo detrás de «Añadir una campaña»',

@@ -169,7 +169,11 @@ async function openFightIfNoticed() {
     if (!currentBoardName || lastWaiting.board !== currentBoardName || lastWaiting.placements.length === 0) return;
     if (isBoardWon(currentLocationName, currentBoardName)) return;
     if (!boardInSight()) return;
-    if (somethingInFront()) {
+    // Tanda 22 (H15 y el cáliz de 1387 desde el tablón): mientras se abre una campaña (el cambio de
+    // chat), su primera escena aún no está en cola (`beginCampaignPlot` va al final), y con el grupo
+    // ya hecho no hay `fightWait` que la espere: la pelea salía antes, se ganaba y la escena se
+    // daba por pasada. Se mira otra vez al acabar el cambio; entonces la escena ya espera delante.
+    if (somethingInFront() || isChatSwitching()) {
         setTimeout(() => noticeBoardFight(), 900);
         return;
     }

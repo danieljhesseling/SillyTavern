@@ -89,7 +89,7 @@ import {
 } from './time.js';
 import { revealLocations } from './plot.js';
 import { noteDeed, worldWrite } from './world-growth.js';
-import { postCombatNarration, postEngineLine, postForModel, tellMoment, whoPlays } from './narration.js';
+import { postCombatNarration, postEngineLine, postForModel, quietMoment, tellMoment, whoPlays } from './narration.js';
 import { resolveGender } from '../game-engine/campaign/grammar.js';
 import { partyPurse, payFromParty, renderPartyMembers, savePartyState } from './roster.js';
 import { currentRecruits, favorsHere, hireRecruit, judgeDecision, meetRecruit } from './companions.js';
@@ -482,7 +482,8 @@ export function openService(serviceId) {
     const card = buildServiceCards().find(c => c.id === serviceId);
     if (!card) return;
     const line = tellMoment('servicio', { servicio: serviceId });
-    if (line) void postEngineLine(line);
+    // Tanda 22 (D-J60): sin conexión, entrar en un edificio no lo cuenta nadie: su tarjeta ya lo dice.
+    if (line && !quietMoment('servicio')) void postEngineLine(line);
     showHelpSections(card.label, [{
         title: 'Qué se puede hacer',
         items: card.actions.map(a => ({ label: a.label, detail: a.detail, key: a.enabled ? `service:${a.id}` : '' })),

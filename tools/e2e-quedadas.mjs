@@ -229,7 +229,7 @@ try {
         });
         const places = where.placesOf(pack.locations[0], { hub: true });
         const people = here.people.filter(p => p.canMeet).map(p => ({
-            ...p, placeLabel: where.placeLabel(p.place), rankLabel: 'Vínculo 1',
+            ...p, placeLabel: where.placeLabel(p.place), rankLabel: 'Rango 1',
             className: m.personOf(data, p.name)?.className, gender: m.personOf(data, p.name)?.gender,
         }));
         w.__qd = { picked: undefined, people: people.map(p => `${p.name}@${p.place}${p.wantsToMeet ? '*' : ''}`) };
@@ -246,7 +246,7 @@ try {
     })));
     const people = await page.evaluate(() => /** @type {any} */ (window).__qd.people);
     check('el selector: tu gente de Puerto Alba, quien quiere quedar delante, con su cara y su sitio', cards.length === 3 && cards[0].eager
-        && cards.every(c => c.drawn > 0 && /Vínculo 1/.test(c.where)), JSON.stringify({ cards, people }));
+        && cards.every(c => c.drawn > 0 && /Rango 1/.test(c.where)), JSON.stringify({ cards, people }));
     if (shot('4-selector')) await page.screenshot({ path: shot('4-selector') });
     await page.locator('.qd-dialog[open] .qd-pick-card', { hasText: 'Gerd el Mellado' }).click();
     await page.waitForTimeout(400);

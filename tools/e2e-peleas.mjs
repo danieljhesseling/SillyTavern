@@ -33,6 +33,7 @@ import { createRequire } from 'node:module';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { enElGremio, salirDelTablero } from './e2e-guiado.mjs';
 
 const ROOT = new URL('..', import.meta.url).pathname.replace(/^[/]([A-Za-z]:)/, '$1');
 const argAfter = (/** @type {string} */ flag) => (process.argv.includes(flag) ? process.argv[process.argv.indexOf(flag) + 1] : '');
@@ -302,18 +303,19 @@ try {
     await page.waitForTimeout(1200);
 
     // 2. Saltar la prueba (J2.3) y, desde el tablón, 1387.
-    await until(async () => (await chips()).some(c => /^Saltar la prueba$/.test(c)), 20000);
-    await clickChip(/^Saltar la prueba$/);
+    // D-J62: «Saltar la prueba» está en la Casa del Gremio, fuera del tablero del muelle.
+    await salirDelTablero(page);
+    await until(() => enElGremio(page, 'hub-skip'), 20000);
     await page.waitForSelector('.popup:has-text("¿Saltar la prueba?")', { timeout: 10000 }).catch(() => {});
     await page.locator('.popup-button-ok:visible').first().click({ timeout: 5000 }).catch(() => {});
-    await until(() => chatHas(/apunta tu nombre en el libro del gremio/), 20000);
+    await until(() => chatHas(/apunta tu nombre en el libro del gremio|Te saltas «|Ya subes|tengo el libro abierto/), 20000);
     await page.waitForTimeout(800);
     await clearDice();
     await dropToasts();
     await page.evaluate(() => document.querySelectorAll('.popup:not([closing]) .popup-button-ok, .popup:not([closing]) .popup-button-cancel').forEach(b => /** @type {HTMLElement} */ (b).click()));
     await page.waitForTimeout(500);
-    await until(async () => (await chips()).some(c => /Tablón de campañas/.test(c)), 15000);
-    await clickChip(/Tablón de campañas/);
+    // D-J62: el tablón de campañas está en la Casa del Gremio.
+    await until(() => enElGremio(page, 'hub-board'), 15000);
     await page.waitForSelector('.hb-root [data-campaign="1387"]', { timeout: 15000 }).catch(() => {});
     await page.locator('.hb-root [data-campaign="1387"]').click({ timeout: 5000 }).catch(() => {});
     const in1387 = await until(async () => { const now = await state(); return /1387/.test(now.world) && now.board === INN; }, 150000);

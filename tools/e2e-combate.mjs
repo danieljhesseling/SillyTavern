@@ -34,6 +34,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { entrarEnLaPelea } from './e2e-entrar-pelea.mjs';
+import { enElGremio, salirDelTablero } from './e2e-guiado.mjs';
 
 const ROOT = new URL('..', import.meta.url).pathname.replace(/^[/]([A-Za-z]:)/, '$1');
 const argAfter = (/** @type {string} */ flag) => (process.argv.includes(flag) ? process.argv[process.argv.indexOf(flag) + 1] : '');
@@ -141,12 +142,6 @@ try {
             done: Array.isArray(meta.plotState?.done) ? meta.plotState.done : [],
         };
     });
-    const chips = () => page.evaluate(() => [...document.querySelectorAll('#game-shell .gs-chip-action')].map(c => (c.textContent || '').trim()));
-    const clickChip = (/** @type {RegExp} */ pattern) => page.evaluate((source) => {
-        const chip = [...document.querySelectorAll('#game-shell .gs-chip-action')].find(b => new RegExp(source).test(b.textContent || ''));
-        if (chip instanceof HTMLElement) chip.click();
-        return Boolean(chip);
-    }, pattern.source);
     const chatHas = (/** @type {RegExp} */ pattern) => page.evaluate((source) => (window.SillyTavern.getContext().chat || [])
         .some((/** @type {any} */ m) => new RegExp(source).test(String(m.extra?.display_text || m.mes || ''))), pattern.source);
     /** Los mensajes del chat desde el número `from`, como texto. */
@@ -267,19 +262,17 @@ try {
     await page.waitForTimeout(1200);
 
     // 2. Saltar la prueba (J2.3), y con ella salen el tablón y contratar (D-J28). Tanda 10: en el
-    // tablero del muelle no sale; primero se sale de él.
-    await until(async () => (await chips()).some(c => /^(Saltar la prueba|Salir del tablero)$/.test(c)), 20000);
-    if ((await chips()).includes('Salir del tablero')) await clickChip(/^Salir del tablero$/);
-    await until(async () => (await chips()).some(c => /^Saltar la prueba$/.test(c)), 20000);
-    await clickChip(/^Saltar la prueba$/);
+    // tablero del muelle no sale; primero se sale de él. D-J62: saltarla, contratar y el tablón
+    // están dentro de la Casa del Gremio, no en la fila.
+    await salirDelTablero(page);
+    await until(() => enElGremio(page, 'hub-skip'), 20000);
     await page.waitForSelector('.popup:has-text("¿Saltar la prueba?")', { timeout: 10000 }).catch(() => {});
     await page.locator('.popup-button-ok:visible').first().click({ timeout: 5000 }).catch(() => {});
-    await until(() => chatHas(/apunta tu nombre en el libro del gremio/), 20000);
+    await until(() => chatHas(/apunta tu nombre en el libro del gremio|Te saltas «|Ya subes|tengo el libro abierto/), 20000);
     await page.waitForTimeout(800);
     await clearDice();
     await dropToasts();
-    const canHire = await until(async () => (await chips()).some(c => /Contratar mercenarios/.test(c)), 15000);
-    await clickChip(/Contratar mercenarios/);
+    const canHire = await until(() => enElGremio(page, 'hub-hire'), 15000);
     await page.waitForSelector('.hb-root [data-hireling="Gerd el Mellado"]', { timeout: 15000 }).catch(() => {});
     await page.locator('.hb-root [data-hireling="Gerd el Mellado"]').click({ timeout: 5000 }).catch(() => {});
     const hired = await until(async () => (await state()).party.length === 2, 10000);
@@ -288,7 +281,7 @@ try {
     // 3. Al tablón: La Maldición de Strahd, que empieza en la Taberna con la bruja.
     await page.evaluate(() => document.querySelectorAll('.popup:not([closing]) .popup-button-ok, .popup:not([closing]) .popup-button-cancel').forEach(b => /** @type {HTMLElement} */ (b).click()));
     await page.waitForTimeout(500);
-    await clickChip(/Tablón de campañas/);
+    await enElGremio(page, 'hub-board');
     await page.waitForSelector('.hb-root [data-campaign="strahd"]', { timeout: 15000 }).catch(() => {});
     await page.locator('.hb-root [data-campaign="strahd"]').click({ timeout: 5000 }).catch(() => {});
     const inStrahd = await until(async () => /Strahd/.test((await state()).world) && (await state()).board === 'Taberna Sangre de la Enredadera', 150000);
@@ -623,18 +616,24 @@ try {
         JSON.stringify(await page.evaluate(() => [...document.querySelectorAll('#toast-container .toast')].map(t => (t.textContent || '').trim().slice(0, 80)))));
     check('J19: al acabar, ni lobos, ni zonas, ni concentraciones de la pelea', !seen.active && leftovers.meta === 0 && leftovers.concentration.every(c => c === null),
         JSON.stringify(leftovers));
-    // La charla: pulsar «Escuchar» abre la escena de Gerd.
-    await page.locator('#toast-container .gs-talk-listen').first().click({ timeout: 4000 }).catch(() => {});
-    const talkOpen = await until(() => page.evaluate(() => Boolean(document.querySelector('dialog[open]'))), 8000);
-    check('J14.1: «Escuchar» abre lo que tiene que decir', talkOpen);
-    await shoot('la charla después de ganar');
+    // Tanda 22 (H18): con la tarjeta de victoria delante, los avisos esperan (escondidos) a que se
+    // cierre; y con una escena esperando, el botón grande es «Seguir con la historia».
+    const waiting = await page.evaluate(() => ({
+        toasts: [...document.querySelectorAll('#toast-container > .toast')].map(t => ({ text: (t.textContent || '').trim().slice(0, 40), held: t.classList.contains('gs-toast-held') })),
+        main: (document.querySelector('.vs-card .vo-go')?.textContent || '').trim(),
+    }));
+    check('H18: con la tarjeta de victoria, los avisos («Tras la pelea», «Fama»…) esperan a que se cierre',
+        waiting.toasts.length > 0 && waiting.toasts.every(t => t.held), JSON.stringify(waiting.toasts));
+    check('tanda 22: con la escena del Asedio esperando, el botón grande de la victoria es «Seguir con la historia»',
+        /Seguir con la historia/.test(waiting.main), waiting.main);
 
     // 15. D-J45: tras ganar, «Continuar» sigue el hilo. Primero, la escena que ha abierto la
     // victoria (el Asedio en la Mansión). Luego, lo que toca en la campaña, que está en otro
     // tablero: «Continuar» saca de la Taberna y enseña la Aldea, desde donde se va.
     // (Si la tarjeta de victoria se ha cerrado sola, la escena ya ha salido: es lo mismo.)
     await page.evaluate(() => document.querySelectorAll('dialog[open]:not(.ps-dialog)').forEach(d => /** @type {HTMLDialogElement} */ (d).close()));
-    await dropToasts();
+    // La charla de después («Escuchar») se queda: sale cuando acaben la tarjeta y las escenas (H18).
+    await page.evaluate(() => document.querySelectorAll('#toast-container .toast').forEach(t => { if (!t.querySelector('.gs-talk-listen')) t.remove(); }));
     const continueChip = () => page.evaluate(() => {
         const chip = document.querySelector('#game-shell .gs-vn-box .gs-chip-continue');
         return {
@@ -675,6 +674,16 @@ try {
         await page.waitForTimeout(250);
     }
     console.log(`      escenas jugadas tras ganar: ${played.join(', ') || '(ninguna)'}`);
+    // J14.1 y H18: acabadas la tarjeta y las escenas, sale la charla de después; «Escuchar» la abre.
+    const listen = page.locator('#toast-container .toast:not(.gs-toast-held) .gs-talk-listen').first();
+    const talkShown = await listen.waitFor({ state: 'visible', timeout: 8000 }).then(() => true).catch(() => false);
+    await listen.click({ timeout: 4000 }).catch(() => {});
+    const talkOpen = await until(() => page.evaluate(() => Boolean(document.querySelector('dialog[open]'))), 8000);
+    await shoot('la charla después de ganar, cuando ya no hay nada delante');
+    check('J14.1: acabadas la victoria y sus escenas, sale «Gerd quiere decirte algo» y «Escuchar» lo abre', talkShown && talkOpen,
+        JSON.stringify({ talkShown, talkOpen, toasts: await page.evaluate(() => [...document.querySelectorAll('#toast-container > .toast')].map(t => `${(t.textContent || '').trim().slice(0, 30)}${t.classList.contains('gs-toast-held') ? ' (espera)' : ''}`)) }));
+    await page.evaluate(() => document.querySelectorAll('dialog[open]').forEach(d => /** @type {HTMLDialogElement} */ (d).close()));
+    await page.waitForTimeout(600);
     await clearDice();
     await dropToasts();
     await until(async () => (await continueChip()).after === 'next', 8000);

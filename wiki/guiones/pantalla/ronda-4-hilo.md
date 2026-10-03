@@ -244,7 +244,9 @@ Cada uno con lo que fue de cada compañero y de la gente que pesó.
 final:
   id: la-torre-apagada
   titulo: La torre apagada
-  escena: "El corazón de la Torre Siete se rompe con un ruido de cristal, y por toda la comarca las barras se apagan a la vez. Durante un momento nadie dice nada. Luego, en la Hondonada Gris, alguien grita un nombre y otro contesta. Los apagados vuelven a la memoria de los suyos. Ya nadie ve los números de nadie: para saber cómo está alguien, hay que preguntárselo."
+  escena: "¿Lo has oído? El corazón de la Torre Siete se ha roto como un cristal, y en toda la comarca las barras se han apagado a la vez. …Escucha: en la Hondonada Gris alguien grita un nombre, y otro contesta. Los apagados vuelven a la memoria de los suyos. Ya nadie ve los números de nadie: para saber cómo está alguien, habrá que preguntárselo."
+  paquete:
+    who: "Madre Olvido"
   epilogos:
     - quien: remedios
       texto: "Remedios Lumbre abraza en la puerta de la posada a un hombre de treinta años que se llama Abel. Lo apunta otra vez en su libro, con letra grande."
@@ -268,7 +270,9 @@ final:
 final:
   id: la-torre-que-cuida
   titulo: La torre que cuida
-  escena: "Sabina Torrera y Madre Olvido cambian el corazón de la Torre Siete con lo que dejó escrito la Primera Cuidadora. Las barras no desaparecen: se quedan, pero solo dicen la vida. Ni niveles, ni precios, ni descuentos. Los apagados vuelven a la memoria de los suyos, y desde la Ermita se ve quién está herido en cada rincón de la comarca."
+  escena: "Madre Olvido y yo cambiamos el corazón de la Torre Siete con lo que dejó escrito la Primera Cuidadora. Las barras no desaparecen: se quedan, pero solo dicen la vida. Ni niveles, ni precios, ni descuentos. Los apagados vuelven a la memoria de los suyos, y desde la Ermita veremos quién está herido en cada rincón de la comarca."
+  paquete:
+    who: "Sabina Torrera"
   epilogos:
     - quien: olvido
       texto: "Madre Olvido manda a una cuidadora a cualquier casa donde una barra baje de la mitad. Ahora llegan antes que la fiebre."
@@ -294,7 +298,9 @@ final:
 final:
   id: la-cuenta-sigue
   titulo: La cuenta sigue
-  escena: "La Acogida se retira de la puerta de la Torre Siete con sus heridos a cuestas. La torre sigue contando. Leandro Tallada cumple su palabra a medias: a los huéspedes ya no se les descuenta, pero a los deudores de siempre, sí. Tu barra brilla con un nivel que no has ganado peleando. En la Hondonada Gris siguen viviendo cuarenta y tres personas sin nombre, y solo los elfos se acuerdan de ellas."
+  escena: "Nos retiramos de la puerta con los heridos a cuestas. La torre sigue contando. Tallada cumple su palabra a medias: a los huéspedes ya no se les descuenta; a los deudores de siempre, sí. Tu barra brilla con un nivel que no has ganado peleando. Y en la Hondonada Gris siguen viviendo cuarenta y tres personas sin nombre. Solo los elfos se acuerdan de ellas."
+  paquete:
+    who: "Jonás Pradera"
   epilogos:
     - quien: tallada
       texto: "Leandro Tallada sigue en la lonja, sonriendo a los clientes. Lleva al cuello un medallón con un nombre que no reconoce, y a veces lo abre sin saber por qué."

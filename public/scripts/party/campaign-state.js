@@ -24,6 +24,7 @@ import { noteProse } from '../game-engine/campaign/narration-prose.js';
 import { stripEngineTags } from '../game-engine/ui/shell/engine-tags.js';
 import { restoreAbilityUses } from '../game-engine/rules/abilities.js';
 import { relieve } from '../game-engine/rules/needs.js';
+import { readInjuries, setInjury } from '../game-engine/rules/injuries.js';
 import { buildPersonalWeapon } from '../game-engine/combat/bond-perks.js';
 import { addItemToInventory, createItem } from '../dnd-system.js';
 import { rollDice } from './combat-rules.js';
@@ -230,6 +231,20 @@ export function createCampaignState(deps) {
         }
 
         const hitDieByClass = await getHitDiceByClass();
+
+        // H16: una noche entera, comida y dormida, quita el cansancio. El agotamiento es una
+        // herida que solo rehacía el paso de las horas (`passNeeds`), y donde el modo no cuenta
+        // el hambre (el gremio, al volver de Barovia) se arrastraba para siempre. Antes del plan,
+        // para que la vida máxima que devuelve cuente ya entera.
+        if (kind === 'largo') {
+            for (const member of party) {
+                if (!readInjuries(member).some(injury => injury?.id === 'exhaustion')) continue;
+                const patch = setInjury(member, null, 'exhaustion');
+                member.injuries = patch.injuries;
+                member.baseStats = patch.baseStats;
+                Object.assign(member, patch.stats);
+            }
+        }
 
         const plan = kind === 'corto'
             ? planShortRest({

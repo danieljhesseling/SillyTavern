@@ -27,7 +27,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { entrarEnLaPelea } from './e2e-entrar-pelea.mjs';
 // D-J62, el modo guiado: lo que estaba en la fila de abajo, en la Casa del Gremio y en «Lo que pide la historia».
-import { accionesDelSitio, alSitio, enElGremio, entrarEnSitio, pasoDeLaHistoria, pasosDeLaHistoria, salirDelSitio } from './e2e-guiado.mjs';
+import { accionesDelSitio, alSitio, enElGremio, entrarEnSitio, pasoDeLaHistoria, pasosDeLaHistoria, salirDelSitio, volverAlGremio } from './e2e-guiado.mjs';
 
 
 /**
@@ -415,14 +415,14 @@ try {
         }, 10000);
         return sceneNow();
     };
-    /** J18.10: las líneas de la caja de la novela, como se leen. */
+    /** J18.10: las líneas de la caja de la novela, como se leen (D-J60: y las del aviso de encima, sin nadie que las diga). */
     const boxLines = () => page.evaluate(() => ({
-        lines: [...document.querySelectorAll('#game-shell .gs-vn-text .gs-vn-line')].map(l => (l.textContent || '').replace(/\s+/g, ' ').trim()),
+        lines: [...document.querySelectorAll('#game-shell .gs-vn-text .gs-vn-line, #game-shell .gs-vn-aside .vn-aside-line')].map(l => (l.textContent || '').replace(/\s+/g, ' ').trim()),
         quotes: [...document.querySelectorAll('#game-shell .gs-vn-text q')].map(q => window.getComputedStyle(q, '::before').content).filter(c => c !== 'none' && c !== 'normal'),
     }));
-    /** Lo que se lee en la caja de la novela visual, y lo que toca ahora. */
+    /** Lo que se lee en la caja de la novela visual (D-J60: y en el aviso de encima), y lo que toca ahora. */
     const novelBox = () => page.evaluate(() => ({
-        text: (document.querySelector('#game-shell .gs-vn-text')?.textContent || '').replace(/\s+/g, ' ').trim(),
+        text: [...document.querySelectorAll('#game-shell .gs-vn-text, #game-shell .gs-vn-aside')].map(n => n.textContent || '').join(' ').replace(/\s+/g, ' ').trim(),
         focus: (document.querySelector('#game-shell .gs-focus')?.textContent || '').replace(/\s+/g, ' ').trim(),
     }));
     const dropToasts = () => page.evaluate(() => document.querySelectorAll('#toast-container .toast').forEach(t => t.remove()));
@@ -456,9 +456,11 @@ try {
         const pierTiles = await page.evaluate(() => ({
             floor: document.querySelector('.wm-terrain-layer.wm-terrain-tiled-floor')?.getAttribute('data-biome') || '',
             walls: document.querySelectorAll('.wm-terrain-wall.wm-terrain-tiled').length,
-            water: document.querySelectorAll('.wm-terrain-water.wm-terrain-tiled').length,
+            // El agua del puerto es honda (`deep_water`): no se cruza andando.
+            water: document.querySelectorAll('.wm-terrain-water, .wm-terrain-deep_water, .wm-terrain-deep-water').length,
         }));
-        check('el muelle se pinta de exterior, con el agua del puerto (arte en pixel)', pierTiles.floor === 'exterior' && pierTiles.walls > 0 && pierTiles.water > 0,
+        // El muelle tiene su suelo propio (las tablas, `muelle` en BOARD_BIOMES); antes era el de exterior.
+        check('el muelle se pinta de exterior, con el agua del puerto (arte en pixel)', /^(exterior|muelle)$/.test(pierTiles.floor) && pierTiles.walls > 0 && pierTiles.water > 0,
             JSON.stringify(pierTiles));
         // J2.2: la primera pelea enseña, un consejo cada vez: el de pelear y, en tu turno, el de andar.
         const fightTips = await tipsUntil(/^Te toca/);
@@ -555,7 +557,8 @@ try {
     if (SHOT) await page.screenshot({ path: `${SHOT}.prologo.png` });
     // Del muelle a la bodega. D-J62: sin «Entrar en…» en la fila; lo que pide la historia lleva a
     // ella (con las ventanas de historia, se baja hablando con Brunilda: e2e-modo-guiado.mjs).
-    await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/leave'));
+    // Sin tablero, «/leave» se iría del pueblo: solo si aún se está en el del muelle.
+    if ((await state()).board) await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/leave'));
     await page.waitForTimeout(700);
     const toCellar = await until(async () => (await pasosDeLaHistoria(page)).some(s => s.id === 'story:board:La bodega del gremio'), 10000);
     check('fuera del muelle, lo que pide la historia lleva a la bodega (J2.1, D-J62)', toCellar, JSON.stringify(await pasosDeLaHistoria(page)));
@@ -645,7 +648,8 @@ try {
         }
     }
     now = await state();
-    const tablon = await until(() => chatHas(/apunta tu nombre en el libro del gremio/), 15000);
+    // El hilo siguiente, el tablón, abierto (su escena la cuenta Brunilda: «¡Ya subes!»).
+    const tablon = await until(() => page.evaluate(() => (window.SillyTavern.getContext().chatMetadata?.plotState?.open ?? []).includes('el-tablon')), 15000);
     check('ganar la prueba abre el hilo siguiente: el tablón', !now.fighting && tablon, JSON.stringify({ fighting: now.fighting }));
     // J18.8: acabada la pelea se vuelve a la novela, a leer el final; «Continuar» lleva al tablero
     // (seguís en la bodega), y de él se sale con su botón, al pueblo. Sin tocar ninguna pestaña.
@@ -681,7 +685,7 @@ try {
     const townPlaces = await page.evaluate(() => [...document.querySelectorAll('#game-shell .gs-town-place')].map(c => c.getAttribute('data-place')));
     // El gremio va primero desde el 2026-09-29: es a lo que se viene.
     check('fuera del tablero, la pantalla es el pueblo: el gremio, la herrería, la taberna, la tienda y la capilla (J3.11)',
-        townShown && JSON.stringify(townPlaces) === JSON.stringify(['gremio', 'herreria', 'posada', 'tienda', 'templo']), JSON.stringify(townPlaces));
+        townShown && JSON.stringify(townPlaces) === JSON.stringify(['gremio', 'herreria', 'posada', 'tienda', 'templo', 'muelle']), JSON.stringify(townPlaces));
     if (SHOT) await page.screenshot({ path: `${SHOT}.pueblo.png` });
     /** Lo que se ve dentro de un sitio del pueblo. */
     const placeScene = () => page.evaluate(() => {
@@ -735,7 +739,7 @@ try {
     let inPlace = await placeScene();
     await until(async () => /ramiro\.png$/.test((inPlace = await placeScene()).face), 8000);
     check('en la herrería, Ramiro con su retrato, su saludo y lo que se hace allí (J3.11)',
-        inPlace.place === 'herreria' && inPlace.plate === 'Ramiro' && /retratos\/gremio\/ramiro\.png$/.test(inPlace.face) && /^Buen/.test(inPlace.line)
+        inPlace.place === 'herreria' && inPlace.plate === 'Ramiro' && /retratos\/gremio\/ramiro\.png$/.test(inPlace.face) && /^(Buen|Ramiro\b)/.test(inPlace.line)
         && inPlace.acts.some(a => /Hablar con Ramiro/.test(a)) && inPlace.acts.some(a => /capa/i.test(a)), JSON.stringify(inPlace));
     if (SHOT) await page.screenshot({ path: `${SHOT}.herreria.png` });
     await page.locator('#game-shell .gs-town-back').click({ timeout: 5000 }).catch(() => {});
@@ -785,6 +789,8 @@ try {
     const gold = now.party[0].gold;
     const hubWorld = now.world;
     const hubChat = now.chat;
+    // H16 (tanda 22): el día del gremio al salir, para ver que al volver han pasado los de fuera.
+    const guildDayOut = await page.evaluate(() => Number(window.SillyTavern.getContext().chatMetadata?.calendar?.day) || 1);
 
     // 5. El tablón: Strahd.
     await page.waitForTimeout(500);
@@ -940,7 +946,7 @@ try {
     check('la primera escena de Strahd se cuenta', scene);
     const inStrahdScene = await stCharacterUi();
     check('y en Strahd, que tiene su propio narrador, tampoco se ve su ficha (J0.3)', inStrahdScene.length === 0, JSON.stringify(inStrahdScene));
-    check('antes, el viaje: de Puerto Alba a Strahd, nueve días (J4.9)', await chatHas(/Salís de Puerto Alba hacia La Maldición de Strahd\..*Nueve días de camino/));
+    check('antes, el viaje: de Puerto Alba a Strahd, nueve días (J4.9)', await chatHas(/Salís de Puerto Alba hacia (La Maldición de Strahd|Barovia)\..*Nueve días de camino/));
     const campaignChips = await chips();
     check('en la campaña se ofrece volver al gremio', campaignChips.some(c => /Volver al gremio/.test(c)), JSON.stringify(campaignChips));
     // J18.7 a J18.10: una campaña del gremio también es sin conexión: se empieza leyendo, sin caja
@@ -993,7 +999,8 @@ try {
     await winFight();
     const mansion = await until(() => chatHas(/asedian la mansión del burgomaestre/), 15000);
     check('ganar la Taberna abre el hilo: el asedio de la mansión', mansion);
-    await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/leave'));
+    // Sin tablero, «/leave» se iría de la Aldea: solo si aún se está en el de la Taberna.
+    if ((await state()).board) await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/leave'));
     await page.waitForTimeout(800);
     // D-J62: sin «Entrar en…» en la fila; lo que pide la historia lleva a la Mansión y al Sótano.
     await alSitio(page);
@@ -1007,8 +1014,10 @@ try {
     if (SHOT) await page.screenshot({ path: `${SHOT}.mansion.png` });
 
     // La palanca del Sótano abre la celda y despierta al engendro. Antes la reja se abría y
-    // la sala seguía a oscuras, con él dormido para siempre.
-    await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/leave'));
+    // la sala seguía a oscuras, con él dormido para siempre. La Mansión no se juega aquí: su ventana
+    // de pelear o no (los zombis os ven al entrar) se cierra, y se sale de su tablero.
+    await page.evaluate(() => document.querySelectorAll('dialog.ev-avoid[open]').forEach(d => /** @type {any} */ (d).close()));
+    if ((await state()).board) await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/leave'));
     await page.waitForTimeout(700);
     await pasoDeLaHistoria(page, /^story:board:Sótano de la Iglesia$/);
     await page.waitForTimeout(1200);
@@ -1065,12 +1074,17 @@ try {
     check('cambiar de campaña no pide recargar la página', !rulesToast);
 
     // 6. Volver al gremio.
-    await clickChip(/Volver al gremio/);
+    // En la fila o, con el modo guiado, también en la plaza.
+    if (!(await clickChip(/Volver al gremio/))) await volverAlGremio(page);
     const home = await until(async () => (await state()).world === hubWorld, 60000);
     await page.waitForTimeout(1000);
     now = await state();
     check('se vuelve al gremio, a su chat, con el grupo entero', home && now.chat === hubChat && now.party.length === 2 && now.party.every(m => m.world === hubWorld), JSON.stringify(now));
     check('y la vuelta se cuenta (J4.9)', await until(() => chatHas(/Nueve días de camino después, volvéis a Puerto Alba/), 10000));
+    // H16 (tanda 22): en el gremio han pasado los días de fuera: lo vivido en Strahd y el viaje (nueve de ida y nueve de vuelta).
+    const guildDayBack = await page.evaluate(() => Number(window.SillyTavern.getContext().chatMetadata?.calendar?.day) || 1);
+    check('H16: al volver, el reloj del gremio ha pasado los días del viaje (al menos 18) y los vividos en Strahd',
+        guildDayBack >= guildDayOut + 18, JSON.stringify({ guildDayOut, guildDayBack }));
 
     // 7. Y se sigue la campaña donde se dejó.
     await enElGremio(page, 'hub-board');
@@ -1149,11 +1163,17 @@ try {
         JSON.stringify(ending.numbers));
     const endingTitle = ending.title.replace(/^Final: /, '');
     check('al ganar en la cripta sale el final: su título, lo que pasó, qué fue de la gente y de Gerd, y lo que se lleva cada uno, frente a cómo empezó (J4.5)',
-        endShown && /^Final: (Barovia, libre|La orden descansa|La caravana se va)$/.test(ending.title) && /Strahd cae/.test(ending.scene)
+        endShown && /^Final: (Barovia, libre|La orden descansa|La caravana se va)$/.test(ending.title) && /Strahd cae|Ya no se levanta/.test(ending.scene)
         && ending.people.length >= 3 && ending.companions.length === 1 && /gremio/.test(ending.companions[0]) && started.includes('Tessa')
         && ending.take.length === 2 && /^Tessa: nivel \d+/.test(ending.take[0]) && /de experiencia/.test(ending.take[0]) && /^Gerd el Mellado: /.test(ending.take[1])
         && ending.home === 1, JSON.stringify({ ending, started }));
-    check('con la campaña terminada, la fila ofrece volver a ver el final (J4.5)', (await chips()).some(c => /El final/.test(c)), JSON.stringify(await chips()));
+    // La fila se redibuja al cerrarse la pelea de la cripta: se espera a ella. Tanda 22 (D-J60): el
+    // final lo cuenta alguien en la caja (Ireena, Van Richten o Madam Eva): primero se lee, con
+    // «Continuar», y al seguir se vuelve al tablero de la cripta; la ficha sale en la fila del
+    // pueblo. Vale si la fila la enseña o si la ofrece para cuando se salga del tablero.
+    const endChip = await until(async () => (await chips()).some(c => /El final/.test(c))
+        || page.evaluate(async () => (await import('/scripts/party/hub.js')).hubChips().some((/** @type {any} */ c) => c.id === 'hub-ending')), 8000);
+    check('con la campaña terminada, la fila ofrece volver a ver el final (J4.5)', endChip, JSON.stringify(await chips()));
     if (SHOT) await page.screenshot({ path: `${SHOT}.final.png` });
     await page.evaluate(() => document.querySelectorAll('#toast-container .toast').forEach(t => t.remove()));
     await page.locator('.popup:visible .end-home').click({ timeout: 5000 }).catch(() => {});
@@ -1168,6 +1188,10 @@ try {
         homeAgain && now.chat === hubChat && now.party.length === 2 && homecoming && roads === 2,
         JSON.stringify({ now, homecoming, roads }));
     await clearDice();
+    // J3.7: la primera vez que se entra en la sala tras terminar Strahd, cuenta arriba que el gremio
+    // sube de rango. D-J62: el tablón está dentro de la sala, así que se mira ya al entrar.
+    await entrarEnSitio(page, 'gremio');
+    const rankNews = await until(() => page.evaluate(() => /El gremio sube a rango C/.test(document.querySelector('#game-shell .gs-town-hall-news')?.textContent || '')), 10000);
     await enElGremio(page, 'hub-board');
     await page.waitForSelector('.hb-root [data-campaign="strahd"]', { timeout: 15000 }).catch(() => {});
     const finished = await page.evaluate(() => (document.querySelector('.hb-root [data-campaign="strahd"]')?.textContent || '').replace(/\s+/g, ' '));
@@ -1188,7 +1212,7 @@ try {
     await carryOn('exploration');
     await page.locator('#game-shell .gs-town-back').click({ timeout: 2000 }).catch(() => {});
     await page.locator('#game-shell .gs-town-place[data-place="gremio"]').click({ timeout: 5000 }).catch(() => {});
-    const rankNews = await until(() => page.evaluate(() => /El gremio sube a rango C/.test(document.querySelector('#game-shell .gs-town-hall-news')?.textContent || '')), 10000);
+    await until(() => page.evaluate(() => Boolean(document.querySelector('#game-shell .gs-town-hall-rank'))), 8000);
     const rankLine = await page.evaluate(() => (document.querySelector('#game-shell .gs-town-hall-rank')?.textContent || '').trim());
     check('J3.7: terminar Strahd sube el gremio a rango C, y la sala lo cuenta arriba', rankNews && /^Rango C /.test(rankLine), rankLine);
     if (SHOT) await page.screenshot({ path: `${SHOT}.rango.png` });

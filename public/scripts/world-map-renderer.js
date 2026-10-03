@@ -23,7 +23,7 @@ import { motionMs } from './game-engine/ui/motion.js';
 import { planSlide, slideFrames, slideLeft } from './game-engine/ui/combat-vtt/token-slide.js';
 import { tokenLabel } from './game-engine/ui/combat-vtt/token-label.js';
 import { announceTurn, forgetTurn } from './game-engine/ui/combat-vtt/turn-banner.js';
-import { downMarkNode, isDownToken } from './game-engine/ui/combat-vtt/impact.js';
+import { deathSavesNode, downMarkNode, isDownToken } from './game-engine/ui/combat-vtt/impact.js';
 
 /** Si cada casilla en pixel carga: la que no, se pinta con los colores de antes. */
 const tileLoads = new Map();
@@ -573,6 +573,7 @@ export function renderWorldMapView(target, worldMapUrl, locationMaps, callbacks 
  * @property {boolean} [isSummon] - J19.5: una invocación, del lado del grupo.
  * @property {string} [summoner] - Quién la invocó, para su ayuda.
  * @property {boolean} [boss] - Un jefe: lleva su corona y un cerco que se ve desde lejos.
+ * @property {{successes?: number, failures?: number, stable?: boolean}} [deathSaves] - Tanda 22: las salvaciones de muerte de uno de los tuyos en el suelo.
  */
 
 /**
@@ -1750,6 +1751,8 @@ export function renderLocationView(target, options) {
                 el.addClass('wm-token-down').attr('data-down', team);
                 el.append(downMarkNode(document, team));
                 el.find('.wm-token-tooltip-meta').text(token.isEnemy ? 'Derrotado' : 'En el suelo, inconsciente');
+                // Tanda 22: uno de los tuyos, con sus salvaciones de muerte en puntos debajo.
+                if (!token.isEnemy && !token.isSummon) el.append($(deathSavesNode(document, token.deathSaves, { word: '' })).addClass('wm-token-death'));
             }
 
             // Tanda 10: tu ficha enseña hasta dónde llega al pasar el ratón por encima, sin pulsar.

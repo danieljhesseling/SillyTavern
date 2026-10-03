@@ -29,6 +29,7 @@ import { createRequire } from 'node:module';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { enElGremio, salirDelTablero, volverAlGremio } from './e2e-guiado.mjs';
 
 const ROOT = new URL('..', import.meta.url).pathname.replace(/^[/]([A-Za-z]:)/, '$1');
 const argAfter = (/** @type {string} */ flag) => (process.argv.includes(flag) ? process.argv[process.argv.indexOf(flag) + 1] : '');
@@ -134,7 +135,6 @@ try {
         const saved = data?.metadata?.hubState ?? null;
         return saved ? { rev: Number(saved.rev) || 0, renown: Number(saved.keys?.guild?.renown) || 0, chest: Number(saved.keys?.guild?.gold) || 0, folded: saved.folded ?? [] } : null;
     }, hubWorld);
-    const chips = () => page.evaluate(() => [...document.querySelectorAll('#game-shell .gs-chip-action')].map(c => (c.textContent || '').trim()));
     const clickChip = (/** @type {RegExp} */ pattern) => page.evaluate((source) => {
         const chip = [...document.querySelectorAll('#game-shell .gs-chip-action')].find(b => new RegExp(source).test(b.textContent || ''));
         if (chip instanceof HTMLElement) chip.click();
@@ -271,7 +271,7 @@ try {
         await dropToasts();
         await clearDice();
         await carryOn('exploration');
-        if (!(await clickChip(/Volver al gremio/))) {
+        if (!(await clickChip(/Volver al gremio/)) && !(await volverAlGremio(page))) {
             await clickChip(/\+\d+ más$/);
             await page.locator('.popup[open] .hp-item').filter({ hasText: /Volver al gremio/ }).first().click({ timeout: 5000 }).catch(() => {});
         }
@@ -305,11 +305,12 @@ try {
     await until(async () => /Gremio/.test((await state()).world) && (await state()).party[0]?.name === 'Iria', 60000);
     await until(() => chatHas(/Al ladrón/), 20000);
     await page.waitForTimeout(800);
-    await until(async () => (await chips()).some(c => /^Saltar la prueba$/.test(c)), 15000);
-    await clickChip(/^Saltar la prueba$/);
+    // D-J62: «Saltar la prueba» está en la Casa del Gremio, fuera del tablero del muelle.
+    await salirDelTablero(page);
+    await until(() => enElGremio(page, 'hub-skip'), 15000);
     await page.waitForSelector('.popup:has-text("¿Saltar la prueba?")', { timeout: 10000 }).catch(() => {});
     await page.locator('.popup-button-ok:visible').first().click({ timeout: 5000 }).catch(() => {});
-    await until(() => chatHas(/apunta tu nombre en el libro del gremio/), 15000);
+    await until(() => chatHas(/apunta tu nombre en el libro del gremio|Te saltas «|Ya subes|tengo el libro abierto/), 15000);
     await page.waitForTimeout(1000);
     await clearDice();
     await carryOn('exploration');

@@ -63,7 +63,7 @@ import {
 } from './time.js';
 import { noteDeed, worldWrite, refreshWorldMemoryPrompt } from './world-growth.js';
 import {
-    whoPlays, postCombatNarration, tellMoment, postForModel, showTip, noteRollInWindow, storyWindowsOn, narratorMode,
+    whoPlays, postCombatNarration, tellMoment, postForModel, showTip, noteRollInWindow, storyWindowsOn, narratorMode, offlineGame,
 } from './narration.js';
 import { partyPurse, payFromParty, savePartyState } from './roster.js';
 import { judgeDecision } from './companions.js';
@@ -147,7 +147,11 @@ export function notePlot(event) {
     if (step.opened.length === 0 && step.done.length === 0 && step.missed.length === 0 && step.clues.length === 0) return;
     chat_metadata[PLOT_STATE_KEY] = step.state;
     saveMetadata();
-    void applyPlotStep(step);
+    // Tanda 22: la pantalla de victoria espera a que este paso ponga sus escenas en cola (revelar
+    // sitios va antes y tarda): si no, salía con «Registrar la sala» y la escena esperando detrás.
+    let queued = () => {};
+    stepsQueuing = Promise.all([stepsQueuing, new Promise(resolve => { queued = () => resolve(undefined); })]).then(() => undefined);
+    void applyPlotStep(step, '', queued).finally(queued);
     // J2.2: la primera vez que el hilo se mueve, el Diario importa: ahí queda apuntado.
     showTip('journal');
     // Ideas 115 y 143: si cambia el acto, se resume el anterior; y el villano asoma cuando toca.
@@ -222,6 +226,19 @@ function showVillain(plot) {
     saveMetadata();
 }
 
+/** Tanda 22: los pasos del hilo que aún no han puesto sus escenas en cola. */
+let stepsQueuing = Promise.resolve();
+
+/**
+ * Tanda 22: cuando los pasos del hilo ya apuntados han puesto sus escenas en cola (la pantalla de
+ * victoria lo espera para saber si toca «Seguir con la historia»).
+ *
+ * @returns {Promise<void>}
+ */
+export function plotScenesQueued() {
+    return stepsQueuing;
+}
+
 /**
  * Aplicar un paso del hilo: revelar sitios, mover reputaciones y contarlo.
  *
@@ -229,9 +246,11 @@ function showVillain(plot) {
  * de no inventar: la trama es del mundo, no del modelo.
  *
  * @param {import('../game-engine/campaign/plot.js').PlotStep} step
+ * @param {string} [heroNote]
+ * @param {() => void} [onQueued] Tanda 22: en cuanto sus escenas están en cola.
  * @returns {Promise<void>}
  */
-async function applyPlotStep(step, heroNote = '') {
+async function applyPlotStep(step, heroNote = '', onQueued = () => {}) {
     if (step.changes.reveal.length > 0) await revealLocations(step.changes.reveal);
     for (const [faction, amount] of Object.entries(step.changes.standing)) {
         void shiftFactionStanding(faction, amount);
@@ -243,6 +262,7 @@ async function applyPlotStep(step, heroNote = '') {
     const scenes = storyWindowsOn() ? stepScenes(step, sceneInput()) : [];
     const inWindow = new Set(scenes.map(entry => String(entry.milestone?.id)));
     queuePlotScenes(scenes);
+    onQueued();
 
     /** @type {string[]} */
     const lines = [];
@@ -305,7 +325,11 @@ async function applyPlotStep(step, heroNote = '') {
         const ending = getPlot()?.endings?.[endingId];
         chat_metadata.plotEnding = endingId;
         saveMetadata();
-        if (ending?.scene) lines.push(ending.scene);
+        // Tanda 22 (D-J60): sin conexión, el final lo cuenta quien está allí (`who`), en la caja.
+        if (ending?.scene && ending.who && offlineGame()) {
+            void postForModel(`[HILO] ${ending.scene}`, { show: ending.scene, speaker: ending.who })
+                .catch(error => console.error('[party] ending line failed', error));
+        } else if (ending?.scene) lines.push(ending.scene);
         noteDeed(`Final: ${ending?.title || endingId}.`);
         toastr.success(ending?.title || endingId, 'Final', { timeOut: 15000 });
         // J3.9: la campaña terminada entra en el salón de la fama.

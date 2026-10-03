@@ -73,6 +73,7 @@ function slug(value) {
  * @property {string} name
  * @property {string} text
  * @property {any[]} options En la forma de las opciones de un suceso.
+ * @property {string} [who] Tanda 22 (D-J60): quién vuelve; lo que pasa al elegir lo dice él.
  */
 
 /**
@@ -88,7 +89,9 @@ export function readLater(option) {
     const on = /** @type {'siempre'|'bien'|'mal'} */ (LATER_ON.includes(text(raw.on ?? raw.si)) ? text(raw.on ?? raw.si) : 'siempre');
     const suceso = text(raw.suceso);
     const options = (Array.isArray(raw.options) ? raw.options : []).filter(o => isObject(o) && text(o.label));
-    const card = { name: text(raw.name), text: text(raw.text), options };
+    // Tanda 22 (D-J60): quién vuelve; lo que pasa al elegir lo dice él.
+    const who = text(raw.who);
+    const card = { name: text(raw.name), text: text(raw.text), options, ...(who ? { who } : {}) };
     if (!suceso && (!card.name || !card.text || options.length === 0)) return null;
     return { days, on, suceso, ...card };
 }
@@ -160,6 +163,7 @@ function laterRow(id, later) {
         text: later.text,
         options: later.options,
         kind: 'suceso',
+        ...(later.who ? { who: later.who } : {}),
     };
 }
 

@@ -32,6 +32,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { entrarEnLaPelea } from './e2e-entrar-pelea.mjs';
+import { enElGremio, pasoDeLaHistoria, salirDelTablero } from './e2e-guiado.mjs';
 
 const ROOT = new URL('..', import.meta.url).pathname.replace(/^[/]([A-Za-z]:)/, '$1');
 const argAfter = (/** @type {string} */ flag) => (process.argv.includes(flag) ? process.argv[process.argv.indexOf(flag) + 1] : '');
@@ -120,7 +121,6 @@ try {
             party: party.length,
         };
     });
-    const chips = () => page.evaluate(() => [...document.querySelectorAll('#game-shell .gs-chip-action')].map(c => (c.textContent || '').trim()));
     const clickChip = (/** @type {RegExp} */ pattern) => page.evaluate((source) => {
         const chip = [...document.querySelectorAll('#game-shell .gs-chip-action')].find(b => new RegExp(source).test(b.textContent || ''));
         if (chip instanceof window.HTMLElement) chip.click();
@@ -411,8 +411,9 @@ try {
     // «Saltar la prueba»: la escena del tablón ya no es un párrafo del narrador; la dice Brunilda.
     await dropToasts();
     await carryOn('exploration');
-    await until(async () => (await chips()).some(c => /^Saltar la prueba$/.test(c)), 15000);
-    await clickChip(/^Saltar la prueba$/);
+    // D-J62: «Saltar la prueba» está en la Casa del Gremio, fuera del tablero del muelle.
+    await salirDelTablero(page);
+    await until(() => enElGremio(page, 'hub-skip'), 15000);
     await page.waitForSelector('.popup:has-text("¿Saltar la prueba?")', { timeout: 10000 }).catch(() => {});
     await page.locator('.popup-button-ok:visible').first().click({ timeout: 5000 }).catch(() => {});
     await until(async () => (await state()).done.includes('la-prueba'), 20000);
@@ -434,7 +435,7 @@ try {
     });
     await enterPlace('gremio');
     await placeAct('hub-hire');
-    if (await page.locator('.hb-root [data-hireling]').count() === 0) await clickChip(/Contratar mercenarios/);
+    if (await page.locator('.hb-root [data-hireling]').count() === 0) await enElGremio(page, 'hub-hire');
     await page.waitForSelector('.hb-root [data-hireling]', { timeout: 15000 }).catch(() => {});
     await page.locator('.hb-root [data-hireling]').first().click({ timeout: 5000 }).catch(() => {});
     const hired = await until(async () => (await state()).party >= 2, 10000);
@@ -491,7 +492,10 @@ try {
     await carryOn('exploration');
     await leavePlace();
     if (errandPlace) {
-        await page.locator('#game-shell .gs-place', { hasText: errandPlace }).first().click({ timeout: 8000 }).catch(() => {});
+        // D-J62: con el modo guiado no hay columna «Viajar»: «Ir a…» el sitio del encargo, en lo que pide la historia.
+        if (!(await page.locator('#game-shell .gs-place', { hasText: errandPlace }).first().click({ timeout: 4000 }).then(() => true).catch(() => false))) {
+            if (!(await pasoDeLaHistoria(page, `story:go:${errandPlace}`, { ms: 4000 }))) await pasoDeLaHistoria(page, /^story:go:/);
+        }
         await page.waitForSelector('.popup:visible .tr-pace-normal', { timeout: 8000 }).catch(() => {});
         await page.locator('.popup:visible .tr-pace-normal').click({ timeout: 5000 }).catch(() => {});
         for (let i = 0; i < 20; i++) {
@@ -519,7 +523,8 @@ try {
      */
     const startCampaign = async (id, first) => {
         await clearPopups();
-        for (let i = 0; i < 4 && !(await chips()).some(c => /Tablón de campañas/.test(c)); i++) {
+        // D-J62: el tablón ya no va en la fila (está en la Casa del Gremio): se mira que se esté en el gremio.
+        for (let i = 0; i < 4 && !(/Gremio/.test((await state()).world) && (await state()).place === 'Puerto Alba'); i++) {
             // Desde una campaña, «Volver al gremio» está en la caja: antes de «Continuar», que lleva al tablero.
             if (await clickChip(/Volver al gremio/)) {
                 await page.waitForTimeout(1500);
@@ -532,7 +537,9 @@ try {
                 // Al gremio a pie, desde el sitio del encargo.
                 await carryOn('exploration');
                 await leavePlace();
-                await page.locator('#game-shell .gs-place', { hasText: 'Puerto Alba' }).first().click({ timeout: 5000 }).catch(() => {});
+                if (!(await page.locator('#game-shell .gs-place', { hasText: 'Puerto Alba' }).first().click({ timeout: 4000 }).then(() => true).catch(() => false))) {
+                    await pasoDeLaHistoria(page, 'story:go:Puerto Alba', { ms: 4000 });
+                }
                 await page.locator('.popup:visible .tr-pace-normal').click({ timeout: 5000 }).catch(() => {});
                 await page.waitForTimeout(3000);
                 await clearPopups();
@@ -542,7 +549,7 @@ try {
                 await carryOn('exploration');
             }
         }
-        await clickChip(/Tablón de campañas/);
+        await enElGremio(page, 'hub-board');
         await page.waitForSelector(`.hb-root [data-campaign="${id}"]`, { timeout: 15000 }).catch(() => {});
         await page.locator(`.hb-root [data-campaign="${id}"]`).first().click({ timeout: 5000 }).catch(() => {});
         await page.waitForTimeout(1200);

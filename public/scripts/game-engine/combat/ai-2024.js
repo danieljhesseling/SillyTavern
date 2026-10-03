@@ -202,6 +202,31 @@ export function enemySaveDC(enemy, using = 'best') {
 }
 
 /**
+ * Lo que suma un enemigo al atacar, como en un bloque de 5e: su mejor característica de pegar
+ * y su competencia por desafío (tanda 22: antes solo la característica). La rabia, el líder y
+ * el ajuste al nivel del grupo los suma quien llama.
+ *
+ * @param {{strength?: number, dexterity?: number, cr?: number}} enemy
+ * @returns {number}
+ */
+export function enemyAttackBonus(enemy) {
+    return Math.max(mod(enemy?.strength), mod(enemy?.dexterity)) + proficiencyFromCr(Number(enemy?.cr) || 0);
+}
+
+/**
+ * Si entra el golpe de un enemigo: un 20 natural siempre; un 1 natural nunca (tanda 22, como
+ * los del grupo); si no, el total contra la CA.
+ *
+ * @param {{natural: number, total: number, ac: number}} roll
+ * @returns {boolean}
+ */
+export function enemyAttackHits({ natural, total, ac }) {
+    if (natural === 20) return true;
+    if (natural === 1) return false;
+    return total >= ac;
+}
+
+/**
  * La probabilidad de fallar una salvación de d20 + `modifier` contra `dc` (el empate salva).
  *
  * @param {number} dc

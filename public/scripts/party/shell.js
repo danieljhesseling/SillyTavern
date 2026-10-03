@@ -26,6 +26,7 @@ import { SKILLS, checkOptions } from '../game-engine/rules/checks.js';
 import { fortuneLine } from '../game-engine/world/fortune.js';
 import { pendingByPlace } from '../game-engine/campaign/guidance.js';
 import { addNotice, unseenCount, MAX_VISIBLE_TOASTS } from '../game-engine/ui/shell/notices.js';
+import { centerCardUp, heldTimeout, holdNotice, installNoticeHold, noticeWaits, waitingOptions } from '../game-engine/ui/shell/notice-hold.js';
 import { readRequests } from '../game-engine/campaign/check-requests.js';
 import { enterScene } from '../game-engine/campaign/session-log.js';
 import { focusOf, readPlotState } from '../game-engine/campaign/plot.js';
@@ -140,10 +141,15 @@ function installNoticeTray() {
     const t = /** @type {any} */ (toastr);
     if (t.gameTrayInstalled) return;
     t.gameTrayInstalled = true;
+    // H18 (tanda 22): con la tarjeta de victoria, del final o del Salón de la fama delante, los
+    // avisos esperan a que se cierre (`notice-hold.js`).
+    installNoticeHold(t, isShellOpen);
     for (const kind of ['info', 'success', 'warning', 'error']) {
         const original = t[kind].bind(t);
         t[kind] = (/** @type {any} */ message, /** @type {any} */ title, /** @type {any} */ opts) => {
-            const shown = original(message, title, opts);
+            const waits = noticeWaits({ kind, shellOpen: isShellOpen(), cardUp: centerCardUp() });
+            const shown = original(message, title, waits ? waitingOptions(opts) : opts);
+            if (waits) holdNotice(shown, heldTimeout(opts, t.options));
             if (isShellOpen()) {
                 notices = addNotice(notices, { kind, title: String(title ?? ''), message: String(message ?? ''), at: Date.now() });
                 trimToasts();
@@ -157,7 +163,9 @@ function installNoticeTray() {
 
 /** Dejar a la vista solo los tres ultimos avisos. */
 function trimToasts() {
-    const shown = $('#toast-container .toast');
+    // H18: los que esperan a la tarjeta del centro no cuentan (no se ven) y no se quitan; la charla
+    // de después de pelear («Escuchar») tampoco: es una pregunta, no un aviso.
+    const shown = $('#toast-container .toast').not('.gs-toast-held').not(':has(.gs-talk-listen)');
     if (shown.length <= MAX_VISIBLE_TOASTS) return;
     // toastr pone los nuevos arriba si no se dice lo contrario (su valor por defecto), y
     // `toastr.options` de SillyTavern no lo dice: leerlo como `false` quitaba los MÁS NUEVOS
@@ -317,7 +325,9 @@ export function buildShellChips(limit = undefined) {
     return buildActionChips({
         fighting: combatEncounter.active,
         hasBoard: Boolean(currentBoardName),
-        doors: closedDoorsNearParty(),
+        // H17 (tanda 22): con la pelea de la entrada a punto de salir (os han visto), las puertas
+        // esperan: abrir la del fondo antes empezaba otra pelea sin los que ya se veían.
+        doors: fightWaitingHere() ? [] : closedDoorsNearParty(),
         // Con los muertos no se habla (idea 36).
         // Con los compañeros: el primero es quien juega, y hablar consigo mismo no es hablar.
         companions: onBoard ? [] : partyMembers.slice(1).filter(m => !m.dead).map(m => ({ name: m.name })),

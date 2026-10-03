@@ -17,10 +17,11 @@ describe('J5.9: la simulación rápida de peleas', () => {
         expect(simParty(1, 6)).toHaveLength(6);
     });
 
-    test('los enemigos pegan como en el juego: +0 y el daño de su desafío; el jefe, dos veces', () => {
+    test('los enemigos pegan como en el juego: su competencia y el daño de su desafío; el jefe, dos veces', () => {
         const { foes, unknown } = simEnemies([{ name: 'Lobo' }, { name: 'Dragón' }, { name: 'Nadie' }], bestiary);
-        expect(foes[0]).toMatchObject({ attack: 0, damage: '1d6', attacks: 1, maxHp: 11, ac: 13 });
-        expect(foes[1]).toMatchObject({ damage: '2d8', attacks: 2, boss: true });
+        // Tanda 22: +0 de característica y +2 de competencia (desafío 1/4); el dragón (10), +4.
+        expect(foes[0]).toMatchObject({ attack: 2, damage: '1d6', attacks: 1, maxHp: 11, ac: 13 });
+        expect(foes[1]).toMatchObject({ attack: 4, damage: '2d8', attacks: 2, boss: true });
         expect(unknown).toEqual(['Nadie']);
         expect(enemyDamageFormula(11)).toBe('3d8');
     });

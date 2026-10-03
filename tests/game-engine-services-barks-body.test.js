@@ -1,5 +1,6 @@
 import { describe, test, expect } from '@jest/globals';
 import { servicesOf, serviceActions, SERVICES_BY_TYPE, INN_PRICES } from '../public/scripts/game-engine/campaign/services.js';
+import { DIRECT_SOCIAL_BUTTONS } from '../public/scripts/game-engine/campaign/invitations.js';
 import { chooseBark, BARKS, CHANCE } from '../public/scripts/game-engine/combat/barks.js';
 import { bodyOf, bodyLine } from '../public/scripts/game-engine/campaign/body.js';
 
@@ -21,12 +22,13 @@ describe('los servicios de un sitio (L1)', () => {
 describe('lo que se hace en cada uno (L3 y compañía)', () => {
     const base = { location: { services: ['posada', 'herreria', 'templo', 'tablon'] }, purse: 100, partySize: 2 };
 
-    test('la posada: dormir, comer, rondas, rumores y quien atiende, con el precio dicho', () => {
+    test('la posada: dormir, comer, rumores y quien atiende, con el precio dicho', () => {
         const cards = serviceActions({ ...base, companions: [{ id: '7', name: 'Bruna' }], rumors: 2, innkeeper: 'Giles' });
         const inn = cards.find(c => c.id === 'posada');
-        expect(inn?.actions.map(a => a.id)).toEqual(['inn-common', 'inn-room', 'inn-meal', 'inn-round:7', 'inn-rumor', 'inn-talk']);
+        // Tanda 22 (D-J63): «Invitar a una ronda a X» se esconde con los botones directos de tu gente.
+        expect(DIRECT_SOCIAL_BUTTONS).toBe(false);
+        expect(inn?.actions.map(a => a.id)).toEqual(['inn-common', 'inn-room', 'inn-meal', 'inn-rumor', 'inn-talk']);
         expect(inn?.actions.find(a => a.id === 'inn-room')?.cost).toBe(INN_PRICES.room * 2);
-        expect(inn?.actions.find(a => a.id === 'inn-round:7')?.target).toBe('7');
     });
 
     test('sin oro, se dice por qué no', () => {

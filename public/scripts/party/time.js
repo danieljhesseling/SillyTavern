@@ -35,7 +35,7 @@ import { withJob } from '../game-engine/campaign/company.js';
 import { addScar } from '../game-engine/campaign/feats.js';
 import { upkeepWithBuildings, settleLoyalty, trainingFor } from '../game-engine/campaign/guild.js';
 import { describeMode } from '../game-engine/rules/companions.js';
-import { getBondProgress } from '../game-engine/campaign/bonds.js';
+import { getBondProgress, resetDailyPerks } from '../game-engine/campaign/bonds.js';
 import { spend, noteSpent } from '../game-engine/campaign/day-parts.js';
 import { SOCIAL_KEY } from '../game-engine/campaign/social.js';
 import { recoverSlots } from '../game-engine/rules/spell-slots.js';
@@ -733,6 +733,42 @@ export function advanceCampaignDay() {
     const result = campaign.advanceDay();
     if (isShellOpen()) refreshGameShell();
     return result;
+}
+
+/**
+ * H16: al volver al gremio desde una campaña, pasan en él los días de fuera (`homecomingDays`:
+ * lo vivido allí y el viaje de ida y vuelta). El reloj del gremio salta a la mañana del día de
+ * hoy; quien esperaba en casa descansa esos días (D-J12), vuelven los despachos, vence lo del
+ * tablón y el hilo del gremio se entera del día.
+ *
+ * Lo del grupo no se repite: esos días los vivió fuera, con su hambre, sus heridas y sus cuentas.
+ * Solo el viaje de vuelta cuenta para sus heridas, como cualquier camino. Las semanas de fuera no
+ * se cobran aquí (ya se pagó allí): la cuenta del gremio sigue desde hoy.
+ *
+ * @param {number} days
+ * @param {{back?: number}} [input] `back`: los días del viaje de vuelta.
+ * @returns {number} El día del gremio al llegar.
+ */
+export function passGuildDays(days, { back = 0 } = {}) {
+    const passed = Math.max(0, Math.floor(Number(days) || 0));
+    const before = campaign.getCalendar();
+    if (!chat_metadata || passed <= 0) return before.day;
+    const calendar = { ...before, day: before.day + passed, slotIndex: 0 };
+    campaign.save(calendar, resetDailyPerks(campaign.getBonds()));
+    healBench(passed);
+    const road = Math.max(0, Math.floor(Number(back) || 0));
+    if (road > 0) healByDays(road);
+    notePlot({ kind: 'day', day: calendar.day });
+    returnDispatches(calendar.day);
+    expireBoard(calendar.day);
+    const due = Number(chat_metadata[BILL_DUE_KEY]) || 0;
+    if (due > 0 && due <= calendar.day) {
+        chat_metadata[BILL_DUE_KEY] = weeksDue(calendar.day, due, Math.max(1, Number(currentUpkeepRules().weekLength) || 7)).nextDue;
+    }
+    saveMetadata();
+    renderCampaignTab();
+    if (isShellOpen()) refreshGameShell();
+    return calendar.day;
 }
 
 /**

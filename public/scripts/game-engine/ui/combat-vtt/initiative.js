@@ -12,6 +12,7 @@
  */
 
 import { tokenLabel } from './token-label.js';
+import { deathSavesNode } from './impact.js';
 
 /**
  * @typedef {import('../../combat/initiative-tracker.js').TrackerEntry} TrackerEntry
@@ -103,6 +104,8 @@ export function buildInitiative({
         row.classList.toggle('enemy', Boolean(entry.isEnemy));
         row.classList.toggle('defeated', Boolean(entry.defeated));
         row.classList.toggle('bloodied', Boolean(entry.bloodied));
+        // Tanda 22: uno de los tuyos en el suelo, tirando salvaciones (no muerto: sin calavera).
+        row.classList.toggle('dying', Boolean(entry.dying));
         row.dataset.entryId = String(entry.id);
         row.tabIndex = 0;
         row.setAttribute('role', 'button');
@@ -143,6 +146,8 @@ export function buildInitiative({
         }
         if (entry.maxHp > 0) nameLine.appendChild(el('span', 'wm-init-hp-text', `${entry.hp}/${entry.maxHp}`));
         body.appendChild(nameLine);
+        // Tanda 22: uno de los tuyos en el suelo, con sus salvaciones de muerte en puntos.
+        if (entry.dying) body.appendChild(deathSavesNode(document, entry.dying));
         // J20.2: a toques, los estados escritos (el CSS solo los enseña donde no hay ratón).
         if ((entry.statuses ?? []).length > 0) {
             body.appendChild(el('div', 'wm-init-status-text', entry.statuses.map(s => String(s.label)).join(' · ')));

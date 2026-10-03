@@ -115,7 +115,7 @@ encargo:
   cadena: { id: c-sauces, parte: 1, de: 3 }
   lo_pide: herminia
   acto: 1
-  recompensa: 20 sueldos y un saco de harina
+  recompensa: 20 monedas y un saco de harina
   giro: Los ladrones no son bandidos. Son de Los Brezales, la aldea que ardió, y el que los manda fue soldado de la torre.
   encuentro: enc-molino
 
@@ -129,7 +129,7 @@ encargo:
   donde: los-sauces
   acto: 1
   sin_pelear: true
-  recompensa: 25 sueldos
+  recompensa: 25 monedas
   giro: El recaudador de Brezo no viene a contar sacos. Viene a por el tercio escondido en el molino, porque alguien de la aldea se lo ha contado.
 
 encargo:
@@ -140,7 +140,7 @@ encargo:
   donde: tres-mojones
   acto: 1
   sin_pelear: true
-  recompensa: 15 sueldos y un afilado gratis
+  recompensa: 15 monedas y un afilado gratis
   giro: El dinero para los clavos lo mandó Oramar hace un año, y se quedó por el camino en la casa de préstamos de Fullero.
 
 encargo:
@@ -151,7 +151,7 @@ encargo:
   donde: la-calzada-rota
   acto: 1
   sin_pelear: true
-  recompensa: 15 sueldos
+  recompensa: 15 monedas
   giro: Las tres casas sí mandaron piedra para el terraplén. Toda esa piedra la compró el Cierzo para su empalizada.
 
 ### Acto 2
@@ -164,7 +164,7 @@ encargo:
   lo_pide: herminia
   faccion: { id: casa-oramar, en_contra: false }
   acto: 2
-  recompensa: 35 sueldos
+  recompensa: 35 monedas
   giro: Los que esperan en el tramo roto son más gente de Los Brezales, con hambre. El desertor que los manda sirvió con Ruy Zarzal.
   encuentro: enc-calzada-sal
 
@@ -177,7 +177,7 @@ encargo:
   donde: vadoancho
   acto: 2
   sin_pelear: true
-  recompensa: 20 sueldos
+  recompensa: 20 monedas
   giro: La sal que pasa sin peaje por la esclusa no se vende en Vadoancho. Va montaña arriba, para pagar a los trasgos de la mina del Grajo.
 
 encargo:
@@ -188,7 +188,7 @@ encargo:
   lo_pide: lupe
   faccion: { id: casa-oramar, en_contra: false }
   acto: 2
-  recompensa: 30 sueldos
+  recompensa: 30 monedas
   giro: El patrón de la esclusa lleva un salvoconducto firmado por la capitana de Oramar. Alguien en Oramar cobra por mirar a otro lado.
   encuentro: enc-esclusa
 
@@ -200,7 +200,7 @@ encargo:
   donde: vadoancho
   acto: 2
   sin_pelear: true
-  recompensa: 10 sueldos y la bendición del templo
+  recompensa: 10 monedas y la bendición del templo
   giro: El grano para los huérfanos ya está en Vadoancho, en los barcos de Oramar que no salen. Don Tristán lo suelta si se lo pide alguien que le caiga en gracia.
 
 encargo:
@@ -210,7 +210,7 @@ encargo:
   cadena: { id: c-robledal, parte: 1, de: 2 }
   lo_pide: elvira
   acto: 2
-  recompensa: 25 sueldos y un queso de oveja
+  recompensa: 25 monedas y un queso de oveja
   giro: Alguien deja carne en el robledal para que la manada baje. La carne lleva la marca gris del Cierzo.
   encuentro: enc-huargos
 
@@ -222,7 +222,7 @@ encargo:
   lo_pide: ordono
   faccion: { id: casa-brezo, en_contra: false }
   acto: 2
-  recompensa: 30 sueldos
+  recompensa: 30 monedas
   giro: Los desertores son la escuadra del sargento Zarzal. No huyeron por cobardes; se fueron la noche que ardió Los Brezales.
   encuentro: enc-desertores
 
@@ -234,7 +234,7 @@ encargo:
   verbo: limpiar
   lo_pide: maelis
   acto: 3
-  recompensa: 25 sueldos y un talismán de haya
+  recompensa: 25 monedas y un talismán de haya
   giro: El oso no baja por hambre. Lo han echado de su cueva unos hombres con botas de soldado que buscaban el comienzo de las Sendas.
   encuentro: enc-oso
 
@@ -244,7 +244,7 @@ encargo:
   verbo: aguantar
   lo_pide: nieves
   acto: 3
-  recompensa: 30 sueldos y cama gratis hasta el deshielo
+  recompensa: 30 monedas y cama gratis hasta el deshielo
   giro: Los huargos llevan collares grises. El Cierzo los suelta de noche para que las vanguardias de las casas no duerman.
   encuentro: enc-refugio
 
@@ -254,7 +254,7 @@ encargo:
   verbo: silenciar
   lo_pide: odon
   acto: 3
-  recompensa: 25 sueldos y hierbas de la ermita
+  recompensa: 25 monedas y hierbas de la ermita
   giro: El comprador que espera el cuerno es el capitán del Cierzo. Quiere tocarlo en la Atalaya para que los enanos crean que ha vuelto su thane.
   encuentro: enc-ermita
 
@@ -267,7 +267,7 @@ encargo:
   donde: ermita-del-collado
   acto: 3
   sin_pelear: true
-  recompensa: 20 sueldos y un lingote de Hondaroca
+  recompensa: 20 monedas y un lingote de Hondaroca
   giro: En los libros de la ermita hay una copia vieja de la Carta. Su cláusula catorce dice que si nadie enciende el fanal antes de la nieve, el paso queda abierto para todos. En la copia de Oramar, esa línea está raspada.
 
 encargo:
@@ -278,7 +278,7 @@ encargo:
   donde: refugio-de-la-cabra
   acto: 3
   sin_pelear: true
-  recompensa: 15 sueldos y una mula para el camino
+  recompensa: 15 monedas y una mula para el camino
   giro: El pagaré del Cierzo se cobra en Vadoancho, en la casa de Fullero. Pero Ramiro no quiere dinero. Quiere sus doce mulas, que están en el corral de la capitana de Oramar.
 
 ## Los rumores

@@ -134,7 +134,10 @@ describe('el panel: quién tira, contra cuánto y lo que cuesta', () => {
         expect(chips[0]).toMatchObject({ label: 'Hablar', check: 'Persuasión · CD 13', locked: '' });
         expect(chips[0].who).toMatch(/Mira/);
         expect(chips[1]).toMatchObject({ cost: 'Cuesta 20 de oro', locked: '', check: '' });
-        expect(chips[2].who).toMatch(/Mira, el más lento/);
+        // Mira es mujer: «la más lenta» (concuerda con quien tira).
+        expect(chips[2].who).toMatch(/Mira, la más lenta/);
+        const slowBran = avoidChips({ options, party: [{ ...bran, dexterity: 6, strength: 6 }, pip], gold: 25 });
+        expect(slowBran[2].who).toMatch(/Bran, el más lento/);
         expect(chips[2].win).toMatch(/sin ganar/);
         expect(chips[3].who).toMatch(/todo el grupo/);
     });
@@ -477,7 +480,9 @@ describe('J12.2: las peleas escritas de 1387, Strahd y el gremio', () => {
         const lie = resolveParley({ way: 'engañar', enemies: enemies(), party, gold: 20, parley, rollD20: dice(20) });
         expect(lie.ends).toBe('ended');
         expect(lie.effects).toContainEqual({ kind: 'grudge', who: 'Alguacil Torres' });
-        expect(lie.lines.at(-1)).toMatch(/el cuarto está vacío/);
+        // Tanda 22 (D-J60): lo que pasa lo dice Torres, con sus palabras, no un narrador.
+        expect(lie.lines.at(-1)).toMatch(/se ha esfumado/i);
+        expect(lie.voice).toEqual({ who: 'Alguacil Torres', text: lie.lines.at(-1) });
     });
 
     test('antes de pelear en la posada: hablar, pagar o saltar por la ventana, que sigue la historia', () => {

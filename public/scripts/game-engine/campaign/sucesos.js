@@ -205,7 +205,7 @@ export function optionView(option, { purse = 0, companion = false, skills = {} }
  *
  * @param {SucesoOption} option
  * @param {{success?: boolean}} [roll]
- * @returns {{effects: string[], then: string, follow: {id: string, days: number}|null}}
+ * @returns {{effects: string[], then: string, follow: {id: string, days: number}|null, who?: string}}
  */
 export function resolveOption(option, { success = true } = {}) {
     /** @type {string[]} */
@@ -222,7 +222,10 @@ export function resolveOption(option, { success = true } = {}) {
     // la de la opción, que con tirada solo vuelve si sale bien.
     const back = branch?.follow ?? (!option.check || success ? option.follow : null);
     const follow = back && text(back.id) ? { id: text(back.id), days: Math.max(1, Number(back.days) || 1) } : null;
-    return { effects, then, follow };
+    // Tanda 22 (D-J60): quién dice lo que pasa, si la opción (o su tirada) lo dice; si no, quien
+    // llama mira el de la tarjeta (`who`).
+    const who = text(/** @type {any} */ (branch)?.who) || text(/** @type {any} */ (option).who);
+    return { effects, then, follow, ...(who ? { who } : {}) };
 }
 
 /**

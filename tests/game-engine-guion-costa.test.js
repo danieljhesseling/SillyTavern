@@ -134,5 +134,8 @@ describe('El conversor de guiones con `paquete:` y `charla:` (tanda 20, «La cos
         expect(checkWorldDensity(shipped).errors).toEqual([]);
         // D-J62: a cada tablero se llega por un hito, una conversación o un encargo.
         expect(unreachableBoards(shipped).fights).toEqual([]);
+        // La moneda es la del juego: monedas, no sueldos.
+        expect(JSON.stringify(shipped)).not.toMatch(/sueldo/);
+        expect(JSON.stringify(shipped)).toMatch(/monedas/);
     });
 });

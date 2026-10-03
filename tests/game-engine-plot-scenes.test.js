@@ -400,7 +400,8 @@ describe('las escenas escritas: el prólogo, 1387 y Strahd', () => {
             const folder = `retratos/${id}`;
             const text = JSON.stringify(p.plot.milestones.filter((/** @type {any} */ m) => ids.includes(m.id)));
             expect(text).not.toMatch(/propio:|localidad|\[cite/i);
-            const speakers = new Set([...text.matchAll(/"who":\s*"([^"]+)"/g)].map(match => match[1]));
+            // «{companero}» no es nadie: es uno de los tuyos, el que toque al jugar (tanda 22).
+            const speakers = new Set([...text.matchAll(/"who":\s*"([^"{]+)"/g)].map(match => match[1]));
             // Con el mismo resolutor que la ventana, y de su paquete (no el de relleno).
             for (const who of speakers) {
                 expect([who, artFor('portrait', { name: who, pack: id }, art)[0]?.includes(`/${folder}/`)]).toEqual([who, true]);

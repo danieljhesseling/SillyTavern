@@ -24,6 +24,7 @@ import { createRequire } from 'node:module';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { enElGremio, salirDelTablero } from './e2e-guiado.mjs';
 
 const ROOT = new URL('..', import.meta.url).pathname.replace(/^[/]([A-Za-z]:)/, '$1');
 const argAfter = (/** @type {string} */ flag) => (process.argv.includes(flag) ? process.argv[process.argv.indexOf(flag) + 1] : '');
@@ -115,12 +116,6 @@ try {
         }
         return false;
     };
-    const chips = () => page.evaluate(() => [...document.querySelectorAll('#game-shell .gs-chip-action')].map(c => (c.textContent || '').trim()));
-    const clickChip = (/** @type {RegExp} */ pattern) => page.evaluate((/** @type {string} */ source) => {
-        const chip = [...document.querySelectorAll('#game-shell .gs-chip-action')].find(b => new RegExp(source).test(b.textContent || ''));
-        if (chip instanceof HTMLElement) chip.click();
-        return Boolean(chip);
-    }, pattern.source);
     const chatHas = (/** @type {RegExp} */ pattern) => page.evaluate((/** @type {string} */ source) => (window.SillyTavern.getContext().chat || [])
         .some((/** @type {any} */ m) => new RegExp(source).test(String(m.extra?.display_text || m.mes || ''))), pattern.source);
     const dropToasts = () => page.evaluate(() => document.querySelectorAll('#toast-container .toast').forEach(t => t.remove()));
@@ -191,17 +186,19 @@ try {
     const picked = await pickHeroCard(page, 'class', 'Erudito');
     await page.locator('.hc-root .hc-enter').click();
     await until(async () => (await party())[0]?.name === 'Tomasín', 60000);
-    await until(async () => (await chips()).some(c => /^Saltar la prueba$/.test(c)), 20000);
+    await until(() => chatHas(/Al ladrón/), 20000);
     let now = await party();
     check('se crea un erudito, y empieza con su bolsa de componentes (D-J25)',
         /Erudit/.test(String(now[0]?.class)) && (now[0]?.items ?? []).some((/** @type {any} */ i) => i.name === 'Bolsa de componentes'),
         JSON.stringify({ picked, class: now[0]?.class, items: (now[0]?.items ?? []).map((/** @type {any} */ i) => i.name) }));
 
     // 2. Saltar la prueba y salir al pueblo: el gremio, el primero.
-    await clickChip(/^Saltar la prueba$/);
+    // D-J62: «Saltar la prueba» está en la Casa del Gremio, fuera del tablero del muelle.
+    await salirDelTablero(page);
+    await until(() => enElGremio(page, 'hub-skip'), 20000);
     await page.waitForSelector('.popup:has-text("¿Saltar la prueba?")', { timeout: 10000 }).catch(() => {});
     await page.locator('.popup-button-ok:visible').first().click({ timeout: 5000 }).catch(() => {});
-    await until(() => chatHas(/apunta tu nombre en el libro del gremio/), 15000);
+    await until(() => chatHas(/apunta tu nombre en el libro del gremio|Te saltas «|Ya subes|tengo el libro abierto/), 15000);
     await page.waitForTimeout(800);
     await closePopups();
     const where = () => page.evaluate(async () => {

@@ -80,6 +80,9 @@ import { getActivePartyLeader, memberFromEntry, partyPurse, renderPartyMembers, 
 import { smithHere, smithPlaces, buyRemedy } from './town.js';
 import { bondFavors, carryBondOf, inviteFrom, meetSomeone, meetupData, peopleHere, wantsToMeetAt } from './social.js';
 import { DIRECT_SOCIAL_BUTTONS } from '../game-engine/campaign/invitations.js';
+import { gruntFor } from '../game-engine/campaign/mute.js';
+import { firstArt } from '../game-engine/ui/pixel-art.js';
+import { silentNow } from './silent.js';
 import { canChooseControl, controlOf, CONTROL_LABELS } from './spell-turn.js';
 import { chooseControl, startWaitingFight } from './combat-flow.js';
 import { applySceneEffectsToGame, storyHero, storyNight, storyWorld } from './plot.js';
@@ -272,8 +275,10 @@ export function voiceOpinions(contract) {
     for (const { member, opinion } of said.slice(0, 2)) {
         if (!opinion) continue;
         lastOpinion.set(String(member.id), opinion.line);
-        postCombatNarration(`💬 ${member.name}: «${opinion.line}»`);
-        toastr.info(`«${opinion.line}»`, `${opinion.mood === 'like' ? '👍' : '👎'} ${member.name}`, { timeOut: 6000 });
+        // Tanda 22: quien aún no habla (Grimm, hasta el rango 8) opina con un gruñido.
+        const line = silentNow(member) ? gruntFor(opinion.mood === 'like' ? 'like' : 'dislike') : opinion.line;
+        postCombatNarration(`💬 ${member.name}: «${line}»`);
+        toastr.info(`«${line}»`, `${opinion.mood === 'like' ? '👍' : '👎'} ${member.name}`, { timeOut: 6000 });
     }
     // Idea 28: y lo que opinan cuenta para el vínculo. Ya se ha visto: no se repite.
     judgeDecision('', {
@@ -297,12 +302,14 @@ let lastBark = '';
  */
 export function bark(member, event, about = '') {
     if (!member || String(member.id) === String(partyMembers[0]?.id)) return;
-    const line = chooseBark({
+    const chosen = chooseBark({
         event, wants: readReasons(member).wants, about, last: lastBark, random: Math.random,
         // J1.4: «estoy segura» si lo dice ella; «cubridla» si es ella la que cae.
         gender: member.gender ?? '', aboutGender: partyMembers.find(m => m.name === about)?.gender ?? '',
     });
-    if (!line) return;
+    if (!chosen) return;
+    // Tanda 22: quien aún no habla (Grimm, hasta el rango 8) gruñe cuando otro gritaría.
+    const line = silentNow(member) ? gruntFor(event) : chosen;
     lastBark = line;
     postCombatNarration(`💬 ${member.name}: «${line}»`);
     const token = [...document.querySelectorAll('.wm-token')]
@@ -677,13 +684,23 @@ function announceWrittenQuests(asked) {
 /**
  * Una ventana de la misión: lo que se cuenta y uno o dos botones.
  *
- * @param {{title: string, sub?: string, text: string, detail?: string, ok: string, cancel?: string|false, className?: string}} input
+ * @param {{title: string, sub?: string, text: string, detail?: string, ok: string, cancel?: string|false, className?: string, who?: string}} input
+ *   `who`: tanda 22, quien dice el texto (el de la misión), con su cara.
  * @returns {Promise<boolean>} Si se pulsó el de seguir.
  */
-async function questWindow({ title, sub = '', text, detail = '', ok, cancel = false, className = '' }) {
+async function questWindow({ title, sub = '', text, detail = '', ok, cancel = false, className = '', who = '' }) {
     const body = $('<div class="pq-root gs-panel"></div>').addClass(className);
     body.append($('<h3 class="gs-popup-title"></h3>').text(title));
     if (sub) body.append($('<div class="fm-title pq-sub"></div>').text(sub));
+    // Tanda 22 (D-J60): lo del paso (el camino, la pelea) lo dice quien lleva la misión, con su cara.
+    const speaker = String(who || '').trim();
+    if (speaker && String(text || '').trim()) {
+        const face = firstArt('portrait', { name: speaker, pack: lastPack }) || firstArt('mercenary', { name: speaker });
+        const line = $('<div class="su-who pq-who"></div>').attr('data-who', speaker);
+        if (face) line.append($('<img class="pixel-art su-face" alt="">').attr('src', face));
+        line.append($('<span class="su-name"></span>').text(speaker));
+        body.append(line);
+    }
     for (const part of String(text || '').split('\n').filter(Boolean)) body.append($('<p class="pq-text"></p>').text(part));
     if (detail) body.append($('<p class="pq-detail"></p>').text(detail));
     const answer = await new Popup(body[0], POPUP_TYPE.CONFIRM, '', { okButton: ok, cancelButton: cancel === false ? false : cancel, allowVerticalScrolling: true, leftAlign: true }).show();
@@ -765,7 +782,7 @@ export async function playPersonalQuest(rowId) {
             const trip = travelOf(step);
             const days = Number(trip?.days) || 1;
             const go = await questWindow({
-                title, sub: step.title || `Camino de ${trip?.to || 'su destino'}`, text: trip?.text || '',
+                title, sub: step.title || `Camino de ${trip?.to || 'su destino'}`, text: trip?.text || '', who: String(step.raw?.who || row.who || ''),
                 detail: `${days === 1 ? 'Un día' : `${days} días`} de camino hasta ${trip?.to || 'su destino'}. Por el camino se come, se cura y corre la semana.`,
                 ok: 'En marcha', cancel: 'Ahora no',
             });
@@ -807,7 +824,7 @@ export async function playPersonalQuest(rowId) {
                 saveQuestState(state);
                 continue;
             }
-            await questWindow({ title, sub: step.title || 'Hay que pelear', text: fight.text, ok: 'A pelear' });
+            await questWindow({ title, sub: step.title || 'Hay que pelear', text: fight.text, ok: 'A pelear', who: String(step.raw?.who || row.who || '') });
             const placed = await placeQuestBoard(row, fight);
             if (!placed) {
                 // Sin tablero no se puede pelear: la misión no se queda colgada.
@@ -1009,7 +1026,7 @@ function questBox(member, close) {
     const title = quest.info?.title || quest.row.id;
     if (!quest.open) {
         box.append($('<div class="cc-quest-title"></div>').text('Algo le pesa'));
-        box.append($('<div class="cc-quest-line"></div>').text(`Cuando os conozcáis más (vínculo ${quest.rank}), te lo contará.`));
+        box.append($('<div class="cc-quest-line"></div>').text(`Cuando os conozcáis más (rango ${quest.rank}), te lo contará.`));
         return box;
     }
     box.append($('<div class="cc-quest-title"></div>').text(`Su misión: ${title}`));

@@ -225,7 +225,7 @@ try {
     if (!(await clickChip(/^Saltar la prueba$/))) await page.evaluate(async () => { void (await import('/scripts/party/hub.js')).skipHubTrial(); });
     await page.waitForSelector('.popup:has-text("¿Saltar la prueba?")', { timeout: 10000 }).catch(() => {});
     await page.locator('.popup-button-ok:visible').first().click({ timeout: 5000 }).catch(() => {});
-    await until(() => chatHas(/apunta tu nombre en el libro del gremio/), 15000);
+    await until(() => chatHas(/apunta tu nombre en el libro del gremio|Te saltas «|Ya subes|tengo el libro abierto/), 15000);
     await page.waitForTimeout(800);
     await dropToasts();
     const after = await allChips();

@@ -37,7 +37,7 @@ import { rollCheck, SKILLS } from '../rules/checks.js';
 import { outcomeOf } from '../campaign/consequences.js';
 import { resolveGender } from '../campaign/grammar.js';
 import {
-    mindOf, leaderOf, readBranch, readExitEffects, rollerFor, skillOf, rollFormula, AVOID_DC_LIMITS, EXIT_EFFECT_KINDS,
+    mindOf, leaderOf, readBranch, readExitEffects, rollerFor, skillOf, rollFormula, spokenOf, AVOID_DC_LIMITS, EXIT_EFFECT_KINDS,
 } from './avoid-fight.js';
 
 /** Las cuatro formas, con su habilidad y lo que le parece al grupo (`approval.js`). */
@@ -361,6 +361,8 @@ export function parleyChips({ enemies, party, gold = 0, parley = null, tried = [
  * @property {string} judge
  * @property {string} speaker
  * @property {string} leader
+ * @property {{who: string, text: string}|null} [voice] Tanda 22: lo que pasa, si lo dice alguien
+ *   (la rama escrita con `who`). Es también la última de `lines`.
  */
 
 /**
@@ -397,9 +399,11 @@ export function resolveParley({ way: rawWay, enemies, party, gold = 0, parley = 
         const branch = written?.success ?? null;
         const effects = branch && branch.effects.length > 0 ? branch.effects : surrenderCost(gold);
         const resolves = written?.resolves ?? false;
+        const said = say(branch?.text || defaults.success);
         return {
             way, outcome: 'bien', rolls: [], ends: 'captured', resolves, costsAction: false,
-            effects, lines: [say(branch?.text || defaults.success)], judge: spec.judge, speaker: text(able[0]?.name), leader,
+            effects, lines: [said], judge: spec.judge, speaker: text(able[0]?.name), leader,
+            voice: spokenOf(branch, said, leader),
         };
     }
 
@@ -419,8 +423,11 @@ export function resolveParley({ way: rawWay, enemies, party, gold = 0, parley = 
     /** @type {ParleyResult['ends']} */
     let ends = 'continue';
     let line = '';
+    /** @type {import('./avoid-fight.js').ExitBranch|null} Tanda 22: la rama que vale, por si la dice alguien. */
+    let chosen = null;
     if (outcome === 'bien' || (outcome === 'medias' && way === 'sobornar')) {
         const branch = outcome === 'medias' ? (written?.partial ?? null) : (written?.success ?? null);
+        chosen = branch;
         effects.push(...(branch?.effects ?? []));
         if (way === 'sobornar') {
             const paid = outcome === 'medias' ? Math.min(Math.max(price, gold), Math.ceil(price * 1.5)) : price;
@@ -431,11 +438,13 @@ export function resolveParley({ way: rawWay, enemies, party, gold = 0, parley = 
         line = branch?.text || (outcome === 'medias' ? defaults.partial : defaults.success);
     } else if (outcome === 'medias') {
         const branch = written?.partial ?? null;
+        chosen = branch;
         effects.push(...(branch?.effects ?? []));
         ends = 'lull';
         line = branch?.text || defaults.partial;
     } else {
         const branch = written?.failure ?? null;
+        chosen = branch;
         effects.push(...(branch?.effects ?? []));
         ends = way === 'enganar' ? 'enraged' : 'continue';
         line = branch?.text || defaults.failure;
@@ -444,9 +453,12 @@ export function resolveParley({ way: rawWay, enemies, party, gold = 0, parley = 
         if (effect.kind === 'hurt' && effect.amount == null) effect.amount = rollFormula(effect.dice || '1d4', die);
     }
     const resolves = ends === 'ended' && (written?.resolves ?? true);
+    const said = say(line);
     return {
         way, outcome, rolls, ends, resolves, costsAction: true, effects,
-        lines: [...rolls.map(r => r.said), say(line)], judge: ends === 'ended' ? spec.judge : '', speaker, leader,
+        lines: [...rolls.map(r => r.said), said], judge: ends === 'ended' ? spec.judge : '', speaker, leader,
+        // Tanda 22: lo escrito con quién lo dice (D-J60), sin la de siempre (que no escribe nadie).
+        voice: chosen?.text && line === chosen.text ? spokenOf(chosen, said, leader) : null,
     };
 }
 

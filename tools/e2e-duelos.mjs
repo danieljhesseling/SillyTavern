@@ -32,6 +32,7 @@ import { createRequire } from 'node:module';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { enElGremio } from './e2e-guiado.mjs';
 
 const ROOT = new URL('..', import.meta.url).pathname.replace(/^[/]([A-Za-z]:)/, '$1');
 const argAfter = (/** @type {string} */ flag) => (process.argv.includes(flag) ? process.argv[process.argv.indexOf(flag) + 1] : '');
@@ -378,7 +379,8 @@ try {
         }
         await page.locator('dialog.ev-dialog[open] .ev-next').click({ timeout: 1000 }).catch(() => {});
         await page.locator('dialog.ps-dialog[open] :is(.ps-finish, .ps-next, .qd-leave)').first().click({ timeout: 1000 }).catch(() => {});
-        if (await clickChip(/^Saltar la prueba$/)) {
+        // D-J62: con el modo guiado, «Saltar la prueba» está en la Casa del Gremio (fuera del tablero).
+        if (await clickChip(/^Saltar la prueba$/) || (!(await state()).board && await enElGremio(page, 'hub-skip'))) {
             await page.waitForSelector('.popup:has-text("¿Saltar la prueba?")', { timeout: 10000 }).catch(() => {});
             await page.locator('.popup-button-ok:visible').first().click({ timeout: 5000 }).catch(() => {});
             skipped = await until(async () => /bodega|libro del gremio|moja la pluma|Subes/.test(await chatSince(0)), 8000);

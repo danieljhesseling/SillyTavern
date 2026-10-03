@@ -5,8 +5,8 @@ Veintiséis personas del mundo y cinco compañeros. Cada una con su voz, su ofic
 Una línea de ejemplo de cada uno, para oírles con los nombres tapados:
 
 - Rufino Albarda: «Primero, gracias. Segundo, ay. Tercero, gracias otra vez.»
-- Brígida Cantueso: «La cama, cuatro sueldos la noche. El susto, gratis.»
-- Anselmo Rejas: «A dos sueldos la pregunta. La respuesta va incluida.»
+- Brígida Cantueso: «La cama, cuatro monedas la noche. El susto, gratis.»
+- Anselmo Rejas: «A dos monedas la pregunta. La respuesta va incluida.»
 - Ottar Brasa: «Hierro bueno. Clavos sin pagar. Mala mezcla.»
 - Herminia Sauce: «Trescientos sacos. Dicen que doscientos. Ya veremos quién cuenta mejor.»
 - Pascual Trigo: «Yo no he visto nada. Bueno, un poco. Pero poco.»
@@ -15,7 +15,7 @@ Una línea de ejemplo de cada uno, para oírles con los nombres tapados:
 - Marcos Fullero: «Amigo, amigo. Aquí todo se presta. Y todo se devuelve.»
 - Lupe Garbanzo: «Buenos días. A ti te los dejo baratos.»
 - Madre Orosia: «Siéntate, {hijo|hija}. El pan es de ayer, pero es pan.»
-- Ilduara de Brezo: «Doce sueldos el saco. Catorce si lo pide Oramar.»
+- Ilduara de Brezo: «Doce monedas el saco. Catorce si lo pide Oramar.»
 - Ordoño Galindo: «Media ración. Desde agosto. Y bajando.»
 - Elvira Breña: «¡Eh, tú! ¡Sí, tú! ¡Que me comen las ovejas!»
 - Maelis Cortezaroja: «Hace poco, quizá doscientos años, esto era un claro.»
@@ -55,7 +55,7 @@ pnj:
   quiere: Que reparen el puente. Sin puente no entra nadie, y una posada sin gente es una casa con muchas camas.
   sabe: Quién ha dormido en la posada esta semana, y quién pagó con monedas nuevas de Vadoancho.
   secreto: Tiene escondido en el pajar a un mercenario del Cierzo herido, que le pagó bien por callar.
-  voz: "Seca y exacta. Lleva las cuentas en voz alta: «Eso son cuatro sueldos»."
+  voz: "Seca y exacta. Lleva las cuentas en voz alta: «Eso son cuatro monedas»."
   paquete:
     gender: Mujer
     aspecto: Mujer de unos cincuenta, alta y huesuda, pelo gris en un moño tirante, delantal de lino con una tiza colgando de un cordel y un trapo al hombro.
@@ -68,7 +68,7 @@ pnj:
   quiere: Seguir cobrando por cruzar el río mientras no haya puente.
   sabe: Qué barcas cruzaron de noche antes de que cayera el puente.
   secreto: El Cierzo le pagó para que tuviera la barca lejos la noche en que serraron el puente.
-  voz: "Charlatán y simpático, todo lo cobra: «A dos sueldos la pregunta»."
+  voz: "Charlatán y simpático, todo lo cobra: «A dos monedas la pregunta»."
   paquete:
     gender: Hombre
     aspecto: Hombre de unos cuarenta, flaco y moreno, barba rala, gorro de lana rojo, camisa remangada y una pértiga de barquero al hombro.
@@ -151,7 +151,7 @@ pnj:
   donde: vadoancho
   servicio: tienda
   quiere: Cobrar todo lo que le deben antes de que cambie quién manda.
-  sabe: Quién debe a quién en las tres casas, al último sueldo.
+  sabe: Quién debe a quién en las tres casas, a la última moneda.
   secreto: Lleva las cuentas del Cierzo y les guarda el dinero que pagan las tres casas.
   voz: Suave y meloso. Llama «amigo» a todo el mundo, sobre todo a quien le debe.
   paquete:
@@ -191,7 +191,7 @@ pnj:
   oficio: Señora de Casa Brezo
   donde: torre-brezo
   quiere: El paso, para dar de comer a las tierras altas y salir de las deudas con Oramar.
-  sabe: Cuánto le debe a quién, al último sueldo.
+  sabe: Cuánto le debe a quién, a la última moneda.
   secreto: Ordenó quemar Los Brezales, la aldea que Ruy Zarzal se negó a quemar, porque escondía a deudores de la casa.
   voz: Seca y precisa, nunca levanta la voz. Habla como quien lleva las cuentas, con cantidades exactas.
   paquete:

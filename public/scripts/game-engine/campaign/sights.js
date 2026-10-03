@@ -45,6 +45,8 @@ export const LOOKS_PER_DAY = 2;
  * @property {string} found Lo que se ve si la tirada sale bien; vacío si no se escribió.
  * @property {boolean} own Es del paquete, no del compendio.
  * @property {string} [place] El sitio del pueblo donde está («gremio», «posada»…); sin él, la localización entera.
+ * @property {string} [who] Tanda 22 (D-J60): quién dice lo que se ve, si es alguien concreto de
+ *   aquí. Sin él, lo dice uno de los tuyos (o, a solas, quien esté allí).
  */
 
 /** @param {any} value @returns {string} */
@@ -80,6 +82,8 @@ export function readSights(raw, place = '') {
         if (!what) return;
         const skill = text(row?.skill);
         const inside = typeof row === 'string' ? '' : text(row?.place).toLowerCase();
+        // Tanda 22 (D-J60): quién lo dice, si es alguien concreto de aquí; sin él, uno de los tuyos.
+        const who = typeof row === 'string' ? '' : text(row?.who);
         out.push({
             id: text(row?.id) || `${base}-${index + 1}`,
             kind: 'mirar',
@@ -89,6 +93,7 @@ export function readSights(raw, place = '') {
             found: text(row?.found),
             own: true,
             ...(inside ? { place: inside } : {}),
+            ...(who ? { who } : {}),
         });
     });
     return out;

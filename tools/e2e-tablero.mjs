@@ -33,6 +33,7 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { Buffer } from 'node:buffer';
 import { entrarEnLaPelea } from './e2e-entrar-pelea.mjs';
+import { enElGremio, salirDelTablero } from './e2e-guiado.mjs';
 
 const ROOT = new URL('..', import.meta.url).pathname.replace(/^[/]([A-Za-z]:)/, '$1');
 const argAfter = (/** @type {string} */ flag) => (process.argv.includes(flag) ? process.argv[process.argv.indexOf(flag) + 1] : '');
@@ -156,11 +157,6 @@ try {
         };
     });
     const chips = () => page.evaluate(() => [...document.querySelectorAll('#game-shell .gs-chip-action')].map(c => (c.textContent || '').trim()));
-    const clickChip = (/** @type {RegExp} */ pattern) => page.evaluate((source) => {
-        const chip = [...document.querySelectorAll('#game-shell .gs-chip-action')].find(b => new RegExp(source).test(b.textContent || ''));
-        if (chip instanceof HTMLElement) chip.click();
-        return Boolean(chip);
-    }, pattern.source);
     /** Las líneas del chat que casan, como se leen. */
     const chatLines = (/** @type {RegExp} */ pattern) => page.evaluate((source) => (window.SillyTavern.getContext().chat || [])
         .map((/** @type {any} */ m) => String(m.extra?.display_text || m.mes || ''))
@@ -245,18 +241,17 @@ try {
     await until(async () => (await state()).party.length === 1, 60000);
     await until(() => chatHas(/Baja a la bodega/), 20000);
     // Tanda 10: en el tablero del muelle no sale «Saltar la prueba»; primero se sale de él.
-    await until(async () => (await chips()).some(c => /^(Saltar la prueba|Salir del tablero)$/.test(c)), 15000);
-    if ((await chips()).includes('Salir del tablero')) await clickChip(/^Salir del tablero$/);
-    await until(async () => (await chips()).some(c => /^Saltar la prueba$/.test(c)), 15000);
-    await clickChip(/^Saltar la prueba$/);
+    // D-J62: «Saltar la prueba» está en la Casa del Gremio, fuera del tablero del muelle.
+    await salirDelTablero(page);
+    await until(() => enElGremio(page, 'hub-skip'), 15000);
     await page.waitForSelector('.popup:has-text("¿Saltar la prueba?")', { timeout: 10000 }).catch(() => {});
     await page.locator('.popup-button-ok:visible').first().click({ timeout: 5000 }).catch(() => {});
-    await until(() => chatHas(/apunta tu nombre en el libro del gremio/), 15000);
+    await until(() => chatHas(/apunta tu nombre en el libro del gremio|Te saltas «|Ya subes|tengo el libro abierto/), 15000);
 
     // 2. La campaña, desde un archivo, y empezarla.
     await dropToasts();
-    await until(async () => (await chips()).some(c => /Tablón de campañas/.test(c)), 15000);
-    await clickChip(/Tablón de campañas/);
+    // D-J62: el tablón de campañas está en la Casa del Gremio.
+    await until(() => enElGremio(page, 'hub-board'), 15000);
     await page.waitForSelector('.hb-root [data-campaign-add]', { timeout: 15000 });
     const [chooser] = await Promise.all([
         page.waitForEvent('filechooser', { timeout: 10000 }),

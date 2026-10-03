@@ -523,7 +523,7 @@ describe('campaign map', () => {
     // A tooltip that explains beats one that just refuses.
     test('explains why something is shut', () => {
         const reasons = explainLock(refreshAvailability(map(), context()), 'sanctum', context());
-        expect(reasons.join(' ')).toContain('vínculo 5');
+        expect(reasons.join(' ')).toContain('rango 5');
         expect(reasons.join(' ')).toContain('lyra');
     });
 

@@ -80,7 +80,7 @@ export function glanceRow(member, extra) {
     if (extra.injuries.length > 0) lines.push(`Heridas: ${extra.injuries.join('; ')}`);
     if (extra.needs) lines.push(extra.needs);
     if (conditions.length > 0) lines.push(`Estado: ${conditions.join(', ')}`);
-    if (extra.rank > 0) lines.push(`Vínculo: rango ${extra.rank}`);
+    if (extra.rank > 0) lines.push(`Rango ${extra.rank}`);
     return {
         name: String(member?.name ?? ''),
         hp: `${hp}/${max}`,

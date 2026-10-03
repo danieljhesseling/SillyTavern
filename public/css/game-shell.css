@@ -44,6 +44,12 @@ body.game-shell-on:not(.game-shell-paused) > #toast-container {
     margin-top: calc(var(--gs-head-bottom, 96px) + 6px);
 }
 
+/* H18 (tanda 22): un aviso que espera a que se cierre la tarjeta del centro (la victoria, el
+   final, el Salón de la fama) no se ve, y su tiempo no corre (`notice-hold.js`). */
+#toast-container > .toast.gs-toast-held {
+    display: none !important;
+}
+
 body.game-shell-on {
     overflow: hidden;
     /* La partida con la misma paleta que el título y el taller: dentro del juego, el gris del
@@ -2439,6 +2445,26 @@ body[data-narrator-font="maquina"] #chat .mes:not([is_user="true"]) .mes_text {
     font-size: 1.02em;
     line-height: 1.55;
     margin: 4px 0 14px;
+}
+
+/* Tanda 22 (D-J60): quién está en la tarjeta, con su cara, y lo que dice al elegir. */
+.su-who {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 2px 0 6px;
+    font-weight: 600;
+}
+
+.su-face {
+    width: 48px;
+    height: 60px;
+    object-fit: contain;
+    image-rendering: pixelated;
+}
+
+.su-said-who {
+    font-weight: 600;
 }
 
 .su-options {

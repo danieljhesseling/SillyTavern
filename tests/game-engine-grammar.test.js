@@ -222,6 +222,9 @@ const RESOLVED = {
         /^\.dialogues\[\d+\]\.nodes\[\d+\](\.options\[\d+\](\.check\.(success|partial|failure))?)?\.effects\[\d+\]\.clue$/,
         // J9.2: las escenas del hilo (`plot-scenes.js` las resuelve con tu héroe y tu grupo).
         /^\.plot\.milestones\[\d+\]\.beats\[\d+\](\.text)?$/,
+        // Tanda 22: lo que pasa al evitar una pelea o al hablar en mitad de ella, ya dicho por alguien
+        // (`resolveAvoid` y `resolveParley` lo resuelven con tu héroe antes de enseñarlo).
+        /^\.boards\[\d+\]\.(avoid\[\d+\]|parley\.[^.]+)\.(success|partial|failure)(\.text)?$/,
         /^\.plot\.milestones\[\d+\]\.beats\[\d+\]\.options\[\d+\]\.(text|tag|journal)$/,
         /^\.plot\.milestones\[\d+\]\.beats\[\d+\]\.options\[\d+\](\.check\.(success|partial|failure))?\.reply(\[\d+\])?(\.text)?$/,
         /^\.plot\.milestones\[\d+\]\.beats\[\d+\]\.options\[\d+\](\.check\.(success|partial|failure))?\.(journal|effects\[\d+\]\.clue)$/,

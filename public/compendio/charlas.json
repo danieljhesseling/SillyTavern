@@ -4644,24 +4644,23 @@
       "campaign": "1387",
       "moment": "pelea",
       "lines": [
-        "(Grimm se limpia el hacha en la nieve y te mira de arriba abajo, buscando heridas.)",
         "¿Mm?"
       ],
       "replies": [
         {
           "text": "¿Y tú? ¿Todo entero?",
           "mood": 0,
-          "then": "(Se da dos golpes en el pecho.) Mm."
+          "then": "Mm."
         },
         {
-          "text": "Deja de mirarme y recoge el botín.",
+          "text": "Deja de mirarme las heridas y recoge el botín.",
           "mood": -1,
-          "then": "(Gruñe por lo bajo y se da la vuelta.) Hmf."
+          "then": "Hmf."
         },
         {
           "text": "Estoy bien. Gracias por mirar.",
           "mood": 1,
-          "then": "(Asiente despacio.) Mm."
+          "then": "Mm."
         }
       ]
     },
@@ -4672,24 +4671,23 @@
       "campaign": "1387",
       "moment": "llegada",
       "lines": [
-        "(Grimm se para, se frota los dedos y señala tu bolsa: toca paga.)",
         "Mm."
       ],
       "replies": [
         {
-          "text": "Toma tu paga. Para los tuyos.",
+          "text": "¿La paga? Toma. Para los tuyos.",
           "mood": 1,
-          "then": "(Guarda las monedas junto al dibujo y asiente.) Mm."
+          "then": "Mm."
         },
         {
           "text": "Luego te pago. Ahora no.",
           "mood": 0,
-          "then": "(Levanta un dedo: un día, no más.) Mm."
+          "then": "Mm. Mm."
         },
         {
-          "text": "¿Otra vez? Si te pagué hace nada.",
+          "text": "¿Otra vez la paga? Si te pagué hace nada.",
           "mood": -1,
-          "then": "(Cruza los brazos y no se mueve.) Hmf."
+          "then": "Hmf."
         }
       ]
     },
@@ -4700,23 +4698,23 @@
       "campaign": "1387",
       "moment": "viaje",
       "lines": [
-        "(Grimm va delante, abriendo camino en la nieve con las piernas. De vez en cuando se vuelve a mirar si le sigues.)"
+        "Mm."
       ],
       "replies": [
         {
           "text": "Ve más despacio, que no llego.",
           "mood": 0,
-          "then": "(Frena un poco, sin darse la vuelta.) Mm."
+          "then": "Mm."
         },
         {
-          "text": "Gracias por abrir camino.",
+          "text": "Gracias por abrir camino en la nieve.",
           "mood": 1,
-          "then": "(Se encoge de hombros, pero pisa más fuerte.) Mm."
+          "then": "¡Mm!"
         },
         {
           "text": "Tanto músculo y ni una palabra.",
           "mood": -1,
-          "then": "(Te mira un momento y sigue andando.) Hmf."
+          "then": "Hmf."
         }
       ]
     },
@@ -4728,23 +4726,23 @@
       "moment": "pueblo",
       "mood": "triste",
       "lines": [
-        "(Grimm está junto al fuego, mirando el dibujo arrugado de una mujer y tres niños.)"
+        "Mm…"
       ],
       "replies": [
         {
-          "text": "Guarda eso, que te lo van a robar.",
+          "text": "Guarda ese dibujo, que te lo van a robar.",
           "mood": -1,
-          "then": "(Lo aprieta contra el pecho y te mira mal.) Hmf."
+          "then": "Hmf."
         },
         {
           "text": "Te sientas a su lado, sin decir nada.",
           "mood": 1,
-          "then": "(Te acerca un poco su jarra.) Mm."
+          "then": "Mm."
         },
         {
-          "text": "¿Son tu familia?",
+          "text": "La mujer y los tres críos del dibujo… ¿Son tu familia?",
           "mood": 0,
-          "then": "(Asiente una vez y se guarda el dibujo en el pecho.)"
+          "then": "Mm."
         }
       ]
     },
@@ -4755,24 +4753,23 @@
       "campaign": "1387",
       "moment": "herido",
       "lines": [
-        "(Grimm ve tu herida, te agarra del brazo sin preguntar y te sienta en una piedra.)",
         "Mm."
       ],
       "replies": [
         {
-          "text": "¿Sabes curar?",
+          "text": "¿Me sientas en una piedra? ¿Sabes curar?",
           "mood": 0,
-          "then": "(Niega con la cabeza y señala a los demás.) Mm."
+          "then": "Hm."
         },
         {
-          "text": "Suéltame, estoy bien.",
+          "text": "Suéltame el brazo, estoy bien.",
           "mood": -1,
-          "then": "(No te suelta.) Hmf."
+          "then": "Hmf."
         },
         {
           "text": "Vale, vale. Me siento.",
           "mood": 1,
-          "then": "(Te echa su capa por los hombros.) Mm."
+          "then": "Mm."
         }
       ]
     },
@@ -4783,23 +4780,23 @@
       "campaign": "1387",
       "moment": "pueblo",
       "lines": [
-        "(Grimm cuenta sus monedas dos veces. Le faltan unas pocas para la bolsa que manda al sur.)"
+        "Mm…"
       ],
       "replies": [
         {
-          "text": "Te presto lo que falta. Ya me lo devolverás.",
+          "text": "¿No te llega para la bolsa del sur? Te presto lo que falta. Ya me lo devolverás.",
           "mood": 1,
-          "then": "(Te da una palmada en la espalda que casi te tumba.) Mm."
+          "then": "¡Mm!"
         },
         {
-          "text": "Espera a la próxima paga.",
+          "text": "Si no te llega para la bolsa, espera a la próxima paga.",
           "mood": 0,
-          "then": "(Suspira y cierra la bolsa.) Mm."
+          "then": "Mm…"
         },
         {
-          "text": "Gástatelas en cerveza. Te las has ganado.",
+          "text": "Gástate esas monedas en cerveza. Te las has ganado.",
           "mood": -1,
-          "then": "(Niega con la cabeza, muy serio.) Hmf."
+          "then": "Hmf."
         }
       ]
     },

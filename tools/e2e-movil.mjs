@@ -591,8 +591,10 @@ try {
     await page.waitForTimeout(700);
     const low = await page.evaluate(() => {
         const vh = window.innerHeight;
-        const text = document.querySelector('#game-shell .gs-vn-text')?.getBoundingClientRect();
-        const visible = text ? Math.max(0, Math.min(text.bottom, vh) - Math.max(text.top, 0)) : 0;
+        // D-J60: lo que no dice nadie (la llegada) va en el aviso de encima de la caja: también cuenta.
+        const seen = [...document.querySelectorAll('#game-shell .gs-vn-text, #game-shell .gs-vn-aside')].map(n => n.getBoundingClientRect())
+            .map(r => Math.max(0, Math.min(r.bottom, vh) - Math.max(r.top, 0)));
+        const visible = Math.max(0, ...seen);
         return { text: Math.round(visible), height: vh, log: document.querySelector('#game-shell')?.classList.contains('gs-vn-log') ?? true };
     });
     if (SHOT) await page.screenshot({ path: `${SHOT}.bajo.png` });
@@ -943,13 +945,24 @@ try {
     // muelle lleva otra vez al tablero (J18.8), a toques.
     const afterFight = await carryOn('exploration');
     let toBoard = afterFight;
+    let how = afterFight === 'combat' ? 'Continuar' : '';
     if (toBoard !== 'combat') {
-        await page.locator('#game-shell .gs-board').filter({ visible: true }).first().tap({ timeout: 5000 }).catch(() => {});
+        const card = page.locator('#game-shell .gs-board').filter({ visible: true }).first();
+        if (await card.count() > 0) {
+            await card.tap({ timeout: 5000 }).catch(() => {});
+            how = 'la tarjeta del tablero';
+        } else {
+            // D-J62: con el modo guiado no hay «Tableros de aquí» (wiki/LO_OCULTO.md): a un tablero
+            // se entra porque lo pide la historia. Para andar a toques (J20.2), se vuelve al muelle
+            // con su orden, como el rescate de las vueltas.
+            await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/enter El muelle de Puerto Alba'));
+            how = '/enter (modo guiado)';
+        }
         await until(async () => await sceneNow() === 'combat', 8000);
         toBoard = await sceneNow();
     }
-    check('«Continuar», tocado, sale de la novela (al pueblo, D-J45), y desde él se vuelve al tablero del muelle (J18.8)',
-        afterFight !== 'dialogue' && toBoard === 'combat', `${afterFight} → ${toBoard}`);
+    check('«Continuar», tocado, sale de la novela (al pueblo, D-J45), y desde él se vuelve al tablero del muelle (J18.8; con el modo guiado, con su orden)',
+        afterFight !== 'dialogue' && toBoard === 'combat', `${afterFight} → ${toBoard} (${how})`);
     await look('tablero');
     // J20.2: sin pelea también se anda a toques (con el dedo no se arrastra): tocar tu ficha la
     // elige y enciende hasta dónde anda de una vez; una casilla encendida, dos toques, y va.
@@ -1000,7 +1013,7 @@ try {
     if (await tapHall('hub-skip')) {
         const skip = page.locator('.popup:visible .popup-button-ok').first();
         if (await skip.waitFor({ state: 'visible', timeout: 8000 }).then(() => true).catch(() => false)) await skip.tap({ timeout: 5000 }).catch(() => {});
-        await until(() => chatHas(/apunta tu nombre en el libro del gremio/), 15000);
+        await until(() => chatHas(/apunta tu nombre en el libro del gremio|Te saltas «|Ya subes|tengo el libro abierto/), 15000);
         await page.waitForTimeout(800);
         await tapDice();
     }

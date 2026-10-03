@@ -74,7 +74,7 @@ const slug = (value) => fold(value).replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$
  * @property {string} greeting
  * @property {string} rumor
  * @property {string[]} tags
- * @property {{days: number, name: string, text: string, options: any[]}|null} visitor
+ * @property {{days: number, name: string, text: string, options: any[], who?: string}|null} visitor
  * @property {Array<{campaign: string, line: string}>} offers
  */
 
@@ -91,8 +91,13 @@ export function readLegacy(raw) {
     const tone = text(source.tone ?? source.tono);
     const visit = source.visitor ?? source.visita;
     const options = isObject(visit) ? (Array.isArray(visit.options) ? visit.options : []).filter((/** @type {any} */ o) => isObject(o) && text(o.label)) : [];
+    // Tanda 22 (D-J60): quién viene (`who`): sale en la tarjeta con su cara, y lo que pasa lo dice él.
+    const visitorWho = isObject(visit) ? text(visit.who ?? visit.quien) : '';
     const visitor = isObject(visit) && text(visit.name) && text(visit.text) && options.length > 0
-        ? { days: Math.max(1, Math.min(30, Math.floor(Number(visit.days ?? visit.dias) || VISITOR_DAYS))), name: text(visit.name), text: text(visit.text), options }
+        ? {
+            days: Math.max(1, Math.min(30, Math.floor(Number(visit.days ?? visit.dias) || VISITOR_DAYS))), name: text(visit.name), text: text(visit.text), options,
+            ...(visitorWho ? { who: visitorWho } : {}),
+        }
         : null;
     const offers = (Array.isArray(source.offers ?? source.ofrece) ? (source.offers ?? source.ofrece) : [])
         .map((/** @type {any} */ o) => ({ campaign: text(o?.campaign ?? o?.campana), line: text(o?.line ?? o?.texto) }))
@@ -333,7 +338,10 @@ export function visitorRows(memory) {
         .filter(c => c.legacy?.visitor)
         .map(c => {
             const visitor = /** @type {NonNullable<Legacy['visitor']>} */ (/** @type {Legacy} */ (c.legacy).visitor);
-            return { id: visitorId(c.id), name: visitor.name, weight: 1, when: { momento: 'continuacion' }, text: visitor.text, options: visitor.options, kind: 'suceso' };
+            return {
+                id: visitorId(c.id), name: visitor.name, weight: 1, when: { momento: 'continuacion' }, text: visitor.text, options: visitor.options, kind: 'suceso',
+                ...(visitor.who ? { who: visitor.who } : {}),
+            };
         });
 }
 

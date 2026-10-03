@@ -81,13 +81,13 @@ tablero:
     - "#..k.#....c..#...#"
     - "#....D.......D.C.#"
     - "#..c.#..T....#...#"
-    - "##D###.......###o#"
+    - "##o###.......#o###"
     - "#................#"
     - "#..c..C....C..c..#"
     - "#................#"
     - "###o#######o######"
-    - "#......#.........#"
-    - "#.x....#.........#"
+    - "#................#"
+    - "#.x..............#"
     - "##################"
   inicio_grupo: [[9, 10], [10, 10], [11, 10], [12, 10]]
 
@@ -320,11 +320,10 @@ encuentro:
   tablero: sala-del-registro
   acto: 2
   enemigos:
-    - { bicho: celador, cuantos: 2, en: [[8, 6], [12, 2]] }
-    - { bicho: ballestero, cuantos: 1, en: [[15, 1]] }
+    - { bicho: celador, cuantos: 3, en: [[8, 6], [12, 2], [15, 1]] }
   objetivo: { tipo: reach_cell, casilla: [2, 10] }
   meta: Sacar el libro y salir por la ventana
-  nota: "De noche, en la Contaduría: el libro está en el archivo de arriba a la izquierda; la ventana de la cocina, abajo."
+  nota: "De noche, en la Contaduría: se entra por la cocina, el libro está en el archivo de arriba a la izquierda y la ventana de la cocina da al callejón."
 
 encuentro:
   id: enc-redada
@@ -405,7 +404,7 @@ encuentro:
   enemigos:
     - { bicho: celador, cuantos: 2, en: [[4, 9], [11, 9]] }
     - { bicho: ballestero, cuantos: 1, en: [[8, 10]] }
-    - { bicho: huesped-a-sueldo, cuantos: 1, en: [[7, 10]] }
+    - { bicho: huesped-mercenario, cuantos: 1, en: [[7, 10]] }
   objetivo: { tipo: survive_rounds, rondas: 4 }
   meta: Aguantar en el rellano mientras la Acogida sube
   nota: "Hay que sostener el rellano cuatro rondas: arriba, los peldaños dan ventaja."
@@ -419,7 +418,7 @@ encuentro:
     - { bicho: contador-mayor, cuantos: 1, en: [[8, 5]] }
     - { bicho: escribano, cuantos: 2, en: [[3, 6], [14, 6]] }
     - { bicho: cristal, cuantos: 2, en: [[5, 3], [12, 3]] }
-    - { bicho: huesped-a-sueldo, cuantos: 1, en: [[8, 9]] }
+    - { bicho: huesped-mercenario, cuantos: 1, en: [[8, 9]] }
   objetivo: { tipo: eliminate, bicho: contador-mayor }
   meta: Detener al Contador Mayor
   nota: "El final, para nivel 4. La cumbre no tiene barandilla: lo que cae, no vuelve a subir."

@@ -364,7 +364,7 @@ describe('U5: la Mesa de la Semana', () => {
         expect(sections[1].items).toEqual(['Vane: no os quieren cerca']);
         expect(sections[2].items).toEqual(['El molino: lo están pasando mal (-2)']);
         expect(sections[3].items).toEqual(['El Peaje Norte: os paran los guardias (2)']);
-        expect(sections[5].items).toEqual(['Lyra: vínculo 3']);
+        expect(sections[5].items).toEqual(['Lyra: rango 3']);
     });
 
     test('la semana que pasó: lo que movió la historia, y cuánto de lo menor', () => {

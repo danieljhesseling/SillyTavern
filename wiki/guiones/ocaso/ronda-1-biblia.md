@@ -8,7 +8,7 @@ El reino no se cae de golpe: se cae porque nadie repara los puentes. El rey ha m
 
 Una carta vieja, la **Carta del Paso**, dice que quien encienda el fanal de la Atalaya con su bandera colgada manda en el paso hasta el deshielo. Por ese paso sube y baja el grano de medio reino. Quien manda en el paso decide quién come este invierno, y nadie vota en primavera contra quien le ha dado de comer.
 
-El tono es de fantasía épica que pesa por la política: tratos, deudas, lealtades compradas y caminos largos. El ambiente lo dice quien lleva las cuentas, seco y preciso: la posadera que cobra cada cama, la señora que sabe lo que debe al último sueldo, la refugiera que mide el tiempo en nevadas.
+El tono es de fantasía épica que pesa por la política: tratos, deudas, lealtades compradas y caminos largos. El ambiente lo dice quien lleva las cuentas, seco y preciso: la posadera que cobra cada cama, la señora que sabe lo que debe a la última moneda, la refugiera que mide el tiempo en nevadas.
 
 ## Lo que este mundo no tiene
 

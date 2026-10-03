@@ -65,7 +65,9 @@ import { saveCurrentLocation, saveCurrentBoard, getLocationBoards, hereLocation,
 import { getCurrentSlotLabel } from './time.js';
 import { getPlot } from './plot.js';
 import { worldWrite } from './world-growth.js';
-import { postCombatNarration, soundCue } from './narration.js';
+import { offlineGame, postCombatNarration, sayHere, soundCue } from './narration.js';
+import { silentNow } from './silent.js';
+import { gruntFor } from '../game-engine/campaign/mute.js';
 import { savePartyState } from './roster.js';
 import { getPartyFormation } from './companions.js';
 import { inMarchOrder } from '../game-engine/campaign/formation.js';
@@ -782,6 +784,8 @@ export function buildTokens(locationFilter) {
             weapon: String(heldWeapon(m)?.name ?? ''),
             hp: m.hp,
             maxHp: m.maxHp,
+            // Tanda 22: en el suelo, sus salvaciones de muerte se ven en puntos bajo la ficha.
+            ...(m.deathSaves && typeof m.deathSaves === 'object' ? { deathSaves: { ...m.deathSaves } } : {}),
             // Drawn over the token, so what is wrong with a character is visible on the
             // board and not only on the sheet.
             statuses: statusMarkers(m.activeConditions ?? m.conditions),
@@ -1078,7 +1082,7 @@ export function fireHazardsOnEnter(member, x, y) {
         board.hazards = spotted.hazards;
         for (const hazard of spotted.spotted) {
             const line = `${member.name} se fija: ${hazard.tell || describeHazard(hazard)} en (${hazard.x + 1}, ${hazard.y + 1}).`;
-            postCombatNarration(`👁️ [TABLERO] ${line}`);
+            tellTrap(member, hazard, line);
             toastr.warning(line, 'Cuidado', { timeOut: 8000 });
         }
     }
@@ -1093,6 +1097,26 @@ export function fireHazardsOnEnter(member, x, y) {
 
     savePartyState();
     renderLocationMapsPreview();
+}
+
+/**
+ * Tanda 22 (D-J60): la trampa que se ve venir la dice quien la ve, si es uno de los tuyos: «¡Ojo!
+ * Una losa está más baja que las demás». Quien aún no habla (Grimm) avisa con un gruñido, y el
+ * aviso de la esquina dice qué es. Si la ve tu héroe, o con conexión, la nota de siempre.
+ *
+ * @param {any} member Quien la ve.
+ * @param {any} hazard
+ * @param {string} line La nota: quién, qué y dónde.
+ */
+function tellTrap(member, hazard, line) {
+    const note = `👁️ [TABLERO] ${line}`;
+    const hero = partyMembers.find(m => !m.guest) ?? partyMembers[0];
+    if (!offlineGame() || !member || member === hero) {
+        postCombatNarration(note);
+        return;
+    }
+    const said = silentNow(member) ? gruntFor('crit') : `¡Ojo! ${String(hazard?.tell || describeHazard(hazard)).trim()}`;
+    sayHere(note, String(member.name), said);
 }
 
 /**
@@ -1180,7 +1204,7 @@ export function walkTraps(member, path) {
     for (const clue of walk.clues) applyHazardHit(member, clue);
     for (const hazard of walk.spotted) {
         const line = `${member.name} se fija: ${hazard.tell || describeHazard(hazard)} en (${hazard.x + 1}, ${hazard.y + 1}), y se para.`;
-        postCombatNarration(`👁️ [TABLERO] ${line}`);
+        tellTrap(member, hazard, line);
         toastr.warning(`${line} Se puede desarmar desde al lado, o dar un rodeo.`, 'Cuidado', { timeOut: 9000 });
     }
     if (walk.blockedBy) {

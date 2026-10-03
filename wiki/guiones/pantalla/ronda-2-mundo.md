@@ -583,6 +583,8 @@ bicho:
   habilidades: [tec-cerrar-filas]
   descripcion: "Uniforme gris con botones numerados y escudo con el sello de la torre."
   debilidad: "Cumple órdenes: sin quien mande, duda."
+  paquete:
+    aspecto: "Hombre de unos treinta, serio y bien afeitado, con el pelo corto bajo una gorra gris. Uniforme gris con botones numerados y un escudo con el sello de la torre."
 
 bicho:
   id: ballestero
@@ -607,6 +609,8 @@ bicho:
   habilidades: [hab-empujon, tec-pisoton]
   descripcion: "Cobra lo que se debe y lo que no. Le gusta empujar a la gente contra la pared."
   debilidad: "Si ve que no va a cobrar, se le pasan las ganas."
+  paquete:
+    aspecto: "Hombre de unos cuarenta, ancho y con papada, sonrisa de matón y la barra de nivel pintada de azul sobre la cabeza. Chaqueta de cuero gastada y una porra en la mano."
 
 bicho:
   id: teniente
@@ -620,6 +624,8 @@ bicho:
   jefe: true
   descripcion: "Manda la guardia de noche de la lonja. Lleva una lista de nombres y la va tachando."
   debilidad: "Si cae su lista, sus celadores no saben a quién buscan."
+  paquete:
+    aspecto: "Mujer de unos treinta y cinco, con el pelo recogido en un moño apretado y gafas pequeñas. Uniforme gris de oficial con galones y una lista de nombres en la mano."
 
 bicho:
   id: escribano
@@ -632,6 +638,8 @@ bicho:
   habilidades: [mag-escarcha, hab-sueno]
   descripcion: "Lleva una pluma que brilla y un libro abierto: anota, y te quita."
   debilidad: "Sin su libro en la mano no sabe hacer nada."
+  paquete:
+    aspecto: "Hombre joven y pálido, con flequillo recto y manguitos negros. Túnica gris de escribano, un libro abierto en una mano y una pluma que brilla en la otra."
 
 bicho:
   id: cristal
@@ -694,8 +702,8 @@ bicho:
   debilidad: "La luz la deshace más deprisa que el acero."
 
 bicho:
-  id: huesped-a-sueldo
-  nombre: Huésped a sueldo
+  id: huesped-mercenario
+  nombre: Huésped mercenario
   pg: 30
   ca: 15
   desafio: 2
@@ -704,6 +712,8 @@ bicho:
   habilidades: [hab-segundo-aliento, tec-barrido]
   descripcion: "Un huésped que subió a nivel nueve en un mes y ahora vende su espada a la Contaduría."
   debilidad: "Pelea como en un juego de su mundo: siempre al más débil, sin cubrirse."
+  paquete:
+    aspecto: "Chico de unos veinte, de nuestro mundo: sudadera con capucha bajo una armadura brillante de nivel nueve, zapatillas de deporte y una espada demasiado grande para él."
 
 bicho:
   id: acogido
@@ -716,6 +726,8 @@ bicho:
   habilidades: [hab-gritar]
   descripcion: "Huéspedes de la Acogida con lo que han podido coger: palas, sartenes, una espada vieja."
   debilidad: "No quieren pelear contigo. Si les hablas, escuchan."
+  paquete:
+    aspecto: "Mujer de unos cuarenta, de nuestro mundo, con chaqueta reflectante sobre ropa de campo y una pala en las manos. Cara cansada y decidida."
 
 bicho:
   id: contador-mayor
@@ -729,6 +741,8 @@ bicho:
   jefe: true
   descripcion: "Leandro Tallada, con su barra de nivel doce. Debajo de los números comprados hay un hombre de nivel dos que tiene miedo."
   debilidad: "Los cristales del corazón le dan los niveles: si se rompen, se le apaga la barra comprada."
+  paquete:
+    aspecto: "Hombre de unos sesenta, delgado y muy erguido, levita gris impecable con botones numerados y un medallón de plata al cuello. Su barra brilla con un doce dorado."
 
 ## Los héroes hechos
 

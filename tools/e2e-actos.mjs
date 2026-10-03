@@ -36,6 +36,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { entrarEnLaPelea } from './e2e-entrar-pelea.mjs';
+import { buscarEnElPueblo, enElGremio, opcionesALaVista, pulsarALaVista, salirDelTablero } from './e2e-guiado.mjs';
 
 const ROOT = new URL('..', import.meta.url).pathname.replace(/^[/]([A-Za-z]:)/, '$1');
 const argAfter = (/** @type {string} */ flag) => (process.argv.includes(flag) ? process.argv[process.argv.indexOf(flag) + 1] : '');
@@ -203,10 +204,19 @@ try {
         if (chip instanceof HTMLElement) chip.click();
         return Boolean(chip);
     }, { source: pattern.source, flags: pattern.flags });
-    /** Pulsar una ficha; si no cabe en la fila, en la ventana de «+N más», que las tiene todas. */
+    /**
+     * Pulsar una ficha; si no cabe en la fila, en la ventana de «+N más», que las tiene todas. D-J62:
+     * con el modo guiado, lo que estaba en la fila está en la pantalla del sitio («Lo que pide la
+     * historia», la gente de aquí, lo de mirar) o dentro del sitio del pueblo al que pertenece.
+     */
     const clickChip = async (/** @type {RegExp} */ pattern) => {
         if (await pressChip(pattern)) return true;
-        if (!(await pressChip(/^\+\d+ más$/))) return false;
+        if (await pulsarALaVista(page, pattern)) return true;
+        if (!(await pressChip(/^\+\d+ más$/))) {
+            const inTown = await buscarEnElPueblo(page, act => pattern.test(act.label));
+            if (!inTown) return false;
+            return page.locator(`#game-shell .gs-town-scene .gs-town-act[data-action="${inTown.id}"]`).first().click({ timeout: 5000 }).then(() => true).catch(() => false);
+        }
         await page.waitForSelector('.hp-root .hp-item', { timeout: 5000 }).catch(() => {});
         const found = await page.evaluate(({ source, flags }) => {
             const item = [...document.querySelectorAll('.hp-root .hp-item')].find(b => new RegExp(source, flags).test((b.textContent || '').trim()));
@@ -219,7 +229,8 @@ try {
     /** Todas las fichas, también las que no caben en la fila. */
     const allChips = async () => {
         const shown = await chips();
-        if (!shown.some(c => /^\+\d+ más$/.test(c))) return shown;
+        // D-J62: lo que está a la vista fuera de la fila (la pantalla del sitio).
+        if (!shown.some(c => /^\+\d+ más$/.test(c))) return [...new Set([...shown, ...await opcionesALaVista(page)])];
         await pressChip(/^\+\d+ más$/);
         await page.waitForSelector('.hp-root .hp-item', { timeout: 5000 }).catch(() => {});
         const more = await page.evaluate(() => [...document.querySelectorAll('.hp-root .hp-item')].map(b => (b.textContent || '').trim()));
@@ -383,7 +394,8 @@ try {
     };
     /** Entrar en un tablero de aquí y ganar su pelea. */
     const enterAndWin = async (/** @type {string} */ board) => {
-        const enter = await until(() => clickChip(new RegExp(`^Entrar en ${escape(board)}`)), 10000);
+        // D-J62: al llegar adonde la historia pide la pelea se entra solo; si no, «Ir a…» el tablero.
+        const enter = (await state()).board === board || await until(() => clickChip(new RegExp(`^(Entrar en|Ir a) ${escape(board)}`)), 10000);
         await page.waitForTimeout(1200);
         const warned = await acceptWeighty();
         await settle();
@@ -473,7 +485,9 @@ try {
         await winFight();
         await settle();
     }
-    if (!(await until(() => clickChip(/^Saltar la prueba$/), 4000))) {
+    // D-J62: «Saltar la prueba» está en la Casa del Gremio, fuera del tablero del muelle.
+    await salirDelTablero(page);
+    if (!(await until(() => enElGremio(page, 'hub-skip'), 8000))) {
         await page.evaluate(() => { void window.SillyTavern.getContext().executeSlashCommandsWithOptions('/saltar-prueba'); });
     }
     await page.waitForSelector('.popup:has-text("¿Saltar la prueba?")', { timeout: 10000 }).catch(() => {});
@@ -482,13 +496,13 @@ try {
     await settle();
     // Si la ventana del ratero sigue abierta tras saltar la prueba, se cierra (no es de este frente).
     await page.evaluate(() => document.querySelectorAll('dialog.ev-avoid[open]').forEach(d => /** @type {any} */ (d).close()));
-    const skipped = await until(async () => (await chips()).some(c => /Tablón de campañas/.test(c)), 20000);
+    const skipped = await until(async () => (await state()).done.includes('la-prueba'), 20000);
     check('en el gremio con Iria, y la prueba saltada', inHub && skipped, JSON.stringify({ state: await state(), chips: await chips() }));
     read.length = 0;
 
     // ------------------------------------------------------------ el tablón
     await dropToasts();
-    await clickChip(/Tablón de campañas/);
+    await enElGremio(page, 'hub-board');
     await page.waitForSelector('.hb-root [data-campaign="costa"]', { timeout: 15000 }).catch(() => {});
     const board = await page.evaluate(() => [...document.querySelectorAll('.hb-root [data-campaign]')].map(c => ({
         id: c.getAttribute('data-campaign') || '', text: (c.textContent || '').replace(/\s+/g, ' ').trim(),
@@ -623,7 +637,7 @@ try {
     const back = await until(async () => /Gremio/.test((await state()).world), 60000);
     await page.waitForTimeout(1500);
     await settle();
-    await clickChip(/Tablón de campañas/);
+    await enElGremio(page, 'hub-board');
     await page.waitForSelector('.hb-root [data-campaign="costa"]', { timeout: 15000 }).catch(() => {});
     const tile = await page.evaluate(() => (document.querySelector('.hb-root [data-campaign="costa"]')?.textContent || '').replace(/\s+/g, ' ').trim());
     if (SHOT) await page.screenshot({ path: `${SHOT}.vuelta.png` });

@@ -25,6 +25,8 @@ bicho:
   habilidades: [hab-embate]
   descripcion: Capa gris, cota de malla y una espada corta. Cobra de quien pague.
   debilidad: Si cae su cabo, la mitad se lo piensa.
+  paquete:
+    aspecto: "Hombre de unos treinta, con barba corta y la cara curtida por el viento. Capa gris con capucha, cota de malla y una espada corta al cinto."
 
 bicho:
   id: ballestero
@@ -47,6 +49,8 @@ bicho:
   alcance: 5
   habilidades: [tec-cerrar-filas, hab-gritar]
   descripcion: Un veterano con un silbato de hueso. Los suyos le obedecen mientras pague.
+  paquete:
+    aspecto: "Hombre de unos cincuenta, canoso y de bigote espeso, con un silbato de hueso colgado al cuello. Capa gris sobre cota de malla y una insignia de latón en el hombro."
 
 bicho:
   id: tamborilero
@@ -71,6 +75,8 @@ bicho:
   jefe: true
   descripcion: Un parche de cuero en el ojo izquierdo y dos cuchillos largos. Lleva al cinto el mapa de las Sendas Viejas.
   debilidad: Odia a su capitán. Si se lo recuerdas, duda.
+  paquete:
+    aspecto: "Mujer de unos cuarenta, flaca y dura, con el pelo negro rapado a los lados y un parche de cuero en el ojo izquierdo. Capa gris, coraza de cuero y dos cuchillos largos al cinto."
 
 bicho:
   id: capitan
@@ -83,6 +89,8 @@ bicho:
   habilidades: [hab-embate, tec-embestida, hab-segundo-aliento, hab-gritar]
   jefe: true
   descripcion: Armadura negra, capa gris y una espada de mano y media. Pelea como habla, con elegancia y sin prisa.
+  paquete:
+    aspecto: "Hombre de unos cuarenta y cinco, alto y elegante, con el pelo negro peinado hacia atrás y una barba fina. Armadura negra, capa gris larga y una espada de mano y media."
 
 bicho:
   id: guardian
@@ -144,6 +152,8 @@ bicho:
   habilidades: [mag-escarcha, hab-animo]
   jefe: true
   descripcion: Un trasgo viejo cubierto de pieles y huesos. Hace crecer el hielo de las paredes.
+  paquete:
+    aspecto: "Trasgo viejo y arrugado, de piel verde grisácea y orejas largas, con escarcha en las cejas. Cubierto de pieles y collares de huesos, con un bastón coronado por un cráneo."
 
 bicho:
   id: totem
@@ -178,6 +188,8 @@ bicho:
   alcance: 5
   habilidades: [hab-embate]
   descripcion: Grande, con un garrote y sin ganas de preguntar.
+  paquete:
+    aspecto: "Hombre de unos treinta y cinco, grande como un armario, con la cabeza rapada y la nariz rota. Chaleco de cuero sin mangas y un garrote al hombro."
 
 bicho:
   id: contrabandista
@@ -200,6 +212,8 @@ bicho:
   alcance: 5
   habilidades: [tec-frasco-lumbre, hab-cubrirse]
   descripcion: El jefe de los contrabandistas, con un garfio en lugar de mano izquierda.
+  paquete:
+    aspecto: "Hombre de unos cincuenta, fornido y tostado por el sol, con barba blanca corta y un aro de oro en la oreja. Chaquetón de barquero y un garfio de hierro en lugar de la mano izquierda."
 
 bicho:
   id: saqueador
@@ -222,6 +236,8 @@ bicho:
   alcance: 5
   habilidades: [hab-ataque-furtivo, tec-polvo-ojos]
   descripcion: Busca el cuerno de guerra del último thane de la Atalaya, para vendérselo a quien pague más.
+  paquete:
+    aspecto: "Hombre de unos cuarenta, flaco y de ojos inquietos, con la barba rala y un sombrero de ala ancha. Capa de viaje embarrada y una pala de cavar a la espalda."
 
 bicho:
   id: desertor
@@ -233,6 +249,8 @@ bicho:
   alcance: 5
   habilidades: [hab-aguantar]
   descripcion: Soldado de Brezo sin paga ni bandera. Roba a los pastores para comer.
+  paquete:
+    aspecto: "Hombre joven, flaco y sin afeitar, con ojeras profundas. Jubón morado de Brezo desteñido y sin la insignia, y una lanza vieja."
 
 bicho:
   id: ladron
@@ -267,7 +285,7 @@ objeto:
   nombre: Libro de pagos de Fullero
   tipo: gear
   rareza: Rare
-  historia: Un libro de cuentas forrado de piel negra. Cuarenta sueldos al mes de Brezo, cuarenta de Oramar y treinta de Hondaroca, todos para el Cierzo.
+  historia: Un libro de cuentas forrado de piel negra. Cuarenta monedas al mes de Brezo, cuarenta de Oramar y treinta de Hondaroca, todas para el Cierzo.
 
 objeto:
   id: mapa-sendas
@@ -721,24 +739,38 @@ encuentro:
         text: Gritarles que el cofre ya se ha hundido en el río
         skill: deception
         dc: 13
-        success: "El cabecilla mira el agua y maldice: «Si se ha hundido, que lo saque su madre». Se van por la orilla."
-        failure: "«Pues lo sacamos nosotros, y a ti con él.» Se te echan encima."
+        success:
+          who: "Mercenario del Cierzo"
+          text: "¿Hundido? Si se ha hundido, que lo saque su madre. Vámonos por la orilla."
+        failure:
+          who: "Mercenario del Cierzo"
+          text: "Pues lo sacamos nosotros, y a ti con él."
       - kind: pagar
-        text: Ofrecerles veinte sueldos para que se vayan sin el cofre
+        text: Ofrecerles veinte monedas para que se vayan sin el cofre
         gold: 20
-        success: "El de la ballesta cuenta las monedas: «Por veinte nos mojamos menos». Se marchan riendo."
+        success:
+          who: "Mercenario del Cierzo"
+          text: "Por veinte nos mojamos menos. ¡Andando, que hoy cobramos sin mojarnos!"
     parley:
       leader: Mercenario del Cierzo
       convencer:
         text: Les gritas que las barcas ya vienen, con todos los hombres de la posada.
         dc: 13
-        success: "«¡Las barcas!» Los de capa gris se miran y salen corriendo por la orilla."
-        failure: "«Mientes peor que mi suegra.» Siguen."
+        success:
+          who: "Mercenario del Cierzo"
+          text: "¡Las barcas! ¿Con todos los de la posada? ¡Por la orilla, corred!"
+        failure:
+          who: "Mercenario del Cierzo"
+          text: "Mientes peor que mi suegra."
       sobornar:
-        text: Les ofreces veinticinco sueldos por dejar el carro en paz.
+        text: Les ofreces veinticinco monedas por dejar el carro en paz.
         gold: 25
-        success: "«Trato. Ese cofre no pesa tanto como para morir por él.»"
-        failure: "«¿Eso es todo? Por eso no me mojo ni los pies.»"
+        success:
+          who: "Mercenario del Cierzo"
+          text: "Trato. Ese cofre no pesa tanto como para morir por él."
+        failure:
+          who: "Mercenario del Cierzo"
+          text: "¿Eso es todo? Por eso no me mojo ni los pies."
       no: [entregarse]
 
 encuentro:
@@ -764,29 +796,47 @@ encuentro:
         text: Enseñarle el sello al cabo y decirle que las tres casas ya saben quién lo lleva
         skill: intimidation
         dc: 14
-        success: "«Si las tres casas saben que lo llevas, ya no vale lo mismo.» El cabo silba y los suyos se retiran por el barranco."
-        failure: "«Las casas están lejos. Nosotros, aquí.»"
+        success:
+          who: "Cabo del Cierzo"
+          text: "Si las tres casas saben que lo llevas, ya no vale lo mismo. ¡Atrás, por el barranco!"
+        failure:
+          who: "Cabo del Cierzo"
+          text: "Las casas están lejos. Nosotros, aquí."
       - kind: esconderse
         text: Bajar por la cuneta, entre las zarzas, hasta pasar el tramo roto
         dc: 13
-        success: Pasáis agachados entre las zarzas. Arriba, el cabo bosteza y no se entera de nada.
+        success:
+          who: "{companero}"
+          text: "Agachados entre las zarzas… Ya está, pasamos. Mira al cabo: bostezando, no se ha enterado de nada."
     parley:
       leader: Cabo del Cierzo
       sobornar:
-        text: Le ofreces treinta sueldos por el camino libre.
+        text: Le ofreces treinta monedas por el camino libre.
         gold: 30
-        success: "«Treinta... El capitán me paga veinte por esperarte. Haz tú las cuentas.» Se retiran."
-        failure: "«El capitán paga más. Y pega más.»"
+        success:
+          who: "Cabo del Cierzo"
+          text: "Treinta… El capitán me paga veinte por esperarte. Haz tú las cuentas. ¡Nos retiramos!"
+        failure:
+          who: "Cabo del Cierzo"
+          text: "El capitán paga más. Y pega más."
       convencer:
         text: Le dices que el Cierzo cobra de las tres casas, y que cuando no le sirva le dejarán colgado igual.
         dc: 14
-        success: "El cabo escupe: «Eso ya lo sé. Por eso no pienso morir aquí». Se va con los suyos."
-        failure: "«Mientras pague, me da igual quién cuelgue.»"
+        success:
+          who: "Cabo del Cierzo"
+          text: "Eso ya lo sé. Por eso no pienso morir aquí. ¡Vámonos!"
+        failure:
+          who: "Cabo del Cierzo"
+          text: "Mientras pague, me da igual quién cuelgue."
       engañar:
         text: Le gritas que la guardia de Oramar viene detrás de ti.
         dc: 13
-        success: "«¿Oramar? ¡Atrás, atrás!» Se retiran sin mirar."
-        failure: "«Oramar no saca la guardia de Vadoancho ni para un incendio.»"
+        success:
+          who: "Cabo del Cierzo"
+          text: "¿Oramar? ¡Atrás, atrás!"
+        failure:
+          who: "Cabo del Cierzo"
+          text: "Oramar no saca la guardia de Vadoancho ni para un incendio."
       no: [entregarse]
 
 encuentro:
@@ -827,26 +877,36 @@ encuentro:
         text: Entrar de noche por la puerta del canal y salir por el mismo sitio
         dc: 14
         success:
-          text: Los matones juegan a los dados en la entrada. Coges el libro de la cámara y sales por el canal sin que levanten la vista.
+          who: "{companero}"
+          text: "Siguen con sus dados en la entrada. Ya tengo el libro de la cámara: fuera por el canal, sin ruido."
           effects: [{ give: Libro de pagos de Fullero }]
       - kind: pagar
         text: Pagar a uno de los matones para que mire a otro lado
         gold: 25
         success:
-          text: "«Veinticinco y no he visto nada.» El matón te abre la cámara y se va a por vino."
+          who: "Matón de Fullero"
+          text: "Veinticinco y no he visto nada. Ahí tienes la cámara abierta. Yo me voy a por vino."
           effects: [{ give: Libro de pagos de Fullero }]
     parley:
       leader: Matón de Fullero
       sobornar:
-        text: Les ofreces veinte sueldos por volver a sus dados.
+        text: Les ofreces veinte monedas por volver a sus dados.
         gold: 20
-        success: "«Fullero paga quince. Tú, veinte. Las cuentas son las cuentas.» Vuelven a sentarse."
-        failure: "«Fullero se entera de todo. Y luego nos cobra a nosotros.»"
+        success:
+          who: "Matón de Fullero"
+          text: "Fullero paga quince. Tú, veinte. Las cuentas son las cuentas. ¡A los dados!"
+        failure:
+          who: "Matón de Fullero"
+          text: "Fullero se entera de todo. Y luego nos cobra a nosotros."
       engañar:
         text: Les dices que Fullero ha mandado vaciar la cámara antes de que llegue la guardia.
         dc: 13
-        success: "«¿Otra vez? Pues vacíala tú, que yo no cargo.» Se apartan."
-        failure: "«Fullero no manda a nadie que no conozcamos.»"
+        success:
+          who: "Matón de Fullero"
+          text: "¿Otra vez? Pues vacíala tú, que yo no cargo."
+        failure:
+          who: "Matón de Fullero"
+          text: "Fullero no manda a nadie que no conozcamos."
       no: [entregarse]
 
 encuentro:
@@ -868,23 +928,35 @@ encuentro:
   paquete:
     avoid:
       - kind: hablar
-        text: Gritar desde la muralla que la thane paga diez sueldos por cada oreja de trasgo
+        text: Gritar desde la muralla que la thane paga diez monedas por cada oreja de trasgo
         skill: intimidation
         dc: 14
-        success: Los trasgos se tocan las orejas, chillan y se dispersan monte arriba. Los dos de capa gris se quedan solos y se retiran.
-        failure: Los trasgos se ríen. Los de capa gris, no. Avanzan.
+        success:
+          who: "Mercenario del Cierzo"
+          text: "Mira los trasgos: se tocan las orejas y salen corriendo monte arriba. Solos no nos quedamos. ¡Atrás!"
+        failure:
+          who: "Mercenario del Cierzo"
+          text: "Los trasgos se ríen. Nosotros, no. ¡Adelante!"
     parley:
       leader: Mercenario del Cierzo
       sobornar:
-        text: Les ofreces treinta sueldos por irse y dejar a los trasgos solos.
+        text: Les ofreces treinta monedas por irse y dejar a los trasgos solos.
         gold: 30
-        success: "«Los trasgos no cobran. Nosotros sí. Hasta otra.» Se van, y los trasgos huyen detrás."
-        failure: "«Con treinta no se paga ni la subida.»"
+        success:
+          who: "Mercenario del Cierzo"
+          text: "Los trasgos no cobran. Nosotros, sí. Hasta otra."
+        failure:
+          who: "Mercenario del Cierzo"
+          text: "Con treinta no se paga ni la subida."
       convencer:
         text: Les gritas que la reja va a bajar y los va a dejar dentro con cien enanos.
         dc: 15
-        success: "«¿Cien? A mí me dijeron que eran diez.» Se retiran, y los trasgos detrás."
-        failure: "«¡Que baje! Así no salís vosotros.»"
+        success:
+          who: "Mercenario del Cierzo"
+          text: "¿Cien enanos? A mí me dijeron que eran diez. ¡Fuera de aquí!"
+        failure:
+          who: "Mercenario del Cierzo"
+          text: "¡Que baje! Así no salís vosotros."
       no: [entregarse]
 
 encuentro:
@@ -926,20 +998,32 @@ encuentro:
         text: Dar un grito de guerra enano que retumbe en toda la mina
         skill: intimidation
         dc: 15
-        success: Los trasgos chillan y huyen por los túneles. El chamán se queda solo con sus tótems, y también corre. Los rompéis sin prisa.
-        failure: El eco se pierde por los túneles. Los trasgos se ríen y sacan los picos.
+        success:
+          who: "Chamán trasgo"
+          text: "¡Enanos! ¡Muchos enanos! ¡Corred, corred! ¡Los tótems se quedan!"
+        failure:
+          who: "Chamán trasgo"
+          text: "¡Ji, ji! ¡Eco nada más! ¡Sacad los picos!"
     parley:
       leader: Chamán trasgo
       sobornar:
         text: Le tiras una bolsa de sal. Los trasgos cobran en sal.
         gold: 15
-        success: El chamán huele la sal, chilla de gusto y se lleva a los suyos. Los tótems se quedan solos.
-        failure: "El chamán escupe la sal: «¡Cierzo paga más sal!»"
+        success:
+          who: "Chamán trasgo"
+          text: "¡Sal! ¡Sal rica! ¡Nos vamos, nos vamos!"
+        failure:
+          who: "Chamán trasgo"
+          text: "¡Cierzo paga más sal!"
       engañar:
         text: Le dices que el Cierzo se ha ido del valle sin pagarle.
         dc: 13
-        success: "«¡Cierzo mentiroso!» De rabia, el chamán rompe él mismo sus tótems y huye."
-        failure: "«¡Tú mentiroso!»"
+        success:
+          who: "Chamán trasgo"
+          text: "¡Cierzo mentiroso! ¡Tótems tontos! ¡Rotos, todos rotos!"
+        failure:
+          who: "Chamán trasgo"
+          text: "¡Tú mentiroso!"
       no: [entregarse]
 
 encuentro:
@@ -967,30 +1051,41 @@ encuentro:
         text: Entrar de noche por la brecha del arroyo, coger el mapa y salir por el mismo sitio
         dc: 15
         success:
-          text: Pasáis agachados por la brecha. En la tienda de la sargento, el mapa está encima de la mesa. Lo cogéis y salís como entrasteis.
+          who: "{companero}"
+          text: "Por la brecha, agachados… Ahí está el mapa, encima de la mesa de la sargento. Lo tengo. Salimos como entramos."
           effects: [{ give: Mapa de las Sendas Viejas }]
       - kind: hablar
         text: Entrar con capas grises robadas, como si fuerais de los suyos
         skill: deception
         dc: 14
         success:
-          text: "«Llegáis tarde al reparto», gruñe un centinela, y os deja pasar. Salís con el mapa debajo de una capa."
+          who: "La Tuerta, sargento del Cierzo"
+          text: "¿Llegáis tarde al reparto? Pasad, pasad, que no queda nada."
           effects: [{ give: Mapa de las Sendas Viejas }]
-        failure: "«Esa capa la llevaba Lucio. ¿Dónde está Lucio?» Suenan los tambores."
+        failure:
+          who: "La Tuerta, sargento del Cierzo"
+          text: "Esa capa la llevaba Lucio. ¿Dónde está Lucio? ¡Tambores!"
     parley:
       leader: La Tuerta, sargento del Cierzo
       convencer:
         text: Le dices que el capitán ya la dejó atrás una vez, y que lo volverá a hacer.
         dc: 15
         success:
-          text: "La Tuerta se toca el parche: «Eso no hacía falta que me lo dijeras». Baja los cuchillos. «Largaos. Y llevaos el mapa, que a mí no me paga por guardarlo.»"
+          who: "La Tuerta, sargento del Cierzo"
+          text: "Eso no hacía falta que me lo dijeras. Largaos. Y llevaos el mapa, que a mí no me paga por guardarlo."
           effects: [{ give: Mapa de las Sendas Viejas }]
-        failure: "«Me deja atrás, pero me paga. Tú ni eso.»"
+        failure:
+          who: "La Tuerta, sargento del Cierzo"
+          text: "Me deja atrás, pero me paga. Tú ni eso."
       sobornar:
-        text: Le ofreces cuarenta sueldos por mirar hacia otro lado.
+        text: Le ofreces cuarenta monedas por mirar hacia otro lado.
         gold: 40
-        success: "«Cuarenta. Por ese dinero, hoy no os he visto.»"
-        failure: "«Con eso no me compro ni un parche nuevo.»"
+        success:
+          who: "La Tuerta, sargento del Cierzo"
+          text: "Cuarenta. Por ese dinero, hoy no os he visto."
+        failure:
+          who: "La Tuerta, sargento del Cierzo"
+          text: "Con eso no me compro ni un parche nuevo."
       no: [entregarse]
 
 encuentro:
@@ -1015,24 +1110,38 @@ encuentro:
         text: Espantar a los huargos con antorchas y gritos
         skill: intimidation
         dc: 14
-        success: Los huargos huyen aullando ladera abajo. Sin perros, los ballesteros no se atreven a bajar a la cornisa y os dejan pasar.
-        failure: Los huargos enseñan los dientes. Los ballesteros cargan.
+        success:
+          who: "Mercenario del Cierzo"
+          text: "¡Los huargos huyen ladera abajo! Sin perros no bajo a esa cornisa. Que pasen."
+        failure:
+          who: "Mercenario del Cierzo"
+          text: "Los huargos no se asustan con tan poco. ¡Cargad las ballestas!"
       - kind: esconderse
         text: Subir de noche pegados a la roca, sin despertar a los huargos
         dc: 15
-        success: El viento sopla a vuestro favor. Los huargos no os huelen, y los ballesteros miran hacia el camino grande.
+        success:
+          who: "{companero}"
+          text: "El viento sopla a nuestro favor: los huargos no nos huelen, y los ballesteros miran al camino grande. Seguimos."
     parley:
       leader: Mercenario del Cierzo
       convencer:
         text: Les gritas que el capitán los ha dejado aquí fuera para que se mueran de frío.
         dc: 14
-        success: "«En eso tiene razón.» Bajan las armas y se van hacia el refugio."
-        failure: "«Frío pasamos todos. Paga, que es lo que importa.»"
+        success:
+          who: "Mercenario del Cierzo"
+          text: "En eso tiene razón. Bajad las armas: nos vamos al refugio."
+        failure:
+          who: "Mercenario del Cierzo"
+          text: "Frío pasamos todos. Paga, que es lo que importa."
       sobornar:
-        text: Les ofreces treinta sueldos y una cama en el refugio.
+        text: Les ofreces treinta monedas y una cama en el refugio.
         gold: 30
-        success: "«¿Con cama? Trato hecho.»"
-        failure: "«Arriba nos espera más que eso.»"
+        success:
+          who: "Mercenario del Cierzo"
+          text: "¿Con cama? Trato hecho."
+        failure:
+          who: "Mercenario del Cierzo"
+          text: "Arriba nos espera más que eso."
       no: [entregarse]
 
 encuentro:
@@ -1075,19 +1184,29 @@ encuentro:
         text: Bajar al refugio a curaros y volver mañana
         skill: athletics
         dc: 10
-        success: Os retiráis por la cornisa. El capitán no os persigue. Sabe que volveréis.
+        success:
+          who: "El capitán del Cierzo"
+          text: "Id, id a curaros. No os persigo. Sé que volveréis."
     parley:
       leader: El capitán del Cierzo
       convencer:
         text: Le dices que ninguna casa reconocerá nunca a un capitán de mercenarios como señor del paso.
         dc: 18
-        success: "El capitán se ríe, esta vez de verdad: «Las casas solo reconocen a quien ya ha ganado». Clava la espada en la nieve. «Enciende tu fanal. Yo me voy al sur, donde todavía pagan.»"
-        failure: "«Entonces me reconocerán a la fuerza. Como hicieron con sus abuelos.»"
+        success:
+          who: "El capitán del Cierzo"
+          text: "Ja… Las casas solo reconocen a quien ya ha ganado. Enciende tu fanal. Yo me voy al sur, donde todavía pagan."
+        failure:
+          who: "El capitán del Cierzo"
+          text: "Entonces me reconocerán a la fuerza. Como hicieron con sus abuelos."
       sobornar:
-        text: Le ofreces doscientos sueldos por irse con los suyos.
+        text: Le ofreces doscientas monedas por irse con los suyos.
         gold: 200
-        success: "«Doscientos. Es lo que me pagó cada casa. Contigo, cuatro. Me voy contento.»"
-        failure: "«No es el dinero. Bueno, también. Pero sobre todo, no.»"
+        success:
+          who: "El capitán del Cierzo"
+          text: "Doscientos. Es lo que me pagó cada casa. Contigo, cuatro. Me voy contento."
+        failure:
+          who: "El capitán del Cierzo"
+          text: "No es el dinero. Bueno, también. Pero sobre todo, no."
       no: [entregarse, engañar]
 
 ## Las peleas de los encargos
@@ -1112,20 +1231,30 @@ encuentro:
       - kind: pagar
         text: Darles dos sacos de harina para que se vayan
         gold: 8
-        success: "«Dos sacos son dos sacos.» Se los llevan entre cuatro y no vuelven."
+        success:
+          who: "Desertor de Brezo"
+          text: "Dos sacos son dos sacos. Cogedlos entre cuatro. No volveremos."
       - kind: hablar
         text: Decirles que la alcaldesa da trabajo a quien ayude a moler
         skill: persuasion
         dc: 12
-        success: Se miran entre ellos y dejan los sacos en el suelo. Mañana vendrán a moler, no a robar.
-        failure: "«Trabajo. Eso decían en Brezo antes de quemarnos la aldea.»"
+        success:
+          who: "Desertor de Brezo"
+          text: "¿Trabajo, de verdad? …Dejad los sacos en el suelo. Mañana vendremos a moler, no a robar."
+        failure:
+          who: "Desertor de Brezo"
+          text: "Trabajo. Eso decían en Brezo antes de quemarnos la aldea."
     parley:
       leader: Desertor de Brezo
       convencer:
         text: Les dices que el grano robado se les pudrirá sin molino.
         dc: 11
-        success: "«¿Y qué hacemos, entonces?» Se sientan en el suelo, sin fuerzas para pelear."
-        failure: "«Mejor podrido que en las tripas de un recaudador.»"
+        success:
+          who: "Desertor de Brezo"
+          text: "¿Y qué hacemos, entonces? …Ya no tengo fuerzas para pelear."
+        failure:
+          who: "Desertor de Brezo"
+          text: "Mejor podrido que en las tripas de un recaudador."
       no: [entregarse]
 
 encuentro:
@@ -1148,19 +1277,27 @@ encuentro:
       - kind: pagar
         text: Darles un saco del carro para que dejen pasar los demás
         gold: 10
-        success: "«Un saco es un saco.» Se lo llevan y el carro sigue."
+        success:
+          who: "Desertor de Brezo"
+          text: "Un saco es un saco. Que siga el carro."
       - kind: hablar
         text: Decirles que en el templo de la Ribera dan pan a quien llega
         skill: persuasion
         dc: 12
-        success: "Se miran entre ellos: «¿Pan? ¿Gratis?». Se van hacia Vadoancho, delante del carro."
+        success:
+          who: "Desertor de Brezo"
+          text: "¿Pan? ¿Gratis? …Vamos a Vadoancho, chicos. Delante del carro."
     parley:
       leader: Desertor de Brezo
       convencer:
         text: Le dices que la alcaldesa necesita brazos para la molienda.
         dc: 12
-        success: "«Brazos tenemos. Lo que no tenemos es pan.» Baja la lanza."
-        failure: "«Eso dicen todos los que tienen grano.»"
+        success:
+          who: "Desertor de Brezo"
+          text: "Brazos tenemos. Lo que no tenemos es pan. …Está bien, bajo la lanza."
+        failure:
+          who: "Desertor de Brezo"
+          text: "Eso dicen todos los que tienen grano."
       no: [entregarse]
 
 encuentro:
@@ -1184,24 +1321,38 @@ encuentro:
         text: Decirle al patrón que la capitana de Oramar ya sabe su nombre
         skill: intimidation
         dc: 14
-        success: "El patrón se pone blanco: «Esa mujer cuelga a la gente de los mástiles». Se entrega él solo."
-        failure: "«Que venga. Aquí la espero.»"
+        success:
+          who: "Patrón de la esclusa"
+          text: "¿La capitana de Oramar? Esa mujer cuelga a la gente de los mástiles… Me entrego. Me entrego yo solo."
+        failure:
+          who: "Patrón de la esclusa"
+          text: "Que venga. Aquí la espero."
       - kind: pagar
         text: Comprarle a buen precio la sal de esta noche
         gold: 15
-        success: El patrón cuenta las monedas y os deja la sal. Esta noche no pasa nada de contrabando por la esclusa.
+        success:
+          who: "Patrón de la esclusa"
+          text: "Buen precio. La sal es tuya. Esta noche no pasa nada por la esclusa, palabra."
     parley:
       leader: Patrón de la esclusa
       convencer:
         text: Le dices que Lupe pagará el doble por sal con peaje que él sin peaje.
         dc: 13
-        success: "«¿El doble? Esa mediana no paga el doble ni a su madre.» Pero baja el garfio."
-        failure: "«Lupe me debe tres barcos. Que pague eso primero.»"
+        success:
+          who: "Patrón de la esclusa"
+          text: "¿El doble? Esa mediana no paga el doble ni a su madre. …Pero bajo el garfio."
+        failure:
+          who: "Patrón de la esclusa"
+          text: "Lupe me debe tres barcos. Que pague eso primero."
       sobornar:
-        text: Le ofreces veinte sueldos por irse río abajo.
+        text: Le ofreces veinte monedas por irse río abajo.
         gold: 20
-        success: "«Río abajo hay menos guardia. Trato.»"
-        failure: "«Veinte es lo que gano en una noche.»"
+        success:
+          who: "Patrón de la esclusa"
+          text: "Río abajo hay menos guardia. Trato."
+        failure:
+          who: "Patrón de la esclusa"
+          text: "Veinte es lo que gano en una noche."
       no: [entregarse]
 
 encuentro:
@@ -1225,12 +1376,18 @@ encuentro:
         text: Espantar a la manada con fuego y gritos
         skill: intimidation
         dc: 14
-        success: La loba blanca te mira un rato largo. Luego da media vuelta, y la manada la sigue monte arriba. Este invierno no bajarán.
-        failure: La loba aúlla y la manada os rodea.
+        success:
+          who: "{companero}"
+          text: "La loba blanca te mira… y da media vuelta. La manada la sigue monte arriba. Este invierno no bajarán."
+        failure:
+          who: "{companero}"
+          text: "¡La loba aúlla! ¡Nos están rodeando!"
       - kind: esconderse
         text: Rodear el robledal con el viento de cara, para que no os huelan
         dc: 13
-        success: Pasáis sin que la manada levante la cabeza. Mañana habrá que volver.
+        success:
+          who: "{companero}"
+          text: "Ni han levantado la cabeza. Pasamos… pero mañana habrá que volver."
         resolves: false
 
 encuentro:
@@ -1253,19 +1410,29 @@ encuentro:
         text: Decirles que el sargento Zarzal está vivo y no quemó Los Brezales
         skill: persuasion
         dc: 13
-        success: "«¿El sargento Zarzal? ¿Vivo?» Bajan las armas. «Dile que le debemos una.» Se van al llano sin robar a nadie más."
-        failure: "«Zarzal está muerto, o lo estará pronto. Como nosotros.»"
+        success:
+          who: "Desertor de Brezo"
+          text: "¿El sargento Zarzal? ¿Vivo? …Bajad las armas. Dile que le debemos una. Nos vamos al llano, sin robar a nadie más."
+        failure:
+          who: "Desertor de Brezo"
+          text: "Zarzal está muerto, o lo estará pronto. Como nosotros."
       - kind: pagar
-        text: Darles comida y veinte sueldos para que bajen al llano
+        text: Darles comida y veinte monedas para que bajen al llano
         gold: 20
-        success: Cogen el dinero y la comida. Uno llora. Se van al llano.
+        success:
+          who: "Desertor de Brezo"
+          text: "Comida… y dinero. Gracias. Nos vamos al llano."
     parley:
       leader: Desertor de Brezo
       convencer:
         text: Les ofreces trabajo en Los Sauces, donde faltan brazos.
         dc: 12
-        success: "«¿Trabajo de verdad? ¿Con paga?» Se miran, y bajan las lanzas."
-        failure: "«La última vez que nos ofrecieron trabajo, fue quemar una aldea.»"
+        success:
+          who: "Desertor de Brezo"
+          text: "¿Trabajo de verdad? ¿Con paga? …Bajad las lanzas."
+        failure:
+          who: "Desertor de Brezo"
+          text: "La última vez que nos ofrecieron trabajo, fue quemar una aldea."
       no: [entregarse]
 
 encuentro:
@@ -1289,12 +1456,18 @@ encuentro:
         text: Golpear los escudos y gritar hasta que el oso se vaya
         skill: intimidation
         dc: 13
-        success: El oso se levanta, ruge, y se pierde entre las hayas. Los huargos lo siguen a distancia.
-        failure: El oso no se asusta. Tiene demasiada hambre.
+        success:
+          who: "{companero}"
+          text: "¡Se levanta, ruge… y se va entre las hayas! Los huargos lo siguen de lejos."
+        failure:
+          who: "{companero}"
+          text: "No se asusta. Tiene demasiada hambre."
       - kind: esconderse
         text: Pasar por encima del barranco sin que os oigan
         dc: 12
-        success: Cruzáis el barranco en silencio. El oso sigue con lo suyo.
+        success:
+          who: "{companero}"
+          text: "Ya hemos cruzado el barranco, y el oso sigue con lo suyo."
         resolves: false
 
 encuentro:
@@ -1317,8 +1490,12 @@ encuentro:
         text: Encender todas las antorchas y hacer sonar la campana
         skill: intimidation
         dc: 13
-        success: La campana retumba en toda la montaña. Los huargos aúllan y se pierden en la nieve.
-        failure: La campana suena, pero los huargos tienen más hambre que miedo.
+        success:
+          who: "{companero}"
+          text: "¡Cómo retumba la campana! Los huargos aúllan… y se pierden en la nieve."
+        failure:
+          who: "{companero}"
+          text: "La campana suena, pero tienen más hambre que miedo."
 
 encuentro:
   id: enc-ermita
@@ -1349,18 +1526,30 @@ encuentro:
         text: Gritarles que el fraile ha llamado a los enanos de Hondaroca
         skill: intimidation
         dc: 13
-        success: Los saqueadores tiran las palas y corren monte abajo. El cabecilla se queda dentro de la cripta, encerrado con su propio cerrojo.
-        failure: "«Los enanos no salen de sus forjas ni para enterrar a los suyos.»"
+        success:
+          who: "Cabecilla de saqueadores"
+          text: "¿Los enanos? ¡Tirad las palas, corred! …¡Eh, no me dejéis aquí dentro! ¿Quién ha echado el cerrojo?"
+        failure:
+          who: "Cabecilla de saqueadores"
+          text: "Los enanos no salen de sus forjas ni para enterrar a los suyos."
     parley:
       leader: Cabecilla de saqueadores
       sobornar:
-        text: Le ofreces veinticinco sueldos por irse sin nada.
+        text: Le ofreces veinticinco monedas por irse sin nada.
         gold: 25
-        success: "«Veinticinco y sin cavar. No está mal.» Se va silbando."
-        failure: "«Por ese cuerno me pagan diez veces más.»"
+        success:
+          who: "Cabecilla de saqueadores"
+          text: "Veinticinco y sin cavar. No está mal."
+        failure:
+          who: "Cabecilla de saqueadores"
+          text: "Por ese cuerno me pagan diez veces más."
       convencer:
         text: Le dices que Oramar no paga por cuernos robados. Cuelga a quien los trae.
         dc: 13
-        success: "«¿Cuelga? A mí me dijeron que pagaba.» Tira la pala."
-        failure: "«Ya veremos quién cuelga a quién.»"
+        success:
+          who: "Cabecilla de saqueadores"
+          text: "¿Cuelga? A mí me dijeron que pagaba. …Tirad las palas."
+        failure:
+          who: "Cabecilla de saqueadores"
+          text: "Ya veremos quién cuelga a quién."
       no: [entregarse]

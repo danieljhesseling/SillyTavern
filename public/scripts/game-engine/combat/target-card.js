@@ -80,7 +80,7 @@ export function buildTargetCard({
         actions: [
             action('attack', 'Atacar', true, ''),
             action('ultimate', 'Golpe definitivo', canUltimate,
-                'Pide un vínculo de rango 10 y no haberlo usado hoy'),
+                'Pide rango 10 con alguien y no haberlo usado hoy'),
             // Las habilidades traen su propio veredicto: su alcance y su coste no tienen
             // por que ser los del arma, asi que juzgarlas aqui otra vez daría una razón
             // equivocada — un conjuro de 120 ft no está "fuera de alcance" a 30.

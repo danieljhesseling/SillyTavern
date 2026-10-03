@@ -77,7 +77,9 @@ describe('J8.5: cada pelea escrita con gente se puede hablar, con lo suyo', () =
 
         const talk = resolveParley({ way: 'convencer', enemies: foesOf(p, cala), party: [bran], gold: 20, parley, rollD20: always(20) });
         expect(parleyPlan(talk)).toMatchObject({ end: 'victory', theyLeave: true, passed: true });
-        expect(talk.lines.at(-1)).toMatch(/reman mar adentro/);
+        // Tanda 22 (D-J60): lo dice el contrabandista, con sus palabras.
+        expect(talk.lines.at(-1)).toMatch(/Cargad lo que podáis y remad/);
+        expect(talk.voice?.who).toBe('Bandido contrabandista');
 
         const given = resolveParley({ way: 'entregarse', enemies: foesOf(p, cala), party: [bran], gold: 20, parley, rollD20: always(1) });
         expect(parleyPlan(given)).toMatchObject({ end: 'manual', passed: false });

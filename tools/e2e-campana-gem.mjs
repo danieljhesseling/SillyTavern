@@ -36,7 +36,7 @@ import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 // D-J62, el modo guiado: lo del gremio en la Casa del Gremio; se va y se entra por lo que pide la historia.
-import { alSitio, enElGremio, pasoDeLaHistoria, salirDelTablero, viajarAPasoNormal } from './e2e-guiado.mjs';
+import { alSitio, enElGremio, pasoDeLaHistoria, salirDelTablero, seguirElCamino, viajarAPasoNormal } from './e2e-guiado.mjs';
 import { pathToFileURL } from 'node:url';
 
 const ROOT = new URL('..', import.meta.url).pathname.replace(/^[/]([A-Za-z]:)/, '$1');
@@ -234,8 +234,9 @@ try {
     };
     const dropToasts = () => page.evaluate(() => document.querySelectorAll('#toast-container .toast').forEach(t => t.remove()));
     const sceneNow = () => page.evaluate(() => document.querySelector('#game-shell')?.getAttribute('data-scene') || '');
+    // D-J60: lo que no dice nadie (el viaje, la llegada) va en el aviso de encima de la caja: también se lee.
     const novelBox = () => page.evaluate(() => ({
-        text: (document.querySelector('#game-shell .gs-vn-text')?.textContent || '').replace(/\s+/g, ' ').trim(),
+        text: [...document.querySelectorAll('#game-shell .gs-vn-text, #game-shell .gs-vn-aside')].map(n => n.textContent || '').join(' ').replace(/\s+/g, ' ').trim(),
         focus: (document.querySelector('#game-shell .gs-focus')?.textContent || '').replace(/\s+/g, ' ').trim(),
     }));
     const clearDice = async () => {
@@ -344,7 +345,9 @@ try {
     // El prólogo se lee (sus escenas) y la prueba se salta, como quien ya sabe jugar.
     await page.waitForTimeout(1500);
     await settle();
-    // D-J62: «Saltar la prueba» está en la Casa del Gremio, fuera del tablero del muelle.
+    // D-J62: «Saltar la prueba» está en la Casa del Gremio, fuera del tablero del muelle. La ventana
+    // del ratero (pelear o hablar) tapa el pueblo: no es de esta prueba, se cierra (como en e2e-actos).
+    await page.evaluate(() => document.querySelectorAll('dialog.ev-avoid[open]').forEach(d => /** @type {any} */ (d).close()));
     await salirDelTablero(page);
     // Si la pelea del muelle ya se está decidiendo, lo mismo que hace el botón.
     if (!(await until(() => enElGremio(page, 'hub-skip'), 15000))) await page.evaluate(async () => { void (await import('/scripts/party/hub.js')).skipHubTrial(); });
@@ -353,6 +356,7 @@ try {
     await page.waitForTimeout(1500);
     await settle();
     const skipped = await until(async () => (await state()).done.includes('la-prueba'), 20000);
+    await page.evaluate(() => document.querySelectorAll('dialog.ev-avoid[open]').forEach(d => /** @type {any} */ (d).close()));
     check('en el gremio con Iria, y la prueba saltada', inHub && skipped, JSON.stringify({ state: await state(), chips: await chips() }));
     read.length = 0;
     plates.length = 0;
@@ -420,7 +424,7 @@ try {
     await alSitio(page);
     const brezo = await page.evaluate(() => [...document.querySelectorAll('#game-shell [data-chip^="talk-local:"], #game-shell .gs-town-place-who, #game-shell .gs-story-step')]
         .map(n => (n.textContent || '').replace(/\s+/g, ' ').trim()));
-    check('Tobías el molinero está en la aldea (npcs.where): se puede hablar con él', brezo.some(c => /Tobías|molinero/.test(c)), JSON.stringify(brezo));
+    check('Tobías el molinero está en la aldea (npcs.where): se puede hablar con él', brezo.some(c => /Tobías|molinero/i.test(c)), JSON.stringify(brezo));
 
     // 4. Las tres misiones, una tras otra: ir, entrar, pelear, ganar.
     /** @type {string[]} Los tableros que avisaron de que no hay vuelta atrás (J11.1). */
@@ -430,7 +434,8 @@ try {
         // D-J62: «Ir a…» en lo que pide la historia; y al llegar, su tablero se abre solo.
         const go = await pasoDeLaHistoria(page, `story:go:${place}`, { ms: 15000 });
         await viajarAPasoNormal(page);
-        const there = await until(async () => (await state()).location === place, 30000);
+        // Lo que salga por el camino (un mercader, un rodeo) se pasa: aquí se mira llegar.
+        const there = await seguirElCamino(page, async () => (await state()).location === place, 40000);
         await settle();
         await dump(`en ${place}`);
         if (SHOT) await page.screenshot({ path: `${SHOT}.${place.replace(/\W+/g, '-')}.png` });

@@ -104,7 +104,8 @@ function buildPlot(plot, quests, boards) {
             // J9.2: la escena jugada, y lo demás que el hilo sabe leer y el contrato publica
             // (J5.2). Solo si lo trae: un hito sin nada de esto sale igual que siempre.
             // J11.1: `irreversible`, si el hito pesa aunque no cierre nada ni acabe la campaña.
-            ...Object.fromEntries(['backdrop', 'beats', 'sceneDialogue', 'prologue', 'hidden', 'within', 'late', 'backgrounds', 'irreversible']
+            // Tanda 22 (D-J60): y quién cuenta la escena (`pov`) y a quién presenta.
+            ...Object.fromEntries(['backdrop', 'beats', 'sceneDialogue', 'prologue', 'hidden', 'within', 'late', 'backgrounds', 'irreversible', 'pov', 'presenta']
                 .filter(key => m[key] !== undefined).map(key => [key, m[key]])),
             opens: m.opens ?? { kind: 'after', milestone: m.after },
             asks: m.asks ?? (board ? { kind: 'win', board: board.name } : { kind: 'none' }),

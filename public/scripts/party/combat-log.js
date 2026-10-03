@@ -27,10 +27,23 @@ let combatDiceOverlayElement = null;
 /** J15.5: al quitar los dados, el foco vuelve a lo que lo tenía antes de la primera tirada. @type {(() => void)|null} */
 let combatDiceFocusBack = null;
 
-/** @type {Array<{title: string, subtitle: string, dc: string, total: string, formula: string, classification: 'critical-success'|'success'|'failure'|'critical-failure', detail: string, glyph: string}>} */
+/**
+ * @typedef {Object} InitiativeRow H19 (tanda 22): la iniciativa de alguien, para la tarjeta de todos.
+ * @property {string} id
+ * @property {string} name
+ * @property {number} natural El d20.
+ * @property {number} modifier Lo que suma (Destreza, moral, quien vigila…).
+ * @property {number} total
+ * @property {boolean} enemy
+ */
+
+/** @type {Array<{title: string, subtitle: string, dc: string, total: string, formula: string, classification: 'critical-success'|'success'|'failure'|'critical-failure', detail: string, glyph: string, rows?: InitiativeRow[], onDone?: (() => void)|null}>} */
 let combatDiceQueue = [];
 
 let combatDiceAnimating = false;
+
+/** H19 (tanda 22): si la tarjeta de la iniciativa está a la vista o esperando su turno. */
+let initiativePending = 0;
 
 /**
  * Pinta el registro con el filtro puesto.
@@ -164,6 +177,8 @@ function flushCombatDiceQueue() {
     titleEl.textContent = next.title;
     subtitleEl.textContent = next.subtitle;
     formulaEl.textContent = next.formula;
+    // H19 (tanda 22): la iniciativa de todos, en una sola tarjeta que rueda a la vez.
+    const initiative = paintInitiativeRows(overlay, next.rows ?? null);
     // La cara del dado: «d20» se lee tal cual; la iniciativa y el daño, con un dibujo.
     glyphEl.textContent = next.glyph === 'init' ? '⚡' : next.glyph === 'dmg' ? '💥' : next.glyph;
     detailEl.textContent = next.detail;
@@ -197,11 +212,17 @@ function flushCombatDiceQueue() {
         const totalSpread = Math.max(8, Math.abs(totalNumeric) + 8);
         const randomTotal = Math.max(0, totalNumeric + Math.floor((Math.random() * totalSpread) - totalSpread / 2));
         totalEl.textContent = String(randomTotal);
+        for (const row of initiative) row.el.textContent = String(1 + Math.floor(Math.random() * 20) + row.modifier);
 
         if (elapsed >= durationMs) {
             window.clearInterval(timer);
             dcEl.textContent = next.dc;
             totalEl.textContent = next.total;
+            for (const row of initiative) {
+                row.el.textContent = String(row.total);
+                row.el.classList.remove('rolling');
+                row.roll.textContent = row.said;
+            }
             dcEl.classList.remove('rolling');
             totalEl.classList.remove('rolling');
             nextBtn.disabled = false;
@@ -226,6 +247,15 @@ function flushCombatDiceQueue() {
         overlay.inert = true;
         window.setTimeout(() => {
             combatDiceAnimating = false;
+            // H19: cerrada la iniciativa, la barra ya deja jugar (quien la pidió repinta).
+            if (next.rows) {
+                initiativePending = Math.max(0, initiativePending - 1);
+                try {
+                    next.onDone?.();
+                } catch (error) {
+                    console.error('[iniciativa]', error);
+                }
+            }
             flushCombatDiceQueue();
             // La última tirada: el foco, de vuelta a donde estaba (o a lo principal de la pelea).
             if (!combatDiceAnimating) {
@@ -245,11 +275,94 @@ function flushCombatDiceQueue() {
 }
 
 /**
- * @param {{title: string, subtitle: string, dc: string, total: string, formula: string, classification: 'critical-success'|'success'|'failure'|'critical-failure', detail: string, glyph: string}} payload
+ * @param {{title: string, subtitle: string, dc: string, total: string, formula: string, classification: 'critical-success'|'success'|'failure'|'critical-failure', detail: string, glyph: string, rows?: InitiativeRow[], onDone?: (() => void)|null}} payload
  */
 function queueCombatDiceRoll(payload) {
     combatDiceQueue.push(payload);
     flushCombatDiceQueue();
+}
+
+/**
+ * H19 (tanda 22): la lista de la tarjeta de la iniciativa (o quitarla, si la tirada es otra).
+ *
+ * @param {HTMLElement} overlay
+ * @param {InitiativeRow[]|null} rows Ya en el orden de la pelea.
+ * @returns {Array<{el: HTMLElement, total: number, modifier: number, roll: HTMLElement, said: string}>} Los números que ruedan.
+ */
+function paintInitiativeRows(overlay, rows) {
+    overlay.classList.toggle('wm-dice-init', Boolean(rows));
+    overlay.querySelector('.wm-dice-ini-list')?.remove();
+    if (!rows) return [];
+    const list = document.createElement('ol');
+    list.className = 'wm-dice-ini-list';
+    /** @type {Array<{el: HTMLElement, total: number, modifier: number, roll: HTMLElement, said: string}>} */
+    const rolling = [];
+    for (const row of rows) {
+        const item = document.createElement('li');
+        item.className = `wm-dice-ini-row${row.enemy ? ' wm-dice-ini-enemy' : ''}`;
+        const name = document.createElement('span');
+        name.className = 'wm-dice-ini-name';
+        name.textContent = row.name;
+        const roll = document.createElement('span');
+        roll.className = 'wm-dice-ini-roll';
+        // El dado se dice al pararse; mientras rueda, solo lo que se suma.
+        const plus = `${row.modifier >= 0 ? '+' : '−'} ${Math.abs(row.modifier)}`;
+        roll.textContent = `d20 ${plus}`;
+        const total = document.createElement('span');
+        total.className = 'wm-dice-ini-total rolling';
+        total.textContent = String(row.total);
+        item.append(name, roll, total);
+        list.appendChild(item);
+        rolling.push({ el: total, total: row.total, modifier: row.modifier, roll, said: `d20 (${row.natural}) ${plus}` });
+    }
+    overlay.querySelector('.wm-dice-result')?.before(list);
+    return rolling;
+}
+
+/**
+ * H19 (tanda 22): la iniciativa de todos a la vez, en una sola tarjeta. Antes salía un dado por
+ * cabeza, y entre uno y otro la barra ya dejaba atacar (y el dado siguiente tapaba el menú). La
+ * barra no se enciende hasta cerrarla (`initiativeShowing`); al cerrarla, `onDone`.
+ *
+ * @param {InitiativeRow[]} rows Ya en el orden de la pelea.
+ * @param {{onDone?: (() => void)|null, title?: string}} [options]
+ */
+export function showInitiativeRolls(rows, { onDone = null, title = '¡Iniciativa!' } = {}) {
+    const list = (Array.isArray(rows) ? rows : []).filter(row => row && row.name);
+    if (list.length === 0) {
+        onDone?.();
+        return;
+    }
+    for (const row of list) {
+        pushCombatLogEntry(rollEntry(
+            `Iniciativa de ${row.name}`,
+            { formula: `1d20${row.modifier >= 0 ? '+' : ''}${row.modifier}`, rolls: [], total: Number(row.total) || 0, natural: row.natural },
+            null,
+            row.enemy ? 'Iniciativa de enemigo' : 'Iniciativa de aliado',
+        ));
+    }
+    initiativePending += 1;
+    queueCombatDiceRoll({
+        title,
+        subtitle: list.length === 1 ? 'Entra en el orden de la pelea' : 'El orden de la pelea: de arriba abajo',
+        dc: '--',
+        total: '',
+        formula: '',
+        classification: 'success',
+        detail: '',
+        glyph: 'init',
+        rows: list,
+        onDone,
+    });
+}
+
+/**
+ * H19: si la tarjeta de la iniciativa está a la vista (o esperando): la barra espera.
+ *
+ * @returns {boolean}
+ */
+export function initiativeShowing() {
+    return initiativePending > 0;
 }
 
 /**

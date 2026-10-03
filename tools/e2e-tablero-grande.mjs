@@ -36,6 +36,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { Buffer } from 'node:buffer';
+import { enElGremio, salirDelTablero } from './e2e-guiado.mjs';
 
 const ROOT = new URL('..', import.meta.url).pathname.replace(/^[/]([A-Za-z]:)/, '$1');
 const argAfter = (/** @type {string} */ flag) => (process.argv.includes(flag) ? process.argv[process.argv.indexOf(flag) + 1] : '');
@@ -400,18 +401,17 @@ try {
     await until(async () => Boolean((await state()).hero), 60000);
     await until(() => chatHas(/Baja a la bodega/), 20000);
     // Tanda 10: en el tablero del muelle no sale «Saltar la prueba»; primero se sale de él.
-    await until(async () => (await chips()).some(c => /^(Saltar la prueba|Salir del tablero)$/.test(c)), 15000);
-    if ((await chips()).includes('Salir del tablero')) await tapChip(/^Salir del tablero$/);
-    await until(async () => (await chips()).some(c => /^Saltar la prueba$/.test(c)), 15000);
-    await tapChip(/^Saltar la prueba$/);
+    // D-J62: «Saltar la prueba» está en la Casa del Gremio, fuera del tablero del muelle.
+    await salirDelTablero(page);
+    await until(() => enElGremio(page, 'hub-skip'), 15000);
     await page.waitForSelector('.popup:has-text("¿Saltar la prueba?")', { timeout: 10000 }).catch(() => {});
     await page.locator('.popup-button-ok:visible').first().tap({ timeout: 5000 }).catch(() => {});
-    await until(() => chatHas(/apunta tu nombre en el libro del gremio/), 15000);
+    await until(() => chatHas(/apunta tu nombre en el libro del gremio|Te saltas «|Ya subes|tengo el libro abierto/), 15000);
 
     // 2. La campaña de la cripta, desde un archivo, y empezarla.
     await dropToasts();
-    await until(async () => (await chips()).some(c => /Tablón de campañas/.test(c)), 15000);
-    await tapChip(/Tablón de campañas/);
+    // D-J62: el tablón de campañas está en la Casa del Gremio.
+    await until(() => enElGremio(page, 'hub-board'), 15000);
     await page.waitForSelector('.hb-root [data-campaign-add]', { timeout: 15000 });
     const [chooser] = await Promise.all([
         page.waitForEvent('filechooser', { timeout: 10000 }),

@@ -9,7 +9,7 @@ author: DanielJHesseling / Claude Opus 5.5
 
 > Lo que el YAML de la ronda 3 no sabía decir: cómo no pelear (`avoid`), cómo salir a mitad de la pelea hablando (`parley`), las trampas (`traps`) y los objetivos de más de una línea (`mision:`, que va a la misión del tablero). Y en cada localización, dos cosas que mirar (`sights`).
 >
-> - **A los muertos y a lo que no tiene mente no se le habla:** los lobos se espantan, las copias sin cara y las sombras se esquivan, los ahogados se dejan atrás. A la gente, sí: celadores, cobradores, escribanos, el huésped a sueldo, el Contador Mayor y los vecinos de la Acogida.
+> - **A los muertos y a lo que no tiene mente no se le habla:** los lobos se espantan, las copias sin cara y las sombras se esquivan, los ahogados se dejan atrás. A la gente, sí: celadores, cobradores, escribanos, el huésped mercenario, el Contador Mayor y los vecinos de la Acogida.
 > - **Seis trampas en cinco tableros:** un cepo en la Contaduría, la cuerda de la campana del fielato, el peldaño suelto de la escalera, las dos losas con número de la Torre Cuatro y la estantería floja del Archivo. Cada una con lo que se ve sin buscarla.
 > - **Empujar importa** donde hay vacío o agua honda: el barranco del claro y del fielato, el foso de la Torre Tres, la cumbre sin barandilla, el caz del molino y la orilla del lago.
 > - **Los dos finales son para nivel 4** (D-J59, `levels: [4, 4]`): el aviso lo dice antes de entrar.
@@ -26,13 +26,21 @@ encuentro:
         text: "Gritar y golpear dos piedras para espantarlos"
         skill: intimidation
         dc: 12
-        success: "Los lobos parpadean, se duplican un momento y salen corriendo hacia los árboles. El rastro de Iker sigue limpio hacia el este."
-        failure: "Los lobos enseñan los dientes. Donde había tres, ahora parece que hay seis."
+        success:
+          who: "{companero}"
+          text: "¡Parpadean, se duplican… y salen corriendo hacia los árboles! El rastro de Iker sigue limpio hacia el este."
+        failure:
+          who: "{companero}"
+          text: "Enseñan los dientes. ¿Eran tres? Ahora parece que son seis."
       - kind: esconderse
         text: "Rodear el claro por la maleza, lejos del barranco"
         dc: 13
-        success: "Pasáis entre las zarzas sin que os huelan. Al otro lado, el rastro baja hacia una hondonada."
-        failure: "Una rama cruje. Tres cabezas grises se giran a la vez."
+        success:
+          who: "{companero}"
+          text: "Ni nos han olido. Al otro lado de las zarzas, el rastro baja hacia una hondonada."
+        failure:
+          who: "{companero}"
+          text: "¡Ha crujido una rama! Tres cabezas grises se giran a la vez."
 
 encuentro:
   id: enc-la-loba
@@ -42,8 +50,12 @@ encuentro:
         text: "Plantarte delante de la loba vieja con una antorcha encendida"
         skill: intimidation
         dc: 15
-        success: "La loba te mira con los ojos turbios, gruñe y se tumba. Sus copias se deshacen como humo. No volverá a parir lobos."
-        failure: "La loba aúlla, y del bosque salen dos copias más."
+        success:
+          who: "{companero}"
+          text: "Te mira con los ojos turbios… gruñe… y se tumba. Sus copias se deshacen como humo. Esa ya no parirá más lobos."
+        failure:
+          who: "{companero}"
+          text: "¡Aúlla! ¡Y del bosque salen dos copias más!"
 
 encuentro:
   id: enc-copias
@@ -52,13 +64,21 @@ encuentro:
       - kind: huir
         text: "Salir de las veredas repetidas corriendo, siempre por la izquierda"
         dc: 12
-        success: "Corréis hasta que los árboles dejan de repetirse. Las copias se quedan quietas entre los troncos, mirando sin cara."
-        failure: "Cada vereda os devuelve al mismo claro, y las copias ya están allí."
+        success:
+          who: "{companero}"
+          text: "¡Ya está! Los árboles han dejado de repetirse. Las copias se quedan quietas entre los troncos, mirando sin cara."
+        failure:
+          who: "{companero}"
+          text: "Cada vereda nos devuelve al mismo claro… ¡y las copias ya están aquí!"
       - kind: esconderse
         text: "Quedaros quietos entre los árboles copiados, como un tronco más"
         dc: 12
-        success: "Las copias pasan a un palmo, tanteando el aire. No os ven: no tienen ojos."
-        failure: "Una copia se para delante de ti y gira la cara lisa hacia tu respiración."
+        success:
+          who: "{companero}"
+          text: "Pasan a un palmo, tanteando el aire… No nos ven: no tienen ojos."
+        failure:
+          who: "{companero}"
+          text: "Se ha parado delante de ti… Gira la cara lisa hacia tu respiración."
 
 encuentro:
   id: enc-cuervos
@@ -68,8 +88,12 @@ encuentro:
         text: "Hacer mucho ruido con una cazuela de la cocina de la Ermita"
         skill: intimidation
         dc: 10
-        success: "Los cuervos levantan el vuelo en una nube negra. Se llevan un par de números, pero los enfermos ya están dentro."
-        failure: "Los cuervos graznan como si se rieran, y bajan en picado."
+        success:
+          who: "{companero}"
+          text: "¡Levantan el vuelo, una nube negra! Se llevan un par de números, pero los enfermos ya están dentro."
+        failure:
+          who: "{companero}"
+          text: "Graznan como si se rieran… ¡y bajan en picado!"
 
 encuentro:
   id: enc-registro
@@ -79,40 +103,61 @@ encuentro:
         text: "Entrar por la cocina con el cambio de guardia y subir sin que os oigan"
         dc: 14
         success:
-          text: "Los celadores juegan a las cartas en la sala grande. Subís, abrís el cofre y salís por la ventana de la cocina con el libro bajo el brazo."
+          who: "{companero}"
+          text: "Siguen con sus cartas en la sala grande. Ya tengo el libro del cofre: salgamos por la ventana de la cocina."
           effects: [{ give: Libro de descuentos }]
-        failure: "Una tabla cruje en la escalera. «¿Quién anda ahí?» Se encienden los faroles."
+        failure:
+          who: "Celador de la Contaduría"
+          text: "¿Ha crujido la escalera? ¿Quién anda ahí? ¡Los faroles!"
       - kind: hablar
         text: "Fingir que venís de parte de la escribana, a recoger unos papeles"
         skill: deception
         dc: 15
         success:
-          text: "El celador bosteza: «Arriba a la izquierda. Y cerrad al salir.» Salís con el libro y con una sonrisa."
+          who: "Celador de la Contaduría"
+          text: "Arriba a la izquierda. Y cerrad al salir."
           effects: [{ give: Libro de descuentos }]
-        failure: "«¿A medianoche? ¿Papeles?» El celador echa mano a la espada."
+        failure:
+          who: "Celador de la Contaduría"
+          text: "¿A medianoche? ¿Papeles? ¡Quietos ahí!"
     parley:
       leader: Celador de la Contaduría
       entregarse:
         text: "Soltar las armas y levantar las manos"
         success:
-          text: "Os atan y os sacan por la puerta de atrás. A la mañana siguiente, la capitana os suelta sin explicaciones y sin la bolsa."
+          who: "Celador de la Contaduría"
+          text: "Atadlos y sacadlos por la puerta de atrás. Mañana, que decida la capitana. La bolsa se queda aquí."
           effects: [{ gold: -10 }]
       sobornar:
         text: "Ofrecerles una paga de un mes por mirar a otro lado"
         gold: 25
-        success: "«¿Un mes de paga? Nosotros no hemos visto nada. Ni vosotros a nosotros.» Vuelven a la sala de las cartas."
-        failure: "«¿Eso? Eso no llega ni a nivel uno.»"
+        success:
+          who: "Celador de la Contaduría"
+          text: "¿Un mes de paga? Nosotros no hemos visto nada. Ni vosotros a nosotros."
+        failure:
+          who: "Celador de la Contaduría"
+          text: "¿Eso? Eso no llega ni a nivel uno."
       convencer:
         text: "Decirles qué hay en ese libro: sus propios nombres, el día que deban algo"
         dc: 14
-        success: "El más joven baja la espada: «Mi madre debe a la lonja…» Se apartan de la escalera sin decir nada."
-        partial: "Los celadores se miran. Esta ronda, nadie ataca."
-        failure: "«Nosotros no debemos nada. Somos celadores.»"
+        success:
+          who: "Celador de la Contaduría"
+          text: "Mi madre debe a la lonja… Apartaos de la escalera. No he dicho nada."
+        partial:
+          who: "Celador de la Contaduría"
+          text: "¿Nuestros nombres? …Esperad. Quietos un momento."
+        failure:
+          who: "Celador de la Contaduría"
+          text: "Nosotros no debemos nada. Somos celadores."
       engañar:
         text: "Gritar que la capitana sube por la escalera"
         dc: 13
-        success: "Los celadores corren a cuadrarse en el rellano. Cuando se dan cuenta, ya estáis en la cocina."
-        failure: "«La capitana no sube escaleras de noche.» Ni se giran."
+        success:
+          who: "Celador de la Contaduría"
+          text: "¿La capitana? ¡Al rellano, a cuadrarse! …Eh, ¿y los de la escalera?"
+        failure:
+          who: "Celador de la Contaduría"
+          text: "La capitana no sube escaleras de noche."
     traps:
       - name: Cepo de la Contaduría
         x: 8
@@ -140,31 +185,50 @@ encuentro:
         text: "Hacer que el teniente lea su lista en voz alta, delante de todo el patio"
         dc: 15
         success:
-          text: "El teniente lee tres nombres, se para en el cuarto y se calla. «Retirada.» Se van sin la lista de Jonás."
+          who: "Teniente de la lonja"
+          text: "Uno… dos… tres… …Retirada. Nos vamos."
           effects: [{ standing: La Acogida, amount: 1 }]
-        failure: "«Las listas no se leen: se tachan.» Los celadores avanzan."
+        failure:
+          who: "Teniente de la lonja"
+          text: "Las listas no se leen: se tachan."
       - kind: pagar
         text: "Pagar la deuda más pequeña de la lista, para que se vayan con algo"
         gold: 30
-        success: "El teniente cuenta las monedas, tacha un nombre y se va. Esta vez."
+        success:
+          who: "Teniente de la lonja"
+          text: "Un nombre tachado. Nos vamos. Esta vez."
     parley:
       leader: Teniente de la lonja
       sobornar:
         text: "Ofrecerle más de lo que le paga la lonja"
         gold: 30
-        success: "«Por esta noche, el libro se ha quemado.» Se guarda la bolsa y se lleva a sus celadores."
-        failure: "«Lo que me paga la lonja no lo juntáis vosotros en un año.»"
+        success:
+          who: "Teniente de la lonja"
+          text: "Por esta noche, el libro se ha quemado. ¡Celadores, nos vamos!"
+        failure:
+          who: "Teniente de la lonja"
+          text: "Lo que me paga la lonja no lo juntáis vosotros en un año."
       convencer:
         text: "Decirle que, sin su lista, sus celadores no saben a quién buscan"
         dc: 14
-        success: "El teniente mira la lista, mira a los suyos y la guarda. «Volveremos con otra.» Se van."
-        partial: "El teniente duda, con la lista en la mano. Esta ronda, nadie ataca."
-        failure: "«La lista me la sé de memoria.»"
+        success:
+          who: "Teniente de la lonja"
+          text: "Volveremos con otra lista. Retirada."
+        partial:
+          who: "Teniente de la lonja"
+          text: "Quietos… Que lo piense."
+        failure:
+          who: "Teniente de la lonja"
+          text: "La lista me la sé de memoria."
       engañar:
         text: "Gritar que la lista de Jonás ya ha salido por detrás, hacia el bosque"
         dc: 13
-        success: "«¡Al bosque!» Los celadores salen corriendo por la puerta que no es."
-        failure: "«La lista está en la cocina. La huelo desde aquí.»"
+        success:
+          who: "Teniente de la lonja"
+          text: "¡Al bosque! ¡Por detrás, rápido!"
+        failure:
+          who: "Teniente de la lonja"
+          text: "La lista está en la cocina. La huelo desde aquí."
       no: [entregarse]
 
 encuentro:
@@ -174,25 +238,41 @@ encuentro:
       - kind: pagar
         text: "Pagar el peaje doble de los apagados, uno por uno"
         gold: 6
-        success: "El celador cuenta las monedas sin mirar a los apagados. «Pasad. Y que no os vea el de la madrugada.»"
+        success:
+          who: "Celador de la Contaduría"
+          text: "Pasad. Y que no os vea el de la madrugada."
       - kind: esconderse
         text: "Cruzar por la orilla del barranco, pegados a la roca"
         dc: 13
-        success: "Pasáis en fila, sin hablar. La Abuela Ceniza no te suelta la mano hasta el otro lado."
-        failure: "Una piedra cae al barranco. «¡Alto! ¿Quién va?»"
+        success:
+          who: "Abuela Ceniza"
+          text: "No me sueltes la mano… No me la sueltes hasta el otro lado. …Ya está. Gracias."
+        failure:
+          who: "Celador de la Contaduría"
+          text: "¡Alto! ¿Quién va?"
     parley:
       leader: Celador de la Contaduría
       sobornar:
         text: "Pagarle lo mismo que cobra el sargento de noche"
         gold: 8
-        success: "«El de noche cobra poco. Yo, lo justo.» Se aparta del camino."
-        failure: "«Yo no soy el de noche.»"
+        success:
+          who: "Celador de la Contaduría"
+          text: "El de noche cobra poco. Yo, lo justo."
+        failure:
+          who: "Celador de la Contaduría"
+          text: "Yo no soy el de noche."
       convencer:
         text: "Decirle que uno de estos apagados podría ser su madre, y él no lo sabría"
         dc: 15
-        success: "El celador mira a los apagados uno por uno. Baja la ballesta y abre la barrera."
-        partial: "El celador se queda mirando a la Abuela Ceniza. Esta ronda, nadie dispara."
-        failure: "«Mi madre está en Cifra, en su casa. Lo sé.»"
+        success:
+          who: "Celador de la Contaduría"
+          text: "…Abro la barrera. Pasad."
+        partial:
+          who: "Celador de la Contaduría"
+          text: "Esa abuela… ¿Quién es? Quietos."
+        failure:
+          who: "Celador de la Contaduría"
+          text: "Mi madre está en Cifra, en su casa. Lo sé."
       no: [entregarse]
     traps:
       - name: Cuerda de la campana
@@ -213,30 +293,50 @@ encuentro:
         text: "Pasarle un dedo mojado por la barra al más chulo: la pintura se corre"
         skill: intimidation
         dc: 12
-        success: "Al bandido se le corre la pintura: debajo pone nivel uno. Los otros se miran las barras y salen corriendo."
-        failure: "«¡Es de verdad, es de verdad!» Se frota la barra y se mancha la mano de azul."
+        success:
+          who: "Cobrador de porra"
+          text: "¡Mi barra! ¡Se corre la pintura! …¡Pies, para qué os quiero!"
+        failure:
+          who: "Cobrador de porra"
+          text: "¡Es de verdad, es de verdad!"
       - kind: pagar
         text: "Pagar el peaje que piden"
         gold: 10
-        success: "Se reparten las monedas y se van silbando. Severino escupe al suelo."
+        success:
+          who: "Cobrador de porra"
+          text: "Pagado. ¡A repartir, muchachos!"
     parley:
       leader: Cobrador de porra
       sobornar:
         text: "Darle la mitad de lo que lleváis encima"
         gold: 12
-        success: "«Medio cobro es mejor que ninguno.» Se lleva a los suyos barranco abajo."
-        failure: "«Media bolsa no paga ni mi porra.»"
+        success:
+          who: "Cobrador de porra"
+          text: "Medio cobro es mejor que ninguno."
+        failure:
+          who: "Cobrador de porra"
+          text: "Media bolsa no paga ni mi porra."
       convencer:
         text: "Decirle que el cobrador de verdad sabe lo que hacen, y viene detrás"
         dc: 12
-        success: "El cobrador mira hacia el camino de Cifra y echa a correr. Los de las barras pintadas, detrás."
-        partial: "Los bandidos se miran las barras. Esta ronda, nadie ataca."
-        failure: "«Que venga. Le cobramos a él también.»"
+        success:
+          who: "Cobrador de porra"
+          text: "¿El de verdad? ¿Detrás? ¡Corred!"
+        partial:
+          who: "Cobrador de porra"
+          text: "¿Sabe lo que hacemos…? Esperad un momento."
+        failure:
+          who: "Cobrador de porra"
+          text: "Que venga. Le cobramos a él también."
       engañar:
         text: "Decirles que se les está corriendo la pintura"
         dc: 11
-        success: "Se frotan las barras a la vez. Cuando levantan la vista, ya no les quedan ganas de pelear."
-        failure: "«Pintura buena, de Cifra. No se corre.»"
+        success:
+          who: "Cobrador de porra"
+          text: "¿Se corre? ¡Frotad, frotad! …Bah. Se me han quitado las ganas de pelear."
+        failure:
+          who: "Cobrador de porra"
+          text: "Pintura buena, de Cifra. No se corre."
 
 encuentro:
   id: enc-molino
@@ -245,30 +345,50 @@ encuentro:
       - kind: hablar
         text: "Enseñarles el papel de cuentas: ninguna cifra lleva sello de la Contaduría"
         dc: 14
-        success: "El cobrador mira el papel, mira al celador y se encoge de hombros. «Sin sello no se cobra.» Se van sin el chico."
-        failure: "«El sello lo ponemos después.»"
+        success:
+          who: "Cobrador de porra"
+          text: "Sin sello no se cobra. Nos vamos, y el chico se queda."
+        failure:
+          who: "Cobrador de porra"
+          text: "El sello lo ponemos después."
       - kind: pagar
         text: "Pagar la deuda de Severino entera"
         gold: 40
-        success: "Cuentan las cuarenta monedas dos veces. Se van sin el chico, y Severino se sienta en un saco a llorar."
+        success:
+          who: "Cobrador de porra"
+          text: "Treinta y ocho… treinta y nueve… cuarenta. Cuarenta otra vez. Está bien: el chico se queda."
     parley:
       leader: Cobrador de porra
       sobornar:
         text: "Pagarle su parte del cobro, sin que la vea la Contaduría"
         gold: 15
-        success: "«Mi parte es mi parte.» Se guarda las monedas y se lleva al celador."
-        failure: "«Mi parte es más grande que eso.»"
+        success:
+          who: "Cobrador de porra"
+          text: "Mi parte es mi parte. Nos vamos."
+        failure:
+          who: "Cobrador de porra"
+          text: "Mi parte es más grande que eso."
       convencer:
         text: "Decirle que, si se lleva al chico, en Los Molinos nadie le volverá a abrir la puerta"
         dc: 13
-        success: "El cobrador mira las ventanas, llenas de caras enharinadas. «Otro día.» Se van."
-        partial: "El cobrador duda con la porra en alto. Esta ronda, nadie ataca."
-        failure: "«Ya no me la abren.»"
+        success:
+          who: "Cobrador de porra"
+          text: "Tantas caras enharinadas en las ventanas… Otro día."
+        partial:
+          who: "Cobrador de porra"
+          text: "Hmm… Quietos todos."
+        failure:
+          who: "Cobrador de porra"
+          text: "Ya no me la abren."
       engañar:
         text: "Gritar que el chico se ha escapado por el caz"
         dc: 12
-        success: "Los cobradores corren a la orilla a mirar el agua. Cuando vuelven, la puerta del molino está atrancada."
-        failure: "«El caz está demasiado frío. No se ha escapado nadie.»"
+        success:
+          who: "Cobrador de porra"
+          text: "¿Por el caz? ¡A la orilla! …¿Y la puerta? ¡Atrancada!"
+        failure:
+          who: "Cobrador de porra"
+          text: "El caz está demasiado frío. No se ha escapado nadie."
       no: [entregarse]
 
 encuentro:
@@ -278,8 +398,12 @@ encuentro:
       - kind: huir
         text: "Apartaros del agua corriendo, sin mirar atrás"
         dc: 11
-        success: "Fuera del agua, los ahogados se secan y se agrietan. No os siguen."
-        failure: "Uno te agarra del tobillo con tu propia mano."
+        success:
+          who: "{companero}"
+          text: "Fuera del agua se secan y se agrietan. No nos siguen."
+        failure:
+          who: "{companero}"
+          text: "¡Te agarra del tobillo… con tu propia mano!"
 
 encuentro:
   id: enc-torre-tres
@@ -289,21 +413,35 @@ encuentro:
         text: "Decir a los escribanos que la Contaduría ha cancelado la copia"
         skill: deception
         dc: 15
-        success: "Los escribanos recogen sus libros, maldiciendo la burocracia. Sin nadie que los cuide, los cristales se rajan solos."
-        failure: "«¿Cancelada? Enseña el sello.»"
+        success:
+          who: "Escribano del descuento"
+          text: "¿Cancelada? ¿Otra vez? Maldita burocracia… Recoged los libros. Y sin nadie que los cuide, que se rajen los cristales."
+        failure:
+          who: "Escribano del descuento"
+          text: "¿Cancelada? Enseña el sello."
     parley:
       leader: Escribano del descuento
       convencer:
         text: "Decirles que lo que copian les borrará también a ellos, el día que deban algo"
         dc: 14
-        success: "Los escribanos se miran la barra. Dejan las plumas y bajan corriendo por la escalera."
-        partial: "Los escribanos dejan de escribir. Esta ronda, nadie lanza nada."
-        failure: "«Nosotros anotamos. No debemos.»"
+        success:
+          who: "Escribano del descuento"
+          text: "¿A nosotros también? …Dejad las plumas. ¡Abajo, todos!"
+        partial:
+          who: "Escribano del descuento"
+          text: "Esperad… Dejad de escribir un momento."
+        failure:
+          who: "Escribano del descuento"
+          text: "Nosotros anotamos. No debemos."
       engañar:
         text: "Gritar que el guardián se ha despertado por su culpa"
         dc: 13
-        success: "Los escribanos sueltan los libros y huyen. El guardián, confuso, se queda mirando los cristales."
-        failure: "«El guardián obedece al que escribe.»"
+        success:
+          who: "Escribano del descuento"
+          text: "¿Despierto, por nuestra culpa? ¡Soltad los libros y corred!"
+        failure:
+          who: "Escribano del descuento"
+          text: "El guardián obedece al que escribe."
       no: [entregarse, sobornar]
 
 encuentro:
@@ -311,23 +449,37 @@ encuentro:
   paquete:
     avoid:
       - kind: hablar
-        text: "Decirle al huésped a sueldo que su nivel nueve también tiene dueño"
+        text: "Decirle al huésped mercenario que su nivel nueve también tiene dueño"
         dc: 16
-        success: "El huésped se mira la barra un buen rato. «Yo no firmé esto para morir en una escalera.» Se va, y los celadores detrás."
-        failure: "«Mi nivel es mío. Lo he pagado.»"
+        success:
+          who: "Huésped mercenario"
+          text: "Mi nivel nueve… ¿también tiene dueño? Yo no firmé esto para morir en una escalera. Me voy."
+        failure:
+          who: "Huésped mercenario"
+          text: "Mi nivel es mío. Lo he pagado."
     parley:
-      leader: Huésped a sueldo
+      leader: Huésped mercenario
       sobornar:
         text: "Ofrecerle más de lo que le paga la Contaduría"
         gold: 40
-        success: "«Más es más.» Baja la espada y se aparta. Los celadores no saben qué hacer."
-        failure: "«Me pagan en niveles. Vosotros no tenéis de eso.»"
+        success:
+          who: "Huésped mercenario"
+          text: "Más es más. Me aparto. Los celadores, que hagan lo que quieran."
+        failure:
+          who: "Huésped mercenario"
+          text: "Me pagan en niveles. Vosotros no tenéis de eso."
       convencer:
         text: "Decirle que en su mundo nadie le pagaría por esto"
         dc: 15
-        success: "Se le escapa una risa. «En mi mundo me echaban de las tiendas.» Se va escaleras abajo."
-        partial: "El huésped se queda quieto, pensando. Esta ronda, no ataca."
-        failure: "«En mi mundo no tenía barra. Aquí sí.»"
+        success:
+          who: "Huésped mercenario"
+          text: "Ja… En mi mundo me echaban de las tiendas. Tienes razón. Me voy escaleras abajo."
+        partial:
+          who: "Huésped mercenario"
+          text: "En mi mundo… Déjame pensar."
+        failure:
+          who: "Huésped mercenario"
+          text: "En mi mundo no tenía barra. Aquí sí."
       no: [entregarse]
     traps:
       - name: Peldaño suelto
@@ -347,21 +499,35 @@ encuentro:
       - kind: hablar
         text: "Decirle al Contador Mayor el nombre de su hija: Ainhoa"
         dc: 20
-        success: "Leandro Tallada abre el medallón que lleva al cuello. Lee «Ainhoa» y se le doblan las piernas. Él mismo rompe los dos cristales con el bastón."
-        failure: "«Un nombre. Otro nombre. ¡Tengo cuatrocientos en un libro!» Los cristales brillan más fuerte."
+        success:
+          who: "El Contador Mayor"
+          text: "Ainhoa… Lo pone en el medallón: Ainhoa. …Basta. Yo mismo romperé los cristales."
+        failure:
+          who: "El Contador Mayor"
+          text: "Un nombre. Otro nombre. ¡Tengo cuatrocientos en un libro!"
     parley:
       leader: El Contador Mayor
       convencer:
         text: "Decirle que, debajo de sus doce niveles, hay un hombre de nivel dos con miedo"
         dc: 18
-        success: "Tallada se mira la barra. El doce dorado parpadea. «Dos.» Baja las manos."
-        partial: "Tallada duda, con la mano en el medallón. Esta ronda, no lanza nada."
-        failure: "«Doce. Por cuenta de la torre, doce.»"
+        success:
+          who: "El Contador Mayor"
+          text: "Doce… El doce parpadea. Dos. Soy un dos. …Bajo las manos."
+        partial:
+          who: "El Contador Mayor"
+          text: "El medallón… Espera. Espera."
+        failure:
+          who: "El Contador Mayor"
+          text: "Doce. Por cuenta de la torre, doce."
       engañar:
         text: "Gritar que la torre también se está quedando con sus niveles"
         dc: 17
-        success: "Tallada mira la luz del corazón y luego su barra. Retrocede hacia el borde, y los escribanos con él."
-        failure: "«La torre es mía. No me cobra.»"
+        success:
+          who: "El Contador Mayor"
+          text: "¿También mis niveles? Esa luz… ¡Atrás, escribanos, atrás!"
+        failure:
+          who: "El Contador Mayor"
+          text: "La torre es mía. No me cobra."
       no: [entregarse, sobornar]
   mision:
     levels: [4, 4]
@@ -381,16 +547,26 @@ encuentro:
       - kind: hablar
         text: "Decirles a los vecinos de Brasa que se vayan a casa: esta noche no gana nadie"
         dc: 17
-        success: "Jonás baja la pala. «Hoy no.» La Acogida se retira con sus heridos, mirándote como a un desconocido."
-        failure: "«¡Tú eras de los nuestros!» Levantan las sartenes."
+        success:
+          who: "Acogido en armas"
+          text: "Hoy no gana nadie… Está bien. Recoged a los heridos. Nos vamos a casa."
+        failure:
+          who: "Acogido en armas"
+          text: "¡Tú eras de los nuestros!"
     parley:
       leader: Acogido en armas
       convencer:
         text: "Decirles que no quieres pelear contra ellos"
         dc: 13
-        success: "Los vecinos se miran. Bajan las palas de uno en uno y se van por el camino de Brasa."
-        partial: "Los vecinos dudan. Esta ronda, nadie ataca."
-        failure: "«Pues no haber dado la mano.»"
+        success:
+          who: "Acogido en armas"
+          text: "Bajad las palas. De uno en uno. Volvemos a Brasa."
+        partial:
+          who: "Acogido en armas"
+          text: "¿Y si dice la verdad? Quietos…"
+        failure:
+          who: "Acogido en armas"
+          text: "Pues no haber dado la mano."
       no: [sobornar, engañar]
   mision:
     levels: [4, 4]
@@ -403,9 +579,12 @@ encuentro:
         text: "Bajar sin luz, pegados a la pared, pisando solo las losas sin número"
         dc: 14
         success:
-          text: "Las sombras se mueven hacia donde no estáis. Abrís el cofre y subís con el cuaderno."
+          who: "{companero}"
+          text: "Las sombras se van hacia donde no estamos. Ya tengo el cuaderno del cofre. Subamos."
           effects: [{ give: Cuaderno de la Primera Cuidadora }]
-        failure: "Una losa se hunde con un clic. Las sombras se giran hacia el ruido."
+        failure:
+          who: "{companero}"
+          text: "¡Clic! Esa losa se ha hundido… Las sombras se giran hacia el ruido."
     traps:
       - name: Losa del siete
         x: 7
@@ -438,9 +617,12 @@ encuentro:
         text: "Cruzar el agua por encima de los estantes caídos, de uno en uno"
         dc: 13
         success:
-          text: "Las sombras se quedan entre los estantes inundados. Abrís el cofre del archivero y salís con el medallón."
+          who: "{companero}"
+          text: "Las sombras se quedan entre los estantes. Ya tengo el medallón del archivero. Salgamos."
           effects: [{ give: Medallón de Ainhoa }]
-        failure: "Un estante cede con un crujido. Las sombras se vuelven hacia el ruido."
+        failure:
+          who: "{companero}"
+          text: "¡Cruje el estante! Las sombras se vuelven hacia el ruido."
     traps:
       - name: Estantería floja
         x: 12

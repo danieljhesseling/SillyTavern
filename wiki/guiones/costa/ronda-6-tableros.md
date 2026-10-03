@@ -325,12 +325,16 @@ encuentro:
         skill: persuasion
         dc: 13
         success:
-          text: '¿Va a llover mañana…? Hace tanto frío aquí abajo… Habla más. Habla hasta que amanezca.'
+          who: "Desvelado"
+          text: "¿Va a llover mañana…? Hace tanto frío aquí abajo… Habla más. Habla hasta que amanezca."
           effects: [{ standing: rezadoras, amount: 1 }]
         partial:
-          text: 'Calla… otra vez calla… ¿Por qué te callas? Dos suben un poco más por el poste antes de quedarse quietos.'
+          who: "Desvelado"
+          text: "Calla… otra vez calla… ¿Por qué te callas? Subimos un poco más… solo un poco."
           effects: [{ hurt: 1d4 }]
-        failure: 'No te oímos. No te oímos. ¡Sube, que no nos oye!'
+        failure:
+          who: "Desvelado"
+          text: "No te oímos. No te oímos. ¡Sube, que no nos oye!"
     parley:
       leader: Desvelado
       no: [sobornar, engañar, entregarse]
@@ -338,9 +342,15 @@ encuentro:
         text: 'Ponerte a hablarles en voz alta, de lo que sea, sin parar'
         dc: 13
         resolves: true
-        success: 'Así… así… Cuéntanos más. Ya no subimos. Nos quedamos aquí, escuchando, hasta que salga el sol.'
-        partial: 'Se te quiebra la voz… pero te oímos. Esta ronda nadie sube más.'
-        failure: 'Más alto. ¡Más alto! No te oímos con el agua.'
+        success:
+          who: "Desvelado"
+          text: "Así… así… Cuéntanos más. Ya no subimos. Nos quedamos aquí, escuchando, hasta que salga el sol."
+        partial:
+          who: "Desvelado"
+          text: "Se te quiebra la voz… pero te oímos. Esta ronda nadie sube más."
+        failure:
+          who: "Desvelado"
+          text: "Más alto. ¡Más alto! No te oímos con el agua."
 
 encuentro:
   id: enc-la-marea
@@ -358,16 +368,23 @@ encuentro:
         skill: persuasion
         dc: 14
         success:
-          text: 'Los críos no… los críos no hablan… tú sí. Quédate tú, y los críos que se vayan a dormir.'
+          who: "Desvelado"
+          text: "Los críos no… los críos no hablan… tú sí. Quédate tú, y los críos que se vayan a dormir."
           effects: [{ standing: cofradia, amount: 1 }]
-        failure: 'Falta uno. Falta uno. ¡Nos lo debéis!'
+        failure:
+          who: "Desvelado"
+          text: "Falta uno. Falta uno. ¡Nos lo debéis!"
       - kind: esconderse
         text: 'Coger a los niños en brazos y apartarlos de la orilla sin que os vean'
         skill: stealth
         dc: 14
         resolves: false
-        success: '¿Dónde están los niños? ¿Dónde…? Se han ido. Volveremos mañana.'
-        failure: '¡Ahí! ¡Se los llevan!'
+        success:
+          who: "Desvelado"
+          text: "¿Dónde están los niños? ¿Dónde…? Se han ido. Volveremos mañana."
+        failure:
+          who: "Desvelado"
+          text: "¡Ahí! ¡Se los llevan!"
     parley:
       leader: Desvelado
       no: [sobornar, entregarse]
@@ -375,14 +392,22 @@ encuentro:
         text: 'Decirles que vas a buscar al que falta, y que dejen a los niños'
         dc: 14
         resolves: true
-        success: '¿Lo buscarás? ¿De verdad? Entonces esperamos. Los críos, a casa.'
-        failure: 'Todos dicen que lo buscarán. Nadie baja nunca.'
+        success:
+          who: "Desvelado"
+          text: "¿Lo buscarás? ¿De verdad? Entonces esperamos. Los críos, a casa."
+        failure:
+          who: "Desvelado"
+          text: "Todos dicen que lo buscarán. Nadie baja nunca."
       engañar:
         text: 'Gritarles que Mateo ya ha vuelto al agua'
         dc: 15
         resolves: true
-        success: '¿Ha vuelto…? Vamos a verle. Vamos a verle todos.'
-        failure: 'Mentira. Mateo está en tierra. Lo oímos llorar desde aquí.'
+        success:
+          who: "Desvelado"
+          text: "¿Ha vuelto…? Vamos a verle. Vamos a verle todos."
+        failure:
+          who: "Desvelado"
+          text: "Mentira. Mateo está en tierra. Lo oímos llorar desde aquí."
 
 encuentro:
   id: enc-la-cala
@@ -412,16 +437,20 @@ encuentro:
         text: 'Ofrecerle al Gallo veinte monedas por la caja'
         gold: 20
         success:
-          text: '¿Veinte? Por una caja de papeles que no sé leer… Trato. Y dile a la vieja Arrieta que ya no le cobro.'
+          who: "El Gallo"
+          text: "¿Veinte? Por una caja de papeles que no sé leer… Trato. Y dile a la vieja Arrieta que ya no le cobro."
           effects: [{ give: Caja de Don Fermín }]
       - kind: hablar
         text: 'Decirle al Gallo que la señora Arrieta ya no le va a pagar: lo sabe todo el pueblo'
         skill: deception
         dc: 15
         success:
-          text: 'Si la vieja ya no paga, esa caja no vale nada. Llévatela, y que te aproveche.'
+          who: "El Gallo"
+          text: "Si la vieja ya no paga, esa caja no vale nada. Llévatela, y que te aproveche."
           effects: [{ give: Caja de Don Fermín }]
-        failure: '¿Me tomas por tonto? Kikirikí, muchachos. A por ellos.'
+        failure:
+          who: "El Gallo"
+          text: "¿Me tomas por tonto? Kikirikí, muchachos. A por ellos."
     parley:
       leader: El Gallo
       sobornar:
@@ -429,29 +458,42 @@ encuentro:
         gold: 15
         resolves: true
         success:
-          text: 'Quince, y la caja es tuya. Nunca me gustó la letra de ese cura.'
+          who: "El Gallo"
+          text: "Quince, y la caja es tuya. Nunca me gustó la letra de ese cura."
           effects: [{ give: Caja de Don Fermín }]
-        failure: '¿Quince? Eso me lo saco en una noche. Seguid.'
+        failure:
+          who: "El Gallo"
+          text: "¿Quince? Eso me lo saco en una noche. Seguid."
       convencer:
         text: 'Decirle que en esa caja está lo que hace subir a los muertos'
         dc: 15
         resolves: true
         success:
-          text: 'Pues que se la lleve otro. Yo vendo aguardiente, no muertos. Toma la caja, y fuera de mi cala.'
+          who: "El Gallo"
+          text: "Pues que se la lleve otro. Yo vendo aguardiente, no muertos. Toma la caja, y fuera de mi cala."
           effects: [{ give: Caja de Don Fermín }]
-        partial: 'Los míos se lo piensan. Esta ronda nadie dispara.'
-        failure: 'Los muertos no pagan. La vieja sí. Seguid.'
+        partial:
+          who: "El Gallo"
+          text: "Quietos, muchachos… Que lo piense. Nadie dispara todavía."
+        failure:
+          who: "El Gallo"
+          text: "Los muertos no pagan. La vieja sí. Seguid."
       engañar:
         text: 'Gritarle que viene la milicia de costa por el acantilado'
         dc: 16
         resolves: false
-        success: '¡La milicia! ¡Por el agua, deprisa! ¡Dejad todo!'
-        failure: 'Aquí no sube la milicia ni borracha.'
+        success:
+          who: "El Gallo"
+          text: "¡La milicia! ¡Por el agua, deprisa! ¡Dejad todo!"
+        failure:
+          who: "El Gallo"
+          text: "Aquí no sube la milicia ni borracha."
       entregarse:
         text: 'Soltar las armas y pedir que os dejen ir'
         resolves: false
         success:
-          text: 'Fuera, y sin la caja. Y la bolsa se queda aquí, por las molestias.'
+          who: "El Gallo"
+          text: "Fuera, y sin la caja. Y la bolsa se queda aquí, por las molestias."
           effects: [{ gold: -5 }]
 
 encuentro:
@@ -472,29 +514,43 @@ encuentro:
         skill: persuasion
         dc: 15
         success:
-          text: '¿Los niños…? ¿Lo pone ahí, de verdad? …Bajad. Bajad todos. Por mi padre que esto no se ha acabado.'
+          who: "Lucio con el arpón"
+          text: "¿Los niños…? ¿Lo pone ahí, de verdad? …Bajad. Bajad todos. Por mi padre que esto no se ha acabado."
           effects: [{ attitude: 1, who: Lucio Iturbe }]
-        failure: 'Eso lo escribió el cura de la vieja Arrieta. ¡Apartaos de la puerta!'
+        failure:
+          who: "Lucio con el arpón"
+          text: "Eso lo escribió el cura de la vieja Arrieta. ¡Apartaos de la puerta!"
       - kind: hablar
         text: 'Decirles a los hombres de Lucio que se vayan a casa con sus hijos'
         skill: intimidation
         dc: 16
-        success: 'Lucio, yo me voy. Tengo dos críos en casa, y no los quiero ver en el agua.'
-        failure: '¡Nadie se va! Por mi padre que hoy se acaba.'
+        success:
+          who: "{companero}"
+          text: "¿Has oído? «Lucio, yo me voy: tengo dos críos en casa.» Se van, uno detrás de otro. Lucio se queda solo."
+        failure:
+          who: "Lucio con el arpón"
+          text: "¡Nadie se va! Por mi padre que hoy se acaba."
     parley:
       leader: Lucio con el arpón
       convencer:
         text: 'Hablarle de su padre: Mateo remó la barca, pero no firmó'
         dc: 14
         resolves: true
-        success: 'Mi padre remó. Solo remó… y lo he enterrado en tierra para nada. Vámonos. Vámonos, he dicho.'
-        partial: 'Lucio baja el arpón un momento. Esta ronda, nadie ataca la puerta.'
-        failure: '¡No hables de mi padre!'
+        success:
+          who: "Lucio con el arpón"
+          text: "Mi padre remó. Solo remó… y lo he enterrado en tierra para nada. Vámonos. Vámonos, he dicho."
+        partial:
+          who: "Lucio con el arpón"
+          text: "Mi padre… Esperad. Bajad los arpones un momento."
+        failure:
+          who: "Lucio con el arpón"
+          text: "¡No hables de mi padre!"
       entregarse:
         text: 'Abrir la puerta y apartaros'
         resolves: false
         success:
-          text: 'Apartaos. Y que conste que a vosotros no os quería hacer nada.'
+          who: "Lucio con el arpón"
+          text: "Apartaos. Y que conste que a vosotros no os quería hacer nada."
           effects: [{ attitude: -1, who: Ane Goikoa }]
       no: [sobornar]
 
@@ -529,9 +585,12 @@ encuentro:
         skill: stealth
         dc: 13
         success:
-          text: '¿Quién anda…? Nadie. El agua. Solo el agua.'
+          who: "Ahogado viejo"
+          text: "¿Quién anda…? Nadie. El agua. Solo el agua."
           effects: [{ give: Cuaderno del farero }]
-        failure: '¿Quién pisa mi barco? ¡Fuera de la Esperanza!'
+        failure:
+          who: "Ahogado viejo"
+          text: "¿Quién pisa mi barco? ¡Fuera de la Esperanza!"
 
 encuentro:
   id: enc-la-bajamar
@@ -551,29 +610,47 @@ encuentro:
         text: 'Gritarle a Antón que la marea ya está subiendo y que él no es de aquí: a él sí lo ahoga'
         skill: intimidation
         dc: 15
-        success: '¿Sube…? ¡Sube! Que la señora haga lo que quiera. ¡Yo me voy de aquí!'
-        failure: 'La marea sube cuando lo diga la señora. Cogedlos.'
+        success:
+          who: "Antón el capataz"
+          text: "¿Sube…? ¡Sube! Que la señora haga lo que quiera. ¡Yo me voy de aquí!"
+        failure:
+          who: "Antón el capataz"
+          text: "La marea sube cuando lo diga la señora. Cogedlos."
     parley:
       leader: Antón el capataz
       engañar:
         text: 'Gritar que el agua ya entra por la Boca'
         dc: 13
         resolves: true
-        success: '¡El agua! ¡Fuera, fuera todos! ¡La niña, dejad a la niña!'
-        failure: 'El agua aún no ha llegado a las argollas. Seguid.'
+        success:
+          who: "Antón el capataz"
+          text: "¡El agua! ¡Fuera, fuera todos! ¡La niña, dejad a la niña!"
+        failure:
+          who: "Antón el capataz"
+          text: "El agua aún no ha llegado a las argollas. Seguid."
       sobornar:
         text: 'Ofrecerle cuarenta monedas para que se vaya de Mareaviva esta misma noche'
         gold: 40
         resolves: true
-        success: 'Cuarenta, y no me volvéis a ver. La Salazón, para quien la quiera.'
-        failure: 'La señora me deja la Salazón entera. Cuarenta monedas no son nada.'
+        success:
+          who: "Antón el capataz"
+          text: "Cuarenta, y no me volvéis a ver. La Salazón, para quien la quiera."
+        failure:
+          who: "Antón el capataz"
+          text: "La señora me deja la Salazón entera. Cuarenta monedas no son nada."
       convencer:
         text: 'Decirle que la señora le va a dejar ahí abajo cuando suba la marea'
         dc: 15
         resolves: true
-        success: 'Es verdad… a mí nunca me dijo cómo se sale de aquí. Me voy.'
-        partial: 'Antón mira hacia la Boca. Esta ronda, no da órdenes.'
-        failure: 'La señora no miente. La señora nunca miente.'
+        success:
+          who: "Antón el capataz"
+          text: "Es verdad… a mí nunca me dijo cómo se sale de aquí. Me voy."
+        partial:
+          who: "Antón el capataz"
+          text: "¿Dejarme ahí abajo…? Quietos. Dejadme pensar."
+        failure:
+          who: "Antón el capataz"
+          text: "La señora no miente. La señora nunca miente."
 
 encuentro:
   id: enc-la-pared
@@ -606,9 +683,12 @@ encuentro:
         skill: persuasion
         dc: 18
         success:
-          text: 'Por las buenas… Lo que se dio por las buenas, por las buenas se devuelve. Pasa, niña. Pasa sola.'
+          who: "La Vecina"
+          text: "Por las buenas… Lo que se dio por las buenas, por las buenas se devuelve. Pasa, niña. Pasa sola."
           effects: [{ standing: arenales, amount: 1 }]
-        failure: 'Si te quitas, me quedo sola. Otra vez sola. No. No.'
+        failure:
+          who: "La Vecina"
+          text: "Si te quitas, me quedo sola. Otra vez sola. No. No."
 
 encuentro:
   id: enc-la-primera-vela
@@ -631,9 +711,12 @@ encuentro:
         skill: persuasion
         dc: 18
         success:
-          text: 'Mis hombres… mis hombres os oyen. Les estáis llamando por su nombre. Podemos dormir, entonces. Podemos dormir.'
+          who: "El patrón de la galerna"
+          text: "Mis hombres… mis hombres os oyen. Les estáis llamando por su nombre. Podemos dormir, entonces. Podemos dormir."
           effects: [{ standing: rezadoras, amount: 1 }]
-        failure: '¡Treinta años solos en el agua! ¡Ahora nos oís! ¡Ahora!'
+        failure:
+          who: "El patrón de la galerna"
+          text: "¡Treinta años solos en el agua! ¡Ahora nos oís! ¡Ahora!"
     parley:
       leader: El patrón de la galerna
       no: [sobornar, engañar, entregarse]
@@ -641,9 +724,15 @@ encuentro:
         text: 'Decirle al patrón que sus hombres ya no se quedan solos: el pueblo vela por ellos'
         dc: 16
         resolves: true
-        success: 'Entonces suelto el poste. Que alguien les hable cuando yo me duerma.'
-        partial: 'El patrón se queda mirando a las Rezadoras. Esta ronda, nadie sube.'
-        failure: 'Eso dijeron hace treinta años. Y aquí seguimos.'
+        success:
+          who: "El patrón de la galerna"
+          text: "Entonces suelto el poste. Que alguien les hable cuando yo me duerma."
+        partial:
+          who: "El patrón de la galerna"
+          text: "Las Rezadoras… ¿nos hablan a nosotros? Quietos, hombres. Escuchad."
+        failure:
+          who: "El patrón de la galerna"
+          text: "Eso dijeron hace treinta años. Y aquí seguimos."
 
 encuentro:
   id: enc-la-tumba
@@ -675,18 +764,27 @@ encuentro:
         skill: persuasion
         dc: 17
         success:
-          text: 'Con su nombre… Que lo digan en voz alta, entonces. Mateo Iturbe. Que lo diga todo el pueblo. …Llevaosla.'
+          who: "Lucio con el arpón"
+          text: "Con su nombre… Que lo digan en voz alta, entonces. Mateo Iturbe. Que lo diga todo el pueblo. …Llevaosla."
           effects: [{ attitude: 1, who: Lucio Iturbe }]
-        failure: 'Treinta años callados, y ahora queréis decir su nombre. ¡Fuera de aquí!'
+        failure:
+          who: "Lucio con el arpón"
+          text: "Treinta años callados, y ahora queréis decir su nombre. ¡Fuera de aquí!"
     parley:
       leader: Lucio con el arpón
       convencer:
         text: 'Prometerle una cruz con el nombre de su padre en el cementerio'
         dc: 15
         resolves: true
-        success: 'Una cruz con su nombre. La primera de verdad. …Vale. Pero la caja la llevo yo hasta el borde.'
-        partial: 'Lucio duda. Esta ronda, sus hombres no se mueven.'
-        failure: 'Una cruz encima de una caja vacía. ¡Como todas!'
+        success:
+          who: "Lucio con el arpón"
+          text: "Una cruz con su nombre. La primera de verdad. …Vale. Pero la caja la llevo yo hasta el borde."
+        partial:
+          who: "Lucio con el arpón"
+          text: "Una cruz… Quietos. Dejadme pensarlo."
+        failure:
+          who: "Lucio con el arpón"
+          text: "Una cruz encima de una caja vacía. ¡Como todas!"
       no: [sobornar]
 ```
 
@@ -751,26 +849,37 @@ encuentro:
         text: 'Decirles que en las cajas solo hay piedras, y que el mar se lleva a los que roban a los muertos'
         skill: intimidation
         dc: 12
-        success: '¿Piedras…? ¿Y lo del mar? Nos vamos. Nos vamos ya, que este pueblo da miedo.'
-        failure: 'Eso dicen todos los que quieren el oro para ellos.'
+        success:
+          who: "Saqueador de tumbas"
+          text: "¿Piedras…? ¿Y lo del mar? Nos vamos. Nos vamos ya, que este pueblo da miedo."
+        failure:
+          who: "Saqueador de tumbas"
+          text: "Eso dicen todos los que quieren el oro para ellos."
       - kind: pagar
         text: 'Darles cinco monedas para el camino'
         gold: 5
-        success: 'Cinco monedas sin cavar más. Trato hecho. Aquí no hemos estado.'
+        success:
+          who: "Saqueador de tumbas"
+          text: "Cinco monedas sin cavar más. Trato hecho. Aquí no hemos estado."
     parley:
       leader: Saqueador de tumbas
       entregarse:
         text: 'Dejarles cavar y marcharos'
         resolves: false
         success:
-          text: 'Así me gusta. Cada uno a lo suyo.'
+          who: "Saqueador de tumbas"
+          text: "Así me gusta. Cada uno a lo suyo."
           effects: [{ standing: rezadoras, amount: -1 }]
       engañar:
         text: 'Gritar que el enterrador viene con la Cofradía'
         dc: 11
         resolves: true
-        success: '¡La Cofradía! ¡Corred!'
-        failure: 'Ese viejo no sube la cuesta ni con la Cofradía empujando.'
+        success:
+          who: "Saqueador de tumbas"
+          text: "¡La Cofradía! ¡Corred!"
+        failure:
+          who: "Saqueador de tumbas"
+          text: "Ese viejo no sube la cuesta ni con la Cofradía empujando."
 
 encuentro:
   id: enc-gaviotas
@@ -806,13 +915,18 @@ encuentro:
         skill: persuasion
         dc: 13
         success:
-          text: 'Por fin alguien de fuera lo dice. Soltad al chico. Que se vaya a contárselo a los suyos.'
+          who: "Arponera de Arenales"
+          text: "Por fin alguien de fuera lo dice. Soltad al chico. Que se vaya a contárselo a los suyos."
           effects: [{ standing: arenales, amount: 1 }]
-        failure: 'Palabras. De Mareaviva siempre llegan palabras.'
+        failure:
+          who: "Arponera de Arenales"
+          text: "Palabras. De Mareaviva siempre llegan palabras."
       - kind: pagar
         text: 'Pagar la ronda de toda la lonja'
         gold: 8
-        success: 'Una ronda de Mareaviva. Ya era hora de que pagaran algo. Soltad al chico.'
+        success:
+          who: "Arponera de Arenales"
+          text: "Una ronda de Mareaviva. Ya era hora de que pagaran algo. Soltad al chico."
     parley:
       leader: Arponera de Arenales
       convencer:
@@ -820,16 +934,25 @@ encuentro:
         dc: 13
         resolves: true
         success:
-          text: 'Si lo averiguas, vuelve y nos lo cuentas. A nosotras primero.'
+          who: "Arponera de Arenales"
+          text: "Si lo averiguas, vuelve y nos lo cuentas. A nosotras primero."
           effects: [{ standing: arenales, amount: 1 }]
-        partial: 'Las arponeras bajan los arpones. Esta ronda, nadie tira.'
-        failure: 'Eso dijo el maestro hace siete años. Y mira cómo acabó.'
+        partial:
+          who: "Arponera de Arenales"
+          text: "Bajad los arpones, chicas. Que hable."
+        failure:
+          who: "Arponera de Arenales"
+          text: "Eso dijo el maestro hace siete años. Y mira cómo acabó."
       sobornar:
         text: 'Pagar los platos rotos y una ronda'
         gold: 12
         resolves: true
-        success: 'Con eso pagamos los platos. Y la ronda nos la bebemos a tu salud.'
-        failure: 'Esto no se arregla con monedas.'
+        success:
+          who: "Arponera de Arenales"
+          text: "Con eso pagamos los platos. Y la ronda nos la bebemos a tu salud."
+        failure:
+          who: "Arponera de Arenales"
+          text: "Esto no se arregla con monedas."
 
 encuentro:
   id: enc-cripta
@@ -860,9 +983,12 @@ encuentro:
         skill: stealth
         dc: 14
         success:
-          text: '¿Has oído algo? Ratas. En esta cripta hay más ratas que muertos.'
+          who: "Contrabandista de la cala"
+          text: "¿Has oído algo? Ratas. En esta cripta hay más ratas que muertos."
           effects: [{ give: Exvoto de la Esperanza }]
-        failure: '¡Alguien ha bajado! ¡Las luces!'
+        failure:
+          who: "Contrabandista de la cala"
+          text: "¡Alguien ha bajado! ¡Las luces!"
     parley:
       leader: Contrabandista de la cala
       sobornar:
@@ -870,17 +996,23 @@ encuentro:
         gold: 10
         resolves: true
         success:
-          text: 'Diez monedas por una barca de palo. Para ti. Y la cripta, ni la has visto.'
+          who: "Contrabandista de la cala"
+          text: "Diez monedas por una barca de palo. Para ti. Y la cripta, ni la has visto."
           effects: [{ give: Exvoto de la Esperanza }]
-        failure: 'El Gallo nos mata si vendemos algo sin él.'
+        failure:
+          who: "Contrabandista de la cala"
+          text: "El Gallo nos mata si vendemos algo sin él."
       engañar:
         text: 'Decirles que las Rezadoras han maldecido lo que se sacó del osario'
         dc: 14
         resolves: true
         success:
-          text: 'Yo ya decía que esa barca daba mal fario. Toma, toma, quédatela.'
+          who: "Contrabandista de la cala"
+          text: "Yo ya decía que esa barca daba mal fario. Toma, toma, quédatela."
           effects: [{ give: Exvoto de la Esperanza }]
-        failure: 'Las viejas maldicen mucho y no pasa nada.'
+        failure:
+          who: "Contrabandista de la cala"
+          text: "Las viejas maldicen mucho y no pasa nada."
 
 encuentro:
   id: enc-bodega
@@ -912,17 +1044,23 @@ encuentro:
         skill: stealth
         dc: 14
         success:
-          text: 'Aquí no hay nadie. Cerrad la compuerta y a dormir.'
+          who: "Estibador de la Salazón"
+          text: "Aquí no hay nadie. Cerrad la compuerta y a dormir."
           effects: [{ give: Libro de cuentas de la Salazón }]
-        failure: '¡Alguien ha entrado por el agua! ¡Los ganchos!'
+        failure:
+          who: "Estibador de la Salazón"
+          text: "¡Alguien ha entrado por el agua! ¡Los ganchos!"
       - kind: hablar
         text: 'Decirles que vienes de parte de la señora a revisar las cuentas'
         skill: deception
         dc: 15
         success:
-          text: 'Si lo manda la señora… el libro está en el cofre. Pero que conste que nosotros solo cargamos.'
+          who: "Estibador de la Salazón"
+          text: "Si lo manda la señora… el libro está en el cofre. Pero que conste que nosotros solo cargamos."
           effects: [{ give: Libro de cuentas de la Salazón }]
-        failure: 'La señora no manda a nadie. La señora manda a Antón.'
+        failure:
+          who: "Estibador de la Salazón"
+          text: "La señora no manda a nadie. La señora manda a Antón."
     parley:
       leader: Estibador de la Salazón
       sobornar:
@@ -930,14 +1068,18 @@ encuentro:
         gold: 10
         resolves: true
         success:
-          text: 'Una noche pagada sin cargar. Coge lo que quieras, que no hemos visto nada.'
+          who: "Estibador de la Salazón"
+          text: "Una noche pagada sin cargar. Coge lo que quieras, que no hemos visto nada."
           effects: [{ give: Libro de cuentas de la Salazón }]
-        failure: 'Antón se entera de todo.'
+        failure:
+          who: "Estibador de la Salazón"
+          text: "Antón se entera de todo."
       entregarse:
         text: 'Soltar las armas y dejar que os echen por la compuerta'
         resolves: false
         success:
-          text: 'Al agua, y que os lleve la marea. A vosotros sí os puede ahogar.'
+          who: "Estibador de la Salazón"
+          text: "Al agua, y que os lleve la marea. A vosotros sí os puede ahogar."
           effects: [{ hurt: 1d4 }]
 
 encuentro:
@@ -966,20 +1108,32 @@ encuentro:
         text: 'Subir pegados a la roca, por la parte que no se ve desde arriba'
         skill: stealth
         dc: 14
-        success: 'Nada en el atajo. Ni una cabra.'
-        failure: '¡Fiuuu! ¡Gente subiendo por el atajo!'
+        success:
+          who: "Contrabandista de la cala"
+          text: "Nada en el atajo. Ni una cabra."
+        failure:
+          who: "Contrabandista de la cala"
+          text: "¡Fiuuu! ¡Gente subiendo por el atajo!"
       - kind: hablar
         text: 'Decirles que el Gallo ya no manda en la cala'
         skill: intimidation
         dc: 15
-        success: 'Si el Gallo ya no paga, yo no vigilo. Sube, sube.'
-        failure: 'Eso lo tendrá que decir el Gallo.'
+        success:
+          who: "Contrabandista de la cala"
+          text: "Si el Gallo ya no paga, yo no vigilo. Sube, sube."
+        failure:
+          who: "Contrabandista de la cala"
+          text: "Eso lo tendrá que decir el Gallo."
     parley:
       leader: Contrabandista de la cala
       sobornar:
         text: 'Pagar el peaje del atajo'
         gold: 8
         resolves: true
-        success: 'El peaje de siempre. Sube, y no mires abajo.'
-        failure: 'Hoy el peaje es más caro. Mucho más.'
+        success:
+          who: "Contrabandista de la cala"
+          text: "El peaje de siempre. Sube, y no mires abajo."
+        failure:
+          who: "Contrabandista de la cala"
+          text: "Hoy el peaje es más caro. Mucho más."
 ```

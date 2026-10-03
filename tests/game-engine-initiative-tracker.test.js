@@ -234,3 +234,33 @@ describe('toggleCondition', () => {
             .toEqual(['Poisoned', 'Prone']);
     });
 });
+
+describe('tanda 22: las salvaciones de muerte en la iniciativa', () => {
+    const turnOrder = [
+        { id: '1', name: 'Tessa', initiative: 15, isEnemy: false },
+        { id: 'e1', name: 'Ratero', initiative: 12, isEnemy: true },
+        { id: '2', name: 'Gerd', initiative: 8, isEnemy: false },
+    ];
+    const enemies = [{ instanceId: 'e1', name: 'Ratero', currentHp: 0, maxHp: 7 }];
+
+    test('uno de los tuyos en el suelo lleva sus salvaciones; los demás, no', () => {
+        const party = [
+            { id: '1', name: 'Tessa', hp: 0, maxHp: 30, deathSaves: { successes: 2, failures: 1 } },
+            { id: '2', name: 'Gerd', hp: 12, maxHp: 16 },
+        ];
+        const { entries } = buildTracker({ turnOrder, currentTurnIndex: 0, party, enemies });
+        expect(entries[0].dying).toEqual({ successes: 2, failures: 1, stable: false });
+        // El enemigo caído y el que sigue en pie, sin puntos.
+        expect(entries[1].dying).toBeNull();
+        expect(entries[2].dying).toBeNull();
+    });
+
+    test('recién caído (sin tiradas) empieza con todo vacío; estabilizado, lo dice; muerto, nada', () => {
+        const fresh = buildTracker({ turnOrder, currentTurnIndex: 0, party: [{ id: '1', name: 'Tessa', hp: 0, maxHp: 30 }], enemies });
+        expect(fresh.entries[0].dying).toEqual({ successes: 0, failures: 0, stable: false });
+        const stable = buildTracker({ turnOrder, currentTurnIndex: 0, party: [{ id: '1', name: 'Tessa', hp: 0, maxHp: 30, deathSaves: { successes: 3, stable: true } }], enemies });
+        expect(stable.entries[0].dying).toMatchObject({ stable: true, successes: 3 });
+        const dead = buildTracker({ turnOrder, currentTurnIndex: 0, party: [{ id: '1', name: 'Tessa', hp: 0, maxHp: 30, dead: true }], enemies });
+        expect(dead.entries[0].dying).toBeNull();
+    });
+});

@@ -25,6 +25,7 @@
 import { readTaggedLine } from './chronicle.js';
 import { pickPhrase, fillLine, hashOf } from './human-lines.js';
 import { countWord } from './narration-notes.js';
+import { gruntFor } from './mute.js';
 
 /** @param {any} value @returns {string} */
 const text = (value) => String(value ?? '').trim();
@@ -100,6 +101,8 @@ const KEEPER_ROLES = { tienda: 'El tendero', posada: 'El posadero', herreria: 'E
  * @property {VoicePerson[]} [party] Todo el grupo, para reconocer a quien nombra la nota.
  * @property {VoicePerson|null} [hero] Tu héroe: lo suyo no se lo dice nadie.
  * @property {string} [restUnder] Dónde fue el último descanso: `techo`, `cielo` o vacío.
+ * @property {string[]} [silent] Tanda 22: quien aún no habla (Grimm, hasta el rango 8, `mute.js`).
+ *   No está en `companions` (no cuenta nada); lo suyo lo dice con un gruñido.
  */
 
 /**
@@ -410,6 +413,10 @@ export function voiceNote(note, { told = '', scene = {}, rows = [], seed = '', t
             if (text(m[1]) === text(scene?.hero?.name)) return quiet;
             const member = (scene?.party ?? []).find(p => text(p?.name) === text(m?.[1]));
             if (!member) return notice;
+            // Tanda 22: quien aún no habla se apunta o se queda con un gruñido.
+            if ((scene?.silent ?? []).includes(text(member.name))) {
+                return { mode: 'line', who: text(member.name), mood: '', kind: 'gruñido', text: gruntFor(m[2] === 'apunta' ? 'voy' : 'quedo') };
+            }
             const reasons = m[3].split(/,\s*/u).map(firstPerson).join(', ');
             return line(member, m[2] === 'apunta' ? 'voz-encargo-voy' : 'voz-encargo-me-quedo', { porque: reasons, porque_mayus: upperFirst(reasons) });
         }

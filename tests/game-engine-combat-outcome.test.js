@@ -88,6 +88,12 @@ describe('victoria', () => {
         expect(unhurt).toEqual(['continue']);
     });
 
+    test('tanda 22: con una escena esperando, el botón grande es seguir con la historia aunque quede algo', () => {
+        const view = outcomeView({ ...base, step: { kind: 'story', title: 'Sigue la historia' }, leftovers: { chests: 1 } });
+        expect(view.buttons.find(b => b.main)).toMatchObject({ id: 'continue', label: 'Seguir con la historia' });
+        expect(view.buttons.find(b => b.id === 'search')).toMatchObject({ tone: 'subtle' });
+    });
+
     test('si lo que toca es volver al tablero y queda algo, el botón grande es registrar la sala', () => {
         const view = outcomeView({ ...base, step: { kind: 'board', title: 'Volver al tablero' }, leftovers: { chests: 1 } });
         expect(view.buttons.find(b => b.main)?.label).toBe('Registrar la sala');

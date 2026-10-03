@@ -139,7 +139,8 @@ export function getMapLegend() {
  */
 function exitBranch(description) {
     return {
-        description: `${description} Un texto llano, o { "text": "…", "effects": [...] }. Efectos: {"gold": -5}, `
+        description: `${description} Mejor { "who", "text", "effects" }: text es lo que dice who (quien manda, la persona `
+            + 'con la que hablas o uno de los tuyos), con sus palabras (D-J60). Sin who, sale en un aviso fuera de la caja. Efectos: {"gold": -5}, '
             + '{"attitude": -1, "who": "Nombre"}, {"rumor": "id"}, {"clue": "texto"}, {"give": "objeto"}, {"take": "objeto"}, '
             + '"time", {"milestone": "id"}, {"standing": "Facción", "amount": -1}, {"fame": -1}, {"hurt": "1d4"}, {"days": 1}, '
             + '{"grudge": "Nombre"} (alguien que os la guardará).',
@@ -147,7 +148,11 @@ function exitBranch(description) {
             { type: 'string' },
             {
                 type: 'object',
-                properties: { text: { type: 'string' }, effects: { type: 'array', items: {} } },
+                properties: {
+                    who: { type: 'string', description: 'Un enemigo del tablero (su nombre del bestiario), o alguien de npcs o confidants.' },
+                    text: { type: 'string' },
+                    effects: { type: 'array', items: {} },
+                },
             },
         ],
     };
@@ -557,7 +562,7 @@ function buildSectionSchemas() {
                             name: { type: 'string', description: 'Lo que es, en pocas palabras: «Losa hundida».' },
                             x: { type: 'integer' },
                             y: { type: 'integer' },
-                            tell: { type: 'string', description: 'Lo que se ve sin buscar: «Una losa está más baja que las demás». Sin aviso, pisarla no es culpa de nadie.' },
+                            tell: { type: 'string', description: 'Lo que se ve sin buscar: «Una losa está más baja que las demás». Lo dice quien la ve, uno de los tuyos (D-J60): escríbelo como lo diría. Sin aviso, pisarla no es culpa de nadie.' },
                             damage: { type: 'string', description: 'El daño al pisarla, en dados: "1d10" o "2d6". Va esto o condition, o las dos.' },
                             condition: {
                                 type: 'string',
@@ -641,7 +646,13 @@ function buildSectionSchemas() {
                             verbo: { type: 'string', description: 'Qué se hace, en infinitivo: «examinar», «mirar», «buscar», «leer». Sin él, «examinar».' },
                             text: { type: 'string', description: 'Sobre qué, corto y concreto: «el hueco del roble», «las huellas de la nieve».' },
                             skill: { type: 'string', enum: Object.keys(SKILLS), description: 'Con qué se tira. Sin ella, investigation.' },
-                            found: { type: 'string', description: 'Lo que se ve si la tirada sale bien: una o dos frases llanas.' },
+                            found: {
+                                type: 'string',
+                                description: 'Lo que se ve si la tirada sale bien: una o dos frases llanas. Lo dice uno de los tuyos '
+                                    + '(o, a solas, quien esté allí), así que escríbelo como lo diría: «La cerradura no está forzada: '
+                                    + 'la abrieron con llave», no «Ves que la cerradura…» (D-J60).',
+                            },
+                            who: { type: 'string', description: 'Opcional: quién lo dice, si es alguien concreto de npcs que está aquí. Sin él, uno de los tuyos.' },
                             place: {
                                 type: 'string',
                                 enum: Object.keys(PLACE_KINDS),
@@ -691,6 +702,12 @@ function buildSectionSchemas() {
                     description: 'Ids del catálogo de habilidades (rules.abilities) que sabe usar. El motor decide cuándo: cura a los suyos, gasta lo que tiene usos contados en cuanto llega, y usa lo de siempre si pega más que su golpe.',
                 },
                 description: { type: 'string' },
+                // Tanda 22: los del bestiario que hablan (el ratero del muelle, Strahd) también tienen cara.
+                aspecto: {
+                    ...aspecto(),
+                    description: 'Solo si habla: en una escena, en una charla o como quien manda en un tablero al que se le habla '
+                        + '(parley.leader, avoid). ' + aspecto().description,
+                },
             },
         },
     };
@@ -946,7 +963,8 @@ function buildSectionSchemas() {
             days: { type: 'integer', minimum: 1, maximum: 30, description: 'Cuántos días después.' },
             on: { type: 'string', enum: ['siempre', 'bien', 'mal'], description: 'Si la opción lleva tirada: con qué resultado vuelve. Sin él, siempre.' },
             name: { type: 'string', description: 'El título de la tarjeta: «Los graneros vacíos».' },
-            text: { type: 'string', description: 'Lo que pasa, en una o dos frases llanas. Sin huecos como {sitio}: puede salir en cualquier sitio.' },
+            text: { type: 'string', description: 'Lo que pasa, en una o dos frases llanas: se lee en la tarjeta. Sin huecos como {sitio}: puede salir en cualquier sitio.' },
+            who: { type: 'string', description: 'Quién vuelve: alguien de npcs o de confidants. Sale en la tarjeta con su cara, y lo que pasa al elegir (then) lo dice él (D-J60).' },
             suceso: { type: 'string' },
             options: {
                 type: 'array',
@@ -958,7 +976,8 @@ function buildSectionSchemas() {
                         label: { type: 'string', description: 'Lo que se hace.' },
                         cost: { type: 'object', properties: { oro: { type: 'integer' }, horas: { type: 'integer' }, dias: { type: 'integer' } }, description: 'Lo que se paga antes.' },
                         effects: sucesoEffects,
-                        then: { type: 'string', description: 'Lo que pasa, dicho.' },
+                        then: { type: 'string', description: 'Lo que pasa, dicho por quien vuelve (who) con sus palabras: «Toma, y no digas de dónde sale», no «Os da una bolsa».' },
+                        who: { type: 'string', description: 'Opcional: si lo de esta opción lo dice otro que está allí.' },
                         check: { type: 'object', properties: { skill: { type: 'string', enum: Object.keys(SKILLS) }, dc: { type: 'integer' } } },
                         success: { type: 'object', properties: { effects: sucesoEffects, then: { type: 'string' } } },
                         fail: { type: 'object', properties: { effects: sucesoEffects, then: { type: 'string' } } },
@@ -1261,7 +1280,8 @@ function buildSectionSchemas() {
                     required: ['title', 'scene'],
                     properties: {
                         title: { type: 'string' },
-                        scene: { type: 'string' },
+                        scene: { type: 'string', description: 'Cómo acaba, dicho por quien lo cuenta (who) con sus palabras: sale en la caja con su cara, y se lee en la tarjeta del final.' },
+                        who: { type: 'string', description: 'Quién cuenta el final: alguien de npcs o de confidants que está allí (D-J60). Sin él, la escena no la dice nadie.' },
                         epilogues: {
                             type: 'array',
                             items: {

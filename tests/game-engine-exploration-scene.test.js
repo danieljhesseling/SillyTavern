@@ -137,7 +137,7 @@ describe('requirements the engine checks instead of trusting', () => {
         };
         const shut = buildExplorationView({ locationMaps: world, party, campaignMap: map });
         expect(shut.places.find(p => p.id === 'Torre')?.status).toBe('locked');
-        expect(shut.places.find(p => p.id === 'Torre')?.reasons[0]).toMatch(/vínculo 3 con Lyra/);
+        expect(shut.places.find(p => p.id === 'Torre')?.reasons[0]).toMatch(/rango 3 con Lyra/);
 
         const raised = buildExplorationView({
             locationMaps: world, party, campaignMap: map, bonds: { bonds: { 1: { points: 40 } } },

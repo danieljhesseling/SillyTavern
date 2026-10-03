@@ -192,7 +192,7 @@ try {
     // 4. Saltarla: como si se hubiera ganado.
     ask = await askSkip();
     await page.locator('.popup-button-ok:visible').first().click({ timeout: 5000 }).catch(() => {});
-    const told = await until(() => chatHas(/apunta tu nombre en el libro del gremio/), 15000);
+    const told = await until(() => chatHas(/apunta tu nombre en el libro del gremio|Te saltas «|Ya subes|tengo el libro abierto/), 15000);
     await page.waitForTimeout(1000);
     now = await state();
     check('saltarla abre el hilo siguiente, con su escena: el tablón', told && now.done.includes('la-prueba') && now.open.includes('el-tablon'), JSON.stringify(now));

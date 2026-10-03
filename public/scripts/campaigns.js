@@ -10,13 +10,13 @@ import {
 } from '../script.js';
 import { Popup, POPUP_TYPE, POPUP_RESULT } from './popup.js';
 import { buildNewCampaignCta, createCampaign } from './game-engine/ui/campaign-wizard.js';
-import { openCampaignBuilder, loadDndCatalog, setPartyFromWorldEntries, beginCampaignPlot, adoptVeteranGear, giveStartingGear, applyCampaignRuleset, applyModeExtras, adoptPet, partySnapshot, adoptCarriedParty, giveStartingPurse, plotEndingTitle, postJourney, postHomecoming, recordFinishedCampaign, seatPartyHero, memberFromEntry, getCombatEncounter, campaignChronicle, scheduleGuildVisitor, settleCampaignCompanions, welcomeGuildCompanions, sayHomecomings } from './party.js';
+import { openCampaignBuilder, loadDndCatalog, setPartyFromWorldEntries, beginCampaignPlot, adoptVeteranGear, giveStartingGear, applyCampaignRuleset, applyModeExtras, adoptPet, partySnapshot, adoptCarriedParty, giveStartingPurse, plotEndingTitle, postJourney, postHomecoming, recordFinishedCampaign, seatPartyHero, memberFromEntry, getCombatEncounter, campaignChronicle, scheduleGuildVisitor, settleCampaignCompanions, welcomeGuildCompanions, sayHomecomings, passGuildDays } from './party.js';
 import { isCampaignWorld, getStartingPoint, uniqueWorldName } from './game-engine/campaign/campaign-worlds.js';
 import { syncGameState, holdGameSync } from './party/game-state.js';
 import {
     HUB_KEY, HUB_HOME_KEY, HUB_CAMPAIGN_KEY, HUB_PACK, HUB_WORLD_NAME, HUB_START_GOLD, HUB_NEXT_HERO_GOLD, HUB_NARRATOR,
     readHub, isHubWorld, hubHomeOf, withHubChat, withHubCampaign, answersForWorld, hubCampaignWorldName, journeyLine,
-    carryEntry, entryFromMember, hubPartyLine, hubCampaignCards, HUB_LEVELS_KEY, hubDay, HUB_BOARD_NAME_KEY,
+    carryEntry, entryFromMember, hubPartyLine, hubCampaignCards, HUB_LEVELS_KEY, hubDay, HUB_BOARD_NAME_KEY, homecomingDays, journeyDays,
     HUB_IMPORTED_DIR, HUB_IMPORTED_LIST, readImportedList, importedListFile, withImportedRow, withoutImportedRow,
     importedForHub, withoutHubImported,
 } from './game-engine/campaign/hub.js';
@@ -1341,7 +1341,18 @@ async function openHubChat(chat, worldName) {
         console.warn('[gremio] no se pudo abrir el chat', chat, error);
         return false;
     }
-    return String(chat_metadata?.[METADATA_KEY] || '') === worldName;
+    // H13 (tanda 22): con la máquina cargada, el chat recién abierto se queda un momento sin su
+    // mundo («» y luego «El Gremio»); mirarlo en seguida daba «Volver al gremio» por fallido. Se
+    // espera a que lo tenga, unos segundos como mucho.
+    const until = Date.now() + 10000;
+    for (;;) {
+        if (String(chat_metadata?.[METADATA_KEY] || '') === worldName) return true;
+        if (Date.now() > until) {
+            console.warn('[gremio] el chat abierto no es del mundo que toca', { chat, worldName, found: String(chat_metadata?.[METADATA_KEY] || '') });
+            return false;
+        }
+        await new Promise(resolve => setTimeout(resolve, 200));
+    }
 }
 
 /**
@@ -1919,6 +1930,8 @@ export async function returnToHub() {
         const record = ending ? recordFinishedCampaign() : null;
         // D-J12: el día al que se llegó aquí. Lo vivido en la campaña también pasa en el gremio.
         const day = normalizeCalendar(chat_metadata?.calendar).day;
+        // H16: y pasa de verdad en el reloj del gremio, al llegar (con el viaje, más abajo).
+        const away = homecomingDays({ hub: home?.metadata?.[HUB_KEY], id, day });
         const here = openChat();
         // J4.2: lo que ha cambiado del gremio en esta campaña, al almacén de la partida antes de salir.
         await syncGameState({ force: true });
@@ -1943,6 +1956,8 @@ export async function returnToHub() {
                 finished: Boolean(ending) || Boolean(was?.finished),
                 ending: ending || was?.ending || '',
                 day: Math.max(day, was?.day ?? 0),
+                // H16: lo vivido allí que ya pasa en el reloj del gremio (`hubDay` no lo suma otra vez).
+                synced: away.synced,
                 // D-J35: su nombre del tablón, también en las empezadas antes de apuntarlo.
                 ...(board?.name ? { name: String(board.name) } : {}),
                 chapter: chronicle.chapter,
@@ -1970,7 +1985,11 @@ export async function returnToHub() {
         adoptCarriedParty(carried, { worldName: homeWorld, uids });
         // J7.2: quien se vino y no cabe en el grupo espera en casa; y se dice quién es ya del gremio.
         welcomeGuildCompanions(stays);
-        await postJourney(journeyLine({ world: journeyWithStable(board, chat_metadata?.guild ?? null, carried.length), home: hubTownName(home), back: true }));
+        const road = journeyWithStable(board, chat_metadata?.guild ?? null, carried.length);
+        // H16: en el gremio pasan los días de fuera: lo vivido allí y el viaje de ida y vuelta.
+        const back = journeyDays(road);
+        passGuildDays(away.lived + 2 * back, { back });
+        await postJourney(journeyLine({ world: road, home: hubTownName(home), back: true }));
         if (firstHomecoming) {
             await postHomecoming([homecomingScene({
                 campaign: String(board?.name || ''),

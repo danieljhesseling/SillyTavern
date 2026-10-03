@@ -34,6 +34,7 @@ import { narrate as narrateMoment, rememberUsed, listNames } from '../game-engin
 import { countedName, sucesoProse } from '../game-engine/campaign/narration-notes.js';
 import { noteProse } from '../game-engine/campaign/narration-prose.js';
 import { voiceNote, voiceArrivalHook } from '../game-engine/campaign/narration-voices.js';
+import { hashOf } from '../game-engine/campaign/human-lines.js';
 import { servicesOf } from '../game-engine/campaign/services.js';
 import { tagLength } from '../game-engine/ui/shell/engine-tags.js';
 import { currentTownPlace } from '../game-engine/ui/shell/town-scene.js';
@@ -79,6 +80,7 @@ import {
     lastHub, lastHubHome, lastPack, lastWorldNpcs,
 } from './world.js';
 import { pushFactionClock, rulerOf, shiftFactionStanding } from './factions.js';
+import { silentNow } from './silent.js';
 import {
     advanceCampaignDay, advanceCampaignSlot, campaignDay, getCampaignCalendar, getCurrentSlotLabel,
     recordCampaignBondEvent,
@@ -235,16 +237,101 @@ function voiceScene() {
     }
     const hero = partyMembers.find(m => !m.guest) ?? partyMembers[0];
     const person = (/** @type {any} */ m) => ({ name: String(m?.name || ''), gender: String(m?.gender || '') });
+    // Tanda 22: quien aún no habla (Grimm, hasta el rango 8) no cuenta nada; lo suyo, con un gruñido.
+    const silent = partyMembers.filter(m => m !== hero && silentNow(m)).map(m => String(m.name));
     return {
         keepers,
         services: hereLocation() ? servicesOf(hereLocation()) : [],
         open: currentTownPlace(),
         // Los mercenarios y quien se escolta también están, y también hablan.
-        companions: partyMembers.filter(m => m !== hero && !m.dead && (Number(m.hp) || 0) > 0).map(person),
+        companions: partyMembers.filter(m => m !== hero && !m.dead && (Number(m.hp) || 0) > 0 && !silent.includes(String(m.name))).map(person),
         party: partyMembers.map(person),
+        silent,
         hero: hero ? person(hero) : null,
         restUnder: lastRestUnder,
     };
+}
+
+/**
+ * Tanda 22 (D-J60): quién dice algo que se ve aquí (lo que sale al mirar, una trampa a la vista):
+ * `prefer` si está aquí (alguien de la gente del sitio o de los tuyos que ya hable), si no uno de
+ * los tuyos que hable (el mismo para la misma `seed`), y a solas, alguien de la gente de aquí.
+ * Vacío si no hay nadie: entonces va al aviso de fuera de la caja.
+ *
+ * @param {{prefer?: string, seed?: string, party?: boolean}} [input] `party`: solo uno de los tuyos
+ *   (lo que pasa al huir o al esconderse no lo dice la gente del sitio).
+ * @returns {string}
+ */
+export function sayerHere({ prefer = '', seed = '', party = false } = {}) {
+    const here = String(currentLocationName || '').toLowerCase();
+    const people = /** @type {any[]} */ (lastWorldNpcs).filter(npc => npc && !npc.dead && String(npc.where || '').toLowerCase() === here);
+    const scene = voiceScene();
+    const wanted = String(prefer || '').trim().toLowerCase();
+    if (wanted) {
+        const found = people.find(npc => String(npc.name).toLowerCase() === wanted)
+            ?? (scene.companions ?? []).find(c => String(c.name).toLowerCase() === wanted);
+        if (found) return String(found.name);
+    }
+    const companions = (scene.companions ?? []).filter(c => String(c?.name || ''));
+    if (companions.length > 0) return String(companions[hashOf(String(seed)) % companions.length].name);
+    return !party && people[0] ? String(people[0].name) : '';
+}
+
+/**
+ * Tanda 22 (D-J60): quién dice algo escrito con `who`: «{companero}» es uno de los tuyos que hable
+ * (el mismo para la misma `seed`); a solas, nadie (vacío: va al aviso de fuera de la caja).
+ *
+ * @param {string} who
+ * @param {string} [seed]
+ * @returns {string}
+ */
+export function speakerFor(who, seed = '') {
+    const said = String(who || '').trim();
+    return said === '{companero}' ? sayerHere({ seed, party: true }) : said;
+}
+
+/**
+ * Tanda 22 (D-J60): una nota del motor que dice alguien que está allí (el compañero que ve una
+ * trampa): en la caja, con su placa y su cara; la nota queda para el Diario y el registro. Sin
+ * nadie, o con conexión, la nota de siempre.
+ *
+ * @param {string} note La nota, con su etiqueta («👁️ [TABLERO] …»).
+ * @param {string} who
+ * @param {string} said Lo que dice, con sus palabras.
+ * @param {{mood?: string}} [options]
+ */
+export function sayHere(note, who, said, { mood = '' } = {}) {
+    if (!String(who || '').trim() || !String(said || '').trim() || narratorMode() !== 'motor') {
+        postCombatNarration(note);
+        return;
+    }
+    pushCombatLogLines(note);
+    postVoiced(note, '', { mode: 'line', who: String(who), text: String(said), ...(mood ? { mood } : {}) });
+}
+
+/** Tanda 22: cómo sale en una quedada quien atiende cada servicio, por lo que es. */
+const STAND_IN_ROLES = {
+    posada: ['el tabernero', 'la tabernera', 'el posadero', 'la posadera'],
+    tienda: ['el tendero', 'la tendera'],
+    herreria: ['el herrero', 'la herrera'],
+    templo: ['el sacerdote', 'la sacerdotisa'],
+};
+
+/**
+ * Tanda 22: quién hace aquí de tabernero, de tendero…: en una quedada, «el tabernero» que habla
+ * es el que lleva la posada de aquí, y sale con su cara (`guestPortrait`).
+ *
+ * @returns {Record<string, string>} Por lo que es, en minúsculas: su nombre.
+ */
+export function standInsHere() {
+    const keepers = voiceScene().keepers ?? {};
+    /** @type {Record<string, string>} */
+    const out = {};
+    for (const [service, roles] of Object.entries(STAND_IN_ROLES)) {
+        const name = String(keepers[service]?.name || '');
+        if (name) for (const role of roles) out[role] = name;
+    }
+    return out;
 }
 
 /**
@@ -493,6 +580,16 @@ export function playSucesos(moment, facts = {}, days = 1) {
 async function showSuceso(card, random, names = {}) {
     const body = $('<div class="su-root gs-panel"></div>').attr('data-suceso', card.id);
     body.append($('<h3 class="gs-popup-title"></h3>').text(card.name));
+    // Tanda 22 (D-J60): la tarjeta se queda como tarjeta, pero si trae quién está (quien vuelve, quien
+    // viene al gremio), sale con su cara y su nombre, y lo que pasa al elegir lo dice él.
+    const cardWho = speakerFor(String(card.who || ''), String(card.id));
+    if (cardWho) {
+        const face = firstArt('portrait', { name: cardWho, pack: lastPack }) || firstArt('creature', { name: cardWho });
+        const who = $('<div class="su-who"></div>').attr('data-who', cardWho);
+        if (face) who.append($('<img class="pixel-art su-face" alt="">').attr('src', face));
+        who.append($('<span class="su-name"></span>').text(shownName(cardWho)));
+        body.append(who);
+    }
     body.append($('<div class="su-text"></div>').text(card.text));
     const list = $('<div class="su-options"></div>');
     const result = $('<div class="su-result"></div>').hide();
@@ -522,9 +619,17 @@ async function showSuceso(card, random, names = {}) {
             }
             const done = resolveOption(option, { success });
             const said = applySucesoEffects(done.effects, random, names);
+            // Tanda 22 (D-J60): lo dice quien está en la tarjeta (o quien diga la opción).
+            const speaker = done.who ? speakerFor(done.who, String(card.id)) : cardWho;
             result.empty();
             if (rolled) result.append($('<div class="su-roll"></div>').text(rolled));
-            result.append($('<div></div>').text(done.then || 'Hecho.'));
+            if (speaker && done.then) {
+                result.append($('<div class="su-said"></div>').attr('data-who', speaker)
+                    .append($('<span class="su-said-who"></span>').text(`${shownName(speaker)}: `))
+                    .append($('<span></span>').text(done.then)));
+            } else {
+                result.append($('<div></div>').text(done.then || 'Hecho.'));
+            }
             if (said.length > 0) result.append($('<div class="su-effects"></div>').text(said.join(' · ')));
             result.show();
             // J9.1: «Seguir» sale con lo que pasa, no cuando acaba de escribirse la nota del chat
@@ -542,7 +647,8 @@ async function showSuceso(card, random, names = {}) {
             const chose = `Elegís ${String(option.label).charAt(0).toLocaleLowerCase('es')}${String(option.label).slice(1)}${option.check ? (success ? `, y con ${skill} sale bien` : `, pero con ${skill} no sale`) : ''}.`;
             await postForModel(
                 `[SUCESO] ${card.text} Quien juega elige: ${option.label}${check}. ${done.then}${said.length > 0 ? ` (${said.join(', ')})` : ''} Si lo cuentas, en dos frases y sin cambiar lo que pasó.`,
-                {
+                // Tanda 22 (D-J60): sin conexión, con alguien que lo diga, en la caja lo dice él.
+                speaker && done.then && offlineGame() ? { show: `🃏 [SUCESO] ${done.then}`, speaker } : {
                     show: narratorMode() === 'motor' ? `🃏 [SUCESO] ${card.name}. ${chose} ${sucesoProse({ then: done.then, effects: said })}`
                         : `🃏 [SUCESO] ${card.name}: ${option.label}${check}. ${done.then}${said.length > 0 ? ` (${said.join(', ')})` : ''}`,
                 },
@@ -779,7 +885,8 @@ export function tellBoard(boardName) {
         objetivo: goal ? goal[0].toLocaleLowerCase('es') + goal.slice(1) : '',
         enemigos: listNames(foes),
     });
-    if (told) void postEngineLine(told);
+    // Tanda 22 (D-J60): sin conexión no lo cuenta nadie: el objetivo ya sale en la cabecera.
+    if (told && !quietMoment('tablero')) void postEngineLine(told);
 }
 
 /**
@@ -1268,8 +1375,12 @@ export function offlineGame() {
  * libro de la historia. Lo que dice alguien que está allí (los buenos días del posadero, el
  * compañero que avisa al llegar) sigue saliendo; lo que es un hecho (el oro, una tirada,
  * «Objetivos cumplidos») va en su aviso, como siempre.
+ *
+ * Tanda 22: tampoco entrar en un tablero (el objetivo ya sale en la cabecera), entrar en un
+ * edificio (su tarjeta ya dice qué hay) ni el epitafio de quien cae (se ve en el tablero y queda
+ * en el Salón de la fama).
  */
-export const QUIET_MOMENTS = Object.freeze(['viaje', 'llegada', 'descanso', 'fin-combate', 'semana', 'acto']);
+export const QUIET_MOMENTS = Object.freeze(['viaje', 'llegada', 'descanso', 'fin-combate', 'semana', 'acto', 'tablero', 'servicio', 'muerte']);
 
 /**
  * Si un momento del narrador se calla: sin conexión, los de `QUIET_MOMENTS`.

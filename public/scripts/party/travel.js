@@ -78,7 +78,7 @@ import { afterArrival } from './social.js';
 import { notePlot, openMilestones } from './plot.js';
 import { noteDeed, populatePlace, worldWrite } from './world-growth.js';
 import {
-    numberWord, playSucesos, postCombatNarration, postForModel, showTip, storyWindowsOn, sucesosOn, tellMoment,
+    numberWord, playSucesos, postCombatNarration, postForModel, showTip, standInsHere, storyWindowsOn, sucesosOn, tellMoment,
 } from './narration.js';
 import { partyPurse, payFromParty, savePartyState } from './roster.js';
 import { changeAttitude, companionCards, getPartyFormation, judgeDecision, sayRoadLine } from './companions.js';
@@ -244,6 +244,8 @@ export async function playNight({ road = false, pair = null, day = campaignDay()
         scene: /** @type {any} */ (scene),
         person: first,
         cast: scene.cast,
+        // Tanda 22: «el tabernero» de la noche es el que lleva la posada de aquí, con su cara.
+        standIns: standInsHere(),
         pack: campaign,
         place: inn ? 'posada' : '',
         town: String(currentLocationName || ''),

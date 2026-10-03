@@ -39,6 +39,7 @@ import { isShellOpen, refreshGameShell, setScene } from '../game-engine/ui/shell
 import { partyMembers, currentBoardName, currentLocationName, setCurrentBoardName } from './state.js';
 import { afterFx } from './combat-fx.js';
 import { afterFightNow } from './combat-flow.js';
+import { plotScenesQueued } from './plot.js';
 import { lastHub, lastHubHome, saveCurrentBoard } from './world.js';
 import { advanceCampaignDay, getCampaignCalendar, getCurrentSlotLabel, takeRest } from './time.js';
 import { canLevelUp, openLevelUpCard } from './level-up.js';
@@ -131,8 +132,12 @@ export function planOutcome({ kind, round, tally = null, failed = '', upgrades =
     holdPlace();
     // Cuando se haya visto todo (la secuencia del combate), y con `endCombat` ya acabado: lo que
     // toca después (D-J45) lo apunta al final.
-    afterFx(() => setTimeout(() => {
+    afterFx(() => setTimeout(async () => {
         try {
+            // Tanda 22: la escena que abre ganar se pone en cola un momento después (el hilo revela
+            // sitios antes). Sin esperarla, el botón grande era «Registrar la sala» con la escena
+            // esperando detrás; con ella, «Seguir con la historia». Unos segundos como mucho.
+            if (plan.kind === 'victory') await Promise.race([plotScenesQueued(), new Promise(resolve => setTimeout(resolve, 4000))]);
             if (plan.owner !== chat_metadata) return;
             showPlan(plan);
         } catch (error) {

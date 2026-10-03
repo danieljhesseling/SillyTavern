@@ -270,7 +270,11 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
         },
         "text": {
           "type": "string",
-          "description": "Lo que pasa, en una o dos frases llanas. Sin huecos como {sitio}: puede salir en cualquier sitio."
+          "description": "Lo que pasa, en una o dos frases llanas: se lee en la tarjeta. Sin huecos como {sitio}: puede salir en cualquier sitio."
+        },
+        "who": {
+          "type": "string",
+          "description": "Quién vuelve: alguien de npcs o de confidants. Sale en la tarjeta con su cara, y lo que pasa al elegir (then) lo dice él (D-J60)."
         },
         "suceso": {
           "type": "string"
@@ -312,7 +316,11 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
               },
               "then": {
                 "type": "string",
-                "description": "Lo que pasa, dicho."
+                "description": "Lo que pasa, dicho por quien vuelve (who) con sus palabras: «Toma, y no digas de dónde sale», no «Os da una bolsa»."
+              },
+              "who": {
+                "type": "string",
+                "description": "Opcional: si lo de esta opción lo dice otro que está allí."
               },
               "check": {
                 "type": "object",
@@ -728,7 +736,11 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
                 },
                 "found": {
                   "type": "string",
-                  "description": "Lo que se ve si la tirada sale bien: una o dos frases llanas."
+                  "description": "Lo que se ve si la tirada sale bien: una o dos frases llanas. Lo dice uno de los tuyos (o, a solas, quien esté allí), así que escríbelo como lo diría: «La cerradura no está forzada: la abrieron con llave», no «Ves que la cerradura…» (D-J60)."
+                },
+                "who": {
+                  "type": "string",
+                  "description": "Opcional: quién lo dice, si es alguien concreto de npcs que está aquí. Sin él, uno de los tuyos."
                 },
                 "place": {
                   "type": "string",
@@ -970,7 +982,7 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
                   "description": "Si salir bien cuenta como pasar el tablero para la historia. Sin decirlo: sí, salvo huir."
                 },
                 "success": {
-                  "description": "Lo que pasa si sale bien. Un texto llano, o { \"text\": \"…\", \"effects\": [...] }. Efectos: {\"gold\": -5}, {\"attitude\": -1, \"who\": \"Nombre\"}, {\"rumor\": \"id\"}, {\"clue\": \"texto\"}, {\"give\": \"objeto\"}, {\"take\": \"objeto\"}, \"time\", {\"milestone\": \"id\"}, {\"standing\": \"Facción\", \"amount\": -1}, {\"fame\": -1}, {\"hurt\": \"1d4\"}, {\"days\": 1}, {\"grudge\": \"Nombre\"} (alguien que os la guardará).",
+                  "description": "Lo que pasa si sale bien. Mejor { \"who\", \"text\", \"effects\" }: text es lo que dice who (quien manda, la persona con la que hablas o uno de los tuyos), con sus palabras (D-J60). Sin who, sale en un aviso fuera de la caja. Efectos: {\"gold\": -5}, {\"attitude\": -1, \"who\": \"Nombre\"}, {\"rumor\": \"id\"}, {\"clue\": \"texto\"}, {\"give\": \"objeto\"}, {\"take\": \"objeto\"}, \"time\", {\"milestone\": \"id\"}, {\"standing\": \"Facción\", \"amount\": -1}, {\"fame\": -1}, {\"hurt\": \"1d4\"}, {\"days\": 1}, {\"grudge\": \"Nombre\"} (alguien que os la guardará).",
                   "oneOf": [
                     {
                       "type": "string"
@@ -978,6 +990,10 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
                     {
                       "type": "object",
                       "properties": {
+                        "who": {
+                          "type": "string",
+                          "description": "Un enemigo del tablero (su nombre del bestiario), o alguien de npcs o confidants."
+                        },
                         "text": {
                           "type": "string"
                         },
@@ -990,7 +1006,7 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
                   ]
                 },
                 "partial": {
-                  "description": "Opcional: si sale a medias (se falla por poco). Sin ella, sale pagando un precio. Un texto llano, o { \"text\": \"…\", \"effects\": [...] }. Efectos: {\"gold\": -5}, {\"attitude\": -1, \"who\": \"Nombre\"}, {\"rumor\": \"id\"}, {\"clue\": \"texto\"}, {\"give\": \"objeto\"}, {\"take\": \"objeto\"}, \"time\", {\"milestone\": \"id\"}, {\"standing\": \"Facción\", \"amount\": -1}, {\"fame\": -1}, {\"hurt\": \"1d4\"}, {\"days\": 1}, {\"grudge\": \"Nombre\"} (alguien que os la guardará).",
+                  "description": "Opcional: si sale a medias (se falla por poco). Sin ella, sale pagando un precio. Mejor { \"who\", \"text\", \"effects\" }: text es lo que dice who (quien manda, la persona con la que hablas o uno de los tuyos), con sus palabras (D-J60). Sin who, sale en un aviso fuera de la caja. Efectos: {\"gold\": -5}, {\"attitude\": -1, \"who\": \"Nombre\"}, {\"rumor\": \"id\"}, {\"clue\": \"texto\"}, {\"give\": \"objeto\"}, {\"take\": \"objeto\"}, \"time\", {\"milestone\": \"id\"}, {\"standing\": \"Facción\", \"amount\": -1}, {\"fame\": -1}, {\"hurt\": \"1d4\"}, {\"days\": 1}, {\"grudge\": \"Nombre\"} (alguien que os la guardará).",
                   "oneOf": [
                     {
                       "type": "string"
@@ -998,6 +1014,10 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
                     {
                       "type": "object",
                       "properties": {
+                        "who": {
+                          "type": "string",
+                          "description": "Un enemigo del tablero (su nombre del bestiario), o alguien de npcs o confidants."
+                        },
                         "text": {
                           "type": "string"
                         },
@@ -1010,7 +1030,7 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
                   ]
                 },
                 "failure": {
-                  "description": "Lo que pasa si sale mal: empieza la pelea (huyendo o escondiéndose, ellos atacan primero). Un texto llano, o { \"text\": \"…\", \"effects\": [...] }. Efectos: {\"gold\": -5}, {\"attitude\": -1, \"who\": \"Nombre\"}, {\"rumor\": \"id\"}, {\"clue\": \"texto\"}, {\"give\": \"objeto\"}, {\"take\": \"objeto\"}, \"time\", {\"milestone\": \"id\"}, {\"standing\": \"Facción\", \"amount\": -1}, {\"fame\": -1}, {\"hurt\": \"1d4\"}, {\"days\": 1}, {\"grudge\": \"Nombre\"} (alguien que os la guardará).",
+                  "description": "Lo que pasa si sale mal: empieza la pelea (huyendo o escondiéndose, ellos atacan primero). Mejor { \"who\", \"text\", \"effects\" }: text es lo que dice who (quien manda, la persona con la que hablas o uno de los tuyos), con sus palabras (D-J60). Sin who, sale en un aviso fuera de la caja. Efectos: {\"gold\": -5}, {\"attitude\": -1, \"who\": \"Nombre\"}, {\"rumor\": \"id\"}, {\"clue\": \"texto\"}, {\"give\": \"objeto\"}, {\"take\": \"objeto\"}, \"time\", {\"milestone\": \"id\"}, {\"standing\": \"Facción\", \"amount\": -1}, {\"fame\": -1}, {\"hurt\": \"1d4\"}, {\"days\": 1}, {\"grudge\": \"Nombre\"} (alguien que os la guardará).",
                   "oneOf": [
                     {
                       "type": "string"
@@ -1018,6 +1038,10 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
                     {
                       "type": "object",
                       "properties": {
+                        "who": {
+                          "type": "string",
+                          "description": "Un enemigo del tablero (su nombre del bestiario), o alguien de npcs o confidants."
+                        },
                         "text": {
                           "type": "string"
                         },
@@ -1060,7 +1084,7 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
                     "description": "Si salir así cuenta como pasar el tablero para la historia."
                   },
                   "success": {
-                    "description": "Si sale (entregarse siempre «sale»). Un texto llano, o { \"text\": \"…\", \"effects\": [...] }. Efectos: {\"gold\": -5}, {\"attitude\": -1, \"who\": \"Nombre\"}, {\"rumor\": \"id\"}, {\"clue\": \"texto\"}, {\"give\": \"objeto\"}, {\"take\": \"objeto\"}, \"time\", {\"milestone\": \"id\"}, {\"standing\": \"Facción\", \"amount\": -1}, {\"fame\": -1}, {\"hurt\": \"1d4\"}, {\"days\": 1}, {\"grudge\": \"Nombre\"} (alguien que os la guardará).",
+                    "description": "Si sale (entregarse siempre «sale»). Mejor { \"who\", \"text\", \"effects\" }: text es lo que dice who (quien manda, la persona con la que hablas o uno de los tuyos), con sus palabras (D-J60). Sin who, sale en un aviso fuera de la caja. Efectos: {\"gold\": -5}, {\"attitude\": -1, \"who\": \"Nombre\"}, {\"rumor\": \"id\"}, {\"clue\": \"texto\"}, {\"give\": \"objeto\"}, {\"take\": \"objeto\"}, \"time\", {\"milestone\": \"id\"}, {\"standing\": \"Facción\", \"amount\": -1}, {\"fame\": -1}, {\"hurt\": \"1d4\"}, {\"days\": 1}, {\"grudge\": \"Nombre\"} (alguien que os la guardará).",
                     "oneOf": [
                       {
                         "type": "string"
@@ -1068,6 +1092,10 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
                       {
                         "type": "object",
                         "properties": {
+                          "who": {
+                            "type": "string",
+                            "description": "Un enemigo del tablero (su nombre del bestiario), o alguien de npcs o confidants."
+                          },
                           "text": {
                             "type": "string"
                           },
@@ -1080,7 +1108,7 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
                     ]
                   },
                   "partial": {
-                    "description": "Opcional: a medias. Un texto llano, o { \"text\": \"…\", \"effects\": [...] }. Efectos: {\"gold\": -5}, {\"attitude\": -1, \"who\": \"Nombre\"}, {\"rumor\": \"id\"}, {\"clue\": \"texto\"}, {\"give\": \"objeto\"}, {\"take\": \"objeto\"}, \"time\", {\"milestone\": \"id\"}, {\"standing\": \"Facción\", \"amount\": -1}, {\"fame\": -1}, {\"hurt\": \"1d4\"}, {\"days\": 1}, {\"grudge\": \"Nombre\"} (alguien que os la guardará).",
+                    "description": "Opcional: a medias. Mejor { \"who\", \"text\", \"effects\" }: text es lo que dice who (quien manda, la persona con la que hablas o uno de los tuyos), con sus palabras (D-J60). Sin who, sale en un aviso fuera de la caja. Efectos: {\"gold\": -5}, {\"attitude\": -1, \"who\": \"Nombre\"}, {\"rumor\": \"id\"}, {\"clue\": \"texto\"}, {\"give\": \"objeto\"}, {\"take\": \"objeto\"}, \"time\", {\"milestone\": \"id\"}, {\"standing\": \"Facción\", \"amount\": -1}, {\"fame\": -1}, {\"hurt\": \"1d4\"}, {\"days\": 1}, {\"grudge\": \"Nombre\"} (alguien que os la guardará).",
                     "oneOf": [
                       {
                         "type": "string"
@@ -1088,6 +1116,10 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
                       {
                         "type": "object",
                         "properties": {
+                          "who": {
+                            "type": "string",
+                            "description": "Un enemigo del tablero (su nombre del bestiario), o alguien de npcs o confidants."
+                          },
                           "text": {
                             "type": "string"
                           },
@@ -1100,7 +1132,7 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
                     ]
                   },
                   "failure": {
-                    "description": "Si no sale. Un texto llano, o { \"text\": \"…\", \"effects\": [...] }. Efectos: {\"gold\": -5}, {\"attitude\": -1, \"who\": \"Nombre\"}, {\"rumor\": \"id\"}, {\"clue\": \"texto\"}, {\"give\": \"objeto\"}, {\"take\": \"objeto\"}, \"time\", {\"milestone\": \"id\"}, {\"standing\": \"Facción\", \"amount\": -1}, {\"fame\": -1}, {\"hurt\": \"1d4\"}, {\"days\": 1}, {\"grudge\": \"Nombre\"} (alguien que os la guardará).",
+                    "description": "Si no sale. Mejor { \"who\", \"text\", \"effects\" }: text es lo que dice who (quien manda, la persona con la que hablas o uno de los tuyos), con sus palabras (D-J60). Sin who, sale en un aviso fuera de la caja. Efectos: {\"gold\": -5}, {\"attitude\": -1, \"who\": \"Nombre\"}, {\"rumor\": \"id\"}, {\"clue\": \"texto\"}, {\"give\": \"objeto\"}, {\"take\": \"objeto\"}, \"time\", {\"milestone\": \"id\"}, {\"standing\": \"Facción\", \"amount\": -1}, {\"fame\": -1}, {\"hurt\": \"1d4\"}, {\"days\": 1}, {\"grudge\": \"Nombre\"} (alguien que os la guardará).",
                     "oneOf": [
                       {
                         "type": "string"
@@ -1108,6 +1140,10 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
                       {
                         "type": "object",
                         "properties": {
+                          "who": {
+                            "type": "string",
+                            "description": "Un enemigo del tablero (su nombre del bestiario), o alguien de npcs o confidants."
+                          },
                           "text": {
                             "type": "string"
                           },
@@ -1141,7 +1177,7 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
                     "description": "Si salir así cuenta como pasar el tablero para la historia."
                   },
                   "success": {
-                    "description": "Si sale (entregarse siempre «sale»). Un texto llano, o { \"text\": \"…\", \"effects\": [...] }. Efectos: {\"gold\": -5}, {\"attitude\": -1, \"who\": \"Nombre\"}, {\"rumor\": \"id\"}, {\"clue\": \"texto\"}, {\"give\": \"objeto\"}, {\"take\": \"objeto\"}, \"time\", {\"milestone\": \"id\"}, {\"standing\": \"Facción\", \"amount\": -1}, {\"fame\": -1}, {\"hurt\": \"1d4\"}, {\"days\": 1}, {\"grudge\": \"Nombre\"} (alguien que os la guardará).",
+                    "description": "Si sale (entregarse siempre «sale»). Mejor { \"who\", \"text\", \"effects\" }: text es lo que dice who (quien manda, la persona con la que hablas o uno de los tuyos), con sus palabras (D-J60). Sin who, sale en un aviso fuera de la caja. Efectos: {\"gold\": -5}, {\"attitude\": -1, \"who\": \"Nombre\"}, {\"rumor\": \"id\"}, {\"clue\": \"texto\"}, {\"give\": \"objeto\"}, {\"take\": \"objeto\"}, \"time\", {\"milestone\": \"id\"}, {\"standing\": \"Facción\", \"amount\": -1}, {\"fame\": -1}, {\"hurt\": \"1d4\"}, {\"days\": 1}, {\"grudge\": \"Nombre\"} (alguien que os la guardará).",
                     "oneOf": [
                       {
                         "type": "string"
@@ -1149,6 +1185,10 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
                       {
                         "type": "object",
                         "properties": {
+                          "who": {
+                            "type": "string",
+                            "description": "Un enemigo del tablero (su nombre del bestiario), o alguien de npcs o confidants."
+                          },
                           "text": {
                             "type": "string"
                           },
@@ -1161,7 +1201,7 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
                     ]
                   },
                   "partial": {
-                    "description": "Opcional: a medias. Un texto llano, o { \"text\": \"…\", \"effects\": [...] }. Efectos: {\"gold\": -5}, {\"attitude\": -1, \"who\": \"Nombre\"}, {\"rumor\": \"id\"}, {\"clue\": \"texto\"}, {\"give\": \"objeto\"}, {\"take\": \"objeto\"}, \"time\", {\"milestone\": \"id\"}, {\"standing\": \"Facción\", \"amount\": -1}, {\"fame\": -1}, {\"hurt\": \"1d4\"}, {\"days\": 1}, {\"grudge\": \"Nombre\"} (alguien que os la guardará).",
+                    "description": "Opcional: a medias. Mejor { \"who\", \"text\", \"effects\" }: text es lo que dice who (quien manda, la persona con la que hablas o uno de los tuyos), con sus palabras (D-J60). Sin who, sale en un aviso fuera de la caja. Efectos: {\"gold\": -5}, {\"attitude\": -1, \"who\": \"Nombre\"}, {\"rumor\": \"id\"}, {\"clue\": \"texto\"}, {\"give\": \"objeto\"}, {\"take\": \"objeto\"}, \"time\", {\"milestone\": \"id\"}, {\"standing\": \"Facción\", \"amount\": -1}, {\"fame\": -1}, {\"hurt\": \"1d4\"}, {\"days\": 1}, {\"grudge\": \"Nombre\"} (alguien que os la guardará).",
                     "oneOf": [
                       {
                         "type": "string"
@@ -1169,6 +1209,10 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
                       {
                         "type": "object",
                         "properties": {
+                          "who": {
+                            "type": "string",
+                            "description": "Un enemigo del tablero (su nombre del bestiario), o alguien de npcs o confidants."
+                          },
                           "text": {
                             "type": "string"
                           },
@@ -1181,7 +1225,7 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
                     ]
                   },
                   "failure": {
-                    "description": "Si no sale. Un texto llano, o { \"text\": \"…\", \"effects\": [...] }. Efectos: {\"gold\": -5}, {\"attitude\": -1, \"who\": \"Nombre\"}, {\"rumor\": \"id\"}, {\"clue\": \"texto\"}, {\"give\": \"objeto\"}, {\"take\": \"objeto\"}, \"time\", {\"milestone\": \"id\"}, {\"standing\": \"Facción\", \"amount\": -1}, {\"fame\": -1}, {\"hurt\": \"1d4\"}, {\"days\": 1}, {\"grudge\": \"Nombre\"} (alguien que os la guardará).",
+                    "description": "Si no sale. Mejor { \"who\", \"text\", \"effects\" }: text es lo que dice who (quien manda, la persona con la que hablas o uno de los tuyos), con sus palabras (D-J60). Sin who, sale en un aviso fuera de la caja. Efectos: {\"gold\": -5}, {\"attitude\": -1, \"who\": \"Nombre\"}, {\"rumor\": \"id\"}, {\"clue\": \"texto\"}, {\"give\": \"objeto\"}, {\"take\": \"objeto\"}, \"time\", {\"milestone\": \"id\"}, {\"standing\": \"Facción\", \"amount\": -1}, {\"fame\": -1}, {\"hurt\": \"1d4\"}, {\"days\": 1}, {\"grudge\": \"Nombre\"} (alguien que os la guardará).",
                     "oneOf": [
                       {
                         "type": "string"
@@ -1189,6 +1233,10 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
                       {
                         "type": "object",
                         "properties": {
+                          "who": {
+                            "type": "string",
+                            "description": "Un enemigo del tablero (su nombre del bestiario), o alguien de npcs o confidants."
+                          },
                           "text": {
                             "type": "string"
                           },
@@ -1222,7 +1270,7 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
                     "description": "Si salir así cuenta como pasar el tablero para la historia."
                   },
                   "success": {
-                    "description": "Si sale (entregarse siempre «sale»). Un texto llano, o { \"text\": \"…\", \"effects\": [...] }. Efectos: {\"gold\": -5}, {\"attitude\": -1, \"who\": \"Nombre\"}, {\"rumor\": \"id\"}, {\"clue\": \"texto\"}, {\"give\": \"objeto\"}, {\"take\": \"objeto\"}, \"time\", {\"milestone\": \"id\"}, {\"standing\": \"Facción\", \"amount\": -1}, {\"fame\": -1}, {\"hurt\": \"1d4\"}, {\"days\": 1}, {\"grudge\": \"Nombre\"} (alguien que os la guardará).",
+                    "description": "Si sale (entregarse siempre «sale»). Mejor { \"who\", \"text\", \"effects\" }: text es lo que dice who (quien manda, la persona con la que hablas o uno de los tuyos), con sus palabras (D-J60). Sin who, sale en un aviso fuera de la caja. Efectos: {\"gold\": -5}, {\"attitude\": -1, \"who\": \"Nombre\"}, {\"rumor\": \"id\"}, {\"clue\": \"texto\"}, {\"give\": \"objeto\"}, {\"take\": \"objeto\"}, \"time\", {\"milestone\": \"id\"}, {\"standing\": \"Facción\", \"amount\": -1}, {\"fame\": -1}, {\"hurt\": \"1d4\"}, {\"days\": 1}, {\"grudge\": \"Nombre\"} (alguien que os la guardará).",
                     "oneOf": [
                       {
                         "type": "string"
@@ -1230,6 +1278,10 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
                       {
                         "type": "object",
                         "properties": {
+                          "who": {
+                            "type": "string",
+                            "description": "Un enemigo del tablero (su nombre del bestiario), o alguien de npcs o confidants."
+                          },
                           "text": {
                             "type": "string"
                           },
@@ -1242,7 +1294,7 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
                     ]
                   },
                   "partial": {
-                    "description": "Opcional: a medias. Un texto llano, o { \"text\": \"…\", \"effects\": [...] }. Efectos: {\"gold\": -5}, {\"attitude\": -1, \"who\": \"Nombre\"}, {\"rumor\": \"id\"}, {\"clue\": \"texto\"}, {\"give\": \"objeto\"}, {\"take\": \"objeto\"}, \"time\", {\"milestone\": \"id\"}, {\"standing\": \"Facción\", \"amount\": -1}, {\"fame\": -1}, {\"hurt\": \"1d4\"}, {\"days\": 1}, {\"grudge\": \"Nombre\"} (alguien que os la guardará).",
+                    "description": "Opcional: a medias. Mejor { \"who\", \"text\", \"effects\" }: text es lo que dice who (quien manda, la persona con la que hablas o uno de los tuyos), con sus palabras (D-J60). Sin who, sale en un aviso fuera de la caja. Efectos: {\"gold\": -5}, {\"attitude\": -1, \"who\": \"Nombre\"}, {\"rumor\": \"id\"}, {\"clue\": \"texto\"}, {\"give\": \"objeto\"}, {\"take\": \"objeto\"}, \"time\", {\"milestone\": \"id\"}, {\"standing\": \"Facción\", \"amount\": -1}, {\"fame\": -1}, {\"hurt\": \"1d4\"}, {\"days\": 1}, {\"grudge\": \"Nombre\"} (alguien que os la guardará).",
                     "oneOf": [
                       {
                         "type": "string"
@@ -1250,6 +1302,10 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
                       {
                         "type": "object",
                         "properties": {
+                          "who": {
+                            "type": "string",
+                            "description": "Un enemigo del tablero (su nombre del bestiario), o alguien de npcs o confidants."
+                          },
                           "text": {
                             "type": "string"
                           },
@@ -1262,7 +1318,7 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
                     ]
                   },
                   "failure": {
-                    "description": "Si no sale. Un texto llano, o { \"text\": \"…\", \"effects\": [...] }. Efectos: {\"gold\": -5}, {\"attitude\": -1, \"who\": \"Nombre\"}, {\"rumor\": \"id\"}, {\"clue\": \"texto\"}, {\"give\": \"objeto\"}, {\"take\": \"objeto\"}, \"time\", {\"milestone\": \"id\"}, {\"standing\": \"Facción\", \"amount\": -1}, {\"fame\": -1}, {\"hurt\": \"1d4\"}, {\"days\": 1}, {\"grudge\": \"Nombre\"} (alguien que os la guardará).",
+                    "description": "Si no sale. Mejor { \"who\", \"text\", \"effects\" }: text es lo que dice who (quien manda, la persona con la que hablas o uno de los tuyos), con sus palabras (D-J60). Sin who, sale en un aviso fuera de la caja. Efectos: {\"gold\": -5}, {\"attitude\": -1, \"who\": \"Nombre\"}, {\"rumor\": \"id\"}, {\"clue\": \"texto\"}, {\"give\": \"objeto\"}, {\"take\": \"objeto\"}, \"time\", {\"milestone\": \"id\"}, {\"standing\": \"Facción\", \"amount\": -1}, {\"fame\": -1}, {\"hurt\": \"1d4\"}, {\"days\": 1}, {\"grudge\": \"Nombre\"} (alguien que os la guardará).",
                     "oneOf": [
                       {
                         "type": "string"
@@ -1270,6 +1326,10 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
                       {
                         "type": "object",
                         "properties": {
+                          "who": {
+                            "type": "string",
+                            "description": "Un enemigo del tablero (su nombre del bestiario), o alguien de npcs o confidants."
+                          },
                           "text": {
                             "type": "string"
                           },
@@ -1303,7 +1363,7 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
                     "description": "Si salir así cuenta como pasar el tablero para la historia."
                   },
                   "success": {
-                    "description": "Si sale (entregarse siempre «sale»). Un texto llano, o { \"text\": \"…\", \"effects\": [...] }. Efectos: {\"gold\": -5}, {\"attitude\": -1, \"who\": \"Nombre\"}, {\"rumor\": \"id\"}, {\"clue\": \"texto\"}, {\"give\": \"objeto\"}, {\"take\": \"objeto\"}, \"time\", {\"milestone\": \"id\"}, {\"standing\": \"Facción\", \"amount\": -1}, {\"fame\": -1}, {\"hurt\": \"1d4\"}, {\"days\": 1}, {\"grudge\": \"Nombre\"} (alguien que os la guardará).",
+                    "description": "Si sale (entregarse siempre «sale»). Mejor { \"who\", \"text\", \"effects\" }: text es lo que dice who (quien manda, la persona con la que hablas o uno de los tuyos), con sus palabras (D-J60). Sin who, sale en un aviso fuera de la caja. Efectos: {\"gold\": -5}, {\"attitude\": -1, \"who\": \"Nombre\"}, {\"rumor\": \"id\"}, {\"clue\": \"texto\"}, {\"give\": \"objeto\"}, {\"take\": \"objeto\"}, \"time\", {\"milestone\": \"id\"}, {\"standing\": \"Facción\", \"amount\": -1}, {\"fame\": -1}, {\"hurt\": \"1d4\"}, {\"days\": 1}, {\"grudge\": \"Nombre\"} (alguien que os la guardará).",
                     "oneOf": [
                       {
                         "type": "string"
@@ -1311,6 +1371,10 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
                       {
                         "type": "object",
                         "properties": {
+                          "who": {
+                            "type": "string",
+                            "description": "Un enemigo del tablero (su nombre del bestiario), o alguien de npcs o confidants."
+                          },
                           "text": {
                             "type": "string"
                           },
@@ -1323,7 +1387,7 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
                     ]
                   },
                   "partial": {
-                    "description": "Opcional: a medias. Un texto llano, o { \"text\": \"…\", \"effects\": [...] }. Efectos: {\"gold\": -5}, {\"attitude\": -1, \"who\": \"Nombre\"}, {\"rumor\": \"id\"}, {\"clue\": \"texto\"}, {\"give\": \"objeto\"}, {\"take\": \"objeto\"}, \"time\", {\"milestone\": \"id\"}, {\"standing\": \"Facción\", \"amount\": -1}, {\"fame\": -1}, {\"hurt\": \"1d4\"}, {\"days\": 1}, {\"grudge\": \"Nombre\"} (alguien que os la guardará).",
+                    "description": "Opcional: a medias. Mejor { \"who\", \"text\", \"effects\" }: text es lo que dice who (quien manda, la persona con la que hablas o uno de los tuyos), con sus palabras (D-J60). Sin who, sale en un aviso fuera de la caja. Efectos: {\"gold\": -5}, {\"attitude\": -1, \"who\": \"Nombre\"}, {\"rumor\": \"id\"}, {\"clue\": \"texto\"}, {\"give\": \"objeto\"}, {\"take\": \"objeto\"}, \"time\", {\"milestone\": \"id\"}, {\"standing\": \"Facción\", \"amount\": -1}, {\"fame\": -1}, {\"hurt\": \"1d4\"}, {\"days\": 1}, {\"grudge\": \"Nombre\"} (alguien que os la guardará).",
                     "oneOf": [
                       {
                         "type": "string"
@@ -1331,6 +1395,10 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
                       {
                         "type": "object",
                         "properties": {
+                          "who": {
+                            "type": "string",
+                            "description": "Un enemigo del tablero (su nombre del bestiario), o alguien de npcs o confidants."
+                          },
                           "text": {
                             "type": "string"
                           },
@@ -1343,7 +1411,7 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
                     ]
                   },
                   "failure": {
-                    "description": "Si no sale. Un texto llano, o { \"text\": \"…\", \"effects\": [...] }. Efectos: {\"gold\": -5}, {\"attitude\": -1, \"who\": \"Nombre\"}, {\"rumor\": \"id\"}, {\"clue\": \"texto\"}, {\"give\": \"objeto\"}, {\"take\": \"objeto\"}, \"time\", {\"milestone\": \"id\"}, {\"standing\": \"Facción\", \"amount\": -1}, {\"fame\": -1}, {\"hurt\": \"1d4\"}, {\"days\": 1}, {\"grudge\": \"Nombre\"} (alguien que os la guardará).",
+                    "description": "Si no sale. Mejor { \"who\", \"text\", \"effects\" }: text es lo que dice who (quien manda, la persona con la que hablas o uno de los tuyos), con sus palabras (D-J60). Sin who, sale en un aviso fuera de la caja. Efectos: {\"gold\": -5}, {\"attitude\": -1, \"who\": \"Nombre\"}, {\"rumor\": \"id\"}, {\"clue\": \"texto\"}, {\"give\": \"objeto\"}, {\"take\": \"objeto\"}, \"time\", {\"milestone\": \"id\"}, {\"standing\": \"Facción\", \"amount\": -1}, {\"fame\": -1}, {\"hurt\": \"1d4\"}, {\"days\": 1}, {\"grudge\": \"Nombre\"} (alguien que os la guardará).",
                     "oneOf": [
                       {
                         "type": "string"
@@ -1351,6 +1419,10 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
                       {
                         "type": "object",
                         "properties": {
+                          "who": {
+                            "type": "string",
+                            "description": "Un enemigo del tablero (su nombre del bestiario), o alguien de npcs o confidants."
+                          },
                           "text": {
                             "type": "string"
                           },
@@ -1395,7 +1467,7 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
                 },
                 "tell": {
                   "type": "string",
-                  "description": "Lo que se ve sin buscar: «Una losa está más baja que las demás». Sin aviso, pisarla no es culpa de nadie."
+                  "description": "Lo que se ve sin buscar: «Una losa está más baja que las demás». Lo dice quien la ve, uno de los tuyos (D-J60): escríbelo como lo diría. Sin aviso, pisarla no es culpa de nadie."
                 },
                 "damage": {
                   "type": "string",
@@ -1508,6 +1580,10 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
           },
           "description": {
             "type": "string"
+          },
+          "aspecto": {
+            "type": "string",
+            "description": "Solo si habla: en una escena, en una charla o como quien manda en un tablero al que se le habla (parley.leader, avoid). Cómo es por fuera, para dibujar su retrato y sus tres caras (alegre, enfadado, triste): edad, complexión, ropa y un rasgo que se vea a la primera, en una o dos frases. «Mujer de unos cincuenta, ancha de hombros, delantal de cuero y una quemadura en el antebrazo»."
           }
         }
       }
@@ -3276,7 +3352,12 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
                 "type": "string"
               },
               "scene": {
-                "type": "string"
+                "type": "string",
+                "description": "Cómo acaba, dicho por quien lo cuenta (who) con sus palabras: sale en la caja con su cara, y se lee en la tarjeta del final."
+              },
+              "who": {
+                "type": "string",
+                "description": "Quién cuenta el final: alguien de npcs o de confidants que está allí (D-J60). Sin él, la escena no la dice nadie."
               },
               "epilogues": {
                 "type": "array",

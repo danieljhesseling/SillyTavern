@@ -37,7 +37,7 @@
 
 import { rollCheck, skillModifier, SKILLS } from '../rules/checks.js';
 import { outcomeOf } from '../campaign/consequences.js';
-import { resolveGender } from '../campaign/grammar.js';
+import { gendered, resolveGender } from '../campaign/grammar.js';
 
 /**
  * Las cuatro salidas, con su habilidad de siempre, si cuentan como pasar el tablero y lo que
@@ -103,8 +103,10 @@ const bareName = (/** @type {any} */ name) => text(name).replace(/\s+\d+$/, '');
 
 /**
  * @typedef {Object} ExitBranch
- * @property {string} text Lo que pasa, en llano.
+ * @property {string} text Lo que pasa, en llano; con `who`, lo que dice esa persona.
  * @property {ExitEffect[]} effects
+ * @property {string} [who] Tanda 22 (D-J60): quién lo dice (quien manda, la persona con la que
+ *   hablas, uno de los tuyos). Sin él, no lo dice nadie: va al aviso de fuera de la caja.
  */
 
 /**
@@ -265,7 +267,22 @@ export function readExitEffects(raw) {
 export function readBranch(raw, fallback = '') {
     if (typeof raw === 'string') return { text: text(raw) || fallback, effects: [] };
     const source = isObject(raw) ? raw : {};
-    return { text: text(source.text) || fallback, effects: readExitEffects(source.effects) };
+    const who = text(source.who);
+    return { text: text(source.text) || fallback, effects: readExitEffects(source.effects), ...(who && text(source.text) ? { who } : {}) };
+}
+
+/**
+ * Tanda 22 (D-J60): lo que dice alguien de una rama, ya con el género resuelto, o nada si no lo
+ * dice nadie. `{leader}` en `who` es quien manda de los que esperan.
+ *
+ * @param {ExitBranch|null|undefined} branch
+ * @param {string} said El texto ya resuelto (el de la rama, con `{leader}` y el género).
+ * @param {string} [leader]
+ * @returns {{who: string, text: string}|null}
+ */
+export function spokenOf(branch, said, leader = '') {
+    const who = text(branch?.who).replace(/\{leader\}/g, text(leader));
+    return who && text(said) ? { who, text: text(said) } : null;
 }
 
 /**
@@ -507,7 +524,7 @@ export function avoidChips({ options, party, gold = 0, tried = [], speakerId = n
             if (roller) {
                 const sign = roller.modifier >= 0 ? '+' : '';
                 who = option.kind === 'huir'
-                    ? `Tira ${roller.member.name}, el más lento (${sign}${roller.modifier})`
+                    ? `Tira ${roller.member.name}, ${gendered(roller.member, 'el más lento', 'la más lenta')} (${sign}${roller.modifier})`
                     : `Tira ${roller.member.name} (${sign}${roller.modifier})`;
             }
         }
@@ -573,6 +590,8 @@ export function rollFormula(formula, rollDie) {
  * @property {string[]} lines Lo que se cuenta: la tirada y lo que pasa.
  * @property {string} judge La decisión, para lo que opina el grupo (`approval.js`).
  * @property {string} roller Quien tiró (o el primero del grupo).
+ * @property {{who: string, text: string}|null} [voice] Tanda 22: lo que pasa, si lo dice alguien
+ *   (la rama con `who`): va en la caja con su nombre. Es también la última de `lines`.
  */
 
 /**
@@ -636,9 +655,12 @@ export function resolveAvoid({ option, party, gold = 0, rollD20, rollDie, speake
     let resolves = false;
     let enemiesFirst = false;
 
+    /** @type {{who: string, text: string}|null} */
+    let voice = null;
     if (outcome === 'mal') {
         effects.push(...option.failure.effects);
         lines.push(say(option.failure.text, roller));
+        voice = spokenOf(option.failure, lines[lines.length - 1], leader);
         enemiesFirst = option.kind === 'huir' || option.kind === 'esconderse';
     } else {
         const branch = outcome === 'medias' && option.partial ? option.partial : option.success;
@@ -654,6 +676,7 @@ export function resolveAvoid({ option, party, gold = 0, rollD20, rollDie, speake
         }
         const partialLine = DEFAULT_LINES[option.kind].partial;
         lines.push(say(outcome === 'medias' ? (option.partial?.text ?? partialLine) : option.success.text, roller));
+        voice = spokenOf(outcome === 'medias' ? option.partial : option.success, lines[lines.length - 1], leader);
         ends = option.kind === 'huir' && !option.resolves ? 'fled' : 'avoided';
         resolves = ends === 'avoided' && option.resolves;
     }
@@ -675,6 +698,7 @@ export function resolveAvoid({ option, party, gold = 0, rollD20, rollDie, speake
         lines,
         judge: ends === 'fight' ? 'plantar-cara' : AVOID_KINDS[option.kind].judge,
         roller,
+        voice,
     };
 }
 

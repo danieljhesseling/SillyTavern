@@ -92,7 +92,7 @@ confidente:
             - { who: Ilvana Hojarrubia, text: "Esa piedra está girada. Señala al barranco. Caelan está cerca." }
             - { who: Caelan Hojarrubia, mood: enfadado, text: "Alguien tenía que cobrar. Me tocó a mí. Hola, hermana." }
             - { who: Ilvana Hojarrubia, mood: triste, text: "Has girado las piedras de nuestra gente para que el Cierzo no se pierda, y los demás sí." }
-            - { who: Caelan Hojarrubia, mood: triste, text: "Debía doscientos sueldos al prestamista de Vadoancho. O el mapa, o la mano. Elegí el mapa." }
+            - { who: Caelan Hojarrubia, mood: triste, text: "Debía doscientas monedas al prestamista de Vadoancho. O el mapa, o la mano. Elegí el mapa." }
             - who: Ilvana Hojarrubia
               mood: triste
               text: "Dime tú qué hago con él. Yo ya no sé."
@@ -105,7 +105,7 @@ confidente:
                     success: { reply: { who: Caelan Hojarrubia, mood: triste, text: "...Vale. Vuelvo. Alguien tenía que poner las piedras en su sitio. Me toca a mí." } }
                     failure: { reply: { who: Caelan Hojarrubia, mood: enfadado, text: "¿Volver? Mira detrás de ti. Ya vienen los del Cierzo a cobrarme el retraso." } }
                 - id: pagar
-                  text: "Pagar tú lo que queda de su deuda: cincuenta sueldos."
+                  text: "Pagar tú lo que queda de su deuda: cincuenta monedas."
                   if: { gold: 50 }
                   effects: [{ gold: -50 }]
                   reply: { who: Ilvana Hojarrubia, mood: alegre, text: "Nadie había firmado por él más que yo. Gracias. Ahora no tiene excusa para no volver." }

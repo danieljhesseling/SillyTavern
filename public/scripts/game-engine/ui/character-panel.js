@@ -123,7 +123,7 @@ export async function openCharacterPanel({
     title.append($('<span></span>').text(sheet.title));
     who.append(title);
     if (sheet.bondRank > 0) {
-        who.append($('<div class="ch-bond"></div>').text(`Vínculo de rango ${sheet.bondRank}`));
+        who.append($('<div class="ch-bond"></div>').text(`Rango ${sheet.bondRank}`));
     }
     // D-J52: cambiar cómo se ve tu cara sin arte.
     if (onFace) {

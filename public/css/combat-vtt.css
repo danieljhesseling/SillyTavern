@@ -3747,10 +3747,85 @@ body.game-colorblind .vtt-board .wm-token-enemy img.wm-token-avatar {
     100% { opacity: 1; translate: 0 0; }
 }
 
-/* La fila de la iniciativa de quien ha caído, con su calavera. */
-.vtt-init .wm-init-row.defeated .wm-init-name::after {
+/* La fila de la iniciativa de quien ha caído, con su calavera. Tanda 22: uno de los tuyos en el
+   suelo no está muerto: sin calavera, con sus salvaciones en puntos. */
+.vtt-init .wm-init-row.defeated:not(.dying) .wm-init-name::after {
     content: " \2620";
     color: #e8dccb;
+}
+
+/* Tanda 22: las salvaciones de muerte en puntos (`deathSavesNode` de impact.js): tres verdes, los
+   éxitos, y tres rojos, los fallos; llenos los que lleva. En la fila de la iniciativa, bajo el
+   nombre; en el tablero, encima de la ficha de quien está en el suelo. */
+.gs-death-saves {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: #f1e6d6;
+    font-size: 11px;
+    line-height: 1;
+}
+
+.gs-death-word {
+    color: #ffb4a8;
+    font-weight: 700;
+}
+
+.gs-death-word:empty {
+    display: none;
+}
+
+.gs-death-stable .gs-death-word {
+    color: #9fe6b8;
+}
+
+.gs-death-pips {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.gs-death-pip {
+    box-sizing: border-box;
+    width: 8px;
+    height: 8px;
+    border: 1.5px solid currentColor;
+    border-radius: 50%;
+    background: transparent;
+}
+
+.gs-death-pip.gs-death-ok {
+    color: #6ee7a0;
+}
+
+.gs-death-pip.gs-death-bad {
+    color: #ff6b6b;
+}
+
+.gs-death-pip.on {
+    background: currentColor;
+}
+
+.gs-death-gap {
+    width: 4px;
+}
+
+.wm-init-body .gs-death-saves {
+    margin-top: 3px;
+}
+
+.wm-token .gs-death-saves.wm-token-death {
+    position: absolute;
+    top: -14px;
+    left: 50%;
+    z-index: 4;
+    padding: 3px 6px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 999px;
+    background: rgba(20, 12, 12, 0.92);
+    white-space: nowrap;
+    pointer-events: none;
+    transform: translateX(-50%);
 }
 
 /* ---- Sin movimiento («Animaciones: ninguna»): el golpe aparece quieto y se va ---- */
