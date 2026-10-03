@@ -2204,6 +2204,92 @@
     }
 }
 
+/* ---- J12.20: el muelle táctico (Daniel, 2026-10-03; ENCARGO_COMBATE_MUELLE_Y_RESULTADO.md) ----
+   El menú ya no se abre en el centro, encima de la barra: va a la izquierda, encima del minimapa,
+   360 px de ancho y su propio scroll. Lo pone en su sitio action-bar.js (`dockPlace`, en dock.js:
+   `left`, `bottom` y `max-height` medidos); esto es lo de antes de medir: 24 px del borde, 175 px
+   del de abajo. Entra deslizándose desde la izquierda. En el teléfono sigue siendo la hoja que
+   sube desde abajo (las reglas de arriba), con `data-dock="sheet"`. */
+#game-shell .gs-actions-vtt .gs-targets.gs-grimoire.gs-dock[data-dock="left"] {
+    position: absolute;
+    left: calc(24px - var(--vtt-left-reserve, 12px));
+    bottom: 163px;
+    z-index: 2;
+    width: 360px;
+    min-width: 0;
+    max-height: calc(100vh - 250px);
+    margin: 0;
+    padding: 10px;
+    animation: gsDockIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes gsDockIn {
+    from { opacity: 0; transform: translateX(-16px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+
+:root[data-gs-motion="none"] #game-shell .gs-actions-vtt .gs-grimoire.gs-dock {
+    animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    :root:not([data-gs-motion]) #game-shell .gs-actions-vtt .gs-grimoire.gs-dock {
+        animation: none;
+    }
+}
+
+/* Su scroll, de 5 px (también en Firefox). */
+.gs-grimoire.gs-dock .gs-grimoire-body {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(214, 180, 106, 0.3) transparent;
+}
+
+/* En 360 px: la cabecera en una fila que se parte, y las tarjetas más apretadas. */
+.gs-grimoire.gs-dock[data-dock="left"] .gs-card {
+    grid-template-columns: 38px minmax(0, 1fr) auto auto;
+    gap: 8px;
+    padding: 7px 8px;
+}
+
+.gs-grimoire.gs-dock[data-dock="left"] .gs-card-glyph {
+    width: 38px;
+    height: 38px;
+}
+
+.gs-grimoire.gs-dock[data-dock="left"] .gs-card-badges {
+    max-width: 104px;
+}
+
+.gs-grimoire.gs-dock[data-dock="left"] .gs-card-badge {
+    white-space: normal;
+    text-align: right;
+}
+
+/* En el teléfono, mientras sube la hoja, el resumen del combate (lo pasivo) se aparta: entre la
+   iniciativa y la hoja tiene que verse el tablero, con el objetivo. */
+:root[data-gs-dock="sheet"] #game-shell .vtt-summary {
+    display: none;
+}
+
+/* La cámara, apartada lo justo mientras el muelle está abierto: se desliza al ir y al volver. */
+.wm-vtt .wm-content.gs-dock-nudged {
+    transition: translate 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.wm-vtt .wm-content.gs-dock-nudged.vtt-glide {
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), translate 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+:root[data-gs-motion="none"] .wm-vtt .wm-content.gs-dock-nudged {
+    transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    :root:not([data-gs-motion]) .wm-vtt .wm-content.gs-dock-nudged {
+        transition: none;
+    }
+}
+
 /* ============================ fin de 2. LA BARRA DE ACCIONES ============================ */
 
 /* ================================================================================
@@ -2966,6 +3052,25 @@ body.game-colorblind .vtt-board .wm-token-enemy img.wm-token-avatar {
 /* ---- En el tablero: quien ataca, quien recibe, lo que vuela ---- */
 .wm-token.vfx-acting {
     z-index: 24;
+}
+
+/* Tanda 21: mientras rueda su dado, quien ataca no se mueve; solo brilla, preparándose. */
+.wm-token.vfx-readying img.wm-token-avatar,
+.wm-token.vfx-readying .wm-token-unknown {
+    animation: vfx-readying 0.9s ease-in-out infinite alternate;
+}
+
+@keyframes vfx-readying {
+    from { box-shadow: 0 0 0 2px rgba(255, 220, 140, 0.35), 0 0 6px 1px rgba(255, 200, 90, 0.25); }
+    to { box-shadow: 0 0 0 2px rgba(255, 220, 140, 0.85), 0 0 16px 4px rgba(255, 200, 90, 0.6); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .wm-token.vfx-readying img.wm-token-avatar,
+    .wm-token.vfx-readying .wm-token-unknown {
+        animation: none;
+        box-shadow: 0 0 0 2px rgba(255, 220, 140, 0.8);
+    }
 }
 
 .wm-token.vfx-hit img.wm-token-avatar,

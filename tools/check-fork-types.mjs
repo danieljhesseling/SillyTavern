@@ -107,6 +107,8 @@ const FORK_FILES = [
     'public/scripts/game-engine/world/fortune.js',
     'public/scripts/game-engine/world/news.js',
     'public/scripts/game-engine/campaign/guidance.js',
+    // D-J62: el modo guiado.
+    'public/scripts/game-engine/campaign/guided-mode.js',
     'public/scripts/game-engine/campaign/check-requests.js',
     'public/scripts/game-engine/campaign/backgrounds.js',
     'public/scripts/game-engine/campaign/guion-errors.js',
@@ -275,6 +277,8 @@ const FORK_FILES = [
     // J12.18 y J12.19: quién se lleva el golpe (rojo y azul) y cómo se ve el golpe.
     'public/scripts/game-engine/ui/combat-vtt/aim-glow.js',
     'public/scripts/game-engine/ui/combat-vtt/impact.js',
+    // J12.20 y J12.21: el muelle táctico y la pantalla de victoria o derrota.
+    'public/scripts/game-engine/ui/combat-vtt/dock.js',
     // J12.7: las peleas de taberna y los duelos, sin muertes, y su cartel.
     'public/scripts/game-engine/combat/brawl.js',
     'public/scripts/game-engine/campaign/tavern-brawl.js',

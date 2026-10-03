@@ -152,16 +152,20 @@ export function spreadLooks(looks, kinds) {
 
 /**
  * @typedef {Object} StoryStep Un paso que la historia (o un encargo aceptado) pide ahora.
- * @property {string} id `story:go:<sitio>`, `story:board:<tablero>` o `story:check:<habilidad>`.
- * @property {'go'|'board'|'check'} kind `go`: viajar; `board`: ir al tablero donde espera la pelea;
- *   `check`: intentar lo que pide (convencer, buscar una pista).
+ * @property {string} id `story:go:<sitio>`, `story:board:<tablero>`, `story:talk:<persona>` o `story:check:<habilidad>`.
+ * @property {'go'|'board'|'talk'|'check'} kind `go`: viajar; `board`: ir al tablero donde espera la pelea;
+ *   `talk`: hablar con quien pide la historia, que está aquí; `check`: intentar lo que pide (convencer,
+ *   buscar una pista).
  * @property {string} label Lo que se lee en el botón: «Ir a El Peaje Norte».
  * @property {string} detail Quién lo pide, debajo: «Lo pide la historia: La vanguardia de Keller».
  * @property {boolean} enabled Si se puede ahora (un camino cerrado se enseña con su motivo).
  * @property {string} [place] `go`: el sitio al que se viaja ahora (el vecino, si queda lejos).
  * @property {string} [target] `go`: adonde se quiere llegar.
  * @property {string} [board] `board`, y `go` si al llegar espera una pelea: el tablero.
+ * @property {string} [npc] `talk`: con quién, por su nombre.
  * @property {string} [skill] `check`: la habilidad.
+ * @property {boolean} [secret] Un secreto del hilo (idea 111) que está aquí mismo: no lo pide nadie,
+ *   y al llegar no se entra solo en su pelea.
  */
 
 /**
@@ -173,8 +177,15 @@ export function spreadLooks(looks, kinds) {
  * @property {string} [npc]
  * @property {boolean} [clue]
  * @property {boolean} [contract]
+ * @property {boolean} [secret]
  * @property {string} why
  */
+
+/** Lo que se lee debajo de un secreto del hilo que está aquí: sin decir de qué va. */
+export const SECRET_WHY = 'Nadie os lo ha pedido: es cosa vuestra';
+
+/** Lo que se lee debajo de «Ir a…» un sitio del que habla un rumor oído. */
+export const RUMOR_WHY = 'Lo dice un rumor que oísteis';
 
 /**
  * Los tableros de una localización del mundo, con los nombres de quienes esperan en ellos.
@@ -283,6 +294,8 @@ const daysText = (days) => (Number(days) === 1 ? '1 día de viaje' : `${Math.max
  * - **El tablero de aquí** que pide la historia, salvo el abierto, uno ya ganado o uno al que ya
  *   lleva una conversación escrita (`talked`: la de Brunilda lleva a la bodega). Al que se llega
  *   viajando se entra solo al llegar (`party/guided.js`).
+ * - **Hablar** con quien pide la historia, si está aquí («Hablar con Tomás»): sin la fila de abajo,
+ *   era lo que no se veía de un vistazo.
  * - **Intentarlo**: lo que pide un hito de tirada o una pista que falta, estando en su sitio; y un
  *   encargo que se resuelve sin pelear. Sin la «Tirada» suelta, es por donde se intenta.
  *
@@ -300,10 +313,21 @@ const daysText = (days) => (Number(days) === 1 ? '1 día de viaje' : `${Math.max
  * @param {any} [input.taken] El encargo aceptado.
  * @param {Record<string, string>} [input.where] Dónde está cada persona, por su nombre.
  * @param {string[]} [input.talked] Los tableros a los que ya lleva una conversación escrita.
+ * @param {(name: string) => string} [input.called] Cómo se llama a alguien en pantalla (J13.7: «el
+ *   posadero» hasta que se presenta). Sin él, por su nombre.
+ * @param {string} [input.home] El pueblo de donde se sale (el del gremio, o donde empieza la campaña):
+ *   fuera de él, siempre se puede volver, para no quedarse sin salida al acabar un encargo.
+ * @param {Record<string, string>} [input.unfinished] Los tableros ganados con la misión a medias (Tanda 16:
+ *   no queda nadie en pie, pero falta salir por la ventana), con lo que falta: se vuelve a ellos a
+ *   terminarla. Sin esto, con el modo guiado no habría por dónde volver.
+ * @param {string[]} [input.leads] Los sitios adonde lleva un rumor oído y donde aún no se ha estado
+ *   («hay una torre en el lago»): alguien os ha dicho dónde, así que se puede ir. Es por donde se da
+ *   con los secretos del hilo. Van detrás de lo que pide la historia.
  * @returns {StoryStep[]}
  */
 export function storySteps({
     milestones = [], state = {}, here = '', board = '', locations = [], reach = {}, won = () => false, taken = null, where = {}, talked = [],
+    called = (name) => name, home = '', unfinished = {}, leads = [],
 } = {}) {
     const boards = list(locations).flatMap(boardsAt);
     const places = new Set(list(locations).map((/** @type {any} */ l) => fold(l?.name)).filter(Boolean));
@@ -312,17 +336,33 @@ export function storySteps({
     for (const [name, at] of Object.entries(where ?? {})) people[fold(name)] = text(at);
     const open = new Set(list(state?.open).map(text));
     const clues = state?.clues && typeof state.clues === 'object' ? state.clues : {};
+    const atHere = (/** @type {string} */ place) => !place || fold(place) === fold(here);
     /** @type {StoryWant[]} */
     const wants = [...contractWants(taken, boards)];
+    /** @type {StoryWant[]} */
+    const secrets = [];
     for (const milestone of list(milestones)) {
-        if (!milestone || milestone.hidden || !open.has(text(milestone.id))) continue;
-        wants.push(...wantsOf(milestone, milestone.asks, { boards, places, where: people, found: list(clues[text(milestone.id)]), won }));
+        if (!milestone || !open.has(text(milestone.id))) continue;
+        const found = wantsOf(milestone, milestone.asks, { boards, places, where: people, found: list(clues[text(milestone.id)]), won });
+        if (!milestone.hidden) {
+            wants.push(...found);
+            continue;
+        }
+        // Un secreto (idea 111) no se dice ni manda a ninguna parte. Pero estando ya en su sitio,
+        // su pelea o su pista sí se ven, como antes en «Tableros de aquí»: si no, con el modo
+        // guiado no habría forma de dar con él. Van detrás de lo que pide la historia.
+        secrets.push(...found
+            .filter(want => (want.kind === 'fight' || want.kind === 'check') && text(want.place) && atHere(want.place))
+            .map(want => ({ ...want, secret: true, why: SECRET_WHY })));
     }
+    wants.push(...secrets);
 
     const ways = /** @type {Record<string, {reach: string, days: number, via?: string, reason?: string}>} */ ({});
     for (const [name, way] of Object.entries(reach ?? {})) ways[fold(name)] = way;
     const spoken = new Set(list(talked).map(fold));
-    const atHere = (/** @type {string} */ place) => !place || fold(place) === fold(here);
+    /** @type {Record<string, string>} */
+    const halfDone = {};
+    for (const [name, left] of Object.entries(unfinished ?? {})) halfDone[fold(name)] = text(left);
 
     /** @type {StoryStep[]} */
     const steps = [];
@@ -330,6 +370,8 @@ export function storySteps({
     const add = (step) => {
         const same = steps.find(s => s.id === step.id);
         if (!same) steps.push(step);
+        // Lo que ya pide la historia no se vuelve a decir como secreto.
+        else if (step.secret) return;
         // El mismo sitio por dos motivos: los dos, y al llegar, el tablero del primero.
         else if (!same.detail.includes(step.detail)) same.detail = `${same.detail} · ${step.detail}`;
     };
@@ -356,8 +398,19 @@ export function storySteps({
             continue;
         }
         if (want.kind === 'fight' && want.board) {
-            if (fold(want.board) === fold(board) || won(here, want.board) || spoken.has(fold(want.board))) continue;
-            add({ id: `story:board:${want.board}`, kind: 'board', label: `Ir a ${want.board}`, detail: want.why, enabled: true, board: want.board });
+            // Ganado con la misión a medias: se vuelve a terminarla, aunque se gane ya sin pelea.
+            const left = fold(want.board) in halfDone;
+            if (fold(want.board) === fold(board) || (won(here, want.board) && !left) || (spoken.has(fold(want.board)) && !left)) continue;
+            const detail = left ? `${want.why} · Falta: ${halfDone[fold(want.board)] || 'terminar lo de allí'}` : want.why;
+            add({
+                id: `story:board:${want.board}`, kind: 'board', label: `Ir a ${want.board}`, detail, enabled: true, board: want.board,
+                ...(want.secret ? { secret: true } : {}),
+            });
+            continue;
+        }
+        // Hablar con quien pide la historia, que está aquí. En un tablero, no: allí se pelea.
+        if (want.kind === 'talk' && want.npc && !text(board)) {
+            add({ id: `story:talk:${want.npc}`, kind: 'talk', label: `Hablar con ${called(want.npc) || want.npc}`, detail: want.why, enabled: true, npc: want.npc });
             continue;
         }
         // Lo que se intenta, fuera de los tableros: en un tablero se pelea.
@@ -371,8 +424,44 @@ export function storySteps({
                 detail: want.why,
                 enabled: true,
                 skill: want.skill,
+                ...(want.secret ? { secret: true } : {}),
             });
         }
+    }
+    // Adonde lleva un rumor oído: alguien os ha dicho dónde. Fuera de los tableros, y sin repetir
+    // un sitio al que ya manda la historia.
+    for (const place of text(board) ? [] : list(leads).map(text).filter(Boolean)) {
+        const way = atHere(place) ? null : ways[fold(place)];
+        if (!way || way.reach === 'shut' || way.reach === 'none') continue;
+        const far = way.reach === 'far' && text(way.via);
+        const hop = far ? text(way.via) : place;
+        if (steps.some(step => step.id === `story:go:${hop}`)) continue;
+        add({
+            id: `story:go:${hop}`,
+            kind: 'go',
+            label: `Ir a ${hop}`,
+            detail: far ? `${RUMOR_WHY}. De camino a ${place}` : `${RUMOR_WHY} · ${daysText(way.days)}`,
+            enabled: true,
+            place: hop,
+            target: place,
+        });
+    }
+    // Volver al pueblo de donde se sale: al acabar un encargo lejos, lo demás (el tablón, la
+    // posada, la tienda) está allí. Va el último, y fuera de los tableros.
+    const homeWay = text(home) && !atHere(home) && !text(board) ? ways[fold(home)] : null;
+    if (homeWay && homeWay.reach !== 'shut' && homeWay.reach !== 'none') {
+        const far = homeWay.reach === 'far' && text(homeWay.via);
+        const hop = far ? text(homeWay.via) : text(home);
+        // Si la historia ya manda allí, ese botón basta (y dice por qué).
+        if (!steps.some(step => step.id === `story:go:${hop}`)) add({
+            id: `story:go:${hop}`,
+            kind: 'go',
+            label: far ? `Ir a ${hop}` : `Volver a ${hop}`,
+            detail: far ? `De vuelta a ${text(home)}` : `De vuelta al pueblo · ${daysText(homeWay.days)}`,
+            enabled: true,
+            place: hop,
+            target: text(home),
+        });
     }
     return steps;
 }
@@ -380,14 +469,16 @@ export function storySteps({
 /**
  * Al llegar a un sitio, el tablero donde la historia o el encargo esperan una pelea: el que se
  * buscaba al salir (`wanted`) si sigue valiendo; si no, el primero que pidan. Vacío si no hay.
+ * Un secreto que está allí no: a ese se entra si se quiere.
  *
  * @param {Parameters<typeof storySteps>[0] & {wanted?: string}} input
  * @returns {string}
  */
 export function boardOnArrival(input) {
-    // Al llegar no cuenta lo que lleva una conversación: se ha venido a eso.
-    const steps = storySteps({ ...input, talked: [] }).filter(step => step.kind === 'board' && step.board);
     const wanted = text(input?.wanted);
+    // Al llegar no cuenta lo que lleva una conversación: se ha venido a eso.
+    const steps = storySteps({ ...input, talked: [] })
+        .filter(step => step.kind === 'board' && step.board && (!step.secret || fold(step.board) === fold(wanted)));
     const chosen = (wanted && steps.find(step => fold(step.board) === fold(wanted))) || steps[0];
     return chosen?.board ?? '';
 }
@@ -463,7 +554,8 @@ export function boardLinks(pack) {
         }
     };
     for (const milestone of list(pack?.plot?.milestones)) {
-        fromAsks(milestone?.asks, `hito:${text(milestone?.id)}`);
+        // Un secreto (idea 111) no manda a su tablero: se da con él si se pasa por allí.
+        fromAsks(milestone?.asks, `${milestone?.hidden ? 'secreto' : 'hito'}:${text(milestone?.id)}`);
         for (const name of boardsByTalk(milestone?.beats ?? [])) mark(name, `escena:${text(milestone?.id)}`);
         for (const name of boardsByTalk(milestone?.dialogue ?? null)) mark(name, `escena:${text(milestone?.id)}`);
     }
@@ -479,12 +571,18 @@ export function boardLinks(pack) {
 
 /**
  * Los tableros de un paquete a los que no se llega con el modo guiado. Los que no tienen a nadie
- * esperando (un mapa para pasear) van aparte: no hay pelea que perderse.
+ * esperando (un mapa para pasear) van aparte: no hay pelea que perderse. Y aparte también los que
+ * solo pide un secreto (`secret`): a esos se llega pasando por su sitio, si la historia pasa por él.
  *
  * @param {any} pack
- * @returns {{fights: string[], empty: string[]}}
+ * @returns {{fights: string[], empty: string[], secret: string[]}}
  */
 export function unreachableBoards(pack) {
-    const loose = boardLinks(pack).filter(link => link.by.length === 0);
-    return { fights: loose.filter(l => !l.empty).map(l => l.board), empty: loose.filter(l => l.empty).map(l => l.board) };
+    const links = boardLinks(pack);
+    const loose = links.filter(link => link.by.length === 0);
+    return {
+        fights: loose.filter(l => !l.empty).map(l => l.board),
+        empty: loose.filter(l => l.empty).map(l => l.board),
+        secret: links.filter(l => l.by.length > 0 && l.by.every(why => why.startsWith('secreto:'))).map(l => l.board),
+    };
 }

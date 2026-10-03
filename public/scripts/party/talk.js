@@ -77,6 +77,7 @@ import { hearRumor, openService, buildServiceCards, runService, rumorsLeftHere }
 import { openJournalSafely, openHelp } from './menus.js';
 import { learnName } from './known-people.js';
 import { introFor } from '../game-engine/ui/shown-names.js';
+import { runStoryMoves } from './guided.js';
 
 /**
  * @returns {{day: number, keys: string[], looked: string[]}}
@@ -770,6 +771,30 @@ export function lookChips() {
 }
 
 /**
+ * D-J62, el modo guiado: todo lo que se puede mirar aquí y no es de ningún sitio del pueblo (lo
+ * que la fila de abajo ofrecía de dos en dos), menos lo ya mirado hoy. Sin la fila, la pantalla lo
+ * pone en el sitio al que pertenece (`sightHome`): los avisos de la lonja, en el mercado.
+ *
+ * @returns {Array<{id: string, label: string, icon: string, command: string, detail: string, source: string}>}
+ */
+export function looseLookChips() {
+    if (!currentLocationName || currentBoardName || combatEncounter.active) return [];
+    const place = hereLocation();
+    const { loose } = splitSights(sightsOf(place), placeKindsOf(place));
+    const looked = new Set(fieldGainsToday().looked);
+    return loose
+        .filter(row => !looked.has(`${currentLocationName}|${row.id}`))
+        .map(row => ({
+            id: `look:${row.id}`,
+            label: lookLabel(row),
+            icon: SKILLS[/** @type {keyof typeof SKILLS} */ (row.skill)]?.icon ?? 'fa-eye',
+            command: `/examinar ${row.id}`,
+            detail: `Una tirada de ${SKILLS[/** @type {keyof typeof SKILLS} */ (row.skill)]?.label ?? 'Investigación'}, una vez al día.`,
+            source: 'motor',
+        }));
+}
+
+/**
  * D-J56: la clase del sitio del pueblo que está abierto en su pantalla («gremio», «posada»…),
  * o vacío en la plaza.
  *
@@ -967,12 +992,15 @@ async function openWrittenTalk(npc, dialogue, draft = '') {
     }
     if (result?.extra === 'otras') {
         await openTalk(npc.name, draft);
+        void runStoryMoves().catch(error => console.error('[party] lo que mandó la charla falló', error));
         return;
     }
     if (talkingTo === npc.name) {
         setTalkingTo('');
         if (isShellOpen()) refreshGameShell();
     }
+    // D-J62: lo que mandó la charla al acabar («Bajo a la bodega»), con la ventana ya cerrada.
+    void runStoryMoves().catch(error => console.error('[party] lo que mandó la charla falló', error));
 }
 
 /**

@@ -6,9 +6,10 @@
  *
  *   título → Jugar sin conexión → tu personaje → en el muelle, la fila no ofrece aún el tablón
  *   ni contratar (D-J28) → saltar la prueba → la cabecera enseña las partes del día (J14.2) →
- *   la pantalla del pueblo dice quién anda por dónde y quién quiere quedar contigo (J14.4) →
- *   «Quedar con Gerd»: su escena, entera; el vínculo sube y se va la mañana (J14.3, J14.2) →
- *   «Charlar con…» no gasta tiempo (J14.1) → «Quedar con alguien» abre el selector (J14.3) →
+ *   la pantalla del pueblo dice quién anda por dónde, sin corazones (J14.4, D-J63) → pulsar a
+ *   Gerd: te saluda, «Pasar el rato con Gerd», su escena, entera; el vínculo sube y se va la
+ *   mañana (J14.3, J14.2, D-J63) → pulsar a otro y «Hablamos en otro momento» no gasta tiempo
+ *   (J14.1, D-J63) → `/quedar` abre el selector (J14.3) →
  *   contratar a Gerd se lleva lo vivido a su ficha (adoptBond) → con él a vínculo 2, avisa de
  *   que quiere quedar y la herrería cobra menos (bondDiscounts, J14.3).
  *
@@ -24,6 +25,7 @@ import { createRequire } from 'node:module';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { enElGremio } from './e2e-guiado.mjs';
 
 const ROOT = new URL('..', import.meta.url).pathname.replace(/^[/]([A-Za-z]:)/, '$1');
 const argAfter = (/** @type {string} */ flag) => (process.argv.includes(flag) ? process.argv[process.argv.indexOf(flag) + 1] : '');
@@ -172,6 +174,8 @@ try {
             open: Boolean(dialog),
             name: dialog?.querySelector('.qd-nameplate')?.textContent ?? '',
             lines: [...(dialog?.querySelectorAll('.qd-line') ?? [])].map(l => (l.textContent ?? '').trim()),
+            // D-J60: lo que se cuenta al acabar va fuera de la caja; D-J63: y el rango, en grande.
+            aside: [...(dialog?.querySelectorAll('.vn-aside-line, .qd-rankup') ?? [])].map(l => (l.textContent ?? '').trim()),
             chips: [...(dialog?.querySelectorAll('.qd-chip') ?? [])].map(c => (c.textContent ?? '').trim()),
             picks: [...(dialog?.querySelectorAll('.qd-pick-card') ?? [])].map(c => c.querySelector('.qd-pick-name')?.textContent ?? ''),
         };
@@ -183,7 +187,7 @@ try {
         for (let i = 0; i < 16; i++) {
             const now = await meetup();
             if (!now.open) break;
-            read.push(...now.lines);
+            read.push(...now.lines, ...now.aside);
             if (await page.locator('.qd-dialog[open] .qd-chip-reply').count() > 0) await page.locator('.qd-dialog[open] .qd-chip-reply').first().click();
             else await page.locator('.qd-dialog[open] .qd-chip').first().click();
             await page.waitForTimeout(250);
@@ -213,19 +217,21 @@ try {
 
     // 2. D-J28: el tablón y los mercenarios, escondidos hasta que acabe la prueba (también para quedar).
     const before = await allChips();
-    check('en la prueba, ni el tablón ni contratar ni quedar con los mercenarios; saltarla, sí (D-J28)',
-        before.includes('Saltar la prueba') && !before.some((/** @type {string} */ c) => /Tablón de campañas|Contratar mercenarios|Quedar con/.test(c)), JSON.stringify(before));
+    // Si el prólogo ya está en su pelea (directo a la decisión), «Saltar la prueba» no va en la fila.
+    check('en la prueba, ni el tablón ni contratar ni quedar con los mercenarios (D-J28)',
+        !before.some((/** @type {string} */ c) => /Tablón de campañas|Contratar mercenarios|Quedar con/.test(c)), JSON.stringify(before));
 
-    // 3. Saltar la prueba: después sí.
-    await clickChip(/^Saltar la prueba$/);
-    await page.waitForSelector('.popup:has-text("¿Saltar la prueba?")', { timeout: 10000 });
+    // 3. Saltar la prueba: después sí. Sin su botón en la fila, lo mismo que hace el botón.
+    if (!(await clickChip(/^Saltar la prueba$/))) await page.evaluate(async () => { void (await import('/scripts/party/hub.js')).skipHubTrial(); });
+    await page.waitForSelector('.popup:has-text("¿Saltar la prueba?")', { timeout: 10000 }).catch(() => {});
     await page.locator('.popup-button-ok:visible').first().click({ timeout: 5000 }).catch(() => {});
     await until(() => chatHas(/apunta tu nombre en el libro del gremio/), 15000);
     await page.waitForTimeout(800);
     await dropToasts();
     const after = await allChips();
-    check('acabada la prueba, el tablón, contratar y «Quedar con alguien» (D-J28, J14.3)',
-        after.includes('Tablón de campañas') && after.includes('Contratar mercenarios') && after.some((/** @type {string} */ c) => /^Quedar con alguien/.test(c)), JSON.stringify(after));
+    // D-J63: sin «Quedar con alguien» en la fila: a tu gente se la pulsa en el pueblo.
+    check('acabada la prueba, el tablón y contratar; «Quedar con alguien», no (D-J28, D-J63)',
+        after.includes('Tablón de campañas') && after.includes('Contratar mercenarios') && !after.some((/** @type {string} */ c) => /^Quedar con|^Charlar con/.test(c)), JSON.stringify(after));
 
     // 4. J14.2: la cabecera enseña las partes del día.
     let day = await strip();
@@ -237,19 +243,36 @@ try {
     await until(async () => (await townPeople()).places.length > 0, 10000);
     let town = await townPeople();
     const everyone = [...town.badges, ...town.loose].join(' ');
-    check('en el pueblo se ve a Gerd, Nella y Osric, con dónde están, y quién quiere quedar contigo (J14.4)',
-        scene === 'exploration' && /gerd-el-mellado/.test(everyone) && /nella-tresflechas/.test(everyone) && /osric-mediapaga/.test(everyone) && /♥/.test(everyone),
+    // D-J63: sin corazones al principio.
+    check('en el pueblo se ve a Gerd, Nella y Osric, con dónde están, y sin corazones al principio (J14.4, D-J63)',
+        scene === 'exploration' && /gerd-el-mellado/.test(everyone) && /nella-tresflechas/.test(everyone) && /osric-mediapaga/.test(everyone) && !/♥/.test(everyone),
         JSON.stringify(town));
     if (SHOT) await page.screenshot({ path: `${SHOT}.pueblo.png` });
 
-    // 6. J14.3: quedar con Gerd, que por la mañana anda por el muelle: su escena, entera.
-    const gerdChip = await page.locator('#game-shell .gs-town-loose .gs-town-act[data-chip="quedar:gerd-el-mellado"]');
+    // 6. J14.3 y D-J63: pulsar a Gerd, que por la mañana anda por el muelle: te saluda, «Pasar el
+    //    rato con Gerd», y su escena, entera.
+    // Por el pueblo (un sitio sin tarjeta) o dentro del sitio donde anda (el muelle, si tiene tarjeta).
+    let gerdChip = page.locator('#game-shell .gs-town-loose .gs-town-act[data-chip="persona:gerd-el-mellado"]');
+    const gerdPlace = town.badges.find(b => /:gerd-el-mellado/.test(b))?.split(':')[0] ?? '';
+    if (await gerdChip.count() === 0 && gerdPlace) {
+        await page.locator(`#game-shell .gs-town-place[data-place="${gerdPlace}"]`).click({ timeout: 5000 }).catch(() => {});
+        await page.waitForSelector('#game-shell .gs-town-scene', { timeout: 8000 }).catch(() => {});
+        gerdChip = page.locator('#game-shell .gs-town-scene .gs-town-act[data-action="persona:gerd-el-mellado"]');
+    }
     const canMeetGerd = await gerdChip.count() === 1;
     if (canMeetGerd) await gerdChip.click();
-    else await page.evaluate(() => { void window.SillyTavern.getContext().executeSlashCommandsWithOptions('/quedar Gerd'); });
-    const opened = await page.waitForSelector('.qd-dialog[open] .qd-chip', { timeout: 15000 }).then(() => true).catch(() => false);
+    else await page.evaluate(() => { void window.SillyTavern.getContext().executeSlashCommandsWithOptions('/invitacion Gerd'); });
+    const invited = await page.waitForSelector('.qd-dialog[open] .qd-invite', { timeout: 15000 }).then(() => true).catch(() => false);
+    if (SHOT) await page.screenshot({ path: `${SHOT}.invitacion.png` });
+    // Su charla corta, si la trae dentro del saludo, se contesta primero.
+    if (await page.locator('.qd-dialog[open] .qd-chip[data-choice="quedar"]').count() === 0) await page.locator('.qd-dialog[open] .qd-chip').first().click({ timeout: 5000 }).catch(() => {});
+    const invite = await meetup();
+    await page.locator('.qd-dialog[open] .qd-chip[data-choice="quedar"]').click({ timeout: 5000 }).catch(() => {});
+    const opened = await page.waitForSelector('.qd-dialog[open] .qd-root:not(.qd-invite) .qd-chip', { timeout: 15000 }).then(() => true).catch(() => false);
     const first = await meetup();
-    check('«Quedar con Gerd (el muelle)» abre su escena, con su nombre y sus respuestas (J14.3)', canMeetGerd && opened && first.name === 'Gerd el Mellado' && first.chips.length >= 2, JSON.stringify(first));
+    check('pulsar a Gerd (el muelle): te saluda y pregunta; «Pasar el rato con Gerd» abre su escena, con su nombre y sus respuestas (J14.3, D-J63)',
+        canMeetGerd && invited && invite.chips.some(c => /Pasar el rato con Gerd/.test(c)) && invite.chips.some(c => /Hablamos en otro momento/.test(c))
+        && opened && first.name === 'Gerd el Mellado' && first.chips.length >= 2, JSON.stringify({ invite, first }));
     if (SHOT) await page.screenshot({ path: `${SHOT}.quedada.png` });
     const bondsBefore = (await state()).bonds;
     const read = await playMeetup();
@@ -263,8 +286,11 @@ try {
     if (SHOT) await page.screenshot({ path: `${SHOT}.tarde.png` });
     await dropToasts();
 
-    // 7. J14.1: charlar con alguien de tu gente no gasta tiempo.
+    // 7. J14.1 y D-J63: pulsar a alguien de tu gente y «Hablamos en otro momento» (con su charla
+    //    corta dentro del saludo, si la trae) no gasta tiempo.
     await carryOn('exploration');
+    // Si se quedó dentro de un sitio (el muelle), a la plaza.
+    await page.locator('#game-shell .gs-town-back').click({ timeout: 3000 }).catch(() => {});
     await until(async () => (await townPeople()).places.length > 0, 10000);
     town = await townPeople();
     const talkPlace = town.badges.find(b => /nella-tresflechas|osric-mediapaga/.test(b))?.split(':')[0] ?? '';
@@ -274,20 +300,21 @@ try {
         await page.locator(`#game-shell .gs-town-place[data-place="${talkPlace}"]`).click();
         await page.waitForSelector('#game-shell .gs-town-scene', { timeout: 8000 }).catch(() => {});
         const acts = await page.evaluate(() => [...document.querySelectorAll('#game-shell .gs-town-scene .gs-town-act')].map(b => `${b.getAttribute('data-action')}|${(b.textContent || '').trim()}`));
-        check('dentro de un sitio, «Tu gente»: quedar y charlar con quien está ahí (J14.3, J14.4)',
-            acts.some(a => /^quedar:(nella|osric)/.test(a)) && acts.some(a => /^charlar:(nella|osric)/.test(a)), JSON.stringify({ talkPlace, acts }));
+        check('dentro de un sitio, «Tu gente»: una ficha con el nombre de quien está ahí, sin «Quedar con» ni «Charlar con» (J14.4, D-J63)',
+            acts.some(a => /^persona:(nella|osric)/.test(a)) && !acts.some(a => /^(quedar|charlar):|Quedar con|Charlar con/.test(a)), JSON.stringify({ talkPlace, acts }));
         if (SHOT) await page.screenshot({ path: `${SHOT}.sitio.png` });
-        const talkAct = page.locator('#game-shell .gs-town-scene .gs-town-act[data-action^="charlar:"]').first();
+        const talkAct = page.locator('#game-shell .gs-town-scene .gs-town-act[data-action^="persona:"]').first();
         talked = String(await talkAct.getAttribute('data-action').catch(() => ''));
         await talkAct.click({ timeout: 5000 }).catch(() => {});
     }
-    const talkOpen = await page.waitForSelector('.qd-dialog[open] .qd-chip', { timeout: 10000 }).then(() => true).catch(() => false);
+    const talkOpen = await page.waitForSelector('.qd-dialog[open] .qd-invite', { timeout: 10000 }).then(() => true).catch(() => false);
     const talk = await meetup();
-    await playMeetup();
+    if (await page.locator('.qd-dialog[open] .qd-chip[data-choice="luego"]').count() === 0) await page.locator('.qd-dialog[open] .qd-chip').first().click({ timeout: 5000 }).catch(() => {});
+    await page.locator('.qd-dialog[open] .qd-chip[data-choice="luego"]').click({ timeout: 5000 }).catch(() => {});
     await page.waitForTimeout(600);
     now = await state();
-    check('«Charlar con…» abre una charla corta, y no se lleva la tarde (J14.1)', Boolean(talked) && talkOpen && talk.chips.length >= 2 && now.slot === 1,
-        JSON.stringify({ talked, talk, slot: now.slot }));
+    check('pulsar a Nella u Osric te saluda; «Hablamos en otro momento» cierra y no se lleva la tarde (J14.1, D-J63)',
+        Boolean(talked) && talkOpen && talk.chips.length >= 2 && !(await meetup()).open && now.slot === 1, JSON.stringify({ talked, talk, slot: now.slot }));
     await page.locator('#game-shell .gs-town-back').click({ timeout: 5000 }).catch(() => {});
     await dropToasts();
 
@@ -305,7 +332,8 @@ try {
 
     // 9. Contratar a Gerd: lo vivido pasa a su ficha (adoptBond).
     const gerdPoints = now.bonds['gente:gerd-el-mellado'] ?? 0;
-    await clickChip(/Contratar mercenarios/) || await page.evaluate(() => { void window.SillyTavern.getContext().executeSlashCommandsWithOptions('/contratar'); });
+    // D-J62: contratar está en la Casa del Gremio (la fila de abajo ya no lo lleva).
+    await enElGremio(page, 'hub-hire') || await page.evaluate(() => { void window.SillyTavern.getContext().executeSlashCommandsWithOptions('/contratar'); });
     await page.waitForSelector('.hb-root [data-hireling="Gerd el Mellado"]', { timeout: 15000 });
     await page.locator('.hb-root [data-hireling="Gerd el Mellado"]').click();
     await until(async () => (await state()).party.length === 2, 10000);
@@ -315,18 +343,23 @@ try {
         Boolean(gerd) && (now.bonds[String(gerd?.id)] ?? 0) === gerdPoints && gerdPoints > 0 && !('gente:gerd-el-mellado' in now.bonds), JSON.stringify({ gerd, bonds: now.bonds }));
     await dropToasts();
 
-    // 10. Con Gerd a vínculo 2: quiere quedar contigo, y la herrería cobra menos (bondDiscounts).
+    // 10. D-J63: la primera quedada ya le subió a vínculo 2 (la herrería cobra menos, bondDiscounts).
+    //     Con Gerd a vínculo 3 (lo que da la aventura): quiere quedar contigo.
     await page.evaluate(async (id) => {
         const time = await import('/scripts/party/time.js');
         const { getBondProgress } = await import('/scripts/game-engine/campaign/bonds.js');
-        for (let i = 0; i < 6 && getBondProgress(time.getCampaignBonds(), String(id)).rank < 2; i++) time.recordCampaignBondEvent(String(id), 'confidant_scene');
+        for (let i = 0; i < 6 && getBondProgress(time.getCampaignBonds(), String(id)).rank < 3; i++) time.recordCampaignBondEvent(String(id), 'confidant_scene');
     }, gerd?.id);
     await page.waitForTimeout(800);
-    check('al subir a vínculo 2, Gerd avisa de que quiere quedar contigo (J14.3)', await chatHas(/💞 \[VÍNCULO\] Gerd el Mellado quiere quedar contigo/));
+    check('al subir de vínculo, Gerd avisa de que quiere quedar contigo (J14.3)', await chatHas(/💞 \[VÍNCULO\] Gerd el Mellado quiere quedar contigo/));
     await dropToasts();
     await carryOn('exploration');
     await until(async () => (await townPeople()).places.length > 0, 10000);
-    await page.locator('#game-shell .gs-town-place[data-place="herreria"]').click({ timeout: 5000 }).catch(() => {});
+    // D-J62: contratar deja dentro de la Casa del Gremio; de ahí a la herrería, por su pestaña.
+    const forgeTab = page.locator('#game-shell .gs-town-tab[data-place="herreria"]');
+    if (await forgeTab.count() > 0) await forgeTab.click({ timeout: 5000 }).catch(() => {});
+    else await page.locator('#game-shell .gs-town-place[data-place="herreria"]').click({ timeout: 5000 }).catch(() => {});
+    await until(async () => await page.evaluate(() => document.querySelector('#game-shell .gs-town-scene')?.getAttribute('data-place') ?? '') === 'herreria', 8000);
     await page.waitForSelector('#game-shell .gs-town-scene', { timeout: 8000 }).catch(() => {});
     const forge = await page.evaluate(() => [...document.querySelectorAll('#game-shell .gs-town-scene .gs-town-act')].map(b => (b.textContent || '').replace(/\s+/g, ' ').trim()));
     check('en la herrería, Gerd os consigue precio: la capa, 9 de oro en vez de 10 (J14.3, bondDiscounts)',

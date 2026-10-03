@@ -814,6 +814,7 @@
           ],
           "options": [
             { "id": "quiero-entrar", "text": "Quiero entrar en el gremio.", "if": { "milestone": { "id": "el-gremio", "is": "open" } }, "next": "prueba" },
+            { "id": "bajar", "text": "Bajo a la bodega.", "if": { "milestone": { "id": "la-prueba", "is": "open" } }, "effects": [{ "board": "La bodega del gremio" }], "end": true, "repeat": true },
             { "id": "bodega", "text": "¿Qué me espera en la bodega?", "if": { "milestone": { "id": "la-prueba", "is": "open" } }, "next": "bodega" },
             { "id": "hecho", "text": "Ya he limpiado la bodega.", "if": { "milestone": { "id": "el-tablon", "is": "open" } }, "next": "libro" },
             { "id": "como-funciona", "text": "¿Cómo funciona esto del gremio?", "next": "gremio" },
@@ -854,6 +855,7 @@
           "line": "Ratas de bodega. Muerden, y si les va mal, huyen. No te pido que las mates con estilo: te pido que subas de una pieza.",
           "options": [
             { "id": "bodega-consejo", "text": "¿Algún consejo?", "next": "consejo" },
+            { "id": "bodega-bajo", "text": "Pues bajo ahora mismo.", "effects": [{ "board": "La bodega del gremio" }], "end": true, "repeat": true },
             { "id": "bodega-vale", "text": "Entendido.", "reply": "Pues venga.", "next": "inicio" }
           ]
         },
@@ -1416,7 +1418,7 @@
         "act": 1,
         "prologue": true,
         "title": "La prueba del gremio",
-        "hint": "Ve a la bodega: «Salir del tablero» y luego «Entrar en La bodega del gremio». Allí, colócate y pulsa «Empezar» cuando estés {listo|lista}.",
+        "hint": "Dile a Brunilda que bajas a la bodega: en la Casa del Gremio, «Hablar con Brunilda». Abajo, colócate y pulsa «Empezar» cuando estés {listo|lista}.",
         "scene": "Brunilda te mira de arriba abajo, como quien calcula lo que aguanta una cuerda. «Parar a un ratero lo hace cualquiera. ¿Quieres ser de los nuestros? Baja a la bodega: hay ratas entre los barriles. Si subes {entero|entera}, te apunto en el libro.»",
         "backdrop": "gremio",
         "beats": [
@@ -1438,7 +1440,14 @@
               }
             ]
           },
-          { "who": "Brunilda", "mood": "neutral", "text": "¿Oyes cómo chillan? Baja, y si subes {entero|entera}, te apunto en el libro." }
+          {
+            "who": "Brunilda", "mood": "neutral", "text": "¿Oyes cómo chillan? Baja, y si subes {entero|entera}, te apunto en el libro.",
+            "options": [
+              { "id": "bajo-a-la-bodega", "text": "Bajo a la bodega.", "effects": [{ "board": "La bodega del gremio" }] },
+              { "id": "bodega-luego", "text": "Ahora no. Antes quiero ver el puerto.",
+                "reply": { "who": "Brunilda", "mood": "neutral", "text": "La trampilla no se va a mover de ahí. Cuando quieras bajar, me lo dices." } }
+            ]
+          }
         ],
         "opens": { "kind": "after", "milestone": "el-gremio" },
         "asks": { "kind": "win", "board": "La bodega del gremio" },

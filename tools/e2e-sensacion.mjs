@@ -314,8 +314,10 @@ try {
         if (!QUIETO) {
             check('A: el d20 rueda (cambia de número) antes de pararse', line.some(s => s.rolling) && new Set(line.filter(s => s.rolling).map(s => s.face)).size > 2,
                 JSON.stringify([...new Set(line.filter(s => s.rolling).map(s => s.face))]));
-            check('A: Nerea se lanza contra el ratero antes de que salga el dado', firstAt(line, s => s.moved.length > 0) >= 0 && firstAt(line, s => s.moved.length > 0) < firstAt(line, s => s.face !== ''),
-                JSON.stringify({ lunge: firstAt(line, s => s.moved.length > 0), die: firstAt(line, s => s.face !== '') }));
+            // Tanda 21: quieta mientras rueda el dado; se lanza una vez, cuando ya ha salido.
+            const lungeAt = firstAt(line, s => s.moved.length > 0);
+            check('A: Nerea se queda quieta mientras rueda el dado y se lanza contra el ratero después', lungeAt >= 0 && lungeAt > firstAt(line, s => s.face !== '') && !line.some(s => s.rolling && s.moved.length > 0),
+                JSON.stringify({ lunge: lungeAt, die: firstAt(line, s => s.face !== '') }));
         }
         check('A: se para en 20, en oro, y lo dice llano: «20 + 4 = 24 contra CA 11: ¡crítico!»', lineAt >= 0 && line.some(s => s.nat20 && s.face === '20'),
             (line.find(s => s.line)?.line ?? '') + ' | ' + (line.find(s => s.dmg)?.dmg ?? ''));

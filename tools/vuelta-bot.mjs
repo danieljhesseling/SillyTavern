@@ -131,6 +131,11 @@ export function observe(page) {
                 name: said(p.querySelector('.gs-place-name')), note: said(p).slice(0, 160), off: Boolean(/** @type {HTMLButtonElement} */ (p).disabled),
             })),
             boards: [...document.querySelectorAll('#game-shell .gs-board')].filter(seen).map(b => said(b.querySelector('.gs-board-name'))),
+            // D-J62, el modo guiado: lo que pide la historia (ir, el tablero de aquí, hablar, intentarlo).
+            steps: [...document.querySelectorAll('#game-shell .gs-story-step')].filter(seen).map(s => ({
+                id: s.getAttribute('data-step') || '', kind: s.getAttribute('data-kind') || '', note: said(s.querySelector('.gs-card-note')),
+                off: Boolean(/** @type {HTMLButtonElement} */ (s).disabled),
+            })),
             bar: [...document.querySelectorAll('#game-shell .gs-actions .gs-btn')].filter(seen).map(b => ({ text: said(b), off: Boolean(/** @type {HTMLButtonElement} */ (b).disabled) })),
             // De quién dice la barra que es el turno («Tu turno: Tessa», «Turno de…»).
             turnLabel: said(document.querySelector('#game-shell .gs-turn-label')).slice(0, 80),
@@ -1002,6 +1007,42 @@ export function createBot(page, { fast = true, log = console.log, prefer = [] } 
     };
 
     /**
+     * D-J62, el modo guiado: pulsar un paso de «Lo que pide la historia» que case
+     * (`story:go:La Granja`, `story:board:…`, `story:talk:…`, `story:check:…`).
+     *
+     * @param {any} v
+     * @param {(step: {id: string, kind: string, note: string, off: boolean}) => boolean} test
+     * @param {string} what
+     * @param {string} [module]
+     */
+    const storyStep = async (v, test, what, module = 'guided-mode.js') => {
+        if (v.scene !== 'exploration' || v.town.inside) return false;
+        const found = (v.steps ?? []).find((/** @type {any} */ s) => !s.off && test(s));
+        if (!found) return false;
+        return act(v, what, () => press(page.locator(`#game-shell .gs-story-step[data-step="${String(found.id).replace(/"/g, '')}"]`)), { module });
+    };
+
+    /**
+     * D-J62: lo del gremio (saltar la prueba, el tablón, contratar) está dentro de la Casa del Gremio.
+     * Un paso hacia ello: salir del sitio abierto, entrar en la sala, pulsarlo.
+     *
+     * @param {any} v
+     * @param {string} id `hub-skip`, `hub-board`…
+     * @param {string} what
+     * @returns {Promise<boolean>}
+     */
+    const hallAct = async (v, id, what) => {
+        if (v.scene !== 'exploration') return false;
+        if (v.town.inside && v.town.inside !== 'gremio') return act(v, 'volver al pueblo', () => press(page.locator('#game-shell .gs-town-back')), { module: 'town-scene.js' });
+        if (!v.town.inside) {
+            if (!v.town.places.some((/** @type {any} */ p) => p.id === 'gremio')) return false;
+            return act(v, 'entrar en la Casa del Gremio', () => press(page.locator('#game-shell .gs-town-place[data-place="gremio"]')), { module: 'town-scene.js' });
+        }
+        if (!v.town.acts.some((/** @type {any} */ a) => a.id === id && !a.off)) return false;
+        return act(v, what, () => press(page.locator(`#game-shell .gs-town-scene .gs-town-act[data-action="${id}"]`)), { module: 'guild-hall.js' });
+    };
+
+    /**
      * Salir de lo que tapa el mapa (la caja de la novela, un sitio del pueblo, un tablero)
      * hasta la pantalla de explorar, donde están los viajes y los tableros.
      *
@@ -1034,6 +1075,13 @@ export function createBot(page, { fast = true, log = console.log, prefer = [] } 
         if (v.scene !== 'exploration' || v.board || v.town.inside) {
             if (await tapChip(v, new RegExp(`^Ir a ${escape(place)}$`), `ir a ${place} (ficha)`, 'action-chips.js')) { counts.travels++; return true; }
             return toMap(v);
+        }
+        // D-J62: con el modo guiado, «Ir a…» en lo que pide la historia (el sitio, o el primero del camino).
+        if (await storyStep(v, (s) => s.kind === 'go' && (plain(s.id) === plain(`story:go:${place}`) || plain(s.note).includes(plain(`De camino a ${place}`))
+            || plain(s.note).includes(plain(`De vuelta a ${place}`))), `ir a ${place} (lo que pide la historia)`)) {
+            counts.travels++;
+            markDecision();
+            return true;
         }
         const card = v.places.find((/** @type {any} */ p) => plain(p.name) === plain(place));
         const cardAt = (/** @type {string} */ name) => page.locator('#game-shell .gs-place').filter({ has: page.locator('.gs-place-name', { hasText: new RegExp(`^${escape(name)}$`) }) });
@@ -1188,6 +1236,8 @@ export function createBot(page, { fast = true, log = console.log, prefer = [] } 
                 }
                 return false;
             }
+            // D-J62: «Ir a…» el tablero de aquí que pide la historia (sin la fila ni «Tableros de aquí»).
+            if (await storyStep(v, (s) => s.kind === 'board' && plain(s.id) === plain(`story:board:${t.board}`), `ir a ${t.board} (lo que pide la historia)`)) return true;
             if (await tapChip(v, new RegExp(`^Entrar en ${escape(t.board)}$`), `entrar en ${t.board}`, 'action-chips.js')) return true;
             if (v.scene === 'exploration' && v.boards.some((/** @type {string} */ b) => plain(b) === plain(t.board))) {
                 return act(v, `entrar en ${t.board} (tarjeta)`, () => press(page.locator('#game-shell .gs-board').filter({ has: page.locator('.gs-board-name', { hasText: new RegExp(`^${escape(t.board)}$`) }) })), { module: 'game-shell.js' });
@@ -1196,6 +1246,7 @@ export function createBot(page, { fast = true, log = console.log, prefer = [] } 
         }
         if (t.kind === 'talk' && t.npc) {
             const talk = new RegExp(`^Hablar con ${escape(t.npc)}`);
+            if (await storyStep(v, (s) => s.kind === 'talk' && plain(s.id) === plain(`story:talk:${t.npc}`), `hablar con ${t.npc} (lo que pide la historia)`)) { counts.talks++; return true; }
             if (await tapChip(v, talk, `hablar con ${t.npc}`, 'action-chips.js')) { counts.talks++; return true; }
             if (v.town.inside) {
                 const act2 = page.locator('#game-shell .gs-town-act:visible').filter({ hasText: talk });
@@ -1207,6 +1258,13 @@ export function createBot(page, { fast = true, log = console.log, prefer = [] } 
             return toMap(v);
         }
         if ((t.kind === 'check' || t.kind === 'clues') && t.skill) {
+            // D-J62: sin la «Tirada» suelta, lo que pide la historia («Intentarlo», «Buscar una pista»).
+            if (await storyStep(v, (s) => s.kind === 'check' && plain(s.id) === plain(`story:check:${t.skill}`), `tirada de ${t.skill} (lo que pide la historia)`)) {
+                counts.checks++;
+                markDecision();
+                return true;
+            }
+            if (v.town.inside && (v.steps ?? []).length === 0) return act(v, 'volver al pueblo', () => press(page.locator('#game-shell .gs-town-back')), { module: 'town-scene.js' });
             const list = page.locator(`#game-shell .gs-checks .gs-target[data-check="${t.skill}"]:not([disabled])`);
             if (await list.count() === 0 && await chip(/^Tirada$/).count() > 0) {
                 await press(chip(/^Tirada$/));
@@ -1274,7 +1332,7 @@ export function createBot(page, { fast = true, log = console.log, prefer = [] } 
         /** Cuándo se decidió algo por primera vez (una opción, un viaje, un golpe). */
         get firstDecisionAt() { return firstDecisionAt; },
         started,
-        until, press, act, noteBlock, slash, chip, tapChip, toMap, travelTo, pursue, handleLayer, fightTurn, markDecision, where, describe,
+        until, press, act, noteBlock, slash, chip, tapChip, storyStep, hallAct, toMap, travelTo, pursue, handleLayer, fightTurn, markDecision, where, describe,
         observe: () => observe(page),
         page,
     };
@@ -1475,6 +1533,9 @@ export async function skipTrial(bot, { guildPack, tries = 120 }) {
             continue;
         }
         if (await bot.tapChip(v, /^Saltar la prueba$/, 'saltar la prueba', 'hub.js')) continue;
+        // D-J62: con el modo guiado, «Saltar la prueba» está en la Casa del Gremio, fuera del tablero.
+        if (v.board && !v.fight && await bot.tapChip(v, /^Salir del tablero$/, 'salir del tablero', 'action-chips.js')) continue;
+        if (await bot.hallAct(v, 'hub-skip', 'saltar la prueba (en la Casa del Gremio)')) continue;
         if (await bot.tapChip(v, /^Iniciar combate/, 'iniciar el combate', 'action-chips.js')) continue;
         if (v.scene === 'dialogue' && v.vn.next) await bot.act(v, '«Continuar»', () => bot.press(bot.chip(/^Continuar$/)));
         else await bot.page.waitForTimeout(300);

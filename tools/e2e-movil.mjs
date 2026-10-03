@@ -264,6 +264,20 @@ try {
      */
     const tapChip = (/** @type {RegExp} */ pattern) => page.locator('#game-shell .gs-chip-action').filter({ hasText: pattern }).filter({ visible: true }).first()
         .tap({ timeout: 8000 }).then(() => true).catch(() => false);
+    /**
+     * D-J62, el modo guiado: lo del gremio (saltar la prueba, el tablón, contratar) ya no va en la
+     * fila: se toca la Casa del Gremio y, dentro, lo que sea.
+     */
+    const tapHall = async (/** @type {string} */ id) => {
+        if (await page.locator('#game-shell .gs-town-scene[data-place="gremio"]').count() === 0) {
+            if (await page.locator('#game-shell .gs-town-scene').count() > 0) await page.locator('#game-shell .gs-town-back').first().tap({ timeout: 5000 }).catch(() => {});
+            await page.locator('#game-shell .gs-town-place[data-place="gremio"]').first().tap({ timeout: 8000 }).catch(() => {});
+            await until(async () => await page.locator('#game-shell .gs-town-scene[data-place="gremio"]').count() > 0, 8000);
+        }
+        return page.locator(`#game-shell .gs-town-scene .gs-town-act[data-action="${id}"]`).filter({ visible: true }).first()
+            .tap({ timeout: 8000 }).then(() => true).catch(() => false);
+    };
+    const hallActs = () => page.evaluate(() => [...document.querySelectorAll('#game-shell .gs-town-scene .gs-town-act')].map(b => b.getAttribute('data-action') || ''));
     /** La escena que se ve. */
     const sceneNow = () => page.evaluate(() => document.querySelector('#game-shell')?.getAttribute('data-scene') || '');
     /** J18.8: tocar «Continuar» mientras se lee, hasta llegar a la escena que toca. */
@@ -965,23 +979,39 @@ try {
     const toTown = await carryOn('exploration');
     check('el botón del tablero lleva al pueblo, sin pestañas (J18.8)', toTown === 'exploration', toTown);
     await look('explorar');
+    // D-J62: sin la fila de abajo, a quien pide la historia se le habla tocando «Hablar con…» en «Lo
+    // que pide la historia» (J20.5: la ventana de la charla, a toques).
+    const talkStep = await page.evaluate(() => [...document.querySelectorAll('#game-shell .gs-story-step[data-kind="talk"]')].map(s => s.getAttribute('data-step') || '')[0] ?? '');
+    if (talkStep) {
+        await page.locator(`#game-shell .gs-story-step[data-step="${talkStep}"]`).first().tap({ timeout: 5000 }).catch(() => {});
+        const talking = await page.waitForSelector('.popup:visible .tk-root', { timeout: 10000 }).then(() => true).catch(() => false);
+        check('lo que pide la historia, «Hablar con…», tocado, abre la charla (J20.5, D-J62)', talking, talkStep);
+        await page.locator('.popup:visible:has(.tk-root) .popup-button-ok').first().tap({ timeout: 5000 }).catch(() => {});
+        await page.waitForSelector('.tk-root', { state: 'detached', timeout: 5000 }).catch(() => {});
+        await page.waitForTimeout(500);
+        await carryOn('exploration');
+    }
 
     // 8b. D-J28: el tablón y los mercenarios salen al acabar la prueba de la bodega. Aquí se salta
     // (J2.3), tocando su ficha y «Saltarla»: la bodega a toques ya la cubren la pelea del muelle.
     await noToasts();
-    if (await tapChip(/^Saltar la prueba$/)) {
+    if (await tapHall('hub-skip')) {
         const skip = page.locator('.popup:visible .popup-button-ok').first();
         if (await skip.waitFor({ state: 'visible', timeout: 8000 }).then(() => true).catch(() => false)) await skip.tap({ timeout: 5000 }).catch(() => {});
         await until(() => chatHas(/apunta tu nombre en el libro del gremio/), 15000);
         await page.waitForTimeout(800);
         await tapDice();
     }
-    const boardOffered = await until(async () => (await chips()).some(c => /Tablón de campañas/.test(c)), 15000);
-    check('saltada la prueba, se ofrecen el tablón y contratar (D-J28, J2.3)', boardOffered, JSON.stringify(await chips()));
+    await carryOn('exploration');
+    const boardOffered = await until(async () => {
+        if (await page.locator('#game-shell .gs-town-scene[data-place="gremio"]').count() === 0) await page.locator('#game-shell .gs-town-place[data-place="gremio"]').first().tap({ timeout: 3000 }).catch(() => {});
+        return (await hallActs()).includes('hub-board');
+    }, 15000);
+    check('saltada la prueba, la Casa del Gremio ofrece el tablón y contratar (D-J28, J2.3, D-J62)', boardOffered && (await hallActs()).includes('hub-hire'), JSON.stringify(await hallActs()));
 
-    // 9. Contratar, si la fila lo ofrece aquí.
-    if ((await chips()).some(c => /Contratar mercenarios/.test(c))) {
-        await tapChip(/Contratar mercenarios/);
+    // 9. Contratar, en la Casa del Gremio.
+    if ((await hallActs()).includes('hub-hire')) {
+        await tapHall('hub-hire');
         const hire = await page.waitForSelector('.hb-root [data-hireling]', { timeout: 15000 }).then(() => true).catch(() => false);
         check('«Contratar mercenarios» abre sus tarjetas', hire);
         if (hire) {
@@ -993,9 +1023,9 @@ try {
     }
 
     // 10. El tablón de campañas, y Strahd.
-    const boardChip = await tapChip(/Tablón de campañas/);
+    const boardChip = await tapHall('hub-board');
     const hub = await page.waitForSelector('.hb-root [data-campaign]', { timeout: 15000 }).then(() => true).catch(() => false);
-    check('el tablón de campañas se abre tocando su ficha', boardChip && hub);
+    check('el tablón de campañas se abre tocándolo en la Casa del Gremio (D-J62)', boardChip && hub);
     const hubWorld = (await state()).world;
     if (hub) {
         await page.waitForTimeout(600);

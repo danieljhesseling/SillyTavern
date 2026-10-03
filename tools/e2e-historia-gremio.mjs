@@ -30,6 +30,8 @@ import { createRequire } from 'node:module';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+// D-J62, el modo guiado: lo del gremio en la Casa del Gremio, y mirar dentro de su sitio.
+import { enElGremio, salirDelTablero } from './e2e-guiado.mjs';
 
 const ROOT = new URL('..', import.meta.url).pathname.replace(/^[/]([A-Za-z]:)/, '$1');
 const argAfter = (/** @type {string} */ flag) => (process.argv.includes(flag) ? process.argv[process.argv.indexOf(flag) + 1] : '');
@@ -331,8 +333,9 @@ try {
 
     // «Saltar la prueba», como quien ya sabe jugar (J2.3): el prólogo queda hecho.
     await dropToasts();
-    await until(async () => (await chips()).some(c => /^Saltar la prueba$/.test(c)), 15000);
-    await clickChip(/^Saltar la prueba$/);
+    // D-J62: en la Casa del Gremio, fuera del tablero del muelle.
+    await salirDelTablero(page);
+    await until(() => enElGremio(page, 'hub-skip'), 15000);
     await page.waitForSelector('.popup:has-text("¿Saltar la prueba?")', { timeout: 10000 }).catch(() => {});
     await page.locator('.popup-button-ok:visible').first().click({ timeout: 5000 }).catch(() => {});
     await until(async () => (await meta()).done.includes('la-prueba'), 20000);
@@ -359,15 +362,18 @@ try {
     await closeBook();
 
     // === 3. J10: mirar algo de Puerto Alba, y la tirada dice si sale ================================
-    // Las fichas de mirar son las que examinan algo del sitio (del paquete, o del compendio si el
-    // sitio no escribe las suyas, como Puerto Alba).
-    const lookChips = () => page.evaluate(() => [...new Set([...document.querySelectorAll('#game-shell .gs-chip-action[data-chip^="look:"]')]
-        .map(c => (c.textContent || '').trim()))]);
+    // Lo que examina algo del sitio. D-J62: sin la fila de abajo, va dentro del sitio al que
+    // pertenece: las barcas y los pescadores, en el muelle.
+    const lookChips = async () => {
+        await carryOn('exploration');
+        await enterPlace('muelle');
+        return (await placeScene()).acts.filter(a => a.id.startsWith('look:')).map(a => a.id);
+    };
     await until(async () => (await lookChips()).length > 0, 8000);
     const lookOffered = await lookChips();
     const lookFrom = (await chatTexts()).length;
     await loadedDice('bien');
-    await clickChip(new RegExp(`^${String(lookOffered[0] ?? '---').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`));
+    await page.locator(`#game-shell .gs-town-scene .gs-town-act[data-action="${lookOffered[0] ?? '---'}"]`).first().click({ timeout: 5000 }).catch(() => {});
     await page.waitForTimeout(1500);
     await clearDice();
     await loadedDice('');
@@ -387,8 +393,8 @@ try {
     await carryOn('exploration');
 
     // === 4. Contratar a Gerd =========================================================================
-    await until(async () => (await chips()).some(c => /Contratar mercenarios/.test(c)), 8000);
-    await clickChip(/Contratar mercenarios/);
+    await page.locator('#game-shell .gs-town-back').click({ timeout: 3000 }).catch(() => {});
+    await until(() => enElGremio(page, 'hub-hire'), 8000);
     await page.waitForSelector('.hb-root [data-hireling="Gerd el Mellado"]', { timeout: 15000 }).catch(() => {});
     await page.locator('.hb-root [data-hireling="Gerd el Mellado"]').click({ timeout: 5000 }).catch(() => {});
     const hired = await until(() => page.evaluate(async () => (await import('/scripts/party.js')).getPartyMembersSnapshot().some((/** @type {any} */ m) => m.name === 'Gerd el Mellado')), 10000);
@@ -511,8 +517,7 @@ try {
 
     // === 7. J7.5: Strahd, y lo que opina Gerd junto a la opción =====================================
     await dropToasts();
-    await until(async () => (await chips()).some(c => /Tablón de campañas/.test(c)), 8000);
-    await clickChip(/Tablón de campañas/);
+    await until(() => enElGremio(page, 'hub-board'), 8000);
     await page.waitForSelector('.hb-root [data-campaign="strahd"]', { timeout: 15000 }).catch(() => {});
     await page.locator('.hb-root [data-campaign="strahd"]').click({ timeout: 5000 }).catch(() => {});
     const opening = await until(async () => (await story())?.id === 'sangrienta-bienvenida', 150000);
@@ -589,8 +594,7 @@ try {
     await page.waitForTimeout(1500);
     await dropToasts();
     await carryOn('exploration');
-    await until(async () => (await chips()).some(c => /Tablón de campañas/.test(c)), 10000);
-    await clickChip(/Tablón de campañas/);
+    await until(() => enElGremio(page, 'hub-board'), 10000);
     await page.waitForSelector('.hb-root [data-campaign="strahd"]', { timeout: 15000 }).catch(() => {});
     const card = await page.evaluate(() => {
         const tile = document.querySelector('.hb-root [data-campaign-tile="strahd"]') ?? document.querySelector('.hb-root [data-campaign="strahd"]')?.closest('.vt-card, .hb-tile, div');

@@ -26,6 +26,8 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { entrarEnLaPelea } from './e2e-entrar-pelea.mjs';
+// D-J62, el modo guiado: lo que estaba en la fila de abajo, en la Casa del Gremio y en «Lo que pide la historia».
+import { accionesDelSitio, alSitio, enElGremio, entrarEnSitio, pasoDeLaHistoria, pasosDeLaHistoria, salirDelSitio } from './e2e-guiado.mjs';
 
 
 /**
@@ -495,11 +497,11 @@ try {
     check('y al moverse el hilo, el consejo del Diario (J2.2)', journalTips.filter(t => /^Queda apuntado en el Diario/.test(t)).length === 1, JSON.stringify(journalTips));
 
     // J2.1: la charla con Tomás, en la ventana de hablar: sus temas y lo que se cuenta en el puerto.
-    /** Pulsar «Hablar con…» en la fila y esperar su ventana. */
+    /** Pulsar «Hablar con…» y esperar su ventana. D-J62: sin la fila de abajo, a quien pide la
+     * historia se le habla desde «Lo que pide la historia». */
     const talkWith = async (/** @type {string} */ name) => {
         await dropToasts();
-        const offered = await until(async () => (await chips()).some(c => c === `Hablar con ${name}`), 10000);
-        await clickChip(new RegExp(`^Hablar con ${name}$`));
+        const offered = await pasoDeLaHistoria(page, new RegExp(`^story:talk:${name}$`), { ms: 10000 });
         const opened = await page.waitForSelector('.popup:visible .tk-root', { timeout: 10000 }).then(() => true).catch(() => false);
         return offered && opened;
     };
@@ -551,13 +553,17 @@ try {
         prose.lines.length > 0 && prose.lines.every(l => !/^\S{0,3}\s*\[/.test(l) && !/^Hecho:/.test(l) && !/“«|»”/.test(l)) && prose.quotes.length === 0,
         JSON.stringify(prose));
     if (SHOT) await page.screenshot({ path: `${SHOT}.prologo.png` });
-    // Del muelle a la bodega, por la fila: la que pide la historia va delante.
+    // Del muelle a la bodega. D-J62: sin «Entrar en…» en la fila; lo que pide la historia lleva a
+    // ella (con las ventanas de historia, se baja hablando con Brunilda: e2e-modo-guiado.mjs).
     await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/leave'));
     await page.waitForTimeout(700);
-    const toCellar = await until(async () => (await chips()).some(c => /^Entrar en La bodega del gremio$/.test(c)), 10000);
-    check('fuera del muelle, la fila lleva a la bodega, que es lo que pide la historia (J2.1)', toCellar, JSON.stringify(await chips()));
-    check('y también saltar la prueba, para quien ya sabe jugar: fuera del tablero (J2.3, tanda 10)', (await chips()).some(c => /^Saltar la prueba$/.test(c)), JSON.stringify(await chips()));
-    await clickChip(/^Entrar en La bodega del gremio$/);
+    const toCellar = await until(async () => (await pasosDeLaHistoria(page)).some(s => s.id === 'story:board:La bodega del gremio'), 10000);
+    check('fuera del muelle, lo que pide la historia lleva a la bodega (J2.1, D-J62)', toCellar, JSON.stringify(await pasosDeLaHistoria(page)));
+    await entrarEnSitio(page, 'gremio');
+    const trialHall = await accionesDelSitio(page);
+    check('y saltar la prueba, para quien ya sabe jugar: en la Casa del Gremio (J2.3, D-J62)', trialHall.includes('hub-skip'), JSON.stringify(trialHall));
+    await salirDelSitio(page);
+    await pasoDeLaHistoria(page, /^story:board:La bodega del gremio$/);
     await until(async () => (await state()).board === 'La bodega del gremio', 10000);
 
     // 3. La prueba: las ratas de la bodega. Tanda 10: la pelea empieza sola al ver el tablero
@@ -763,7 +769,7 @@ try {
     await page.locator('#game-shell .gs-town-back').click({ timeout: 5000 }).catch(() => {});
     await page.waitForTimeout(400);
 
-    check('fuera del tablón también se ofrece contratar', await clickChip(/Contratar mercenarios/));
+    check('en la Casa del Gremio también se ofrece contratar (D-J62)', await enElGremio(page, 'hub-hire'));
     const hire = await page.waitForSelector('.hb-root [data-hireling]', { timeout: 15000 }).then(() => true).catch(() => false);
     const offers = await page.evaluate(() => [...document.querySelectorAll('.hb-root [data-hireling]')].map(c => c.getAttribute('aria-label')));
     check('se ofrecen los tres mercenarios del gremio con su precio', hire && offers.length === 3 && offers.every(o => /40 de oro/.test(String(o))), JSON.stringify(offers));
@@ -787,9 +793,12 @@ try {
     const stayed = await page.evaluate(() => ({
         scene: document.querySelector('#game-shell')?.getAttribute('data-scene') || '',
         foot: [...document.querySelectorAll('#game-shell .gs-actions .gs-chips-foot .gs-chip-action')].map(c => (c.textContent || '').trim()),
+        hall: [...document.querySelectorAll('#game-shell .gs-town-scene .gs-town-act')].map(b => b.getAttribute('data-action') || ''),
     }));
-    check('contratar deja en el pueblo, con lo que se puede hacer al pie: el tablón y contratar, sin «Entrar en…» (J18.8)',
-        stayed.scene === 'exploration' && stayed.foot.some(c => /Tablón de campañas/.test(c)) && !stayed.foot.some(c => /^Entrar en /.test(c)), JSON.stringify(stayed));
+    // D-J62: el tablón y contratar, en la sala del gremio; al pie, nada de la fila libre ni «Entrar en…».
+    check('contratar deja en el pueblo, en la Casa del Gremio con el tablón y contratar a mano; al pie, ni el tablón ni «Entrar en…» (J18.8, D-J62)',
+        stayed.scene === 'exploration' && stayed.hall.includes('hub-board') && stayed.hall.includes('hub-hire')
+        && !stayed.foot.some(c => /Tablón de campañas|^Entrar en /.test(c)), JSON.stringify(stayed));
     if (SHOT) await page.screenshot({ path: `${SHOT}.pueblo-pie.png` });
     // Arte en pixel: si habla alguien del paquete, sale su retrato en grande; y detrás, apagado,
     // el escenario del sitio. La frase de Brunilda se quita después, para no tocar lo que sigue.
@@ -905,7 +914,7 @@ try {
         time.saveCampaignState(null, { ...bonds, bonds: { ...bonds.bonds, [String(gerdHere.id)]: { characterId: String(gerdHere.id), points: 4, usedOncePerDay: [] } } });
         return Number(time.getCampaignBonds().bonds?.[String(gerdHere.id)]?.points) || 0;
     });
-    check('la ficha del tablón de campañas está', await clickChip(/Tablón de campañas/));
+    check('el tablón de campañas está, en la Casa del Gremio (D-J62)', await enElGremio(page, 'hub-board'));
     await page.waitForSelector('.hb-root [data-campaign]', { timeout: 15000 }).catch(() => {});
     const board = await page.evaluate(() => [...document.querySelectorAll('.hb-root [data-campaign]')].map(c => ({ id: c.getAttribute('data-campaign'), text: (c.textContent || '').replace(/\s+/g, ' ').slice(0, 120) })));
     check('en el tablón están 1387 y La Maldición de Strahd, sin empezar', board.some(c => c.id === '1387') && board.some(c => c.id === 'strahd' && /Sin empezar/.test(c.text)), JSON.stringify(board));
@@ -986,9 +995,12 @@ try {
     check('ganar la Taberna abre el hilo: el asedio de la mansión', mansion);
     await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/leave'));
     await page.waitForTimeout(800);
-    const outside = await chips();
-    check('fuera, la fila ofrece entrar en la Mansión y en el Sótano', outside.some(c => /Entrar en Mansión del Burgomaestre/.test(c)) && outside.some(c => /Entrar en Sótano de la Iglesia/.test(c)), JSON.stringify(outside));
-    await clickChip(/Entrar en Mansión del Burgomaestre/);
+    // D-J62: sin «Entrar en…» en la fila; lo que pide la historia lleva a la Mansión y al Sótano.
+    await alSitio(page);
+    await until(async () => (await pasosDeLaHistoria(page)).length >= 2, 8000);
+    const outside = (await pasosDeLaHistoria(page)).map(s => s.id);
+    check('fuera, lo que pide la historia lleva a la Mansión y al Sótano (D-J62)', outside.includes('story:board:Mansión del Burgomaestre') && outside.includes('story:board:Sótano de la Iglesia'), JSON.stringify(outside));
+    await pasoDeLaHistoria(page, /^story:board:Mansión del Burgomaestre$/);
     const zombis = await until(async () => (await waitingNames()).filter(n => n === 'Zombi de Strahd').length === 3, 15000);
     const inside = await partyOnFloor();
     check('en la Mansión, el grupo en el salón y los tres zombis fuera, esperando', zombis && inside.every(m => m.cell !== 'wall'), JSON.stringify({ waiting: await waitingNames(), inside }));
@@ -998,7 +1010,7 @@ try {
     // la sala seguía a oscuras, con él dormido para siempre.
     await page.evaluate(() => window.SillyTavern.getContext().executeSlashCommandsWithOptions('/leave'));
     await page.waitForTimeout(700);
-    await clickChip(/Entrar en Sótano de la Iglesia/);
+    await pasoDeLaHistoria(page, /^story:board:Sótano de la Iglesia$/);
     await page.waitForTimeout(1200);
     const lever = await page.evaluate(async () => {
         const party = await import('/scripts/party.js');
@@ -1061,7 +1073,7 @@ try {
     check('y la vuelta se cuenta (J4.9)', await until(() => chatHas(/Nueve días de camino después, volvéis a Puerto Alba/), 10000));
 
     // 7. Y se sigue la campaña donde se dejó.
-    await clickChip(/Tablón de campañas/);
+    await enElGremio(page, 'hub-board');
     await page.waitForSelector('.hb-root [data-campaign="strahd"]', { timeout: 15000 }).catch(() => {});
     const again = await page.evaluate(() => (document.querySelector('.hb-root [data-campaign="strahd"]')?.textContent || '').replace(/\s+/g, ' '));
     check('en el tablón, Strahd sale en curso, para seguirla', /En curso/.test(again) && /Seguir/.test(again), again.slice(0, 200));
@@ -1156,14 +1168,14 @@ try {
         homeAgain && now.chat === hubChat && now.party.length === 2 && homecoming && roads === 2,
         JSON.stringify({ now, homecoming, roads }));
     await clearDice();
-    await clickChip(/Tablón de campañas/);
+    await enElGremio(page, 'hub-board');
     await page.waitForSelector('.hb-root [data-campaign="strahd"]', { timeout: 15000 }).catch(() => {});
     const finished = await page.evaluate(() => (document.querySelector('.hb-root [data-campaign="strahd"]')?.textContent || '').replace(/\s+/g, ' '));
     check('en el tablón, Strahd sale terminada, con su final, y se vuelve a ella en vez de seguirla (J4.5)',
         finished.includes(`Terminada: ${endingTitle}`) && /Volver: La Maldición de Strahd/.test(finished), finished.slice(0, 240));
     await page.locator('.hb-root .hb-close').click({ timeout: 5000 }).catch(() => {});
     await page.waitForTimeout(500);
-    const hallChip = await clickChip(/Salón de la fama/);
+    const hallChip = await enElGremio(page, 'hub-hall');
     await page.waitForSelector('.popup:visible .hall-root', { timeout: 8000 }).catch(() => {});
     const hall = await page.evaluate(() => [...document.querySelectorAll('.hall-root .hall-campaign')].map(e => (e.textContent || '').trim()));
     check('y sale en el salón de la fama: cuál, con qué final, quién fue y cuándo (J3.9)',
@@ -1288,7 +1300,7 @@ try {
     // Cambiar quién va, desde el tablón.
     await clearDice();
     await noToasts();
-    await clickChip(/Tablón de campañas/);
+    await enElGremio(page, 'hub-board');
     await page.waitForSelector('.hb-root .hb-heroes .hb-hero[data-hero]', { timeout: 15000 }).catch(() => {});
     seen = await heroCards();
     check('en el tablón, «Quién va»: Bram va ahora y Tessa espera en el gremio (J1.6)',

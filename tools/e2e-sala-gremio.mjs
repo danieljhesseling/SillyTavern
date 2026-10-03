@@ -26,6 +26,8 @@ import { createRequire } from 'node:module';
 import { createWriteStream, mkdtempSync, rmSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+// D-J62, el modo guiado: sin la fila libre ni «Tableros de aquí»/«Viajar»; se va adonde manda la historia.
+import { pasoDeLaHistoria, pasosDeLaHistoria, viajarAPasoNormal } from './e2e-guiado.mjs';
 
 const ROOT = new URL('..', import.meta.url).pathname.replace(/^[/]([A-Za-z]:)/, '$1');
 const argAfter = (/** @type {string} */ flag) => (process.argv.includes(flag) ? process.argv[process.argv.indexOf(flag) + 1] : '');
@@ -142,7 +144,6 @@ try {
             done: Array.isArray(meta.plotState?.done) ? meta.plotState.done : [],
         };
     });
-    const chips = () => page.evaluate(() => [...document.querySelectorAll('#game-shell .gs-chip-action')].map(c => (c.textContent || '').trim()));
     const clickChip = (/** @type {RegExp} */ pattern) => page.evaluate((source) => {
         const chip = [...document.querySelectorAll('#game-shell .gs-chip-action')].find(b => new RegExp(source).test(b.textContent || ''));
         if (chip instanceof HTMLElement) chip.click();
@@ -287,16 +288,10 @@ try {
         inHallTrial && trialHall.acts.some(a => a.id === 'hub-skip') && !trialHall.acts.some(a => /^hub-(board|hire|chest|train|house|errands|heroes|sleep)$/.test(a.id))
         && trialHall.acts.some(a => a.id === 'hub-exit'), JSON.stringify(trialHall.acts.map(a => a.id)));
     await shot('sala-prueba');
-    await act('hub-exit');
-    await page.waitForTimeout(400);
 
-    // 3. J2.3: de vuelta al muelle, se salta la prueba desde allí.
-    await page.locator('#game-shell .gs-board').filter({ hasText: 'El muelle de Puerto Alba' }).first().click({ timeout: 5000 })
-        .catch(() => clickChip(/Entrar en El muelle de Puerto Alba/));
-    await until(async () => (await state()).board === 'El muelle de Puerto Alba', 10000);
-    await carryOn('combat');
-    await until(async () => (await chips()).some(c => /^Saltar la prueba$/.test(c)), 10000);
-    await clickChip(/^Saltar la prueba$/);
+    // 3. J2.3: se salta la prueba. D-J62: desde la sala del gremio (ya no hay «Tableros de aquí» para
+    // volver al muelle, ni la fila de abajo).
+    await act('hub-skip');
     await page.waitForSelector('.popup:has-text("¿Saltar la prueba?")', { timeout: 10000 }).catch(() => {});
     await page.locator('.popup-button-ok:visible').first().click({ timeout: 5000 }).catch(() => {});
     await until(() => chatHas(/apunta tu nombre en el libro del gremio/), 15000);
@@ -311,25 +306,14 @@ try {
     const afterSkipScene = await carryOn('exploration');
     await until(() => page.evaluate(() => document.querySelectorAll('#game-shell .gs-town-place').length > 0), 10000);
     now = await state();
-    const pier = await page.evaluate(() => {
-        const card = [...document.querySelectorAll('#game-shell .gs-board')].find(c => /El muelle de Puerto Alba/.test(c.textContent || ''));
-        return (card?.querySelector('.gs-card-note')?.textContent || '').trim();
-    });
-    // Y si se vuelve a mirar el muelle, allí ya no hay nadie: ni el ratero ni su ficha de pelea.
-    await page.locator('#game-shell .gs-board').filter({ hasText: 'El muelle de Puerto Alba' }).first().click({ timeout: 5000 }).catch(() => {});
-    await until(async () => (await state()).board === 'El muelle de Puerto Alba', 8000);
-    await page.waitForTimeout(800);
-    const onPier = await page.evaluate(() => ({
-        tokens: document.querySelectorAll('#game-shell .wm-token.wm-token-enemy').length,
-        fightChip: [...document.querySelectorAll('#game-shell .gs-chip-action')].some(c => /Iniciar combate|Ratero/.test(c.textContent || '')),
-    }));
-    await shot('muelle-vacio');
-    check('J2.3: saltada en el muelle, la pelea no se queda a la vista: se lee a Brunilda, el muelle sale «Ganado» y, dentro, ni el ratero ni «Iniciar combate»',
-        now.board === '' && !now.fighting && afterSkipScene === 'exploration' && !/Al ladrón|ratero/i.test(told.last) && /^Ganado/.test(pier)
-        && onPier.tokens === 0 && !onPier.fightChip, JSON.stringify({ told, afterSkipScene, pier, onPier }));
-    await clickChip(/^Salir del tablero$|^Volver a Puerto Alba$/);
-    await page.locator('#game-shell .gs-scene-map .wm-leave-loc-btn').first().click({ timeout: 3000 }).catch(() => {});
-    await until(async () => (await state()).board === '', 8000);
+    // D-J62: el muelle y la bodega quedan ganados, y nada de lo que pide la historia lleva a una pelea.
+    const won = await page.evaluate(() => [...(window.SillyTavern.getContext().chatMetadata?.boardsWon || [])].map(String));
+    const stepsAfter = await pasosDeLaHistoria(page);
+    await shot('saltada-pueblo');
+    check('J2.3: saltada la prueba, la pelea no se queda a la vista: se lee a Brunilda, el muelle y la bodega quedan ganados y nada lleva a pelear allí (D-J62)',
+        now.board === '' && !now.fighting && afterSkipScene === 'exploration' && !/Al ladrón|ratero/i.test(told.last)
+        && won.includes('Puerto Alba::El muelle de Puerto Alba') && won.includes('Puerto Alba::La bodega del gremio') && !stepsAfter.some(s => s.kind === 'board'),
+        JSON.stringify({ told, afterSkipScene, won, stepsAfter }));
     await dropToasts();
 
     // 4. J3.1: la sala, por partes, con el rango arriba y la cama en «La casa».
@@ -340,13 +324,12 @@ try {
         ['El tablón', 'Tu gente', 'La casa', 'La memoria del gremio', 'La salida'].every(g => hall.groups.includes(g))
         && ['hub-board', 'hub-errands', 'hub-heroes', 'hub-hire', 'hub-chest', 'hub-train', 'hub-house', 'hub-sleep', 'hub-memory', 'hub-exit'].every(id => ids.includes(id))
         && /^Rango D /.test(hall.rank), JSON.stringify({ groups: hall.groups, ids, rank: hall.rank }));
-    // D-J56: lo que se puede mirar en la sala sale también en la fila de abajo, y delante de lo de la plaza
-    // (lo que no quepa, tras «+N más», como todo).
+    // D-J56 y D-J62: lo que se puede mirar en la sala está en la sala; la fila de abajo, con el modo
+    // guiado, ya no lo repite (ni nada de mirar).
     const hallLooks = ids.filter(id => id.startsWith('look:'));
     const footLooks = await page.evaluate(() => [...document.querySelectorAll('#game-shell .gs-chips-foot [data-chip^="look:"]')].map(b => b.getAttribute('data-chip') || ''));
-    const firstLooks = footLooks.slice(0, Math.min(hallLooks.length, footLooks.length));
-    check('D-J56: lo que se puede mirar en la sala del gremio sale también en la fila de abajo',
-        firstLooks.length > 0 && firstLooks.every(id => hallLooks.includes(id)), JSON.stringify({ hallLooks, footLooks }));
+    check('D-J56 y D-J62: lo que se puede mirar en la sala del gremio está en la sala, y no en la fila de abajo',
+        hallLooks.length > 0 && footLooks.length === 0, JSON.stringify({ hallLooks, footLooks }));
     await shot('sala');
 
     // 5. J3.4: el cofre. Antes, algo que no se lleve puesto: lo más barato de la tienda.
@@ -692,13 +675,14 @@ try {
     await page.setViewportSize({ width: 1400, height: 950 });
     await page.waitForTimeout(600);
 
-    // 19. J3.8: el sitio del encargo aceptado sale en «Viajar», y se llega andando desde Puerto Alba.
+    // 19. J3.8: el sitio del encargo aceptado sale (estaba escondido), y se llega andando desde Puerto
+    // Alba. D-J62: con «Ir a…», en lo que pide la historia, y no en «Viajar».
     await carryOn('exploration');
     await page.locator('#game-shell .gs-town-back').click({ timeout: 3000 }).catch(() => {});
     const errandPlace = await page.evaluate(() => String(window.SillyTavern.getContext().chatMetadata?.contractTaken?.locationName ?? ''));
-    const travelCards = await page.evaluate(() => [...document.querySelectorAll('#game-shell .ex-column[data-col="travel"] .gs-place .gs-place-name')].map(n => (n.textContent || '').trim()));
-    await page.locator('#game-shell .ex-column[data-col="travel"] .gs-place').filter({ hasText: errandPlace || '—' }).first().click({ timeout: 5000 }).catch(() => {});
-    await page.locator('.popup:visible .tr-pace-normal, .popup:visible .popup-button-custom').first().click({ timeout: 8000 }).catch(() => {});
+    const travelCards = (await pasosDeLaHistoria(page)).filter(s => s.kind === 'go').map(s => s.id.replace(/^story:go:/, ''));
+    await pasoDeLaHistoria(page, `story:go:${errandPlace || '—'}`);
+    await viajarAPasoNormal(page);
     // Por el camino puede salir algo al paso (una ventana): se sigue, como quien juega.
     const arrived = await until(async () => {
         await page.evaluate(() => {
@@ -710,7 +694,7 @@ try {
         return Boolean(errandPlace) && (await state()).location === errandPlace;
     }, 45000);
     await shot('encargo-sitio');
-    check('J3.8: aceptar el encargo pone su sitio en «Viajar» (estaba escondido), y se llega a él',
+    check('J3.8 y D-J62: aceptar el encargo da «Ir a…» a su sitio (estaba escondido), y se llega a él',
         Boolean(errandPlace) && travelCards.includes(errandPlace) && arrived, JSON.stringify({ errandPlace, travelCards, at: (await state()).location }));
 
     const real = problems.filter(p => !/favicon|thumbnail|Failed to fetch.*extensions|tokenizer/i.test(p));

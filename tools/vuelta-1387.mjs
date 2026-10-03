@@ -133,6 +133,9 @@ try {
             continue;
         }
         if (await bot.tapChip(v, /^Saltar la prueba$/, 'saltar la prueba', 'hub.js')) continue;
+        // D-J62: con el modo guiado, «Saltar la prueba» está en la Casa del Gremio, fuera del tablero.
+        if (v.board && !v.fight && await bot.tapChip(v, /^Salir del tablero$/, 'salir del tablero', 'action-chips.js')) continue;
+        if (await bot.hallAct(v, 'hub-skip', 'saltar la prueba (en la Casa del Gremio)')) continue;
         if (await bot.tapChip(v, /^Iniciar combate/, 'iniciar el combate', 'action-chips.js')) continue;
         if (v.scene === 'dialogue' && v.vn.next) await bot.act(v, '«Continuar»', () => bot.press(bot.chip(/^Continuar$/)));
         else await page.waitForTimeout(300);
@@ -151,6 +154,8 @@ try {
         v = await bot.observe();
         if (await bot.handleLayer(v, { onHub })) continue;
         if (await bot.tapChip(v, /^Tablón de campañas$/, 'el tablón de campañas', 'action-chips.js')) continue;
+        // D-J62: con el modo guiado, el tablón está en la Casa del Gremio.
+        if (await bot.hallAct(v, 'hub-board', 'el tablón de campañas (en la Casa del Gremio)')) continue;
         if (v.scene === 'dialogue' && v.vn.next) await bot.act(v, '«Continuar»', () => bot.press(bot.chip(/^Continuar$/)));
         else if (v.town.inside) await bot.toMap(v);
     }

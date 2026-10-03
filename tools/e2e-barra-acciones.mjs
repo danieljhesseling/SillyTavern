@@ -212,7 +212,14 @@ try {
                 gems: menu.querySelectorAll('.gs-slot-gems .fa-diamond').length,
                 filters: [...menu.querySelectorAll('.gs-filter-pill[data-filter]')].map(f => (f.textContent || '').trim()),
                 head: (menu.querySelector('.gs-head-action')?.textContent || '').trim(),
+                // J12.20: el muelle (a la izquierda, o la hoja del teléfono) y las fichas que tapa.
+                dock: menu.getAttribute('data-dock') || '',
+                covered: [...document.querySelectorAll('#game-shell .wm-token')].filter(t => {
+                    const r = t.getBoundingClientRect();
+                    return m && r.width > 0 && r.left < m.right && r.right > m.left && r.top < m.bottom && r.bottom > m.top;
+                }).map(t => t.getAttribute('data-token-id')),
             } : null,
+            boardBottom: Math.round(document.querySelector('#game-shell .gs-scene-map .wm-container')?.getBoundingClientRect().bottom ?? 0),
             headBottom: Math.round(head?.bottom ?? 0),
             vw: window.innerWidth,
             vh: window.innerHeight,
@@ -321,12 +328,24 @@ try {
     check('Atacar: el golpe sin armas, agarrar y empujar, con su CD (8 + Fuerza + competencia = 13)',
         cards.some(c => c.pick === 'unarmed:golpe') && Boolean(grab?.tags.includes('CD 13')) && Boolean(shove?.tags.includes('CD 13')), JSON.stringify(cards.map(c => [c.pick, c.tags])));
     check('Atacar: cambiar de arma, gratis', /Cambiar de arma/.test(attack.menu?.head ?? ''), attack.menu?.head ?? '');
-    check('el menú no pasa de 440 px y no se corta por arriba',
-        Boolean(attack.menu) && (attack.menu?.height ?? 999) <= 441 && (attack.menu?.top ?? -1) >= attack.headBottom - 1, JSON.stringify({ menu: attack.menu && { top: attack.menu.top, height: attack.menu.height }, head: attack.headBottom }));
+    // J12.20: el muelle táctico, a la izquierda encima del minimapa, sin tapar el centro.
+    check('el muelle sale a la izquierda: 360 px, 170 px o más por abajo y 50 o más bajo la cabecera, sin tapar ninguna ficha',
+        Boolean(attack.menu) && attack.menu?.dock === 'left' && (attack.menu?.right ?? 999) - (attack.menu?.left ?? 0) === 360 && (attack.menu?.left ?? 999) < 80
+            && attack.boardBottom - (attack.menu?.bottom ?? 9999) >= 170 && (attack.menu?.top ?? -1) >= attack.headBottom + 49 && (attack.menu?.covered ?? ['?']).length === 0,
+        JSON.stringify({ menu: attack.menu && { left: attack.menu.left, right: attack.menu.right, top: attack.menu.top, bottom: attack.menu.bottom, covered: attack.menu.covered }, head: attack.headBottom, board: attack.boardBottom }));
     check('ninguna tarjeta dice «ft»', !JSON.stringify(cards).match(/\bft\b/), '');
     await page.keyboard.press('Escape');
     await page.waitForTimeout(300);
     check('Esc cierra el menú', !(await bar()).menu);
+    // J12.20: el muelle se cierra también con su ✕ y volviendo a pulsar su botón.
+    await openMenu('acciones');
+    await page.locator('#game-shell .gs-grimoire .gs-targets-close').click({ timeout: 3000 }).catch(() => {});
+    await page.waitForTimeout(300);
+    const byCross = !(await bar()).menu;
+    await openMenu('acciones');
+    await page.locator('#game-shell .gs-vtt-bar .gs-btn[data-menu="acciones"]').click({ timeout: 3000 }).catch(() => {});
+    await page.waitForTimeout(300);
+    check('el muelle se cierra con su ✕ y volviendo a pulsar su botón', byCross && !(await bar()).menu);
 
     // Pulsar el mapa lo cierra, y ese toque no mueve a nadie.
     await openMenu('acciones');
@@ -446,8 +465,11 @@ try {
             await page.waitForTimeout(300);
             const one = (await bar()).menu?.id;
             check('con el teclado: 3 abre Acciones, Esc lo cierra y 1 abre Atacar', three === 'acciones' && closed && one === 'atacar', JSON.stringify({ three, closed, one }));
-            await page.keyboard.press('Escape');
+            // J12.20: su tecla otra vez cierra el muelle (sus tarjetas llevan las demás).
+            const keyOfFirst = await page.evaluate(() => (document.querySelector('#game-shell .gs-grimoire .gs-card-key')?.textContent || '').trim());
+            await page.keyboard.press('1');
             await page.waitForTimeout(300);
+            check('con el teclado: 1 otra vez cierra Atacar, y su primera tarjeta lleva el 2', !(await bar()).menu && keyOfFirst === '2', JSON.stringify({ keyOfFirst }));
             // Intro en un botón de la barra abre su menú; el foco entra en él y Tab no se sale.
             await page.locator('#game-shell .gs-vtt-bar .gs-btn[data-menu="acciones"]').focus();
             await page.keyboard.press('Enter');
@@ -757,7 +779,10 @@ try {
         await openMenu('atacar');
         const withMenu = await bar();
         await shot(`${name}.atacar`);
-        check(`${name}: el menú de Atacar cabe y no se corta por arriba`, Boolean(withMenu.menu) && (withMenu.menu?.top ?? -1) >= withMenu.headBottom - 1 && (withMenu.menu?.left ?? -1) >= 0 && (withMenu.menu?.right ?? 9999) <= withMenu.vw + 1,
+        // J12.20: y en pantalla grande es el muelle de la izquierda, sin tapar ninguna ficha.
+        const fits = Boolean(withMenu.menu) && (withMenu.menu?.top ?? -1) >= withMenu.headBottom - 1 && (withMenu.menu?.left ?? -1) >= 0 && (withMenu.menu?.right ?? 9999) <= withMenu.vw + 1;
+        const docked = name !== '1920' || (withMenu.menu?.dock === 'left' && (withMenu.menu?.covered ?? ['?']).length === 0);
+        check(`${name}: el menú de Atacar cabe y no se corta por arriba`, fits && docked,
             JSON.stringify({ menu: withMenu.menu && { top: withMenu.menu.top, left: withMenu.menu.left, right: withMenu.menu.right, height: withMenu.menu.height }, head: withMenu.headBottom }));
         await page.keyboard.press('Escape');
     }

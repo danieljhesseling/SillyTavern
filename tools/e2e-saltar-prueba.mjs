@@ -15,13 +15,15 @@
  *   node tools/e2e-saltar-prueba.mjs --port 8142 --captura saltar.png
  */
 
-/* global window, document, HTMLElement */
+/* global window, document */
 
 import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+// D-J62, el modo guiado: «Saltar la prueba» y el tablón están dentro de la Casa del Gremio.
+import { accionesDelSitio, enElGremio, entrarEnSitio, pasosDeLaHistoria, salirDelSitio, salirDelTablero } from './e2e-guiado.mjs';
 
 const ROOT = new URL('..', import.meta.url).pathname.replace(/^[/]([A-Za-z]:)/, '$1');
 const argAfter = (/** @type {string} */ flag) => (process.argv.includes(flag) ? process.argv[process.argv.indexOf(flag) + 1] : '');
@@ -120,12 +122,6 @@ try {
             won: Array.isArray(meta.boardsWon) ? meta.boardsWon : [],
         };
     });
-    const chips = () => page.evaluate(() => [...document.querySelectorAll('#game-shell .gs-chip-action')].map(c => (c.textContent || '').trim()));
-    const clickChip = (/** @type {RegExp} */ pattern) => page.evaluate((source) => {
-        const chip = [...document.querySelectorAll('#game-shell .gs-chip-action')].find(b => new RegExp(source).test(b.textContent || ''));
-        if (chip instanceof HTMLElement) chip.click();
-        return Boolean(chip);
-    }, pattern.source);
     const chatHas = (/** @type {RegExp} */ pattern) => page.evaluate((source) => (window.SillyTavern.getContext().chat || [])
         .some((/** @type {any} */ m) => new RegExp(source).test(String(m.extra?.display_text || m.mes || ''))), pattern.source);
     /** Espera a que se cumpla algo, sin dormir de más. */
@@ -137,9 +133,9 @@ try {
         }
         return false;
     };
-    /** La ventana de «¿Saltar la prueba?», con lo que dice. */
+    /** La ventana de «¿Saltar la prueba?», con lo que dice. D-J62: se pulsa en la Casa del Gremio. */
     const askSkip = async () => {
-        await clickChip(/^Saltar la prueba$/);
+        await enElGremio(page, 'hub-skip');
         const asked = await page.waitForSelector('.popup:has-text("¿Saltar la prueba?")', { timeout: 10000 }).then(() => true).catch(() => false);
         const text = asked ? await page.locator('.popup:has-text("¿Saltar la prueba?")').last().textContent() : '';
         return { asked, text: String(text || '').replace(/\s+/g, ' ').trim() };
@@ -173,14 +169,14 @@ try {
     check('empieza en el muelle, con Iria y 100 de oro, y el prólogo por hacer (J2.1)',
         inHub && now.party[0]?.gold === 100 && now.board === 'El muelle de Puerto Alba' && now.open.includes('el-muelle'), JSON.stringify(now));
 
-    // 2. La fila ofrece las dos cosas: pelear o saltarla.
-    const offered = await until(async () => {
-        const row = await chips();
-        return row.some(c => /^Iniciar combate \(Ratero del muelle\)/.test(c)) && row.some(c => /^Saltar la prueba$/.test(c));
-    }, 15000);
-    check('en el muelle, la fila ofrece pelear con el ratero o saltar la prueba', offered, JSON.stringify(await chips()));
+    // 2. Las dos cosas: pelear (la pelea del muelle empieza sola, tanda 10) o saltarla. D-J62: saltarla
+    // está en la Casa del Gremio, fuera del tablero: «Salir del tablero» y entrar en ella.
+    await salirDelTablero(page);
+    await entrarEnSitio(page, 'gremio');
+    const hallTrial = await accionesDelSitio(page);
+    check('fuera del muelle, en la Casa del Gremio, se puede saltar la prueba (D-J62)', hallTrial.includes('hub-skip'), JSON.stringify(hallTrial));
     // D-J28: el tablón y los mercenarios, escondidos hasta que acabe la prueba.
-    check('y todavía no el tablón de campañas ni contratar (D-J28)', !(await chips()).some(c => /Tablón de campañas|Contratar mercenarios/.test(c)), JSON.stringify(await chips()));
+    check('y todavía no el tablón de campañas ni contratar (D-J28)', !hallTrial.some(a => /^hub-(board|hire)$/.test(a)), JSON.stringify(hallTrial));
     if (SHOT) await page.screenshot({ path: SHOT });
 
     // 3. Pensárselo y no: nada cambia.
@@ -191,7 +187,7 @@ try {
     await page.waitForTimeout(800);
     now = await state();
     check('«Mejor la juego» no toca nada: el prólogo y la prueba siguen por hacer', now.open.includes('el-muelle') && now.done.length === 0
-        && (await chips()).some(c => /^Saltar la prueba$/.test(c)), JSON.stringify(now));
+        && (await accionesDelSitio(page)).includes('hub-skip'), JSON.stringify(now));
 
     // 4. Saltarla: como si se hubiera ganado.
     ask = await askSkip();
@@ -209,16 +205,20 @@ try {
     // (J2.1: se recorren los dos tableros de la prueba); el oro, lo que salga al tirar.
     check('Iria sigue ahí, con su bolsa y lo que dan el ratero y las ratas (75 PX), como si los hubiera ganado (J2.1)',
         now.party.length === 1 && now.party[0].name === 'Iria' && now.party[0].gold >= 100 && now.party[0].xp === 75 && await chatHas(/Botín/), JSON.stringify(now.party));
-    const after = await chips();
-    // J2.1: se sale del tablero del muelle, y no queda nadie con quien pelear: ni el ratero ni las ratas.
-    check('fuera del muelle, la fila ya no ofrece ninguna pelea ni saltar, y sí el tablón de campañas (J2.1)',
-        now.board === '' && !after.some(c => /^Iniciar combate/.test(c)) && !after.some(c => /^Saltar la prueba/.test(c)) && after.some(c => /Tablón de campañas/.test(c)), JSON.stringify({ board: now.board, after }));
+    // J2.1: no queda nadie con quien pelear (ni el ratero ni las ratas). D-J62: en la sala ya no está
+    // «Saltar la prueba» y sí el tablón; y lo que pide la historia no lleva a ninguna pelea.
+    await entrarEnSitio(page, 'gremio');
+    const after = await accionesDelSitio(page);
+    await salirDelSitio(page);
+    const steps = await pasosDeLaHistoria(page);
+    check('saltada, la sala ya no ofrece saltar y sí el tablón de campañas, y nada lleva a pelear (J2.1, D-J62)',
+        now.board === '' && !after.includes('hub-skip') && after.includes('hub-board') && !steps.some(st => st.kind === 'board'), JSON.stringify({ board: now.board, after, steps }));
     const focus = await page.evaluate(() => (document.querySelector('#game-shell .gs-focus-title')?.textContent || '').trim());
     check('lo que toca ahora es el tablón', /tablón de campañas/i.test(focus), focus);
     if (SHOT) await page.screenshot({ path: `${SHOT}.saltada.png` });
 
     // 5. Y el tablón se abre, con sus campañas.
-    await clickChip(/Tablón de campañas/);
+    await enElGremio(page, 'hub-board');
     const board = await page.waitForSelector('.hb-root [data-campaign="strahd"]', { timeout: 15000 }).then(() => true).catch(() => false);
     check('el tablón de campañas se abre, con Strahd', board);
 

@@ -4,14 +4,15 @@
  * Contra un servidor propio con un `--dataRoot` temporal, como `e2e-companeros.mjs`:
  *
  *   título → Jugar sin conexión → Iria (mujer) → saltar la prueba → contratar a Nella y a Gerd →
- *   «Romance: Sí» en las opciones → con Gerd en vínculo 4, quedar: la respuesta con corazón, y
- *   su «no» (su ficha no lo permite) → con Nella en vínculo 4: la señal, y empezáis → tres citas,
- *   cada una una quedada, desde el pueblo («quiere quedar contigo») → la noche, que funde a negro
+ *   «Romance: Sí» en las opciones → con Gerd en vínculo 9, quedar (D-J63: «Pasar tiempo» y su
+ *   saludo, «Pasar el rato»): el punto de inflexión, con su aviso y sin corazones; la respuesta
+ *   íntima, y su «no» (su ficha no lo permite) → con Nella en vínculo 9: el punto de inflexión, y
+ *   empezáis → tres citas, cada una una quedada, desde el pueblo (su corazón: te espera) → la noche, que funde a negro
  *   → sois pareja: «♥ Pareja» en su ficha, una frase suya en el siguiente rato, y la pareja en el
  *   Salón de la fama → con «Romance: No», nada de eso se ve → a 1387 con el grupo y, al acabar
  *   la campaña, la línea de la pareja en «Qué fue de cada uno».
  *
- * Lo único que se prepara a mano es lo que costaría horas de juego: el oro, el vínculo 4 de
+ * Lo único que se prepara a mano es lo que costaría horas de juego: el oro, el vínculo 9 de
  * Nella y de Gerd (y sus escenas de vínculo ya vistas), y que 1387 ha llegado a su final.
  *
  * Uso:
@@ -27,6 +28,7 @@ import { createRequire } from 'node:module';
 import { createWriteStream, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { enElGremio } from './e2e-guiado.mjs';
 
 const ROOT = new URL('..', import.meta.url).pathname.replace(/^[/]([A-Za-z]:)/, '$1');
 const argAfter = (/** @type {string} */ flag) => (process.argv.includes(flag) ? process.argv[process.argv.indexOf(flag) + 1] : '');
@@ -200,23 +202,29 @@ try {
             title: (dialog?.querySelector('.qd-title')?.textContent ?? '').trim(),
             lines: [...(dialog?.querySelectorAll('.qd-line') ?? [])].map(l => (l.textContent ?? '').trim()),
             // D-J54: lo del narrador (sin placa, en cursiva) y lo que dice quien está contigo.
-            // D-J60: ya no en la caja, sino en el aviso de fuera de ella.
-            notes: [...(dialog?.querySelectorAll('.qd-line.qd-note, .qd-aside .vn-aside-note') ?? [])].map(l => (l.textContent ?? '').trim()),
+            // D-J60: en la caja, ningún narrador; lo de fuera (el aviso) no cuenta.
+            notes: [...(dialog?.querySelectorAll('.qd-line.qd-note') ?? [])].map(l => (l.textContent ?? '').trim()),
             says: [...(dialog?.querySelectorAll('.qd-line.qd-say, .qd-line.qd-then') ?? [])].map(l => (l.textContent ?? '').trim()),
             // Solo el texto de la respuesta: delante va la tecla («1»).
             love: [...(dialog?.querySelectorAll('.qd-chip-love') ?? [])].map(c => (c.querySelector('.qd-label')?.textContent ?? c.textContent ?? '').trim()),
             chips: [...(dialog?.querySelectorAll('.qd-chip') ?? [])].map(c => (c.textContent ?? '').trim()),
+            // D-J63: el aviso del punto de inflexión, fuera de la caja, y las respuestas de ese paso.
+            warn: [...(dialog?.querySelectorAll('.vn-aside-warn') ?? [])].map(l => (l.textContent ?? '').trim()),
+            replies: [...(dialog?.querySelectorAll('.qd-chip-reply .qd-label') ?? [])].map(c => (c.textContent ?? '').trim()),
         };
     });
     /**
      * Jugar la escena abierta: en cada paso, la respuesta con corazón si la hay (y si `heart`), o
      * la primera. Devuelve lo leído, lo que queda al acabar y si se fundió a negro.
      *
-     * @param {{heart?: boolean, onLove?: (now: any) => Promise<void>, onFade?: (now: any) => Promise<void>}} [how]
+     * D-J63: en el punto de inflexión (con su aviso y sin corazones), `turning` elige la respuesta
+     * por su texto.
+     *
+     * @param {{heart?: boolean, onLove?: (now: any) => Promise<void>, onFade?: (now: any) => Promise<void>, turning?: RegExp|null, onTurning?: (now: any) => Promise<void>}} [how]
      */
-    const play = async ({ heart = true, onLove, onFade } = {}) => {
-        /** @type {{read: string[], notes: string[], says: string[], summary: string[], loves: string[], fade: boolean, id: string, title: string}} */
-        const out = { read: [], notes: [], says: [], summary: [], loves: [], fade: false, id: '', title: '' };
+    const play = async ({ heart = true, onLove, onFade, turning = null, onTurning } = {}) => {
+        /** @type {{read: string[], notes: string[], says: string[], summary: string[], loves: string[], fade: boolean, id: string, title: string, warned: string[], decision: string[], rankup: string}} */
+        const out = { read: [], notes: [], says: [], summary: [], loves: [], fade: false, id: '', title: '', warned: [], decision: [], rankup: '' };
         for (let i = 0; i < 24; i++) {
             const now = await meetup();
             if (!now.open) break;
@@ -235,7 +243,16 @@ try {
             }
             const summary = await page.evaluate(() => [...document.querySelectorAll('.qd-dialog[open] .qd-summary, .qd-dialog[open] .vn-aside-summary')].map(l => (l.textContent ?? '').trim()));
             if (summary.length > 0) out.summary = summary;
-            if (heart && await page.locator('.qd-dialog[open] .qd-chip-love').count() > 0) await page.locator('.qd-dialog[open] .qd-chip-love').first().click();
+            const rankup = await page.evaluate(() => (document.querySelector('.qd-dialog[open] .qd-rankup')?.textContent ?? '').trim());
+            if (rankup) out.rankup = rankup;
+            if (now.warn.length > 0 && now.replies.length > 0) {
+                out.warned = now.warn;
+                out.decision = now.replies;
+                if (onTurning) await onTurning(now);
+            }
+            const chosen = turning && now.warn.length > 0 ? now.replies.findIndex(r => turning.test(r)) : -1;
+            if (chosen >= 0) await page.locator('.qd-dialog[open] .qd-chip-reply').nth(chosen).click();
+            else if (heart && await page.locator('.qd-dialog[open] .qd-chip-love').count() > 0) await page.locator('.qd-dialog[open] .qd-chip-love').first().click();
             else if (await page.locator('.qd-dialog[open] .qd-chip-reply:not(.qd-chip-love)').count() > 0) await page.locator('.qd-dialog[open] .qd-chip-reply:not(.qd-chip-love)').first().click();
             else await page.locator('.qd-dialog[open] .qd-chip').first().click();
             await page.waitForTimeout(300);
@@ -267,7 +284,18 @@ try {
         rank: (document.querySelector('.cc-card .cc-rank')?.textContent ?? '').trim(),
         romance: (document.querySelector('.cc-card .cc-romance')?.textContent ?? '').trim(),
     }));
-    /** Quedar con alguien pulsando «Pasar tiempo» en su ficha (en un pueblo, es quedar). */
+    /**
+     * D-J63: lo que sale al pulsar a alguien es su saludo: su charla corta si la trae (se contesta
+     * la primera) y «Pasar el rato con …». Devuelve si se abrió la quedada.
+     */
+    const acceptInvite = async () => {
+        await page.waitForSelector('.qd-dialog[open] .qd-chip', { timeout: 15000 }).catch(() => {});
+        if (await page.locator('.qd-dialog[open] .qd-invite').count() === 0) return page.locator('.qd-dialog[open] .qd-chip').count().then(n => n > 0);
+        if (await page.locator('.qd-dialog[open] .qd-chip[data-choice="quedar"]').count() === 0) await page.locator('.qd-dialog[open] .qd-chip').first().click({ timeout: 5000 }).catch(() => {});
+        await page.locator('.qd-dialog[open] .qd-chip[data-choice="quedar"]').click({ timeout: 5000 }).catch(() => {});
+        return page.waitForSelector('.qd-dialog[open] .qd-root:not(.qd-invite) .qd-chip', { timeout: 15000 }).then(() => true).catch(() => false);
+    };
+    /** Quedar con alguien pulsando «Pasar tiempo» en su ficha (en un pueblo, es quedar: D-J63, primero su saludo). */
     const meetFromCard = async (/** @type {string} */ name) => {
         await clearPopups();
         await dropToasts();
@@ -277,7 +305,7 @@ try {
             return false;
         }
         await page.locator('.cc-card .cc-btn', { hasText: 'Pasar tiempo' }).click({ timeout: 5000 }).catch(() => {});
-        const opened = await page.waitForSelector('.qd-dialog[open] .qd-chip', { timeout: 15000 }).then(() => true).catch(() => false);
+        const opened = await acceptInvite();
         if (!opened) await shot(`sin-quedada-${name.split(' ')[0]}`);
         return opened;
     };
@@ -287,7 +315,7 @@ try {
         const person = social.townPeople().find((/** @type {any} */ p) => p.name === who);
         return person ? { place: String(person.place), wants: Boolean(person.wantsToMeet), why: String(person.why || ''), canMeet: Boolean(person.canMeet) } : null;
     }, name);
-    /** Quedar desde la pantalla del pueblo: entrar en el sitio donde está y «Quedar con …». */
+    /** Quedar desde la pantalla del pueblo: entrar en el sitio donde está y pulsarle (D-J63: su saludo, y «Pasar el rato»). */
     const meetFromTown = async (/** @type {string} */ name, /** @type {string} */ key) => {
         await clearPopups();
         await dropToasts();
@@ -301,20 +329,20 @@ try {
             await page.locator(`#game-shell .gs-town-place[data-place="${where.place}"]`).click({ timeout: 5000 }).catch(() => {});
         }
         await page.waitForTimeout(600);
-        const act = page.locator(`#game-shell .gs-town-scene .gs-town-act[data-action="quedar:${key}"]`);
+        const act = page.locator(`#game-shell .gs-town-scene .gs-town-act[data-action="persona:${key}"]`);
         if (await act.count() === 0) {
-            // Sin tarjeta de sitio (el muelle): desde «Por el pueblo».
+            // Sin tarjeta de sitio: desde «Por el pueblo».
             await page.locator('#game-shell .gs-town-back').click({ timeout: 3000 }).catch(() => {});
             await page.waitForTimeout(400);
-            const loose = page.locator(`#game-shell .gs-town-loose [data-chip="quedar:${key}"]`);
+            const loose = page.locator(`#game-shell .gs-town-loose [data-chip="persona:${key}"]`);
             const heart = await loose.locator('.fa-heart').count() > 0;
             await loose.first().click({ timeout: 5000 }).catch(() => {});
-            const opened = await page.waitForSelector('.qd-dialog[open] .qd-chip', { timeout: 15000 }).then(() => true).catch(() => false);
+            const opened = await acceptInvite();
             return { opened, where, heart };
         }
         const heart = await act.locator('.fa-heart').count() > 0;
         await act.first().click({ timeout: 5000 }).catch(() => {});
-        const opened = await page.waitForSelector('.qd-dialog[open] .qd-chip', { timeout: 15000 }).then(() => true).catch(() => false);
+        const opened = await acceptInvite();
         return { opened, where, heart };
     };
     const romanceOf = async (/** @type {string} */ key) => (await state()).romances?.people?.[key] ?? null;
@@ -413,7 +441,9 @@ try {
         (await import('/scripts/party/roster.js')).savePartyState();
     });
     for (const name of [NELLA, GERD]) {
-        await chipOrContinue(/Contratar mercenarios/);
+        // D-J62: contratar está en la Casa del Gremio (la fila de abajo ya no lo lleva).
+        await carryOn('exploration');
+        if (!(await enElGremio(page, 'hub-hire'))) await chipOrContinue(/Contratar mercenarios/, 8000);
         await page.waitForSelector(`.hb-root [data-hireling="${name}"]`, { timeout: 15000 }).catch(() => {});
         await page.locator(`.hb-root [data-hireling="${name}"]`).click({ timeout: 5000 }).catch(() => {});
         await until(async () => (await state()).party.some(m => m.name === name), 10000);
@@ -425,7 +455,7 @@ try {
     check('Iria contrata a Nella y a Gerd con sus botones', [NELLA, GERD].every(n => now.party.some(m => m.name === n)), JSON.stringify(now.party));
     await page.locator('dialog[open]:not([closing]) .hb-close:visible').last().click({ timeout: 2000 }).catch(() => {});
 
-    // 3. Lo que costaría horas de juego: Nella y Gerd en vínculo 4, con sus escenas de vínculo vistas.
+    // 3. Lo que costaría horas de juego: Nella y Gerd en vínculo 9 (D-J63: el punto de inflexión), con sus escenas de vínculo vistas.
     const prepared = await page.evaluate(async ([nella, gerd]) => {
         const party = (await import('/scripts/party.js')).getPartyMembersSnapshot();
         const time = await import('/scripts/party/time.js');
@@ -437,7 +467,7 @@ try {
         const ranks = {};
         for (const name of [nella, gerd]) {
             const member = party.find((/** @type {any} */ m) => m.name === name);
-            for (let i = 0; i < 120 && getBondProgress(time.getCampaignBonds(), String(member?.id)).rank < 4; i++) time.recordCampaignBondEvent(String(member?.id), 'confidant_scene');
+            for (let i = 0; i < 120 && getBondProgress(time.getCampaignBonds(), String(member?.id)).rank < 9; i++) time.recordCampaignBondEvent(String(member?.id), 'confidant_scene');
             ranks[name] = getBondProgress(time.getCampaignBonds(), String(member?.id)).rank;
         }
         const data = social.meetupData();
@@ -450,7 +480,7 @@ try {
         await st.saveMetadata();
         return ranks;
     }, [NELLA, GERD]);
-    check('preparado: Nella y Gerd en vínculo 4 (lo que llevaría muchas quedadas)', prepared[NELLA] >= 4 && prepared[GERD] >= 4, JSON.stringify(prepared));
+    check('preparado: Nella y Gerd en vínculo 9 (lo que llevaría muchas quedadas)', prepared[NELLA] >= 9 && prepared[GERD] >= 9, JSON.stringify(prepared));
 
     // 4. «Romance» en las opciones del juego, encendido de salida.
     const option = await romanceOption(false);
@@ -459,17 +489,20 @@ try {
         option.before === 'Sí' && option.rows.indexOf('romance') === option.rows.indexOf('sucesos') + 1, JSON.stringify(option));
     await closePopup();
 
-    // 5. Gerd: su ficha no lo permite. La pregunta sale (con corazón), y contesta su «no».
+    // 5. Gerd: su ficha no lo permite. El punto de inflexión sale (D-J63: con su aviso, sin
+    //    corazones); la respuesta íntima («te gusta de verdad»), y contesta su «no».
     const gerdOpen = await meetFromCard(GERD);
     let loveShot = false;
     const gerdScene = await play({
-        onLove: async () => {
+        turning: /te gusta de verdad|mano/,
+        onTurning: async () => {
             if (!loveShot) await shot('gerd-pregunta');
             loveShot = true;
         },
     });
-    check('J14.10 (3): con Gerd en vínculo 4, la quedada trae la respuesta con corazón',
-        gerdOpen && gerdScene.loves.length === 1 && /^♥/.test(gerdScene.loves[0]), JSON.stringify({ gerdOpen, loves: gerdScene.loves, id: gerdScene.id }));
+    check('J14.10 (3) y D-J63: con Gerd en vínculo 9, la quedada es el punto de inflexión: «Deberías elegir tus palabras con cuidado…», sin corazones',
+        gerdOpen && gerdScene.warned.some(w => /Deberías elegir tus palabras con cuidado/.test(w)) && gerdScene.loves.length === 0 && gerdScene.decision.some(r => /te gusta de verdad|mano/.test(r)),
+        JSON.stringify({ gerdOpen, warned: gerdScene.warned, decision: gerdScene.decision, loves: gerdScene.loves, id: gerdScene.id }));
     check('J14.10 (2) y (3): Gerd contesta según su ficha (con nadie): su «no», con cariño, y concordando con Iria',
         gerdScene.read.some(l => /chavala.*una hermana pequeña/.test(l)) && !gerdScene.read.some(l => /[{}|]/.test(l))
         && gerdScene.summary.some(l => /Gerd te ha dicho que no, con cariño/.test(l)) && (await romanceOf('gerd-el-mellado'))?.status === 'no',
@@ -477,18 +510,20 @@ try {
     await clearPopups();
     await dropToasts();
 
-    // 6. Nella: la señal, desde su ficha. «La última flecha», y el corazón al final.
+    // 6. Nella: el punto de inflexión, desde su ficha. «La última flecha», su aviso al final, y la respuesta íntima.
     const nellaOpen = await meetFromCard(NELLA);
     loveShot = false;
     const signal = await play({
-        onLove: async () => {
+        turning: /Le coges la mano/,
+        onTurning: async () => {
             if (!loveShot) await shot('senal');
             loveShot = true;
         },
     });
     let nella = await romanceOf('nella-tresflechas');
-    check('J14.10 (3): con Nella en vínculo 4, la señal: su escena escrita, y una respuesta con corazón',
-        nellaOpen && /La última flecha/.test(signal.title) && signal.loves.length === 1 && /Le coges la mano/.test(signal.loves[0]), JSON.stringify({ title: signal.title, loves: signal.loves }));
+    check('J14.10 (3) y D-J63: con Nella en vínculo 9, el punto de inflexión: su escena escrita, el aviso, sin corazones, y la respuesta íntima',
+        nellaOpen && /La última flecha/.test(signal.title) && signal.warned.some(w => /Deberías elegir tus palabras con cuidado/.test(w)) && signal.loves.length === 0
+        && signal.decision.some(r => /Le coges la mano/.test(r)), JSON.stringify({ title: signal.title, warned: signal.warned, decision: signal.decision, loves: signal.loves }));
     check('J14.10 (3): la elige Iria, y empiezan: Nella contesta lo suyo y lo dice el resumen',
         signal.read.some(l => /se acabaron las excusas/.test(l)) && signal.summary.some(l => /Nella y tú empezáis algo/.test(l)) && nella?.status === 'citas' && nella?.step === 0,
         JSON.stringify({ summary: signal.summary, nella }));
@@ -518,8 +553,8 @@ try {
         && dates.every((d, i) => d.loves === 1 && d.nella?.step === i + 1)
         && /van 1 de 3/.test(dates[0].summary.join(' ')) && /La próxima vez que quedéis de noche/.test(dates[2].summary.join(' ')),
         JSON.stringify(dates.map(d => ({ t: d.title, l: d.loves, s: d.nella?.step, sum: d.summary.slice(-1) }))));
-    check('D-J54: la señal y las citas son conversaciones: Nella habla en cada paso, y el narrador dice como mucho una línea corta por escena',
-        [{ notes: signal.notes, says: signal.says.length }, ...dates].every(d => d.notes.length <= 1 && d.notes.every((/** @type {string} */ n) => n.length <= 110) && d.says >= 3),
+    check('D-J60: el punto de inflexión y las citas son conversaciones: Nella habla en cada paso, y en la caja no hay narrador',
+        [{ notes: signal.notes, says: signal.says.length }, ...dates].every(d => d.notes.length === 0 && d.says >= 3),
         JSON.stringify([{ notes: signal.notes, says: signal.says.length }, ...dates.map(d => ({ notes: d.notes, says: d.says }))]));
 
     // 8. La noche: hasta que caiga, ratos de siempre; de noche, «quiere verte esta noche» y su escena.
@@ -602,7 +637,8 @@ try {
     await clearPopups();
     await dropToasts();
     await carryOn('exploration');
-    await clickChip(/Tablón de campañas/);
+    // D-J62: el tablón está en la Casa del Gremio.
+    if (!(await enElGremio(page, 'hub-board'))) await clickChip(/Tablón de campañas/);
     await page.waitForSelector('.hb-root [data-campaign="1387"]', { timeout: 15000 }).catch(() => {});
     await page.locator('.hb-root [data-campaign="1387"]').click({ timeout: 5000 }).catch(() => {});
     const in1387 = await until(async () => /1387/.test((await state()).world), 150000);

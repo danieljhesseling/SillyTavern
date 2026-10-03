@@ -122,6 +122,8 @@ import { hallShown } from './romance.js';
 import { canParleyNow, openParleyChoice } from './avoid.js';
 import { buildCombatBarView, runCombatBarPick } from './combat-bar.js';
 import { shownName } from '../game-engine/ui/shown-names.js';
+import { guidedNow, peopleHereNow, runStoryStep, storyStepsNow } from './guided.js';
+import { looseLookChips } from './talk.js';
 
 /** Los avisos del juego, guardados para la bandeja (idea 159). */
 /** @type {import('../game-engine/ui/shell/notices.js').Notice[]} */
@@ -666,8 +668,17 @@ function buildShellOptions() {
         // J10.2: y lo que se puede examinar dentro de cada sitio (la sala del gremio, la capilla…).
         getTown: () => {
             const town = withPastimes(townNow());
-            return town ? { ...town, looks: placeLookChips() } : town;
+            // D-J62, el modo guiado: lo que se mira suelto y los rumores, sin la fila de abajo, van
+            // dentro del sitio al que pertenecen (la pantalla del pueblo los reparte).
+            const guided = guidedNow();
+            return town ? { ...town, looks: placeLookChips(), looseLooks: guided ? looseLookChips() : [], rumors: guided ? rumorsLeftHere() : 0 } : town;
         },
+        // D-J62: el modo guiado (sin la fila de acciones libres, sin «Tableros de aquí» ni «Viajar»),
+        // lo que pide ahora la historia y la gente de aquí fuera de un pueblo.
+        isGuided: () => guidedNow(),
+        getStory: () => storyStepsNow(),
+        onStory: (step) => { void runStoryStep(step); },
+        getPeopleHere: () => peopleHereNow(),
         getChips: buildShellChips,
         onChip: runShellChip,
         // D-J45: «Continuar» tras ganar sigue el hilo (sale del tablero si lo siguiente es fuera).

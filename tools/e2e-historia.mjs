@@ -32,6 +32,8 @@ import { createRequire } from 'node:module';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+// D-J62, el modo guiado: a quien pide la historia se le habla desde «Lo que pide la historia».
+import { pasoDeLaHistoria, salirDelTablero } from './e2e-guiado.mjs';
 import { entrarEnLaPelea } from './e2e-entrar-pelea.mjs';
 
 const ROOT = new URL('..', import.meta.url).pathname.replace(/^[/]([A-Za-z]:)/, '$1');
@@ -615,13 +617,10 @@ try {
         brunildaScene && gremioFrames.some(f => f.plate === 'Brunilda') && !now.done.includes('el-gremio') && now.open.includes('el-gremio'),
         JSON.stringify({ done: now.done, open: now.open }));
     await dropToasts();
-    // Tras la pelea se sigue en el tablero del muelle: «Continuar» lleva al pueblo, como quien juega.
-    for (let i = 0; i < 4 && !(await chips()).some(c => /^Hablar con Brunilda/.test(c)); i++) {
-        await page.locator('#game-shell .gs-chip-continue:visible').first().click({ timeout: 2000 }).catch(() => {});
-        await page.waitForTimeout(1200);
-    }
-    const talkChip = await until(async () => (await chips()).some(c => /^Hablar con Brunilda/.test(c)), 10000);
-    await clickChip(/^Hablar con Brunilda/);
+    // Tras la pelea se sigue en el tablero del muelle: se sale al pueblo, como quien juega. D-J62:
+    // sin la fila de abajo, «Hablar con Brunilda» está en lo que pide la historia.
+    await salirDelTablero(page);
+    const talkChip = await pasoDeLaHistoria(page, 'story:talk:Brunilda', { ms: 10000 });
     const brunildaTalk = await until(async () => (await story())?.id === 'brunilda-la-casa', 10000);
     const brunildaOpen = await story();
     check('D-J36: «Hablar con Brunilda» abre directamente su charla escrita, con su cara y «Otras cosas»',

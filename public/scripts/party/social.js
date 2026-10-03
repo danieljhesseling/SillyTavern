@@ -32,7 +32,7 @@ import {
 } from '../game-engine/campaign/small-talk.js';
 import {
     readMeetupRows, personOf, meetupFor, renderScene, sceneOutcome, applyMeetup, recordMeetup, meetupSummary, wantsToMeet,
-    bondDiscounts, replyTraits,
+    bondDiscounts, replyTraits, RANK_UP_LINE,
 } from '../game-engine/campaign/meetups.js';
 import { DIRECT_SOCIAL_BUTTONS, INVITE_CHOICES, hangoutReach, invitationFor, rankUpHint } from '../game-engine/campaign/invitations.js';
 import { cardOf } from '../game-engine/campaign/companion-cards.js';
@@ -476,7 +476,7 @@ export async function inviteFrom(name) {
     const points = normalizeBondState(getCampaignBonds()).bonds[bondKey]?.points ?? 0;
     const scene = Boolean(wantsToMeet({ person, rank: rankOf(bondKey), data, social, campaign: campaignId() }).scene);
     const greeting = invitationFor({
-        name: who.name, known, intro, place: who.place, slot: slot.id, lately: latelyWith(who.key), festival: festivalName(),
+        name: who.name, known, intro, place: who.place, placeName: who.place ? placeLabel(who.place, location) : '', slot: slot.id, lately: latelyWith(who.key), festival: festivalName(),
         wants: person.wants, scene, date: romanceDateFor(who.name, slot.id), hero: partyMembers[0],
     });
     // J14.1 dentro del saludo: su charla corta del pueblo, una al día como mucho.
@@ -633,7 +633,8 @@ async function playMeetup(who, place) {
         if (isShellOpen()) refreshGameShell();
         return '';
     }
-    postCombatNarration(`💞 [VÍNCULO] ${told.join(' ')}`);
+    // En el registro, el momento del rango con su punto: «Rango 2 con Gerd. Te acercas…».
+    postCombatNarration(`💞 [VÍNCULO] ${told.map(line => (RANK_UP_LINE.test(line) ? `${line}.` : line)).join(' ')}`);
     // Idea 30: quien llega a vínculo 3 te pide lo suyo.
     offerPersonalQuests();
     spendDayPart('quedar', { who: who.name });

@@ -71,6 +71,7 @@ import { raiseFame } from './town.js';
 import { statsLines } from './menus.js';
 import { coupleEndingLines } from './romance.js';
 import { shownText } from '../game-engine/ui/shown-names.js';
+import { queueStoryMoves, runStoryMoves } from './guided.js';
 
 /**
  * El hilo, con sus escenas y pistas ya concordadas con quien juega (J1.4): el guion escribe
@@ -517,6 +518,8 @@ export async function applySceneEffectsToGame(effects, { roll = null, hero = nul
     chat_metadata[ATTITUDES_KEY] = out.attitudes;
     chat_metadata[RUMORS_HEARD_KEY] = out.rumorsHeard;
     chat_metadata[RUMORS_HEARD_ON_KEY] = out.rumorsHeardOn;
+    // D-J62: «Bajo a la bodega»: el tablero (o el viaje) se hace al cerrar la ventana (`runStoryMoves`).
+    if (out.moves.length > 0) queueStoryMoves(out.moves);
     const holder = who ?? partyMembers[0];
     if (out.goldChange > 0 && holder) holder.gold = (Number(holder.gold) || 0) + out.goldChange;
     else if (out.goldChange < 0) payFromParty(Math.min(partyPurse(), -out.goldChange));
@@ -777,6 +780,8 @@ async function playPlotScene(milestone, scene) {
     if (sceneIsTheTalk(milestone, shown) && !pending.includes(String(milestone.id))) pending.push(String(milestone.id));
     for (const id of pending) notePlot({ kind: 'milestone', id });
     if (isShellOpen()) refreshGameShell();
+    // D-J62: lo que la escena mandó hacer al acabar («Bajo a la bodega»), con la ventana ya cerrada.
+    void runStoryMoves().catch(error => console.error('[party] lo que mandó la escena falló', error));
 }
 
 /**

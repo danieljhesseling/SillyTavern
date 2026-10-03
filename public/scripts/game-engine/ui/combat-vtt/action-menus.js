@@ -1050,3 +1050,27 @@ export function buildBar(s) {
 export function pickable(items) {
     return (items || []).filter(i => i.kind !== 'weapon' && i.enabled);
 }
+
+/**
+ * J12.20: las teclas de las tarjetas del muelle abierto. La tecla del propio menú (1 Atacar,
+ * 2 Magia, 3 Acciones, 4 Adicional) lo cierra, como volver a pulsar su botón: sus tarjetas llevan
+ * las demás, del 1 al 9, en orden (en Atacar, del 2 al 9).
+ *
+ * @param {string|number} [ownKey] La tecla del menú abierto.
+ * @returns {number[]}
+ */
+export function cardKeys(ownKey = '') {
+    return [1, 2, 3, 4, 5, 6, 7, 8, 9].filter(n => String(n) !== String(ownKey));
+}
+
+/**
+ * J12.20: la tecla de la tarjeta que va en ese sitio de lo que se puede pulsar (0, sin tecla).
+ *
+ * @param {number} index Su sitio en `pickable(...)`, desde 0 (o -1, si no se puede pulsar).
+ * @param {string|number} [ownKey]
+ * @returns {number}
+ */
+export function cardKeyAt(index, ownKey = '') {
+    if (!Number.isInteger(index) || index < 0) return 0;
+    return cardKeys(ownKey)[index] ?? 0;
+}

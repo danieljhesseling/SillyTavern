@@ -35,6 +35,8 @@ import { createRequire } from 'node:module';
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+// D-J62, el modo guiado: lo del gremio en la Casa del Gremio; se va y se entra por lo que pide la historia.
+import { alSitio, enElGremio, pasoDeLaHistoria, salirDelTablero, viajarAPasoNormal } from './e2e-guiado.mjs';
 import { pathToFileURL } from 'node:url';
 
 const ROOT = new URL('..', import.meta.url).pathname.replace(/^[/]([A-Za-z]:)/, '$1');
@@ -200,6 +202,7 @@ try {
             party: party.map((/** @type {any} */ m) => ({ name: m.name, world: m.worldName, hp: m.hp })),
             fighting: Boolean(meta.combatEncounter?.active),
             ending: String(meta.plotEnding ?? ''),
+            done: Array.isArray(meta.plotState?.done) ? meta.plotState.done.map(String) : [],
         };
     });
     const chips = () => page.evaluate(() => [...document.querySelectorAll('#game-shell .gs-chip-action')].map(c => (c.textContent || '').trim()));
@@ -341,20 +344,22 @@ try {
     // El prólogo se lee (sus escenas) y la prueba se salta, como quien ya sabe jugar.
     await page.waitForTimeout(1500);
     await settle();
-    await until(async () => (await chips()).some(c => /^Saltar la prueba$/.test(c)), 15000);
-    await clickChip(/^Saltar la prueba$/);
+    // D-J62: «Saltar la prueba» está en la Casa del Gremio, fuera del tablero del muelle.
+    await salirDelTablero(page);
+    // Si la pelea del muelle ya se está decidiendo, lo mismo que hace el botón.
+    if (!(await until(() => enElGremio(page, 'hub-skip'), 15000))) await page.evaluate(async () => { void (await import('/scripts/party/hub.js')).skipHubTrial(); });
     await page.waitForSelector('.popup:has-text("¿Saltar la prueba?")', { timeout: 10000 }).catch(() => {});
     await page.locator('.popup-button-ok:visible').first().click({ timeout: 5000 }).catch(() => {});
     await page.waitForTimeout(1500);
     await settle();
-    const skipped = await until(async () => (await chips()).some(c => /Tablón de campañas/.test(c)), 20000);
+    const skipped = await until(async () => (await state()).done.includes('la-prueba'), 20000);
     check('en el gremio con Iria, y la prueba saltada', inHub && skipped, JSON.stringify({ state: await state(), chips: await chips() }));
     read.length = 0;
     plates.length = 0;
 
     // 2. El tablón: pegar la campaña corta.
     await dropToasts();
-    await clickChip(/Tablón de campañas/);
+    await enElGremio(page, 'hub-board');
     await page.waitForSelector('.hb-root [data-campaign-add]', { timeout: 15000 });
     await page.locator('.hb-root .hb-paste-open').click();
     await page.fill('.hb-root .hb-paste-text', JSON.stringify(SHORT, null, 2));
@@ -411,23 +416,26 @@ try {
     const povAt = read.findIndex(t => /Aquí nadie os va a abrir la puerta/.test(t));
     // J13.7: hasta que se presenta, se le llama por lo que es («El molinero»).
     check('la primera escena la cuenta Tobías, con su nombre o lo que es (pov)', povAt >= 0 && /Tobías|molinero/i.test(plates[povAt] ?? ''), JSON.stringify({ read, plates }));
-    const brezo = await chips();
-    check('Tobías el molinero está en la aldea (npcs.where): se puede hablar con él', brezo.some(c => /^Hablar con (Tobías|el molinero)/.test(c)), JSON.stringify(brezo));
+    // D-J62: sin la fila de abajo, se le habla en la aldea (en su sitio o en «Gente de aquí»).
+    await alSitio(page);
+    const brezo = await page.evaluate(() => [...document.querySelectorAll('#game-shell [data-chip^="talk-local:"], #game-shell .gs-town-place-who, #game-shell .gs-story-step')]
+        .map(n => (n.textContent || '').replace(/\s+/g, ' ').trim()));
+    check('Tobías el molinero está en la aldea (npcs.where): se puede hablar con él', brezo.some(c => /Tobías|molinero/.test(c)), JSON.stringify(brezo));
 
     // 4. Las tres misiones, una tras otra: ir, entrar, pelear, ganar.
     /** @type {string[]} Los tableros que avisaron de que no hay vuelta atrás (J11.1). */
     const warnings = [];
     for (const [place, foe] of [['El camino del monte', 'Lobo'], ['La ermita', 'Cultista'], ['La cripta de la ermita', 'Dama']]) {
         await settle();
-        const go = await until(() => clickChip(new RegExp(`^Ir a ${place}$`)), 15000);
-        await page.waitForTimeout(800);
-        await page.locator('.popup-button-ok:visible').first().click({ timeout: 2000 }).catch(() => {});
+        // D-J62: «Ir a…» en lo que pide la historia; y al llegar, su tablero se abre solo.
+        const go = await pasoDeLaHistoria(page, `story:go:${place}`, { ms: 15000 });
+        await viajarAPasoNormal(page);
         const there = await until(async () => (await state()).location === place, 30000);
         await settle();
         await dump(`en ${place}`);
         if (SHOT) await page.screenshot({ path: `${SHOT}.${place.replace(/\W+/g, '-')}.png` });
-        const enter = await clickChip(new RegExp(`^Entrar en ${place}`));
-        await page.waitForTimeout(1200);
+        const enter = await until(async () => Boolean((await state()).board) || await page.locator('.popup:has-text("no tiene vuelta atrás")').count() > 0, 10000);
+        await page.waitForTimeout(600);
         // J11.1: el tablero que lleva al final avisa antes de que no hay vuelta atrás.
         const warned = await page.locator('.popup:has-text("no tiene vuelta atrás") .popup-button-ok').click({ timeout: 2500 }).then(() => true).catch(() => false);
         if (warned) {
@@ -490,7 +498,7 @@ try {
     const back = await until(async () => /Gremio/.test((await state()).world), 60000);
     await page.waitForTimeout(1500);
     await settle();
-    await clickChip(/Tablón de campañas/);
+    await enElGremio(page, 'hub-board');
     await page.waitForSelector('.hb-root [data-campaign]', { timeout: 15000 }).catch(() => {});
     const tile = await page.evaluate((id) => (document.querySelector(`.hb-root [data-campaign="${id}"]`)?.textContent || '').replace(/\s+/g, ' ').trim(), ID);
     check('de vuelta en el gremio, en el tablón va «Terminada»', home && back && /Terminada/.test(tile), JSON.stringify({ home, back, tile }));
@@ -498,7 +506,7 @@ try {
     await page.locator('.hb-root .hb-close').click({ timeout: 5000 }).catch(() => {});
 
     // 6. J12.5: otra campaña, con un tablero hecho de un mapa en imagen y sin su mapa escrito.
-    await clickChip(/Tablón de campañas/);
+    await enElGremio(page, 'hub-board');
     await page.waitForSelector('.hb-root [data-campaign-add]', { timeout: 15000 });
     await page.locator('.hb-root .hb-paste-open').click();
     await page.fill('.hb-root .hb-paste-text', JSON.stringify(DRAWN_PACK, null, 2));

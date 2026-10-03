@@ -100,6 +100,8 @@ import { buildServiceCards, runService } from './town.js';
 import { buildShellChips, runShellChip } from './shell.js';
 import { hallShown, romanceGlanceLine } from './romance.js';
 import { knownPeopleJournal } from './known-people.js';
+import { guidedNow } from './guided.js';
+import { guidedRow } from '../game-engine/campaign/guided-mode.js';
 
 /** Ideas 69 y 70: el mapa en texto, con niebla y con notas. */
 export async function openTextMap() {
@@ -452,12 +454,15 @@ function showJournalList(sections, told) {
 
 /** Idea 136: todo lo que se puede hacer ahora, junto y pulsable. */
 export function openHelp() {
+    // D-J62: con el modo guiado, la ayuda no ofrece lo que el juego esconde (entrar en un tablero a
+    // mano, viajar a cualquier sitio, la fila de acciones libres).
+    const guided = guidedNow();
     const sections = buildHelp({
         focus: focusOf(getPlot(), chat_metadata?.[PLOT_STATE_KEY], campaignDay()),
         services: buildServiceCards(),
-        boards: currentBoardName ? [] : getLocationBoards(hereLocation()).map((/** @type {any} */ b) => String(b.name)),
-        chips: buildShellChips().map(c => ({ id: c.id, label: c.label })),
-        places: neighbourPlaces().length,
+        boards: currentBoardName || guided ? [] : getLocationBoards(hereLocation()).map((/** @type {any} */ b) => String(b.name)),
+        chips: (guided ? guidedRow(buildShellChips(Infinity)) : buildShellChips()).map(c => ({ id: c.id, label: c.label })),
+        places: guided ? 0 : neighbourPlaces().length,
         fighting: Boolean(combatEncounter.active),
         engineReads: narratorMode() === 'motor',
     });

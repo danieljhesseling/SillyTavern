@@ -83,6 +83,8 @@ function openedBy(by) {
  * @property {(place: string, note: string) => void} [onNote] Guardar tu nota (vacía: borrarla).
  * @property {(place: string) => void} [onTravel] Al pulsar «Viajar aquí».
  * @property {string} [selected] El sitio que sale elegido al abrir; sin él, donde estáis.
+ * @property {(place: string) => boolean} [canTravel] D-J62, el modo guiado: a qué sitios se puede viajar desde
+ *   el mapa (los que pide la historia o el encargo). Sin él, a todos los vecinos.
  */
 
 /**
@@ -91,7 +93,7 @@ function openedBy(by) {
  * @param {CampaignMapInput} input
  * @returns {HTMLElement}
  */
-export function buildCampaignMap({ model, title = 'El mapa', pack = '', night = false, onNote = () => {}, onTravel, selected = '' }) {
+export function buildCampaignMap({ model, title = 'El mapa', pack = '', night = false, onNote = () => {}, onTravel, selected = '', canTravel }) {
     const root = el('div', 'cm-root');
     const head = el('div', 'cm-head');
     const heading = el('h3', 'cm-title');
@@ -280,7 +282,8 @@ export function buildCampaignMap({ model, title = 'El mapa', pack = '', night = 
         noteRow.append(count, save);
         side.appendChild(noteRow);
 
-        if (onTravel && place.reach === 'near') {
+        // D-J62: con el modo guiado, solo adonde manda la historia (el mapa enseña los demás, sin botón).
+        if (onTravel && place.reach === 'near' && (!canTravel || canTravel(place.name))) {
             const go = /** @type {HTMLButtonElement} */ (el('button', 'menu_button cm-travel'));
             go.type = 'button';
             go.append(icon('fa-person-hiking'), document.createTextNode(` Viajar aquí (${place.days} ${place.days === 1 ? 'día' : 'días'})`));

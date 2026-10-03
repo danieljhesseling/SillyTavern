@@ -687,7 +687,17 @@ try {
 
     // «Saltar la prueba» de la bodega con el teclado. Su ventana de sí o no abre con el foco
     // dentro, Intro dice que sí, y al cerrarse el foco no se queda en la página.
-    check('«Saltar la prueba» se alcanza con Tab', await keyTo(x => /Saltar la prueba/.test(x.text), 40));
+    // D-J62: está en la Casa del Gremio (la fila de abajo ya no lo lleva): al pueblo con «Continuar»
+    // (o con el botón del tablero) y dentro, todo con el teclado.
+    for (let i = 0; i < 3 && (await game()).places === 0 && !(await game()).town; i++) {
+        if (await keyTo(x => /gs-chip-continue|wm-leave-loc-btn|Salir del tablero/.test(`${x.cls} ${x.text}`), 30)) await key('Enter', 1500);
+    }
+    await until(async () => (await game()).places > 0 || Boolean((await game()).town), 10000);
+    if (!(await game()).town) {
+        check('en el pueblo, la Casa del Gremio se alcanza con Tab (D-J62)', await keyTo(x => /gs-town-place/.test(x.cls) && /Casa del Gremio/.test(x.text), 50));
+        await key('Enter', 1500);
+    }
+    check('«Saltar la prueba» se alcanza con Tab, en la Casa del Gremio (D-J62)', await keyTo(x => /Saltar la prueba/.test(x.text), 40));
     await key('Enter', 1200);
     await until(async () => (await page.locator('dialog[open]').count()) > 0, 8000);
     f = await focus();
@@ -713,6 +723,8 @@ try {
     }
     await wait(1200);
     check('lo que cuenta el hilo tras saltar la prueba se pasa con Intro, con el foco en ello', (await game()).dialogs === 0 && lostAfter === 0, JSON.stringify({ afterSteps, lostAfter }));
+    // D-J62: se saltó desde la Casa del Gremio: se vuelve a la plaza con su botón, con el teclado.
+    if ((await game()).town && await keyTo(x => /gs-town-back/.test(x.cls), 40)) await key('Enter', 800);
     // «Continuar» (lo principal de la fila) lleva al pueblo: sus localizaciones, en tarjetas.
     if ((await game()).places === 0) {
         check('«Continuar» se alcanza con Tab', await keyTo(x => /gs-chip-continue/.test(x.cls), 40));

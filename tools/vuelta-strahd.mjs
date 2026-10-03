@@ -149,6 +149,9 @@ try {
         v = await bot.observe();
         if (await bot.handleLayer(v)) continue;
         if (await bot.tapChip(v, /^Saltar la prueba$/, 'saltar la prueba', 'hub.js')) continue;
+        // D-J62: con el modo guiado, «Saltar la prueba» está en la Casa del Gremio, fuera del tablero.
+        if (v.board && !v.fight && await bot.tapChip(v, /^Salir del tablero$/, 'salir del tablero', 'action-chips.js')) continue;
+        if (await bot.hallAct(v, 'hub-skip', 'saltar la prueba (en la Casa del Gremio)')) continue;
         if (v.scene === 'dialogue' && v.vn.next) await bot.act(v, '«Continuar»', () => bot.press(bot.chip(/^Continuar$/)));
     }
     check('en el gremio, «Saltar la prueba» deja el prólogo hecho', v.done.includes('la-prueba'), `${JSON.stringify(v.done)} · se ve: ${bot.describe(v).slice(0, 400)}`);
@@ -163,6 +166,8 @@ try {
         v = await bot.observe();
         if (await bot.handleLayer(v, { onHub })) continue;
         if (await bot.tapChip(v, /^Tablón de campañas$/, 'el tablón de campañas', 'action-chips.js')) continue;
+        // D-J62: con el modo guiado, el tablón está en la Casa del Gremio.
+        if (await bot.hallAct(v, 'hub-board', 'el tablón de campañas (en la Casa del Gremio)')) continue;
         if (v.scene === 'dialogue' && v.vn.next) await bot.act(v, '«Continuar»', () => bot.press(bot.chip(/^Continuar$/)));
         else if (v.town.inside) await bot.toMap(v);
     }
@@ -328,6 +333,8 @@ try {
                     return false;
                 }, door.source);
             }
+            // D-J62: con el modo guiado, lo que se mira aquí está en la columna «Mirar» de la pantalla del sitio.
+            if (!pressed) pressed = await page.locator('#game-shell .gs-look').filter({ hasText: door }).first().click({ timeout: 3000 }).then(() => true).catch(() => false);
             if (!pressed) {
                 tries.push(`intento ${attempt + 1}: no se ve «Examinar la puerta…» (${seen.chips.join(' · ').slice(0, 200)})`);
             }
@@ -440,8 +447,10 @@ try {
             if (seen.town.inside) await bot.toMap(seen);
             seen = await bot.observe();
             const checkChip = seen.chips.find((/** @type {string} */ c) => /^(Examinar|Buscar|Mirar|Escuchar|Rastrear|Registrar)\b/.test(c));
-            if (checkChip) {
-                await bot.tapChip(seen, new RegExp(`^${checkChip.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`), `tirada: ${checkChip}`, 'action-chips.js');
+            // D-J62: sin la fila de abajo, el encargo sin pelea se intenta con «Resolverlo hablando» (lo que pide la historia).
+            const byStory = !checkChip && await bot.storyStep(seen, (/** @type {any} */ st) => st.kind === 'check', 'resolver el encargo hablando');
+            if (checkChip || byStory) {
+                if (checkChip) await bot.tapChip(seen, new RegExp(`^${checkChip.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`), `tirada: ${checkChip}`, 'action-chips.js');
                 for (let i = 0; i < 12; i++) {
                     await page.waitForTimeout(400);
                     seen = await bot.observe();

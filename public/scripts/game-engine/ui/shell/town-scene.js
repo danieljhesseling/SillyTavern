@@ -21,6 +21,7 @@ import { PLACE_KINDS, townPlaces, townNpcsFromEntries, greetingFor, describeWho,
 import { hallSections, hallHeader } from '../../campaign/guild-hall.js';
 import { hearLine, knowsName, shownName, shownText } from '../shown-names.js';
 import { DIRECT_SOCIAL_BUTTONS } from '../../campaign/invitations.js';
+import { sightHome, spreadLooks } from '../../campaign/guided-mode.js';
 
 /**
  * @typedef {import('../../campaign/town.js').TownPlace} TownPlace
@@ -48,6 +49,8 @@ import { DIRECT_SOCIAL_BUTTONS } from '../../campaign/invitations.js';
  * @property {(actionId: string) => void} onService
  * @property {(chip: ActionChip) => void} onChip
  * @property {() => void} refresh Redibujar el Shell.
+ * @property {boolean} [guided] D-J62, el modo guiado: sin la fila de abajo, lo que se mira suelto en el pueblo
+ *   (`data.looseLooks`) va al sitio al que pertenece (`sightHome`), y los rumores (`data.rumors`), a la taberna.
  */
 
 /**
@@ -511,6 +514,32 @@ export function renderTownSelector(town, ctx) {
 }
 
 /**
+ * D-J62, el modo guiado: lo de mirar que el pueblo tiene suelto (sin la fila de abajo no salía en
+ * ninguna parte), en el sitio al que pertenece: los avisos de la lonja en el mercado, las barcas en
+ * el muelle (`sightHome`). Y los rumores, en la taberna (o donde se oye de todo).
+ *
+ * @param {TownPlace} place
+ * @param {TownView} town
+ * @param {TownContext} ctx
+ * @returns {ActionChip[]}
+ */
+function guidedLooks(place, town, ctx) {
+    const kinds = [...new Set(town.places.map(p => String(p.kind)))];
+    // Si el pueblo tiene dos sitios de la misma clase, al primero.
+    if (town.places.find(p => p.kind === place.kind) !== place) return [];
+    const data = /** @type {any} */ (ctx.data);
+    const loose = /** @type {ActionChip[]} */ (spreadLooks(Array.isArray(data?.looseLooks) ? data.looseLooks : [], kinds)[place.kind] ?? []);
+    const rumors = Number(data?.rumors) || 0;
+    const tavern = kinds.includes('posada') ? 'posada' : sightHome('lo que se cuenta entre la gente', kinds);
+    // La posada ya los ofrece en su tarjeta («Escuchar lo que se cuenta»): no dos botones para lo mismo.
+    const inInn = (ctx.cards ?? []).some(card => card.actions.some(action => action.id === 'inn-rumor'));
+    if (rumors > 0 && place.kind === tavern && !inInn) {
+        loose.push({ id: 'rumor', label: `Escuchar lo que se cuenta (${rumors})`, icon: 'fa-ear-listen', source: 'motor', command: '/rumor' });
+    }
+    return loose;
+}
+
+/**
  * Lo que se puede hacer en un sitio, por grupos: lo de sus tarjetas, lo del gremio y hablar.
  *
  * @param {TownPlace} place
@@ -620,7 +649,8 @@ function placeActs(place, town, ctx) {
         });
     }
     // J3.11 y J10.2: lo que se puede examinar en este sitio (la sala del gremio, la capilla…), con su tirada.
-    const looks = /** @type {any} */ (ctx.data)?.looks?.[place.kind] ?? [];
+    // D-J62: con el modo guiado, también lo suelto del pueblo que es de aquí, y los rumores en la taberna.
+    const looks = [...(/** @type {any} */ (ctx.data)?.looks?.[place.kind] ?? []), ...(ctx.guided ? guidedLooks(place, town, ctx) : [])];
     if (looks.length > 0) {
         groups.push({
             title: 'Mirar',

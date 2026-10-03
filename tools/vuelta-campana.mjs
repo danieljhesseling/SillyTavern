@@ -20,6 +20,7 @@
  *   node tools/vuelta-campana.mjs mi-campana.json --captura v.png # capturas al empezar y al final
  *   node tools/vuelta-campana.mjs --ejemplo                       # la muestra del Gem (La luz de Punta Gris)
  *   node tools/vuelta-campana.mjs --ejemplo corta                 # la muestra corta (El Pozo de la Ermita)
+ *   node tools/vuelta-campana.mjs --tablon costa                  # una que ya está en el tablón (las experimentales: costa, ocaso, pantalla)
  *   node tools/vuelta-campana.mjs mi-campana.json --peleas        # las peleas de verdad (más lenta)
  *   node tools/vuelta-campana.mjs mi-campana.json --estricto      # y un silencio o un atasco cuentan como fallo
  *   node tools/vuelta-campana.mjs mi-campana.json --pasos 400     # cortar antes
@@ -40,7 +41,7 @@ import { pathToFileURL } from 'node:url';
 import { createBot, startOffline, runCampaign, skipTrial, startServer, printFindings, quietMotion } from './vuelta-bot.mjs';
 
 const ROOT = new URL('..', import.meta.url).pathname.replace(/^[/]([A-Za-z]:)/, '$1');
-const FLAGS_WITH_VALUE = ['--port', '--captura', '--pasos', '--campana'];
+const FLAGS_WITH_VALUE = ['--port', '--captura', '--pasos', '--campana', '--tablon'];
 const argAfter = (/** @type {string} */ flag) => (process.argv.includes(flag) ? process.argv[process.argv.indexOf(flag) + 1] : '');
 const PORT = Number(argAfter('--port')) || 8249;
 const BASE = `http://127.0.0.1:${PORT}`;
@@ -50,6 +51,12 @@ const STRICT = process.argv.includes('--estricto');
 const REAL_FIGHTS = process.argv.includes('--peleas');
 const MAX_STEPS = Number(argAfter('--pasos')) || 1600;
 const SAMPLE = process.argv.includes('--ejemplo') ? (argAfter('--ejemplo') === 'corta' ? 'corta' : 'gem') : '';
+/**
+ * Con `--tablon <id>`: no se añade ningún archivo; se juega la tarjeta que ya está en el tablón
+ * (las experimentales de `mundos.json`, que el juego escribe con su semilla). Lo usa
+ * `tools/probar-campanas/` (J16.6).
+ */
+const BOARD_ID = argAfter('--tablon');
 /** El archivo: el primer argumento suelto (que no es el valor de una opción), o `--campana`. */
 const FILE = argAfter('--campana') || process.argv.slice(2).find((arg, i, all) => !arg.startsWith('--')
     && !FLAGS_WITH_VALUE.includes(all[i - 1] ?? '') && !(all[i - 1] === '--ejemplo' && arg === 'corta')) || '';
@@ -100,13 +107,13 @@ async function campaignFile() {
 }
 
 try {
-    const file = await campaignFile();
-    if (!file || !existsSync(file)) {
+    const file = BOARD_ID ? '' : await campaignFile();
+    if (BOARD_ID) console.log(`La campaña del tablón: ${BOARD_ID}`);
+    else if (!file || !existsSync(file)) {
         console.log('Uso: node tools/vuelta-campana.mjs <tu-campaña.json> [--headed] [--captura v.png] [--peleas] [--estricto]');
         console.log('     node tools/vuelta-campana.mjs --ejemplo        (la muestra del Gem)');
         throw new Error(file ? `no encuentro el archivo ${file}` : 'falta el archivo de la campaña');
-    }
-    console.log(`La campaña: ${file}`);
+    } else console.log(`La campaña: ${file}`);
     server = await startServer({ root: ROOT, port: PORT, dataRoot });
     browser = await chromium.launch({ channel: 'msedge', headless: !HEADED });
     const context = await browser.newContext({ viewport: { width: 1400, height: 950 } });
@@ -144,6 +151,18 @@ try {
     let worldBefore = '';
     const onHub = async (/** @type {any} */ now) => {
         const hub = page.locator('dialog[open] .hb-root');
+        if (!report && BOARD_ID) {
+            // Con `--tablon`: nada que añadir; basta con que su tarjeta esté (y si está cerrada).
+            const there = await page.evaluate((id) => {
+                const card = document.querySelector(`dialog[open] .hb-root [data-campaign="${id}"]`);
+                return card ? { locked: card.classList.contains('is-locked') ? (card.querySelector('.hb-lock')?.textContent || 'cerrada').trim() : '' } : null;
+            }, BOARD_ID);
+            if (!there) return false;
+            report = { ok: true, title: 'Ya está en el tablón', verdict: '', text: '', groups: [] };
+            campaignId = BOARD_ID;
+            locked = there.locked;
+            return true;
+        }
         if (!report) {
             const add = hub.locator('[data-campaign-add]');
             if (await add.count() === 0) return false;
@@ -198,6 +217,8 @@ try {
             if (reached(now)) return true;
             if (await bot.handleLayer(now, { onHub })) continue;
             if (await bot.tapChip(now, /^Tablón de campañas$/, 'el tablón de campañas', 'action-chips.js')) continue;
+            // D-J62: con el modo guiado, el tablón está en la Casa del Gremio.
+            if (await bot.hallAct(now, 'hub-board', 'el tablón de campañas (en la Casa del Gremio)')) continue;
             if (now.scene === 'dialogue' && now.vn.next) await bot.act(now, '«Continuar»', () => bot.press(bot.chip(/^Continuar$/)));
             else if (!await bot.toMap(now)) await page.waitForTimeout(300);
         }
@@ -213,12 +234,22 @@ try {
     console.log(`\n--- el informe del tablón al añadirla ---\n  ${imported?.title || '(no salió el informe)'}${imported?.verdict ? ` [${imported.verdict}]` : ''}`);
     for (const g of imported?.groups ?? []) console.log(`  · ${g.key}: ${g.text.slice(0, 600)}`);
     if (imported && !imported.ok) console.log(`  ${imported.text.slice(0, 1500)}`);
-    check('el tablón la acepta («Añadida al tablón»)', Boolean(imported?.ok && campaignId), JSON.stringify({ title: imported?.title, id: campaignId }));
+    check(BOARD_ID ? `su tarjeta está en el tablón («${BOARD_ID}»)` : 'el tablón la acepta («Añadida al tablón»)', Boolean(imported?.ok && campaignId), JSON.stringify({ title: imported?.title, id: campaignId }));
+    if (BOARD_ID && !campaignId) throw new Error(`no encuentro la tarjeta «${BOARD_ID}» en el tablón del gremio`);
     if (!imported?.ok || !campaignId) throw new Error('el tablón no la ha aceptado: arregla lo que dice el informe (o pásaselo a tu Gem) y vuelve a probar');
 
     // El paquete tal como lo ha guardado el tablón, con lo que puso el juego (tableros, bichos,
     // textos): lo que pide cada hito se lee de aquí, como quien lee «Lo que tienes entre manos».
-    const pack = await page.evaluate(async (id) => {
+    // Con `--tablon`, el paquete con el que la empieza el juego (`campaignPackWithStory`, el mismo
+    // que usa `campaigns.js`): el suyo o, si no trae, el de su semilla, con su historia en tres actos.
+    const pack = BOARD_ID ? await page.evaluate(async (id) => {
+        const rows = (await (await fetch('/mundos/mundos.json', { cache: 'no-store' })).json())?.worlds ?? [];
+        const row = rows.find((/** @type {any} */ w) => w.id === id);
+        if (!row) return null;
+        const written = row.pack ? await (await fetch(row.pack, { cache: 'no-store' })).json() : null;
+        const { campaignPackWithStory } = await import('/scripts/party/seed-campaign.js');
+        return campaignPackWithStory(row, written);
+    }, BOARD_ID) : await page.evaluate(async (id) => {
         const { importedPackFileName } = await import('/scripts/game-engine/campaign/campaign-import.js');
         const response = await fetch(`/user/files/${importedPackFileName(id)}`, { cache: 'no-store' });
         return response.ok ? response.json() : null;

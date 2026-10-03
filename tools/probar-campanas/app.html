@@ -1,0 +1,675 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Probar campañas</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='3' y='3' width='26' height='26' rx='6' fill='%233b6fd8'/%3E%3Ccircle cx='11' cy='11' r='2.6' fill='white'/%3E%3Ccircle cx='21' cy='21' r='2.6' fill='white'/%3E%3Ccircle cx='21' cy='11' r='2.6' fill='white'/%3E%3Ccircle cx='11' cy='21' r='2.6' fill='white'/%3E%3Ccircle cx='16' cy='16' r='2.6' fill='white'/%3E%3C/svg%3E">
+<!--
+  ProbarCampañas (J16.6): la ventana. La sirve tools/probar-campanas/servidor.mjs; todo va aquí
+  dentro, sin nada de internet. Las vueltas llegan por /api/eventos mientras juegan.
+-->
+<style>
+:root {
+    color-scheme: light dark;
+    --bg: #f4f5f7;
+    --panel: #ffffff;
+    --ink: #1d2330;
+    --muted: #5d6676;
+    --line: #dde1e8;
+    --accent: #3b6fd8;
+    --accent-ink: #ffffff;
+    --soft: #eef2fb;
+    --ok: #1f8a4c;
+    --ok-bg: #e5f5ec;
+    --meh: #a86400;
+    --meh-bg: #fdf1dc;
+    --bad: #c23a3a;
+    --bad-bg: #fbe7e7;
+    --off: #6b7280;
+    --off-bg: #eceef1;
+    --shadow: 0 1px 2px rgba(20, 30, 50, .06), 0 2px 8px rgba(20, 30, 50, .05);
+}
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+        --bg: #14171d;
+        --panel: #1d2129;
+        --ink: #e7eaf0;
+        --muted: #9aa3b2;
+        --line: #2f3542;
+        --accent: #6f9bff;
+        --accent-ink: #0d1424;
+        --soft: #222a3a;
+        --ok: #5fd08f;
+        --ok-bg: #173325;
+        --meh: #f2b45a;
+        --meh-bg: #3a2c14;
+        --bad: #ff8080;
+        --bad-bg: #3d1d1f;
+        --off: #a0a7b4;
+        --off-bg: #2a2f39;
+        --shadow: 0 1px 2px rgba(0, 0, 0, .3);
+    }
+}
+:root[data-theme="dark"] {
+    --bg: #14171d; --panel: #1d2129; --ink: #e7eaf0; --muted: #9aa3b2; --line: #2f3542; --accent: #6f9bff; --accent-ink: #0d1424;
+    --soft: #222a3a; --ok: #5fd08f; --ok-bg: #173325; --meh: #f2b45a; --meh-bg: #3a2c14; --bad: #ff8080; --bad-bg: #3d1d1f;
+    --off: #a0a7b4; --off-bg: #2a2f39; --shadow: 0 1px 2px rgba(0, 0, 0, .3);
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; }
+body {
+    background: var(--bg);
+    color: var(--ink);
+    font: 15px/1.45 "Segoe UI", system-ui, sans-serif;
+    min-height: 100vh;
+}
+button, select, input { font: inherit; color: inherit; }
+h1, h2, h3 { margin: 0; line-height: 1.2; }
+.top {
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    padding: 16px 20px; border-bottom: 1px solid var(--line); background: var(--panel);
+}
+.top svg { width: 34px; height: 34px; flex: none; }
+.top h1 { font-size: 21px; }
+.top p { margin: 2px 0 0; color: var(--muted); font-size: 14px; }
+.layout {
+    display: grid; grid-template-columns: minmax(300px, 360px) minmax(0, 1fr); gap: 18px;
+    padding: 18px 20px 28px; align-items: start;
+}
+@media (max-width: 860px) { .layout { grid-template-columns: minmax(0, 1fr); padding: 16px; } }
+.side { display: grid; gap: 18px; }
+.panel {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; box-shadow: var(--shadow);
+}
+.panel h2 { font-size: 16px; margin-bottom: 12px; }
+.field { display: grid; gap: 6px; margin-bottom: 12px; }
+.field > span { font-weight: 600; font-size: 14px; }
+select {
+    width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel);
+}
+.note { color: var(--muted); font-size: 13.5px; margin: 0 0 12px; }
+fieldset { border: 0; padding: 0; margin: 0 0 12px; display: grid; gap: 6px; }
+legend { font-weight: 600; font-size: 14px; margin-bottom: 6px; padding: 0; }
+.choice {
+    display: grid; grid-template-columns: auto 1fr; gap: 2px 8px; align-items: start; padding: 8px 10px;
+    border: 1px solid var(--line); border-radius: 8px; cursor: pointer;
+}
+.choice:has(input:checked) { border-color: var(--accent); background: var(--soft); }
+.choice:has(input:disabled) { opacity: .55; cursor: not-allowed; }
+.choice input { margin: 3px 0 0; }
+.choice small { grid-column: 2; color: var(--muted); font-size: 12.5px; }
+.picker { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+.picker span { color: var(--muted); font-size: 13.5px; overflow-wrap: anywhere; }
+.btn {
+    border: 1px solid var(--line); background: var(--panel); border-radius: 8px; padding: 7px 12px; cursor: pointer;
+}
+.btn:hover { border-color: var(--accent); }
+.btn:focus-visible, select:focus-visible, .tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.btn.primary {
+    background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; width: 100%; padding: 10px 14px; font-size: 16px;
+}
+.btn.primary:disabled { opacity: .5; cursor: not-allowed; }
+.btn.stop { border-color: var(--bad); color: var(--bad); width: 100%; }
+.btn.small { padding: 4px 9px; font-size: 13px; }
+.error { color: var(--bad); font-size: 13.5px; margin: 10px 0 0; }
+.ok-msg { color: var(--ok); font-size: 13.5px; margin: 10px 0 0; }
+
+/* La vuelta en marcha */
+.live-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 10px; }
+.live-head h2 { margin: 0; }
+.clock { font-variant-numeric: tabular-nums; font-size: 22px; font-weight: 600; }
+.phase { color: var(--muted); font-size: 13.5px; margin: 0 0 8px; }
+.bar { height: 10px; border-radius: 6px; background: var(--soft); overflow: hidden; margin-bottom: 12px; }
+.bar > div { height: 100%; width: 0; background: var(--accent); transition: width .4s; }
+.bar.unknown > div {
+    width: 40%; animation: slide 1.6s ease-in-out infinite;
+}
+@keyframes slide { 0% { margin-left: -40%; } 100% { margin-left: 100%; } }
+@media (prefers-reduced-motion: reduce) { .bar.unknown > div { animation: none; width: 100%; opacity: .4; } }
+dl.facts { display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; margin: 0 0 12px; font-size: 13.5px; }
+dl.facts dt { color: var(--muted); }
+dl.facts dd { margin: 0; overflow-wrap: anywhere; }
+.counters { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+.pill { font-size: 12.5px; padding: 2px 9px; border-radius: 99px; background: var(--off-bg); color: var(--off); }
+.pill.warn { background: var(--meh-bg); color: var(--meh); }
+.pill.bad { background: var(--bad-bg); color: var(--bad); }
+details.tail summary { cursor: pointer; font-size: 13.5px; color: var(--muted); margin-bottom: 6px; }
+pre {
+    margin: 0; max-height: 260px; overflow: auto; font: 12px/1.4 Consolas, "Cascadia Mono", monospace; white-space: pre-wrap;
+    overflow-wrap: anywhere; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 8px;
+}
+
+/* Las pestañas */
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin-bottom: 14px; flex-wrap: wrap; }
+.tab {
+    border: 0; background: none; padding: 9px 14px; cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -1px;
+    font-weight: 600; color: var(--muted); display: inline-flex; gap: 7px; align-items: center;
+}
+.tab[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--tab-color, var(--accent)); }
+.tab .count { font-size: 12px; padding: 0 7px; border-radius: 99px; background: var(--off-bg); color: var(--off); font-weight: 600; }
+.tab[data-tab="bien"] { --tab-color: var(--ok); }
+.tab[data-tab="regular"] { --tab-color: var(--meh); }
+.tab[data-tab="mal"] { --tab-color: var(--bad); }
+.tab[data-tab="bien"] .count { background: var(--ok-bg); color: var(--ok); }
+.tab[data-tab="regular"] .count { background: var(--meh-bg); color: var(--meh); }
+.tab[data-tab="mal"] .count { background: var(--bad-bg); color: var(--bad); }
+.tab-help { color: var(--muted); font-size: 13.5px; margin: 0 0 14px; }
+.empty { color: var(--muted); padding: 30px 10px; text-align: center; border: 1px dashed var(--line); border-radius: 10px; }
+
+/* Una vuelta */
+.card {
+    background: var(--panel); border: 1px solid var(--line); border-left: 5px solid var(--v, var(--off)); border-radius: 10px;
+    padding: 14px 16px; margin-bottom: 14px; box-shadow: var(--shadow);
+}
+.card.bien { --v: var(--ok); --v-bg: var(--ok-bg); }
+.card.regular { --v: var(--meh); --v-bg: var(--meh-bg); }
+.card.mal { --v: var(--bad); --v-bg: var(--bad-bg); }
+.card.parada { --v: var(--off); --v-bg: var(--off-bg); }
+.card.flash { animation: flash 1.8s ease-out 1; }
+@keyframes flash { 0% { box-shadow: 0 0 0 4px var(--v); } 100% { box-shadow: var(--shadow); } }
+.card-head { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; margin-bottom: 10px; }
+.card-head h3 { font-size: 17px; }
+.badge { font-size: 12.5px; font-weight: 700; padding: 2px 9px; border-radius: 99px; background: var(--v-bg, var(--off-bg)); color: var(--v, var(--off)); }
+.meta { color: var(--muted); font-size: 13px; }
+.card-body { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 14px; }
+@media (max-width: 640px) { .card-body { grid-template-columns: minmax(0, 1fr); } }
+.thumb {
+    width: 100%; aspect-ratio: 1400 / 950; object-fit: cover; border-radius: 6px; border: 1px solid var(--line); cursor: zoom-in; background: var(--bg);
+}
+.no-thumb { aspect-ratio: 1400 / 950; border-radius: 6px; border: 1px dashed var(--line); display: grid; place-items: center; color: var(--muted); font-size: 13px; }
+.where { margin: 0 0 6px; }
+.where b { font-weight: 600; }
+ul.reasons { margin: 0 0 8px; padding-left: 18px; }
+ul.reasons li { margin-bottom: 3px; }
+.seen { color: var(--muted); font-size: 13.5px; margin: 0; overflow-wrap: anywhere; }
+.card details { margin-top: 12px; border-top: 1px solid var(--line); padding-top: 10px; }
+.card details > summary { cursor: pointer; font-weight: 600; font-size: 14px; }
+.more { display: grid; gap: 14px; margin-top: 10px; }
+.more h4 { margin: 0 0 6px; font-size: 14px; }
+.more ol, .more ul { margin: 0; padding-left: 20px; font-size: 13.5px; }
+.more li { margin-bottom: 6px; overflow-wrap: anywhere; }
+.more li small { display: block; color: var(--muted); }
+table.nums { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+table.nums td { border-top: 1px solid var(--line); padding: 5px 6px; vertical-align: top; overflow-wrap: anywhere; }
+table.nums td:last-child { font-variant-numeric: tabular-nums; font-weight: 600; }
+.gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.gallery figure { margin: 0; }
+.gallery img { width: 100%; border-radius: 6px; border: 1px solid var(--line); cursor: zoom-in; display: block; }
+.gallery figcaption { font-size: 12px; color: var(--muted); margin-top: 3px; }
+.card-foot { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+
+/* El historial */
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); }
+table.hist { border-collapse: collapse; width: 100%; font-size: 14px; }
+table.hist th, table.hist td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+table.hist th { font-size: 12.5px; color: var(--muted); font-weight: 600; }
+table.hist tbody tr { cursor: pointer; }
+table.hist tbody tr:hover { background: var(--soft); }
+table.hist tr:last-child td { border-bottom: 0; }
+.dot { display: inline-block; font-weight: 700; font-size: 12.5px; padding: 1px 8px; border-radius: 99px; }
+.dot.bien { background: var(--ok-bg); color: var(--ok); }
+.dot.regular { background: var(--meh-bg); color: var(--meh); }
+.dot.mal { background: var(--bad-bg); color: var(--bad); }
+.dot.parada { background: var(--off-bg); color: var(--off); }
+
+.foot {
+    padding: 12px 20px 22px; color: var(--muted); font-size: 13px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+}
+.foot code { font-size: 12.5px; overflow-wrap: anywhere; }
+dialog {
+    border: 1px solid var(--line); border-radius: 10px; padding: 0; background: var(--panel); color: var(--ink);
+    max-width: min(96vw, 1500px); max-height: 94vh; box-shadow: 0 10px 40px rgba(0, 0, 0, .35);
+}
+dialog::backdrop { background: rgba(10, 14, 22, .6); }
+.dlg-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+.dlg-body { padding: 12px; overflow: auto; max-height: calc(94vh - 60px); }
+.dlg-body img { max-width: 100%; display: block; }
+.dlg-body pre { max-height: none; }
+.banner {
+    position: fixed; right: 18px; bottom: 18px; max-width: min(420px, calc(100vw - 36px)); background: var(--panel); border: 1px solid var(--line);
+    border-left: 5px solid var(--v, var(--accent)); border-radius: 10px; padding: 12px 14px; box-shadow: 0 6px 24px rgba(0, 0, 0, .2); z-index: 5;
+}
+.banner.bien { --v: var(--ok); } .banner.regular { --v: var(--meh); } .banner.mal { --v: var(--bad); } .banner.parada { --v: var(--off); }
+.banner p { margin: 0 0 8px; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+</style>
+</head>
+<body>
+<header class="top">
+    <svg viewBox="0 0 32 32" aria-hidden="true"><rect x="3" y="3" width="26" height="26" rx="6" fill="var(--accent)"/><circle cx="11" cy="11" r="2.6" fill="#fff"/><circle cx="21" cy="21" r="2.6" fill="#fff"/><circle cx="21" cy="11" r="2.6" fill="#fff"/><circle cx="11" cy="21" r="2.6" fill="#fff"/><circle cx="16" cy="16" r="2.6" fill="#fff"/></svg>
+    <div>
+        <h1>Probar campañas</h1>
+        <p>Un bot juega la campaña a clics, sin escribir nada, y te dice qué tal ha ido.</p>
+    </div>
+</header>
+
+<div class="layout">
+    <div class="side">
+        <section class="panel" id="form" aria-labelledby="form-title">
+            <h2 id="form-title">Correr una vuelta</h2>
+            <label class="field">
+                <span>Campaña</span>
+                <select id="campaign"></select>
+            </label>
+            <p class="note" id="campaign-note"></p>
+            <div class="picker" id="json-row" hidden>
+                <button class="btn" type="button" id="pick">Elegir el archivo…</button>
+                <span id="picked">Ningún archivo elegido</span>
+                <input type="file" id="file" accept=".json,application/json" hidden>
+            </div>
+            <fieldset id="fights">
+                <legend>Peleas</legend>
+                <label class="choice"><input type="radio" name="fights" value="rapidas" checked> Rápidas <small>Los enemigos caen de un golpe: se mide el camino, no las peleas.</small></label>
+                <label class="choice"><input type="radio" name="fights" value="de-verdad"> De verdad <small>Cada pelea se juega entera. Mucho más lenta.</small></label>
+            </fieldset>
+            <p class="note" id="fights-note" hidden>Esta vuelta juega sus peleas siempre igual: aquí no se elige.</p>
+            <p class="note" id="last-time"></p>
+            <button class="btn primary" type="button" id="run">Correr</button>
+            <p class="error" id="run-error" hidden></p>
+        </section>
+
+        <section class="panel" id="live" hidden aria-live="polite">
+            <div class="live-head">
+                <h2 id="live-name">En marcha</h2>
+                <span class="clock" id="live-clock">0:00</span>
+            </div>
+            <p class="phase" id="live-phase"></p>
+            <div class="bar unknown" id="live-bar"><div></div></div>
+            <dl class="facts">
+                <dt>Ahora en</dt><dd id="live-where">—</dd>
+                <dt>Hitos</dt><dd id="live-milestones">—</dd>
+                <dt>Clics</dt><dd id="live-steps">—</dd>
+                <dt>Último</dt><dd id="live-step">—</dd>
+            </dl>
+            <div class="counters" id="live-counters"></div>
+            <details class="tail">
+                <summary>Ver lo que va escribiendo el bot</summary>
+                <pre id="live-tail"></pre>
+            </details>
+            <p></p>
+            <button class="btn stop" type="button" id="stop">Parar</button>
+        </section>
+    </div>
+
+    <section aria-label="Resultados">
+        <div class="tabs" role="tablist">
+            <button class="tab" role="tab" data-tab="bien" aria-selected="true">Bien <span class="count" id="n-bien">0</span></button>
+            <button class="tab" role="tab" data-tab="regular" aria-selected="false">Regular <span class="count" id="n-regular">0</span></button>
+            <button class="tab" role="tab" data-tab="mal" aria-selected="false">Mal <span class="count" id="n-mal">0</span></button>
+            <button class="tab" role="tab" data-tab="historial" aria-selected="false">Historial <span class="count" id="n-historial">0</span></button>
+        </div>
+        <div role="tabpanel" id="panel-bien"></div>
+        <div role="tabpanel" id="panel-regular" hidden></div>
+        <div role="tabpanel" id="panel-mal" hidden></div>
+        <div role="tabpanel" id="panel-historial" hidden></div>
+    </section>
+</div>
+
+<footer class="foot">
+    <span>Los resultados se guardan en <code id="folder">…</code></span>
+    <button class="btn small" type="button" id="open-folder">Abrir la carpeta</button>
+    <button class="btn small" type="button" id="desktop">Poner en el escritorio</button>
+    <span id="foot-msg"></span>
+</footer>
+
+<dialog id="viewer">
+    <div class="dlg-head"><strong id="viewer-title"></strong><button class="btn small" type="button" data-close>Cerrar</button></div>
+    <div class="dlg-body" id="viewer-body"></div>
+</dialog>
+
+<script>
+'use strict';
+// ------------------------------------------------------------------ utilidades
+const $ = (id) => document.getElementById(id);
+/** Un elemento con sus atributos y lo de dentro (texto o elementos): nunca HTML suelto. */
+function h(tag, attrs = {}, ...kids) {
+    const el = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs || {})) {
+        if (v === undefined || v === null || v === false) continue;
+        if (k === 'class') el.className = v;
+        else if (k.startsWith('on')) el.addEventListener(k.slice(2), v);
+        else el.setAttribute(k, v === true ? '' : String(v));
+    }
+    for (const kid of kids.flat()) {
+        if (kid === null || kid === undefined || kid === false) continue;
+        el.append(kid instanceof Node ? kid : document.createTextNode(String(kid)));
+    }
+    return el;
+}
+async function api(path, data) {
+    const res = await fetch(path, data === undefined ? { cache: 'no-store' } : { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+    return res.json();
+}
+const clock = (ms) => `${Math.floor(ms / 60000)}:${String(Math.floor((ms % 60000) / 1000)).padStart(2, '0')}`;
+const when = (iso) => {
+    try { return new Date(iso).toLocaleString('es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }); } catch { return iso; }
+};
+const VERDICT = { bien: 'Bien', regular: 'Regular', mal: 'Mal', parada: 'Parada' };
+const FIGHTS = { rapidas: 'peleas rápidas', 'de-verdad': 'peleas de verdad' };
+const fileUrl = (id, file) => `/api/archivo/${encodeURIComponent(id)}/${encodeURIComponent(file)}`;
+
+// ------------------------------------------------------------------ estado
+let campaigns = [];
+let lastTimes = {};
+let results = [];
+let running = null;
+let chosenFile = null;
+let tab = 'bien';
+let tailLines = [];
+
+// ------------------------------------------------------------------ el formulario
+function fillCampaigns() {
+    const select = $('campaign');
+    select.replaceChildren();
+    const groups = new Map();
+    for (const c of campaigns) {
+        if (!groups.has(c.group)) groups.set(c.group, h('optgroup', { label: c.group }));
+        groups.get(c.group).append(h('option', { value: c.id }, c.name));
+    }
+    for (const g of groups.values()) select.append(g);
+    let saved = '';
+    try { saved = localStorage.getItem('probar-campana') || ''; } catch { /* nada */ }
+    if (campaigns.some(c => c.id === saved)) select.value = saved;
+    else if (campaigns.some(c => c.id === '1387')) select.value = '1387';
+    try {
+        const f = localStorage.getItem('probar-peleas');
+        if (f) document.querySelector(`input[name="fights"][value="${f}"]`)?.click();
+    } catch { /* nada */ }
+    onCampaign();
+}
+function current() { return campaigns.find(c => c.id === $('campaign').value) || null; }
+function fightsChosen() { return document.querySelector('input[name="fights"]:checked')?.value || 'rapidas'; }
+function onCampaign() {
+    const c = current();
+    $('campaign-note').textContent = c?.note || '';
+    $('json-row').hidden = !c?.json;
+    for (const input of document.querySelectorAll('input[name="fights"]')) input.disabled = !c?.fights;
+    $('fights-note').hidden = Boolean(c?.fights);
+    try { localStorage.setItem('probar-campana', c?.id || ''); } catch { /* nada */ }
+    showLastTime();
+    syncButtons();
+}
+function showLastTime() {
+    const c = current();
+    const fights = c?.fights ? fightsChosen() : 'rapidas';
+    const t = c && !c.json ? lastTimes[`${c.id}|${fights}`] : '';
+    $('last-time').textContent = t ? `La última vez tardó ${t}.` : '';
+}
+function syncButtons() {
+    const c = current();
+    $('run').disabled = Boolean(running) || !c || (c.json && !chosenFile);
+    $('run').textContent = running ? 'Hay una vuelta en marcha' : 'Correr';
+}
+$('campaign').addEventListener('change', onCampaign);
+for (const input of document.querySelectorAll('input[name="fights"]')) {
+    input.addEventListener('change', () => {
+        try { localStorage.setItem('probar-peleas', fightsChosen()); } catch { /* nada */ }
+        showLastTime();
+    });
+}
+$('pick').addEventListener('click', () => $('file').click());
+$('file').addEventListener('change', async () => {
+    const file = $('file').files?.[0];
+    if (!file) return;
+    chosenFile = { name: file.name, text: await file.text() };
+    $('picked').textContent = `${file.name} (${Math.max(1, Math.round(file.size / 1024))} KB)`;
+    syncButtons();
+});
+$('run').addEventListener('click', async () => {
+    const c = current();
+    if (!c) return;
+    $('run-error').hidden = true;
+    $('run').disabled = true;
+    const said = await api('/api/correr', { campaign: c.id, fights: fightsChosen(), json: c.json ? chosenFile : undefined }).catch(e => ({ ok: false, error: String(e) }));
+    if (!said.ok) {
+        $('run-error').textContent = said.error || 'No ha podido empezar.';
+        $('run-error').hidden = false;
+        syncButtons();
+    }
+});
+$('stop').addEventListener('click', async () => {
+    if (!running) return;
+    if (!confirm('¿Parar la vuelta? Lo que lleva hecho se guarda en el historial como «Parada».')) return;
+    $('stop').disabled = true;
+    $('stop').textContent = 'Parando…';
+    await api('/api/parar', {});
+});
+
+// ------------------------------------------------------------------ la vuelta en marcha
+function showRunning(state) {
+    running = state;
+    $('live').hidden = !state;
+    syncButtons();
+    if (!state) return;
+    $('live-name').textContent = `En marcha: ${state.campaign.name}`;
+    const p = state.progress || {};
+    $('live-phase').textContent = `${p.phase || ''} · ${FIGHTS[state.fights] || ''}${state.stopping ? ' · parando…' : ''}`;
+    const bar = $('live-bar');
+    if (state.total > 0 && p.milestones > 0) {
+        bar.classList.remove('unknown');
+        bar.firstElementChild.style.width = `${Math.min(97, Math.round((p.milestones / state.total) * 100))}%`;
+    } else {
+        bar.classList.add('unknown');
+        bar.firstElementChild.style.width = '';
+    }
+    $('live-where').textContent = p.where || '—';
+    $('live-milestones').textContent = p.milestones ? `${p.milestones} hechos${state.total ? ` (la campaña tiene ${state.total})` : ''}` : (state.total ? `0 de ${state.total}` : '—');
+    $('live-steps').textContent = p.steps ? String(p.steps) : '—';
+    $('live-step').textContent = p.step || '—';
+    const pill = (n, one, many, cls) => h('span', { class: `pill ${n > 0 ? cls : ''}` }, `${n} ${n === 1 ? one : many}`);
+    $('live-counters').replaceChildren(
+        pill(p.silences || 0, 'silencio', 'silencios', 'warn'),
+        pill(p.blocks || 0, 'atasco', 'atascos', 'bad'),
+        pill(p.oddities || 0, 'cosa rara', 'cosas raras', 'warn'),
+    );
+    if (state.tail !== undefined) {
+        tailLines = state.tail.split('\n');
+        paintTail();
+    }
+    $('stop').disabled = Boolean(state.stopping);
+    $('stop').textContent = state.stopping ? 'Parando…' : 'Parar';
+}
+function paintTail() {
+    const pre = $('live-tail');
+    const atBottom = pre.scrollTop + pre.clientHeight >= pre.scrollHeight - 30;
+    pre.textContent = tailLines.slice(-300).join('\n');
+    if (atBottom) pre.scrollTop = pre.scrollHeight;
+}
+setInterval(() => {
+    if (running) $('live-clock').textContent = clock(Date.now() - Date.parse(running.started));
+}, 1000);
+
+// ------------------------------------------------------------------ las pestañas
+function setTab(name) {
+    tab = name;
+    for (const b of document.querySelectorAll('.tab')) b.setAttribute('aria-selected', String(b.dataset.tab === name));
+    for (const t of ['bien', 'regular', 'mal', 'historial']) $(`panel-${t}`).hidden = t !== name;
+}
+for (const b of document.querySelectorAll('.tab')) b.addEventListener('click', () => setTab(b.dataset.tab));
+
+const HELP = {
+    bien: 'Llegaron a un final sin silencios, sin atascos y sin errores en la página.',
+    regular: 'Llegaron a un final, pero con silencios, atascos rescatados, turnos jugados con el gancho, clics lentos o alguna comprobación que no pasa.',
+    mal: 'Se quedaron antes de un final, la vuelta se rompió o hubo errores en la página.',
+};
+
+function paintResults() {
+    for (const v of ['bien', 'regular', 'mal']) {
+        const mine = results.filter(r => r.verdict === v);
+        $(`n-${v}`).textContent = String(mine.length);
+        $(`panel-${v}`).replaceChildren(
+            h('p', { class: 'tab-help' }, HELP[v]),
+            ...(mine.length ? mine.map(card) : [h('div', { class: 'empty' }, 'Aún no hay ninguna vuelta aquí.')]),
+        );
+    }
+    $('n-historial').textContent = String(results.length);
+    $('panel-historial').replaceChildren(results.length ? historyTable() : h('div', { class: 'empty' }, 'Aún no has corrido ninguna vuelta. Elige una campaña y dale a «Correr».'));
+}
+
+function historyTable() {
+    const rows = results.map(r => h('tr', { onclick: () => focusCard(r), title: 'Ver esta vuelta' },
+        h('td', {}, when(r.started)),
+        h('td', {}, r.campaign?.name || '?'),
+        h('td', {}, FIGHTS[r.fights] || ''),
+        h('td', {}, h('span', { class: `dot ${r.verdict}` }, VERDICT[r.verdict] || r.verdict)),
+        h('td', {}, r.clock || ''),
+        h('td', {}, r.reached ? (r.ending && !/^ninguno/.test(r.ending) ? `Final: ${r.ending}` : 'Llega al final') : (r.where ? `Se queda en ${r.where}` : (r.reasons?.[0] || ''))),
+    ));
+    return h('div', { class: 'table-wrap' }, h('table', { class: 'hist' },
+        h('thead', {}, h('tr', {}, h('th', {}, 'Cuándo'), h('th', {}, 'Campaña'), h('th', {}, 'Peleas'), h('th', {}, 'Resultado'), h('th', {}, 'Tiempo'), h('th', {}, 'Final o dónde se quedó'))),
+        h('tbody', {}, rows)));
+}
+
+function focusCard(r) {
+    if (r.verdict === 'parada') { showLog(r); return; }
+    setTab(r.verdict);
+    const el = document.querySelector(`.card[data-id="${CSS.escape(r.id)}"]`);
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    el.classList.remove('flash');
+    void el.offsetWidth;
+    el.classList.add('flash');
+}
+
+function openImage(r, shot) {
+    $('viewer-title').textContent = `${r.campaign?.name || ''} · ${shot.label}`;
+    $('viewer-body').replaceChildren(h('img', { src: fileUrl(r.id, shot.file), alt: shot.label }));
+    $('viewer').showModal();
+}
+async function showLog(r) {
+    $('viewer-title').textContent = `El registro de la vuelta · ${r.campaign?.name || ''} · ${when(r.started)}`;
+    const pre = h('pre', {}, 'Cargando…');
+    $('viewer-body').replaceChildren(pre);
+    $('viewer').showModal();
+    const text = await fetch(fileUrl(r.id, 'registro.txt'), { cache: 'no-store' }).then(x => (x.ok ? x.text() : 'No está el registro.')).catch(() => 'No está el registro.');
+    pre.textContent = text;
+}
+$('viewer').addEventListener('click', (e) => { if (e.target === $('viewer') || e.target.closest('[data-close]')) $('viewer').close(); });
+
+function list(title, items, render) {
+    if (!items || items.length === 0) return null;
+    return h('section', {}, h('h4', {}, `${title} (${items.length})`), h('ol', {}, items.map(render)));
+}
+
+function card(r) {
+    const shots = r.shots || [];
+    const main = shots.find(s => s.file === r.mainShot) || shots[shots.length - 1];
+    const ending = r.ending && !/^ninguno/.test(r.ending) ? r.ending : '';
+    const head = h('div', { class: 'card-head' },
+        h('span', { class: 'badge' }, VERDICT[r.verdict] || r.verdict),
+        h('h3', {}, r.campaign?.name || '?'),
+        h('span', { class: 'meta' }, `${when(r.started)} · tardó ${r.clock || '?'} · ${FIGHTS[r.fights] || ''}`));
+    const facts = h('div', {},
+        r.reached
+            ? h('p', { class: 'where' }, h('b', {}, 'Llega al final'), ending ? `: ${ending}` : '.')
+            : h('p', { class: 'where' }, h('b', {}, 'Se queda en: '), r.where || 'no se sabe dónde (mira el registro)'),
+        h('ul', { class: 'reasons' }, (r.reasons || []).map(x => h('li', {}, x))),
+        !r.reached && r.sees ? h('p', { class: 'seen' }, h('b', {}, 'Lo que se veía: '), r.sees) : null,
+        r.reached && r.oneLine ? h('p', { class: 'seen' }, r.oneLine) : null);
+    const thumb = main
+        ? h('img', { class: 'thumb', src: fileUrl(r.id, main.file), alt: main.label, title: `${main.label} (pulsa para verla grande)`, loading: 'lazy', onclick: () => openImage(r, main) })
+        : h('div', { class: 'no-thumb' }, 'Sin captura');
+
+    const more = h('div', { class: 'more' },
+        list('Silencios: un clic tras el que no cambia nada', r.silences, s => h('li', {}, `${s.what}`, h('small', {}, `Dónde: ${s.where} · clic ${s.n}`), s.sees ? h('small', {}, `Se veía: ${s.sees}`) : null, s.module ? h('small', {}, `Dónde mirar: ${s.module}`) : null)),
+        list('Atascos: lo que pedía la historia no estaba a la vista', r.blocks, b => h('li', {}, `${b.what}`, h('small', {}, `Dónde: ${b.where} · clic ${b.n}`), b.sees ? h('small', {}, `Se veía: ${b.sees}`) : null, b.rescue ? h('small', {}, `Rescate: ${b.rescue}`) : null)),
+        list('Lo que se ve mal (sin ser silencio ni atasco)', r.oddities, o => h('li', {}, `${o.kind}: ${o.text}`, h('small', {}, `Dónde: ${o.where} · clic ${o.n}`))),
+        list('El grupo entero cae', r.falls, f => h('li', {}, f.text, h('small', {}, `Dónde: ${f.where}`))),
+        list('Clics lentos (más de 1,5 s)', r.slow, s => h('li', {}, `${s.ms} ms · ${s.text}`)),
+        list('Comprobaciones que no pasan', (r.checks || []).filter(c => !c.ok), c => h('li', {}, c.name, c.detail ? h('small', {}, c.detail.slice(0, 600)) : null)),
+        list('Hitos que no se cumplieron', r.missing, m => h('li', {}, m)),
+        list('Ganchos de prueba que usó la vuelta', r.hooks, g => h('li', {}, g)),
+        r.numbers?.length ? h('section', {}, h('h4', {}, 'Los números (sección 6 del plan)'),
+            h('table', { class: 'nums' }, h('tbody', {}, r.numbers.map(n => h('tr', {}, h('td', {}, n.key), h('td', {}, n.value)))))) : null,
+        shots.length ? h('section', {}, h('h4', {}, `Las capturas (${shots.length})`),
+            h('div', { class: 'gallery' }, shots.map(s => h('figure', {},
+                h('img', { src: fileUrl(r.id, s.file), alt: s.label, loading: 'lazy', onclick: () => openImage(r, s) }),
+                h('figcaption', {}, s.label))))) : null,
+    );
+    const foot = h('div', { class: 'card-foot' },
+        h('button', { class: 'btn small', type: 'button', onclick: () => showLog(r) }, 'Ver el registro'),
+        h('button', { class: 'btn small', type: 'button', onclick: () => api('/api/carpeta', { id: r.id }) }, 'Abrir la carpeta'),
+        h('button', { class: 'btn small', type: 'button', onclick: async () => {
+            if (!confirm(`¿Borrar esta vuelta de ${r.campaign?.name || ''} del historial? Se borra su carpeta, con sus capturas.`)) return;
+            await api('/api/borrar', { id: r.id });
+            await loadHistory();
+        } }, 'Borrar'));
+    return h('article', { class: `card ${r.verdict}`, 'data-id': r.id }, head,
+        h('div', { class: 'card-body' }, thumb, facts),
+        h('details', {}, h('summary', {}, 'Todo lo de esta vuelta: dónde, qué se veía, los números y las capturas'), more),
+        foot);
+}
+
+// ------------------------------------------------------------------ al acabar
+function banner(r) {
+    document.querySelector('.banner')?.remove();
+    const box = h('div', { class: `banner ${r.verdict}`, role: 'status' },
+        h('p', {}, h('b', {}, `${r.campaign?.name || ''}: ${VERDICT[r.verdict] || r.verdict}`), ` en ${r.clock || '?'}.`),
+        h('p', {}, (r.reasons || [])[0] || ''),
+        h('button', { class: 'btn small', type: 'button', onclick: () => box.remove() }, 'Vale'));
+    document.body.append(box);
+}
+
+async function loadHistory() {
+    results = await api('/api/historial').catch(() => []);
+    paintResults();
+}
+
+async function boot() {
+    const state = await api('/api/estado');
+    campaigns = state.campaigns || [];
+    lastTimes = state.lastTimes || {};
+    $('folder').textContent = state.folder || '';
+    fillCampaigns();
+    await loadHistory();
+    // Se abre en la pestaña de la última vuelta.
+    if (results[0] && results[0].verdict !== 'parada') setTab(results[0].verdict);
+    showRunning(state.running);
+    if (state.running) $('live-clock').textContent = clock(Date.now() - Date.parse(state.running.started));
+    listen();
+}
+
+function listen() {
+    const events = new EventSource('/api/eventos');
+    events.addEventListener('hola', (e) => showRunning(JSON.parse(e.data)));
+    events.addEventListener('empieza', (e) => {
+        tailLines = [];
+        showRunning(JSON.parse(e.data));
+        $('live').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
+    events.addEventListener('lineas', (e) => {
+        const { lines } = JSON.parse(e.data);
+        tailLines.push(...lines);
+        if (tailLines.length > 600) tailLines = tailLines.slice(-300);
+        paintTail();
+    });
+    events.addEventListener('avance', (e) => {
+        const state = JSON.parse(e.data);
+        if (state) { delete state.tail; showRunning(state); }
+    });
+    events.addEventListener('fin', async (e) => {
+        const r = JSON.parse(e.data);
+        showRunning(null);
+        const state = await api('/api/estado').catch(() => null);
+        if (state) { lastTimes = state.lastTimes || {}; showLastTime(); }
+        await loadHistory();
+        banner(r);
+        focusCard(r);
+    });
+}
+
+$('open-folder').addEventListener('click', () => api('/api/carpeta', {}));
+$('desktop').addEventListener('click', async () => {
+    const said = await api('/api/escritorio', {}).catch(e => ({ ok: false, error: String(e) }));
+    $('foot-msg').textContent = said.ok ? `Hecho: «Probar campañas» está en tu escritorio.` : said.error;
+    $('foot-msg').className = said.ok ? 'ok-msg' : 'error';
+});
+
+boot().catch((e) => {
+    document.body.prepend(h('p', { class: 'error', style: 'padding:16px' }, `No puedo hablar con el servidor de la ventana: ${e}. Cierra la ventana y vuelve a abrir ProbarCampañas.exe.`));
+});
+</script>
+</body>
+</html>

@@ -33,7 +33,22 @@ import { spellById, magicInData } from '../rules/grimoire.js';
 
 /** Lo que se puede escribir en un guion. */
 export const GUION_KINDS = ['mundo', 'hito', 'final', 'localidad', 'faccion', 'pnj', 'confidente', 'encargo',
-    'tablero', 'encuentro', 'bicho', 'objeto', 'rumor', 'habilidad', 'heroe'];
+    'tablero', 'encuentro', 'bicho', 'objeto', 'rumor', 'habilidad', 'heroe', 'charla'];
+
+/**
+ * Lo que un bloque trae ya con la forma del paquete (`paquete:`), tal cual y encima de lo
+ * convertido: las conversaciones (`beats`), el `aspecto` y el `gender` de la gente, lo que se
+ * mira (`sights`), las salidas de una pelea (`avoid`, `parley`), las trampas, el romance y la
+ * misión personal de un compañero… Es lo que devuelve el Gem guionista en sus piezas de JSON
+ * (wiki/GEM_GUIONISTA.md), y el YAML lo lee igual. En el bloque «mundo:» va encima del paquete
+ * entero (`world.levels`, `plot.chapters`…); en un «encuentro:», encima de su tablero, y su
+ * `mision:`, encima de la misión (los objetivos).
+ *
+ * @param {any} block
+ * @param {string} [field]
+ * @returns {any}
+ */
+const packPart = (block, field = 'paquete') => (isObject(block?.[field]) ? block[field] : {});
 
 /** Las habilidades de las tiradas, en castellano, a su id del motor. */
 const SKILLS = {
@@ -323,6 +338,8 @@ export function buildGuionPack(g, catalogue) {
             enemies: (enc.enemigos ?? []).flatMap((/** @type {any} */ group) =>
                 (group.en ?? []).slice(0, Math.max(1, Number(group.cuantos) || 1))
                     .map((/** @type {any} */ c) => ({ name: creatureName(group.bicho), ...cell(c) }))),
+            ...packPart(map),
+            ...packPart(enc),
         });
         const goal = enc.objetivo ?? { tipo: 'eliminate_all' };
         /** @type {any} */
@@ -330,13 +347,14 @@ export function buildGuionPack(g, catalogue) {
         if (objective.type === 'eliminate') objective.target = creatureName(goal.bicho);
         if (objective.type === 'survive_rounds') objective.rounds = Number(goal.rondas) || 3;
         if (objective.type === 'reach_cell') objective.cell = cell(goal.casilla);
-        quests.push({ id: `q-${enc.id}`, name, act: Number(enc.acto) || 1, description: text(enc.nota), boardId: text(enc.id), objectives: [objective] });
+        quests.push({ id: `q-${enc.id}`, name, act: Number(enc.acto) || 1, description: text(enc.nota), boardId: text(enc.id), objectives: [objective], ...packPart(enc, 'mision') });
     }
     for (const map of maps.values()) {
         if (usedMaps.has(text(map.id))) continue;
         boards.push({
             id: text(map.id), name: text(map.nombre), mapId: text(map.id), locationName: placeName(map.localidad),
             map: (map.mapa ?? []).map(String), partyStart: (map.inicio_grupo ?? []).map(cell), enemies: [],
+            ...packPart(map),
         });
     }
     const boardName = (/** @type {any} */ id) => boardOfEncounter.get(text(id)) ?? text(maps.get(text(id))?.nombre) ?? text(id);
@@ -363,7 +381,9 @@ export function buildGuionPack(g, catalogue) {
             // U7 del pegamento: «cerrado_hasta: <hito>» es un camino que se abre al cumplirse
             // ese hito. Antes se ignoraba en silencio.
             ...(text(r.cerrado_hasta) ? { closedUntil: text(r.cerrado_hasta) } : {}),
+            ...packPart(r),
         })),
+        ...packPart(l),
     }));
 
     // --- Las facciones, vivas.
@@ -383,6 +403,7 @@ export function buildGuionPack(g, catalogue) {
             target: g.localidad.has(text(f.meta?.objetivo)) ? placeName(f.meta.objetivo) : text(f.meta?.objetivo),
             pace: Number(f.meta?.ritmo_dias) || 7,
         },
+        ...packPart(f),
     }));
 
     // --- La gente y los confidentes.
@@ -391,6 +412,7 @@ export function buildGuionPack(g, catalogue) {
         wants: text(p.quiere), knows: text(p.sabe), secret: text(p.secreto), voice: text(p.voz), service: text(p.servicio ?? ''),
         // Idea 59: la lengua que habla, si no es la común.
         ...(text(p.idioma ?? '') ? { language: text(p.idioma) } : {}),
+        ...packPart(p),
     }));
     // R4/R10: los conjuros que sabe alguien se nombran por su id del grimorio; uno que no
     // existe se avisa y se deja fuera (la magia solo existe en el código).
@@ -418,6 +440,7 @@ export function buildGuionPack(g, catalogue) {
                 return text(line) ? [{ place: placeName(place), line: text(line) }] : [];
             }),
         } : {}),
+        ...packPart(c),
     }));
 
     // --- El bestiario y el catálogo de habilidades que usa.
@@ -430,6 +453,7 @@ export function buildGuionPack(g, catalogue) {
         ...(listOf(b.estaciones).length > 0 ? { seasons: listOf(b.estaciones) } : {}),
         // T6: si una cría suya se doma, y en qué mascota.
         ...(b.domable !== undefined && b.domable !== null ? { domable: text(b.domable) } : {}),
+        ...packPart(b),
     }));
     const wanted = new Set(bestiary.flatMap(b => b.abilities));
     const fromLibrary = (catalogue.abilityRows ?? []).filter(row => wanted.has(text(row.id))).map(asAbility);
@@ -450,6 +474,7 @@ export function buildGuionPack(g, catalogue) {
         ...(listOf(h.conjuros).length > 0 ? { spells: spellsOf(h.conjuros, `héroe «${h.id}»`) } : {}),
         // T5: la mascota con la que llega.
         ...(h.mascota && typeof h.mascota === 'object' ? { pet: { name: text(h.mascota.nombre), species: text(h.mascota.especie), character: text(h.mascota.caracter) || 'leal' } } : {}),
+        ...packPart(h),
     }));
     if (all('heroe').length > 3) notes.push(`${all('heroe').length} héroes hechos: solo entran los tres primeros`);
 
@@ -471,6 +496,7 @@ export function buildGuionPack(g, catalogue) {
         description: text(o.historia),
         ...(o.dados ? { damageDice: text(o.dados) } : {}),
         ...boundOf(o),
+        ...packPart(o),
     }));
     const rumors = all('rumor').map(r => ({
         id: text(r.id),
@@ -480,6 +506,7 @@ export function buildGuionPack(g, catalogue) {
         truth: text(r.verdad),
         // Solo lleva a algo que el juego sabe revelar: un sitio.
         leadsTo: g.localidad.has(text(r.lleva_a)) ? placeName(r.lleva_a) : '',
+        ...packPart(r),
     }));
 
     // --- Los encargos del tablón.
@@ -499,6 +526,7 @@ export function buildGuionPack(g, catalogue) {
             rewardText: text(e.recompensa),
             twist: text(e.giro),
             boardId,
+            ...packPart(e),
         };
     });
 
@@ -576,6 +604,7 @@ export function buildGuionPack(g, catalogue) {
                 standing: h.plazo.si_no?.reputacion ?? {},
             },
         } : {}),
+        ...packPart(h),
     }));
     // Idea 114: el presagio, tres frases que se cumplen con sus hitos.
     const omens = (world.presagio ?? []).flatMap((/** @type {any} */ p) => {
@@ -600,7 +629,7 @@ export function buildGuionPack(g, catalogue) {
         const epilogues = (Array.isArray(f.epilogos) ? f.epilogos : [])
             .map((/** @type {any} */ e) => (typeof e === 'string' ? { who: '', text: text(e) } : { who: whoOf(e?.quien, text(f.id)), text: text(e?.texto) }))
             .filter((/** @type {{text: string}} */ e) => e.text);
-        return [text(f.id), { title: text(f.titulo), scene: text(f.escena), ...(epilogues.length > 0 ? { epilogues } : {}) }];
+        return [text(f.id), { title: text(f.titulo), scene: text(f.escena), ...(epilogues.length > 0 ? { epilogues } : {}), ...packPart(f) }];
     }));
 
     const pack = {
@@ -625,6 +654,14 @@ export function buildGuionPack(g, catalogue) {
         rumors,
         abilities,
         ...(heroes.length > 0 ? { heroes } : {}),
+        // Las charlas con ramas (`charla:`), con la forma del paquete. Quien habla, por su id o su nombre.
+        ...(g.charla.size > 0 ? {
+            dialogues: all('charla').map(d => ({
+                ...d,
+                id: text(d.id),
+                speaker: g.pnj.has(text(d.speaker)) || g.confidente.has(text(d.speaker)) ? npcName(d.speaker) : text(d.speaker),
+            })),
+        } : {}),
         plot: {
             title: text(world.nombre), milestones, endings, ...(omens.length > 0 ? { omens } : {}),
             // Idea 115: el villano y cuándo asoma.
@@ -637,7 +674,8 @@ export function buildGuionPack(g, catalogue) {
         },
         mix: world.mezcla ?? undefined,
     };
-    return { pack, notes };
+    // `paquete:` del mundo, encima del paquete entero: `world.levels`, `world.journey`, `plot.chapters`…
+    return { pack: mergeGuionBlock(pack, packPart(world)), notes };
 }
 
 /**

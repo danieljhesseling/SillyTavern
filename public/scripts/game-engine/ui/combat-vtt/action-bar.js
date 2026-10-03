@@ -27,11 +27,21 @@
  * objetivo, en el tablero se encienden en rojo los que se llevarían el golpe y en azul los tuyos que
  * se llevarían la ayuda (`aim-glow.js`). Con el dedo, el primer toque en un objetivo lo enciende y
  * el segundo lo hace.
+ *
+ * J12.20 (Daniel, 2026-10-03, wiki/maquetas/ENCARGO_COMBATE_MUELLE_Y_RESULTADO.md): el menú ya no
+ * sale en el centro, encima de la barra (tapaba el tercio de abajo del tablero, donde están las
+ * fichas). Es el **muelle táctico**: a la izquierda, encima del minimapa, 360 px de ancho y su
+ * propio scroll (`dock.js`); entra deslizándose desde la izquierda. Se cierra con su ✕, volviendo
+ * a pulsar su botón o su tecla (1 Atacar, 2 Magia, 3 Acciones, 4 Adicional; sus tarjetas llevan
+ * las demás teclas) o pulsando el mapa. Si aun así tapa alguna ficha, la cámara se aparta lo justo
+ * mientras está abierto. En el teléfono es una hoja que sube desde abajo, y el tablero sube lo justo
+ * para que el objetivo se vea encima.
  */
 
 import { focusList, focusOn, keyboardInUse } from '../keyboard-nav.js';
-import { pickable, unfolds } from './action-menus.js';
+import { cardKeyAt, cardKeys, pickable, unfolds } from './action-menus.js';
 import { clearAim, showAim } from './aim-glow.js';
+import { DOCK, dockNudge, dockPlace } from './dock.js';
 
 /**
  * @typedef {import('./action-menus.js').BarView} BarView
@@ -123,6 +133,8 @@ export function closeActionMenu() {
     memory.unfold = '';
     memory.armed = '';
     clearAim();
+    // J12.20: la cámara vuelve a donde estaba antes de apartarse para el muelle.
+    resetNudge();
     current.footer?.querySelector('.gs-grimoire')?.remove();
     current.footer?.querySelectorAll('.gs-btn.active-menu').forEach(b => b.classList.remove('active-menu'));
     current.footer?.querySelectorAll('.gs-btn[aria-expanded]').forEach(b => b.setAttribute('aria-expanded', 'false'));
@@ -407,7 +419,7 @@ function unfoldedTargets(item, order) {
     const list = item.next?.items ?? [];
     for (const target of list) {
         const index = order.indexOf(target);
-        const node = card(target, index >= 0 && index < 9 ? index + 1 : 0);
+        const node = card(target, cardKeyAt(index, ownKey()));
         node.addEventListener('click', () => activate(target));
         box.appendChild(node);
     }
@@ -417,15 +429,159 @@ function unfoldedTargets(item, order) {
 
 /**
  * Lo alto que puede ser el menú sin cortarse por arriba: hasta la cabecera del juego, y nunca
- * más de 440 px.
+ * más de 440 px. J12.20: solo para la hoja del teléfono; el muelle lo mide `dockPlace`.
  *
  * @param {HTMLElement} bar
  * @returns {number}
  */
 function roomAbove(bar) {
     const top = bar.getBoundingClientRect().top;
-    const head = Number.parseFloat(getComputedStyle(document.body).getPropertyValue('--gs-head-bottom')) || 0;
+    const head = headBottom();
     return Math.max(140, Math.min(440, Math.floor(top - head - 14)));
+}
+
+/** @returns {number} Dónde acaba la cabecera del juego (la pone game-shell). */
+function headBottom() {
+    return Number.parseFloat(getComputedStyle(document.body).getPropertyValue('--gs-head-bottom')) || 0;
+}
+
+/** @returns {string} J12.20: la tecla del menú abierto (1 Atacar…), o vacío. */
+function ownKey() {
+    return String(current.view?.bar.buttons.find(b => b.id === memory.open)?.key ?? '');
+}
+
+/**
+ * J12.20: el teléfono (de pie, o tumbado y poco alto): el muelle es una hoja que sube desde abajo.
+ * Lo mismo que las reglas de combat-vtt.css.
+ *
+ * @returns {boolean}
+ */
+function sheetMode() {
+    return typeof window.matchMedia === 'function'
+        && window.matchMedia('(max-width: 600px), (orientation: landscape) and (max-height: 500px) and (max-width: 1000px)').matches;
+}
+
+/** J12.20: lo que la cámara se ha apartado para el muelle (el contenido del tablero, y cuánto). */
+const nudged = { /** @type {HTMLElement|null} */ el: null, x: 0, y: 0 };
+
+/**
+ * J12.20: la cámara vuelve a su sitio.
+ *
+ * @param {boolean} [closed] El muelle se ha cerrado: el resumen del teléfono vuelve también.
+ */
+function resetNudge(closed = true) {
+    if (closed) delete document.documentElement.dataset.gsDock;
+    const el = nudged.el;
+    nudged.el = null;
+    nudged.x = 0;
+    nudged.y = 0;
+    if (!el) return;
+    el.style.translate = '';
+    // La clase se va al acabar de volver: con ella, vuelve deslizándose.
+    setTimeout(() => {
+        if (nudged.el !== el) el.classList.remove('gs-dock-nudged');
+    }, 400);
+}
+
+/**
+ * J12.20: si el muelle (o la hoja del teléfono) tapa alguna ficha, la cámara se aparta lo justo
+ * (`dockNudge`): el tablero se corre con `translate`, aparte de la vista de la cámara (que no
+ * cambia: al cerrarse el muelle, vuelve). Importan quien juega y los objetivos del menú.
+ *
+ * @param {HTMLElement} box El muelle.
+ * @param {'x'|'y'} axis
+ * @param {Set<string>} keys Las fichas que importan (`data-token-id`).
+ */
+function nudgeBoard(box, axis, keys) {
+    const content = /** @type {HTMLElement|null} */ (document.querySelector('#game-shell .wm-vtt .wm-container .wm-content'));
+    const container = content?.closest('.wm-container');
+    if (!content || !container) {
+        resetNudge(false);
+        return;
+    }
+    // Lo apartado antes no cuenta: se mide como si la cámara estuviera en su sitio.
+    const was = nudged.el === content ? { x: nudged.x, y: nudged.y } : { x: 0, y: 0 };
+    const board = container.getBoundingClientRect();
+    const view = { left: board.left, top: board.top, right: board.right, bottom: board.bottom };
+    // La columna de la derecha (la iniciativa, el resumen) también tapa: se mira lo de su izquierda.
+    const column = document.querySelector('#game-shell .vtt-top-right')?.getBoundingClientRect();
+    if (axis === 'x' && column && column.width > 0 && column.left > board.left + board.width / 2) view.right = Math.min(view.right, column.left - 8);
+    // En el teléfono, las islas de arriba tapan por arriba.
+    if (axis === 'y') {
+        for (const part of document.querySelectorAll('#game-shell .vtt-top-left, #game-shell .vtt-top-right, #game-shell .vtt-top-center')) {
+            const r = part.getBoundingClientRect();
+            if (r.height > 0 && r.top < board.top + board.height / 2) view.top = Math.max(view.top, r.bottom + 6);
+        }
+    }
+    const tokens = [...container.querySelectorAll('.wm-token[data-token-id]')].map((token) => {
+        const r = token.getBoundingClientRect();
+        return {
+            left: r.left - was.x, right: r.right - was.x, top: r.top - was.y, bottom: r.bottom - was.y,
+            key: keys.has(String(/** @type {HTMLElement} */ (token).dataset.tokenId)) || token.classList.contains('wm-token-active'),
+        };
+    }).filter(t => t.right > t.left);
+    // Dónde queda el muelle, sin lo que lo mueve al entrar (se desliza desde la izquierda o sube):
+    // su sitio en el pie. En el teléfono tumbado la hoja va centrada con `transform`: sus lados, los
+    // que se ven.
+    const foot = /** @type {HTMLElement} */ (current.footer).getBoundingClientRect();
+    const seen = box.getBoundingClientRect();
+    const top = foot.top + box.offsetTop;
+    const left = axis === 'x' ? foot.left + box.offsetLeft : seen.left;
+    const width = axis === 'x' ? box.offsetWidth : seen.width;
+    const dockBox = { left, top, right: left + width, bottom: top + box.offsetHeight };
+    const shift = dockNudge({ dock: dockBox, view, tokens, axis });
+    const x = axis === 'x' ? Math.round(shift) : 0;
+    const y = axis === 'y' ? Math.round(shift) : 0;
+    if (x === 0 && y === 0) {
+        if (nudged.el === content) resetNudge(false);
+        return;
+    }
+    if (nudged.el && nudged.el !== content) resetNudge(false);
+    content.classList.add('gs-dock-nudged');
+    content.style.translate = `${x}px ${y}px`;
+    nudged.el = content;
+    nudged.x = x;
+    nudged.y = y;
+}
+
+/**
+ * J12.20: el muelle en su sitio. En pantalla grande, a la izquierda encima del minimapa
+ * (`dockPlace`, en coordenadas del pie, que es donde vive); en el teléfono, la hoja que sube. Y la
+ * cámara, apartada si hace falta.
+ *
+ * @param {HTMLElement} box
+ * @param {HTMLElement|null} bar
+ * @param {Set<string>} keys Las fichas que importan (los objetivos del menú).
+ */
+function placeDock(box, bar, keys) {
+    const footer = current.footer;
+    if (!footer) return;
+    if (sheetMode()) {
+        box.dataset.dock = 'sheet';
+        // Mientras sube la hoja, el resumen del combate se pliega (combat-vtt.css): el tablero
+        // tiene que verse encima de ella.
+        document.documentElement.dataset.gsDock = 'sheet';
+        const room = bar ? roomAbove(bar) : 440;
+        box.style.maxHeight = `${Math.max(140, Math.min(room, Math.round(window.innerHeight * DOCK.sheetShare)))}px`;
+        nudgeBoard(box, 'y', keys);
+        return;
+    }
+    const boardNode = document.querySelector('#game-shell .gs-scene-map .wm-container') ?? document.querySelector('#game-shell .gs-scene-map') ?? document.querySelector('#game-shell .gs-stage');
+    const board = boardNode?.getBoundingClientRect();
+    if (!board || board.width < 200 || board.height < 200) {
+        // Sin tablero que medir, como antes: encima de la barra.
+        if (bar) box.style.maxHeight = `${roomAbove(bar)}px`;
+        return;
+    }
+    const camera = document.querySelector('#game-shell .vtt-camera')?.getBoundingClientRect() ?? null;
+    const place = dockPlace({ board, head: headBottom(), viewportH: window.innerHeight, camera: camera && camera.width > 0 && camera.height > 0 ? camera : null });
+    const foot = footer.getBoundingClientRect();
+    box.dataset.dock = 'left';
+    document.documentElement.dataset.gsDock = 'left';
+    box.style.left = `${Math.round(place.left - foot.left)}px`;
+    box.style.bottom = `${Math.round(foot.bottom - place.bottom)}px`;
+    box.style.maxHeight = `${Math.round(place.maxHeight)}px`;
+    nudgeBoard(box, 'x', keys);
 }
 
 /**
@@ -437,7 +593,10 @@ function paintMenu(focusKey = '') {
     const footer = current.footer;
     const view = current.view;
     footer?.querySelector('.gs-grimoire')?.remove();
-    if (!footer || !view || !memory.open) return;
+    if (!footer || !view || !memory.open) {
+        resetNudge();
+        return;
+    }
     const menu = view.menu(memory.open, memory.filter, memory.slots);
     if (!menu) {
         memory.open = '';
@@ -450,7 +609,8 @@ function paintMenu(focusKey = '') {
         return;
     }
 
-    const box = el('div', 'gs-targets gs-grimoire');
+    // J12.20: el muelle táctico (`gs-dock`): a la izquierda, o la hoja del teléfono.
+    const box = el('div', 'gs-targets gs-grimoire gs-dock');
     box.dataset.menu = menu.id;
     box.setAttribute('role', 'menu');
     box.setAttribute('aria-label', list.title);
@@ -548,7 +708,7 @@ function paintMenu(focusKey = '') {
         if (section.title) body.appendChild(el('div', 'gs-grimoire-section', section.title));
         for (const item of section.items) {
             const index = order.indexOf(item);
-            const node = card(item, index >= 0 && index < 9 ? index + 1 : 0);
+            const node = card(item, cardKeyAt(index, ownKey()));
             if (item.kind !== 'weapon') node.addEventListener('click', () => activate(item));
             body.appendChild(node);
             if (item.levels) body.appendChild(levelRow(item.levels));
@@ -561,7 +721,10 @@ function paintMenu(focusKey = '') {
 
     const bar = /** @type {HTMLElement|null} */ (footer.querySelector('.gs-vtt-bar'));
     footer.insertBefore(box, footer.firstChild);
-    if (bar) box.style.maxHeight = `${roomAbove(bar)}px`;
+    // J12.20: en su sitio, y la cámara apartada si tapa a quien juega o a sus objetivos.
+    const keys = new Set(visibleItems(list.items).flatMap(i => [...(i.aim?.marks ?? []), ...(i.next?.items ?? []).flatMap(t => t.aim?.marks ?? [])])
+        .map(m => (m.token === undefined || m.token === null ? '' : String(m.token))).filter(Boolean));
+    placeDock(box, bar, keys);
     footer.querySelectorAll('.gs-btn[data-menu]').forEach(b => {
         const on = /** @type {HTMLElement} */ (b).dataset.menu === memory.open;
         b.classList.toggle('active-menu', on);
@@ -607,10 +770,20 @@ function pressNumber(n) {
     const view = current.view;
     if (!view || !view.bar.isPlayerTurn) return false;
     if (memory.open) {
+        // J12.20: la tecla del propio muelle lo cierra, como volver a pulsar su botón; el foco
+        // vuelve a él.
+        const own = ownKey();
+        if (own && String(n) === own) {
+            const id = memory.open;
+            closeActionMenu();
+            const again = /** @type {HTMLElement|null} */ (current.footer?.querySelector(`.gs-btn[data-menu="${CSS.escape(id)}"]`) ?? null);
+            if (again && keyboardInUse()) focusOn(again);
+            return true;
+        }
         const menu = view.menu(memory.open, memory.filter, memory.slots);
         const list = menu ? currentList(menu) : null;
         // J12.18: con los objetivos de una tarjeta abiertos debajo, también ellos llevan número.
-        const item = list ? pickable(visibleItems(list.items))[n - 1] : null;
+        const item = list ? pickable(visibleItems(list.items))[cardKeys(own).indexOf(n)] : null;
         if (!item) return true;
         lastPointer = '';
         activate(item);
@@ -691,6 +864,15 @@ function listen() {
         // Si no llega el clic (se arrastró el mapa), que no se coma el siguiente.
         setTimeout(() => document.removeEventListener('click', swallow, { capture: true }), 600);
     }, true);
+    // J12.20: al cambiar el tamaño de la ventana (o girar el teléfono), el muelle abierto se
+    // vuelve a poner en su sitio.
+    let resizeTimer = 0;
+    window.addEventListener('resize', () => {
+        window.clearTimeout(resizeTimer);
+        resizeTimer = window.setTimeout(() => {
+            if (memory.open && current.footer?.isConnected) paintMenu();
+        }, 120);
+    });
 }
 
 /**
@@ -808,6 +990,7 @@ export function renderCombatActionBar(footer, view, handlers) {
     root.appendChild(buttons);
     footer.appendChild(root);
     if (memory.open) paintMenu();
+    else resetNudge();
 }
 
 /**
@@ -823,6 +1006,7 @@ export function releaseCombatActionBar(footer) {
         memory.unfold = '';
         memory.armed = '';
         clearAim();
+        resetNudge();
         current.footer = null;
         current.view = null;
         current.handlers = null;

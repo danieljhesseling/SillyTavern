@@ -30,6 +30,8 @@ import { createRequire } from 'node:module';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+// D-J62, el modo guiado: el tablón, saltar la prueba y el salón, en la Casa del Gremio.
+import { enElGremio, salirDelTablero } from './e2e-guiado.mjs';
 import { pathToFileURL } from 'node:url';
 import { Buffer } from 'node:buffer';
 
@@ -172,10 +174,10 @@ try {
         return false;
     };
     const dropToasts = () => page.evaluate(() => document.querySelectorAll('#toast-container .toast').forEach(t => t.remove()));
-    /** Abrir el tablón, como quien juega: la ficha de la fila. */
+    /** Abrir el tablón, como quien juega: en la Casa del Gremio (D-J62). */
     const openBoard = async () => {
         await dropToasts();
-        await clickChip(/Tablón de campañas/);
+        await enElGremio(page, 'hub-board');
         return page.waitForSelector('.hb-root [data-campaign-add]', { timeout: 15000 }).then(() => true).catch(() => false);
     };
     /** Las tarjetas del tablón, en orden: su id (o «añadir») y lo que dicen. D-J35: las tuyas van en su caja, con «Quitar». */
@@ -234,8 +236,8 @@ try {
         return /Gremio/.test(now.world) && now.party.length === 1;
     }, 60000);
     await until(() => chatHas(/Baja a la bodega/), 20000);
-    await until(async () => (await chips()).some(c => /^Saltar la prueba$/.test(c)), 15000);
-    await clickChip(/^Saltar la prueba$/);
+    await salirDelTablero(page);
+    await until(() => enElGremio(page, 'hub-skip'), 15000);
     await page.waitForSelector('.popup:has-text("¿Saltar la prueba?")', { timeout: 10000 }).catch(() => {});
     await page.locator('.popup-button-ok:visible').first().click({ timeout: 5000 }).catch(() => {});
     const skipped = await until(() => chatHas(/apunta tu nombre en el libro del gremio/), 15000);
@@ -381,7 +383,7 @@ try {
     const backAgain = await until(async () => (await state()).world === hubWorld, 60000);
     await page.waitForTimeout(1000);
     await dropToasts();
-    const hallChip = await until(() => clickChip(/Salón de la fama/), 15000);
+    const hallChip = await until(() => enElGremio(page, 'hub-hall'), 15000);
     await page.waitForSelector('.popup:visible .hall-root', { timeout: 8000 }).catch(() => {});
     const hall = await page.evaluate(() => [...document.querySelectorAll('.hall-root .hall-campaign')].map(e => (e.textContent || '').trim()));
     check('acabada, entra en el salón de la fama con su nombre del tablón (D-J19)',
@@ -472,8 +474,8 @@ try {
         const now = await state();
         return /Gremio/.test(now.world) && now.world !== hubWorld && now.party.length === 1;
     }, 60000);
-    await until(async () => (await chips()).some(c => /^Saltar la prueba$/.test(c)), 20000);
-    await clickChip(/^Saltar la prueba$/);
+    await salirDelTablero(page);
+    await until(() => enElGremio(page, 'hub-skip'), 20000);
     await page.waitForSelector('.popup:has-text("¿Saltar la prueba?")', { timeout: 10000 }).catch(() => {});
     await page.locator('.popup-button-ok:visible').first().click({ timeout: 5000 }).catch(() => {});
     await until(() => chatHas(/apunta tu nombre en el libro del gremio/), 15000);

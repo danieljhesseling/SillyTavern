@@ -3,8 +3,10 @@
  * antes de que termine la animación… quiero una animación cuando ataquen, así como una animación
  * de dado»). La secuencia del combate: cada golpe se ve en orden.
  *
- *   1. Quien ataca se lanza hacia su objetivo (o le dispara: una flecha, un conjuro).
- *   2. Rueda el d20 (`dice.js`) y se dice la cuenta: «14 + 5 = 19 contra CA 13: impacta».
+ *   1. Rueda el d20 (`dice.js`) y se dice la cuenta: «14 + 5 = 19 contra CA 13: impacta».
+ *      Mientras, quien ataca se queda quieto, brillando («preparándose»).
+ *   2. Tanda 21: entonces, y una sola vez, se lanza hacia su objetivo (o le dispara: una flecha,
+ *      un conjuro).
  *   3. El golpe llega: un destello, una sacudida y el daño que sube flotando (o «Falla»).
  *   4. Y solo entonces bajan la vida de la iniciativa y el resumen del combate.
  *
@@ -143,6 +145,14 @@ let waiters = [];
 const sleepers = new Set();
 /** J12.19: el último golpe que salió (cómo, con qué y hacia dónde), para dibujar cómo llega. */
 let lastBlow = { style: '', damageType: '', angle: 0 };
+/**
+ * Tanda 21: el golpe anunciado que aún no ha salido. Mientras rueda su dado, quien ataca se queda
+ * quieto, con un brillo de «preparándose»; se lanza una sola vez, al llegar el golpe (o el fallo).
+ * `rolled`: su dado ya ha rodado.
+ *
+ * @type {{step: FxStep, rolled: boolean}|null}
+ */
+let pendingBlow = null;
 
 /**
  * Para las pruebas: el nivel de las animaciones, a mano. `null` vuelve al de siempre.
@@ -291,14 +301,39 @@ async function play() {
             const step = /** @type {FxStep} */ (queue.shift());
             if (!skipping && (step.kind === 'attack' || step.kind === 'roll' || step.kind === 'turn')) await waitForWalks();
             try {
+                // Tanda 21: el golpe que espera sale justo antes de lo que le toca (el impacto, el
+                // «Falla»); el primer dado y la línea del daño van antes que él.
+                if (pendingBlow && blowGoesBefore(step.kind, pendingBlow.rolled)) await releaseBlow();
+                else if (pendingBlow && step.kind === 'roll') pendingBlow.rolled = true;
                 await runStep(step);
             } catch (error) {
                 console.warn('[combat-fx] un paso de la secuencia ha fallado', step?.kind, error);
             }
         }
+        // Lo anunciado que nada ha recibido (una salvación superada) sale al final, una vez.
+        if (pendingBlow) await releaseBlow();
+    } catch (error) {
+        console.warn('[combat-fx] la secuencia se ha cortado', error);
     } finally {
+        dropPendingBlow();
         finish();
     }
+}
+
+/**
+ * Tanda 21 (Daniel, 2026-10-03: «la ficha se mueve dos veces al atacar»): si el golpe anunciado
+ * (`attack`) sale antes de un paso. Se lanza una sola vez, al ejecutarse: no con el primer dado
+ * (rueda con quien ataca quieto) ni con la línea del daño, que se lee en la tarjeta; sí antes del
+ * impacto, del «Falla», de otro dado, de otro golpe o de otro turno.
+ *
+ * @param {FxStep['kind']} kind El paso que llega.
+ * @param {boolean} rolled Si el dado de ese golpe ya ha rodado.
+ * @returns {boolean}
+ */
+export function blowGoesBefore(kind, rolled) {
+    if (kind === 'damage' || kind === 'bark') return false;
+    if (kind === 'roll') return rolled;
+    return true;
 }
 
 /** @returns {'normal'|'short'|'none'} */
@@ -627,8 +662,8 @@ function clearStage() {
     hideCard();
     hideBanner(true);
     const d = doc();
-    for (const token of d?.querySelectorAll('.wm-token.vfx-turn-token, .wm-token.vfx-acting, .wm-token.vfx-targeted') ?? []) {
-        token.classList.remove('vfx-turn-token', 'vfx-acting', 'vfx-targeted');
+    for (const token of d?.querySelectorAll('.wm-token.vfx-turn-token, .wm-token.vfx-acting, .wm-token.vfx-targeted, .wm-token.vfx-readying') ?? []) {
+        token.classList.remove('vfx-turn-token', 'vfx-acting', 'vfx-targeted', 'vfx-readying');
     }
     if (stage && !stage.querySelector('.vfx-banner')) {
         const gone = stage;
@@ -738,8 +773,9 @@ async function waitForWalks() {
 }
 
 /**
- * El golpe sale: de cerca, quien ataca se lanza hacia su objetivo y vuelve; de lejos, sale la
- * flecha (o el conjuro, o lo que se tira) hasta él.
+ * Se anuncia un golpe: quién ataca a quién. Tanda 21: aún no se mueve nadie. Quien ataca brilla
+ * («preparándose») y su objetivo queda marcado mientras rueda el dado; el golpe sale después, una
+ * sola vez (`releaseBlow`).
  *
  * @param {FxStep} step
  */
@@ -750,10 +786,38 @@ async function runAttack(step) {
     lastBlow = { style: String(step.style || 'melee'), damageType: String(step.damageType ?? ''), angle: 0 };
     const from = tokenEl(step.from);
     const to = tokenEl(step.to);
-    if (!from || !to) return;
+    if (from && to) lastBlow.angle = Math.atan2(px(to, 'top') - px(from, 'top'), px(to, 'left') - px(from, 'left'));
+    from?.classList.add('vfx-acting', 'vfx-readying');
+    to?.classList.add('vfx-targeted');
+    pendingBlow = { step, rolled: false };
+}
+
+/** Tanda 21: quita lo que esperaba sin que se vea (al cortarse la secuencia). */
+function dropPendingBlow() {
+    if (!pendingBlow) return;
+    const step = pendingBlow.step;
+    pendingBlow = null;
+    tokenEl(step.from)?.classList.remove('vfx-readying', 'vfx-acting');
+}
+
+/**
+ * El golpe sale: de cerca, quien ataca se lanza hacia su objetivo y vuelve; de lejos, sale la
+ * flecha (o el conjuro, o lo que se tira) hasta él. Tanda 21: una sola vez, cuando llega.
+ */
+async function releaseBlow() {
+    const blow = pendingBlow;
+    pendingBlow = null;
+    if (!blow) return;
+    const step = blow.step;
+    const from = tokenEl(step.from);
+    const to = tokenEl(step.to);
+    from?.classList.remove('vfx-readying');
+    if (!from || !to) {
+        from?.classList.remove('vfx-acting');
+        return;
+    }
     const dx = px(to, 'left') - px(from, 'left');
     const dy = px(to, 'top') - px(from, 'top');
-    lastBlow.angle = Math.atan2(dy, dx);
     from.classList.add('vfx-acting');
     to.classList.add('vfx-targeted');
     try {

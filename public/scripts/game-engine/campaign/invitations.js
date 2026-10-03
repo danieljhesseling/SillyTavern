@@ -44,18 +44,47 @@ const firstName = (name) => text(name).split(' ')[0] || text(name);
 /** El saludo de cada hora. */
 const HELLO = { morning: 'Buenos días.', afternoon: 'Buenas tardes.', night: 'Buenas noches.' };
 
-/** Dónde está, dicho por quien está allí. */
+/**
+ * Dónde está, dicho por quien está allí. `{en}` y `{a}` llevan el nombre del sitio en este pueblo
+ * («en la taberna», «a la capilla», «al mercado»); sin nombre, el de siempre.
+ */
 const HERE = {
-    posada: 'Aquí, en la posada, con algo caliente delante.',
-    herreria: 'Aquí, en la herrería, que hoy no para el martillo.',
-    tienda: 'He venido a la tienda a por cuatro cosas.',
-    templo: 'Me he acercado al templo a estar un rato en calma.',
-    tablon: 'Estaba mirando el tablón, a ver qué hay.',
-    plaza: 'Estaba dando una vuelta por la plaza.',
-    muelle: 'Estaba en el muelle, viendo entrar las barcas.',
-    gremio: 'Aquí, en la sala del gremio, sin mucho que hacer.',
-    camino: 'Estaba estirando las piernas.',
+    posada: ['Aquí, {en}, con algo caliente delante.', 'la posada'],
+    herreria: ['Aquí, {en}, que hoy no para el martillo.', 'la herrería'],
+    tienda: ['He venido {a} a por cuatro cosas.', 'la tienda'],
+    templo: ['Me he acercado {a} a estar un rato en calma.', 'el templo'],
+    tablon: ['Estaba mirando el tablón, a ver qué hay.', ''],
+    plaza: ['Estaba dando una vuelta por la plaza.', ''],
+    muelle: ['Estaba {en}, viendo entrar las barcas.', 'el muelle'],
+    gremio: ['Aquí, {en}, sin mucho que hacer.', 'la sala del gremio'],
+    camino: ['Estaba estirando las piernas.', ''],
 };
+
+/**
+ * El nombre del sitio dentro de una frase: el artículo en minúscula («La taberna» → «la taberna»),
+ * lo demás tal cual («la Casa del Gremio»). Sin artículo («Taberna Sangre de la Enredadera») no
+ * se sabe cuál ponerle: vacío, y se dice el de siempre.
+ *
+ * @param {string} name
+ * @returns {string}
+ */
+const inSentence = (name) => (/^(El|La|Los|Las)\s/.test(text(name)) ? text(name).replace(/^\S+/, (article) => article.toLowerCase()) : '');
+
+/**
+ * La frase de dónde está, con el nombre del sitio en este pueblo si lo tiene.
+ *
+ * @param {string} place La clase de sitio (`posada`, `muelle`…).
+ * @param {string} [name] Cómo se llama aquí («La taberna»).
+ * @returns {string}
+ */
+function hereLine(place, name = '') {
+    const row = /** @type {Record<string, string[]>} */ (HERE)[text(place)];
+    if (!row) return '';
+    const [line, usual] = row;
+    const site = inSentence(name) || usual;
+    // «a el» no se dice: «al».
+    return line.replace('{en}', `en ${site}`).replace('{a}', `a ${site}`).replace(/\ba el\b/g, 'al');
+}
 
 /** Lo que habéis hecho hace poco, dicho por quien te saluda. */
 const LATELY = {
@@ -139,6 +168,7 @@ export function rankUpHint({ name, points, scene = false, known = true, canMeet 
  * @param {boolean} [input.known] J13.7: si ya se ha presentado.
  * @param {string} [input.intro] Cómo se presenta, si lo trae el mundo («Soy Ramiro, el herrero.»).
  * @param {string} [input.place] Dónde está (`posada`, `muelle`…).
+ * @param {string} [input.placeName] Cómo se llama ese sitio en este pueblo («La taberna»), si lo tiene.
  * @param {string} [input.slot] La franja (`morning`, `afternoon`, `night`).
  * @param {string} [input.lately] Lo de hace poco: `pelea`, `llegada` o `quedada`.
  * @param {string} [input.festival] La fiesta de hoy aquí, si la hay.
@@ -149,14 +179,14 @@ export function rankUpHint({ name, points, scene = false, known = true, canMeet 
  * @returns {Invitation}
  */
 export function invitationFor({
-    name, known = true, intro = '', place = '', slot = '', lately = '', festival = '', wants = '', scene = false, date = '', hero = null,
+    name, known = true, intro = '', place = '', placeName = '', slot = '', lately = '', festival = '', wants = '', scene = false, date = '', hero = null,
 }) {
     const short = firstName(name);
     /** @type {string[]} */
     const lines = [];
     if (!known) lines.push(text(intro) || `Creo que no nos conocemos. Soy ${short}.`);
     const hello = /** @type {Record<string, string>} */ (HELLO)[text(slot)] ?? 'Hola.';
-    const here = /** @type {Record<string, string>} */ (HERE)[text(place)] ?? '';
+    const here = hereLine(place, placeName);
     lines.push([hello, here].filter(Boolean).join(' '));
     if (text(festival)) lines.push(`Hoy es ${text(festival)}. Todo el pueblo está en la calle.`);
     else if (known && /** @type {Record<string, string>} */ (LATELY)[text(lately)]) lines.push(/** @type {Record<string, string>} */ (LATELY)[text(lately)]);

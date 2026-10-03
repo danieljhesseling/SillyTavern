@@ -7,7 +7,7 @@
 import { describe, test, expect, afterEach } from '@jest/globals';
 import { damageSentence, edgeSentence, rollSentence, rollVerdict } from '../public/scripts/game-engine/ui/combat-vtt/dice.js';
 import {
-    FX_MS, STILL_READ_MS, afterFx, fxBusy, fxLength, fxMs, holdRedraw, pushFx, setFxLevel, skipFx,
+    FX_MS, STILL_READ_MS, afterFx, blowGoesBefore, fxBusy, fxLength, fxMs, holdRedraw, pushFx, setFxLevel, skipFx,
 } from '../public/scripts/game-engine/ui/combat-vtt/fx.js';
 import { tokenIdOf, whoIsToken } from '../public/scripts/party/combat-fx.js';
 import { combatEncounter, partyMembers, setCombatEncounter, setPartyMembers } from '../public/scripts/party/state.js';
@@ -134,6 +134,32 @@ describe('la secuencia (fx.js)', () => {
         expect(fxMs(FX_MS.tumble)).toBe(0);
         await settle();
         expect(fxBusy()).toBe(false);
+    });
+
+    test('tanda 21: quien ataca se lanza una sola vez, al llegar el golpe, no con el dado', () => {
+        // El primer dado rueda con quien ataca quieto; la línea del daño se lee en la tarjeta.
+        expect(blowGoesBefore('roll', false)).toBe(false);
+        expect(blowGoesBefore('damage', true)).toBe(false);
+        expect(blowGoesBefore('bark', true)).toBe(false);
+        // Sale antes del impacto o del «Falla» (o de lo siguiente, si nada lo recibe).
+        expect(blowGoesBefore('impact', true)).toBe(true);
+        expect(blowGoesBefore('miss', true)).toBe(true);
+        expect(blowGoesBefore('roll', true)).toBe(true);
+        expect(blowGoesBefore('attack', true)).toBe(true);
+        expect(blowGoesBefore('turn', false)).toBe(true);
+        // Un conjuro desde la barra: sin dado, el golpe y en seguida el impacto.
+        expect(blowGoesBefore('impact', false)).toBe(true);
+    });
+
+    test('tanda 21: un golpe anunciado que nadie recibe no deja la secuencia colgada', async () => {
+        /** @type {string[]} */
+        const said = [];
+        pushFx({ kind: 'attack', from: 1, to: -1, style: 'melee' });
+        pushFx({ kind: 'roll', title: 'Nerea agarra', natural: 12, total: 15, dc: 13 });
+        afterFx(() => said.push('fin'));
+        await settle();
+        expect(fxBusy()).toBe(false);
+        expect(said).toEqual(['fin']);
     });
 
     test('en el teléfono, la mitad', () => {

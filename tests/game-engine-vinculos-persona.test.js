@@ -53,6 +53,36 @@ function play(scene, choose) {
 const best = (/** @type {any[]} */ replies) => replies.findIndex(r => r.bond === Math.max(...replies.map(x => x.bond)));
 const neutral = (/** @type {any[]} */ replies) => Math.max(0, replies.findIndex(r => r.bond === 0));
 
+/**
+ * Quedar con Nella, de noche, desde el rango 9 hasta el 10, como en el juego (`playMeetup` de
+ * party/social.js): si el romance trae su escena (una cita, la noche), esa; si no, la quedada de
+ * siempre. Devuelve los vínculos, lo que sacó el romance en cada quedada y cómo acaba.
+ *
+ * @param {any} romance Su estado al llegar al rango 9.
+ * @param {(replies: any[]) => number} choose
+ */
+function hangOutToTop(romance, choose) {
+    let bonds = recordBondEvent(createBondState(), 'k', 'manual', { points: RANK_THRESHOLDS[ROMANCE_RANK] }).state;
+    let social = null;
+    let state = romance;
+    const love = [];
+    // Hasta el rango 10, y si estáis en las citas, hasta acabarlas (siguen después del 10).
+    for (let i = 0; i < 20 && (getRank(bonds, 'k') < MAX_RANK || romanceOf(state, 'Nella Tresflechas')?.status === 'citas'); i++) {
+        const turn = romanceScene({ data: romances, card: nella, name: 'Nella Tresflechas', hero: tessa, slot: 'night', state, rank: getRank(bonds, 'k'), day: i });
+        love.push(turn);
+        const picked = meetupFor({ person: { name: 'Nella Tresflechas' }, rank: getRank(bonds, 'k'), data, talkRows, social, random: () => 0.3, place: 'plaza', slot: 'night' });
+        const scene = renderScene(turn?.scene ?? picked.scene, { hero: tessa });
+        const choices = play(scene, choose);
+        bonds = applyMeetup({ bonds, bondKey: 'k', outcome: sceneOutcome({ scene, choices }), data, name: 'Nella Tresflechas' }).bonds;
+        social = recordMeetup(picked.social, { name: 'Nella Tresflechas', scene, elapsed: i, unlocks: [] });
+        if (turn) state = advanceRomance(state, { name: 'Nella Tresflechas', stage: turn.stage, choice: romanceChoice(scene, choices), allowed: turn.allowed, day: i }).state;
+    }
+    return { bonds, love, state };
+}
+
+/** La respuesta que sigue adelante con el romance, si la hay; si no, la que más acerca. */
+const onward = (/** @type {any[]} */ replies) => (replies.some(r => r.romance === 'avanza') ? replies.findIndex(r => r.romance === 'avanza') : best(replies));
+
 describe('D-J63: pulsar a alguien es su invitación, no un menú', () => {
     test('los botones directos («Quedar con», «Charlar con», los corazones) están escondidos, con su interruptor', () => {
         expect(DIRECT_SOCIAL_BUTTONS).toBe(false);
@@ -78,6 +108,19 @@ describe('D-J63: pulsar a alguien es su invitación, no un menú', () => {
         expect(invitationFor({ name: 'Nella', slot: 'afternoon', festival: 'la Fiesta de la Sal' }).lines).toContain('Hoy es la Fiesta de la Sal. Todo el pueblo está en la calle.');
         // Ya en la ruta de pareja, te espera.
         expect(invitationFor({ name: 'Nella', slot: 'night', date: 'final' }).ask).toBe('Esta noche quiero verte. ¿Vienes conmigo?');
+    });
+
+    test('dice el sitio como se llama en este pueblo: «en la taberna», «a la capilla», «al templo»', () => {
+        const where = (/** @type {string} */ place, /** @type {string} */ placeName) => invitationFor({ name: 'Osric', place, placeName, slot: 'night' }).lines[0];
+        // En Puerto Alba la posada es «La taberna» y el templo, «La capilla».
+        expect(where('posada', 'La taberna')).toBe('Buenas noches. Aquí, en la taberna, con algo caliente delante.');
+        expect(where('templo', 'La capilla')).toBe('Buenas noches. Me he acercado a la capilla a estar un rato en calma.');
+        expect(where('gremio', 'La Casa del Gremio')).toBe('Buenas noches. Aquí, en la Casa del Gremio, sin mucho que hacer.');
+        expect(where('tienda', 'La tienda de Bildrath')).toBe('Buenas noches. He venido a la tienda de Bildrath a por cuatro cosas.');
+        // Sin nombre, el de siempre, con «al»; sin artículo, no se adivina.
+        expect(where('templo', '')).toBe('Buenas noches. Me he acercado al templo a estar un rato en calma.');
+        expect(where('posada', 'Taberna Sangre de la Enredadera')).toBe('Buenas noches. Aquí, en la posada, con algo caliente delante.');
+        expect(where('plaza', 'El fuego del campamento')).toBe('Buenas noches. Estaba dando una vuelta por la plaza.');
     });
 
     test('quien aún no conoces (J13.7) se presenta primero', () => {
@@ -217,9 +260,9 @@ describe('D-J63: el romance es el punto de inflexión del rango 9', () => {
         expect(friends.news[0]).toBe('Desde hoy, Nella y tú sois inseparables: una amistad de las que duran.');
         expect(sceneOutcome({ scene: turning.scene, choices: answer(support) }).disliked).toBe(0);
         // En todos los puntos de inflexión escritos, la de apoyo nunca aleja.
-        for (const scene of romances.scenes.filter(s => s.stage === 'senal')) {
-            for (const reply of scene.beats.flatMap(b => b.replies)) if (reply.romance === 'amigos') expect(reply.bond).toBeGreaterThanOrEqual(0);
-        }
+        const supportive = romances.scenes.filter(s => s.stage === 'senal').flatMap(s => s.beats.flatMap(b => b.replies)).filter(r => r.romance === 'amigos');
+        expect(supportive.length).toBeGreaterThanOrEqual(3);
+        expect(supportive.map(r => r.bond).filter(b => b < 0)).toEqual([]);
     });
 
     test('quien no lo permite (Gerd) dice que no con cariño, y seguís igual', () => {
@@ -232,16 +275,19 @@ describe('D-J63: el romance es el punto de inflexión del rango 9', () => {
 
     test('la ruta de amigos llega al rango 10 con todas las ventajas del vínculo', () => {
         const friends = advanceRomance(null, { name: 'Nella Tresflechas', stage: 'senal', choice: 'amigos' }).state;
-        let bonds = at(ROMANCE_RANK);
-        let social = null;
-        for (let i = 0; i < 20 && getRank(bonds, 'k') < MAX_RANK; i++) {
-            // Ya no sale nada del romance: ratos y escenas de siempre.
-            expect(romanceScene({ ...base, state: friends, rank: getRank(bonds, 'k') })).toBeNull();
-            const picked = meetupFor({ person: { name: 'Nella Tresflechas' }, rank: getRank(bonds, 'k'), data, talkRows, social, random: () => 0.3, place: 'plaza', slot: 'afternoon' });
-            const scene = renderScene(picked.scene, { hero: tessa });
-            bonds = applyMeetup({ bonds, bondKey: 'k', outcome: sceneOutcome({ scene, choices: play(scene, neutral) }), data, name: 'Nella Tresflechas' }).bonds;
-            social = recordMeetup(picked.social, { name: 'Nella Tresflechas', scene, elapsed: i, unlocks: [] });
-        }
+        const { bonds, love } = hangOutToTop(friends, neutral);
+        // Ya no sale nada del romance: ratos y escenas de siempre.
+        expect(love.filter(Boolean)).toEqual([]);
+        expect(getRank(bonds, 'k')).toBe(MAX_RANK);
+        expect(getUnlockedPerks(bonds, 'k').map(p => p.id)).toEqual(['follow_up', 'baton_pass', 'endure', 'ultimate']);
+    });
+
+    test('la ruta de pareja (tres citas y la noche) también llega al rango 10 con todas las ventajas', () => {
+        // Las citas suman vínculo como cualquier quedada: el rango 10 llega por el camino.
+        const dating = advanceRomance(null, { name: 'Nella Tresflechas', stage: 'senal', choice: 'avanza' }).state;
+        const { bonds, love, state } = hangOutToTop(dating, onward);
+        expect(love.filter(Boolean).map(l => l.stage)).toEqual(['cita', 'cita', 'cita', 'final']);
+        expect(romanceOf(state, 'Nella Tresflechas')?.status).toBe('pareja');
         expect(getRank(bonds, 'k')).toBe(MAX_RANK);
         expect(getUnlockedPerks(bonds, 'k').map(p => p.id)).toEqual(['follow_up', 'baton_pass', 'endure', 'ultimate']);
     });

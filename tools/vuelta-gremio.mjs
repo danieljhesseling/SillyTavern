@@ -156,6 +156,9 @@ try {
             if (reached(now)) return true;
             if (await bot.handleLayer(now, { onHub })) continue;
             if (await bot.tapChip(now, chipText, `la ficha «${chipText.source.replace(/[\^$\\]/g, '')}»`, 'action-chips.js')) continue;
+            // D-J62: con el modo guiado, contratar y el tablón están en la Casa del Gremio.
+            const hallId = /Contratar/.test(chipText.source) ? 'hub-hire' : /Tabl/.test(chipText.source) ? 'hub-board' : '';
+            if (hallId && await bot.hallAct(now, hallId, `${hallId} (en la Casa del Gremio)`)) continue;
             if (now.scene === 'dialogue' && now.vn.next) await bot.act(now, '«Continuar»', () => bot.press(bot.chip(/^Continuar$/)));
             else if (!await bot.toMap(now)) await page.waitForTimeout(300);
         }

@@ -41,6 +41,8 @@ import { applyMotion, watchMotion } from '../motion.js';
 import { renderCombatActionBar, releaseCombatActionBar } from '../combat-vtt/action-bar.js';
 // Tanda 17: la secuencia de un golpe (el dado, el daño): mientras se enseña, la pantalla espera.
 import { holdRedraw } from '../combat-vtt/fx.js';
+// D-J62: el modo guiado, sin la fila de acciones libres.
+import { guidedRow } from '../../campaign/guided-mode.js';
 
 /**
  * @typedef {import('./scene-director.js').SceneName} SceneName
@@ -174,6 +176,13 @@ import { holdRedraw } from '../combat-vtt/fx.js';
  * @property {() => void} [onHelp] Lo que se puede hacer aqui y ahora (idea 136).
  * @property {() => void} [onClose] Anything the game wants undone when the shell closes.
  * @property {(message: string) => void} [notify]
+ * @property {() => boolean} [isGuided] D-J62: el modo guiado (`campaign/guided-mode.js`): sin la fila de
+ *   acciones libres ni la «Tirada» suelta, y sin «Tableros de aquí» ni «Viajar»; se va adonde manda la historia.
+ * @property {() => import('../../campaign/guided-mode.js').StoryStep[]} [getStory] D-J62: lo que pide ahora la
+ *   historia (o el encargo aceptado): ir a un sitio, ir al tablero de aquí donde espera la pelea, intentarlo.
+ * @property {(step: import('../../campaign/guided-mode.js').StoryStep) => void} [onStory]
+ * @property {() => Array<{name: string, label: string}>} [getPeopleHere] D-J62: con quién se puede hablar aquí,
+ *   fuera de un pueblo con sitios (sin la fila de abajo, no salía en ninguna otra parte).
  */
 
 /** The panel with the board and everything drawn beside it. */
@@ -719,8 +728,11 @@ function renderActionChips(row, place = {}) {
         return;
     }
 
-    const chips = options.getChips().filter(chip => !place.skip?.(chip));
-    const checks = options?.getChecks?.() ?? [];
+    // D-J62, el modo guiado: de la fila solo queda lo del tablero, la conversación y lo que pide el
+    // momento (`guidedRow`); lo demás (el tablón, mirar, los rumores, «+N más») y la «Tirada» suelta, no.
+    const guided = offline && Boolean(options?.isGuided?.());
+    const chips = (guided ? guidedRow(options.getChips(Infinity)) : options.getChips()).filter(chip => !place.skip?.(chip));
+    const checks = guided ? [] : (options?.getChecks?.() ?? []);
     // «Al narrador», fuera de combate: en combate manda la barra de combate. Sin conexión, nunca.
     const narrator = !offline && Boolean(options?.onAskNarrator) && options?.canAskNarrator?.() !== false;
     const next = place.next ?? null;
@@ -1773,10 +1785,13 @@ function withPlaceRest(cards) {
     const camp = (options?.getChips?.(Infinity) ?? []).find(chip => chip.id === 'camp');
     // Donde no se puede acampar (un sitio con techo pero sin posada), el descanso largo, tal cual:
     // que la noche entera no se quede sin sitio donde pasarla.
+    // D-J62: con el modo guiado, cazar y forrajear (que iba en la fila de abajo) va aquí, con la noche.
+    const forage = options?.isGuided?.() ? (options?.getChips?.(Infinity) ?? []).find(chip => chip.id === 'forage') : null;
     const acts = [
         timed('short', 'Descanso corto'),
         camp ? { id: 'chip:camp', label: camp.label, detail: 'El fuego, las guardias y la cena; luego se duerme la noche entera (descanso largo).', enabled: true, cost: 0 }
             : timed('long', 'Descanso largo'),
+        forage ? { id: 'chip:forage', label: forage.label, detail: 'Buscar comida por aquí: una tirada de Supervivencia.', enabled: true, cost: 0 } : null,
     ].filter(Boolean);
     return acts.length > 0 ? [...cards, { id: 'descanso', label: 'Descansar', icon: 'fa-campground', actions: acts }] : cards;
 }
@@ -1853,6 +1868,69 @@ function tagLog() {
     }
 }
 
+/** D-J62: el icono de cada paso de la historia. */
+const STORY_ICONS = { go: 'fa-person-walking', board: 'fa-flag', talk: 'fa-comments', check: 'fa-dice-d20' };
+
+/**
+ * D-J62, el modo guiado: lo que va en la Exploración en lugar de «Tableros de aquí» y «Viajar».
+ *
+ * - **Lo que pide la historia**: ir adonde manda la historia o el encargo aceptado («Ir a El Peaje
+ *   Norte», con quién lo pide debajo), ir a la pelea que espera aquí, o intentar lo que pide.
+ * - Fuera de un pueblo con sitios, **la gente de aquí** (hablar con ella) y **lo que se puede
+ *   mirar** y los rumores: en un pueblo eso ya está en sus sitios (`town-scene.js`).
+ *
+ * @param {HTMLElement} dashboard
+ * @param {{inTown: boolean, data: any}} input `data`: lo que da `getTown` (`looseLooks`, `rumors`).
+ */
+function renderGuidedColumns(dashboard, { inTown, data }) {
+    const steps = options?.getStory?.() ?? [];
+    if (steps.length > 0 || !inTown) {
+        const story = exploreColumn('fa-route', 'Lo que pide la historia', 'story');
+        for (const step of steps) {
+            const card = exploreCard('gs-story-step', STORY_ICONS[/** @type {keyof typeof STORY_ICONS} */ (step.kind)] ?? 'fa-route', step.label, 'gs-place-name', [step.detail, '']);
+            card.dataset.step = step.id;
+            card.dataset.kind = step.kind;
+            card.title = step.detail;
+            card.disabled = !step.enabled;
+            card.addEventListener('click', () => options?.onStory?.(step));
+            story.appendChild(card);
+        }
+        if (steps.length === 0) story.appendChild(el('div', 'ex-empty', 'Aquí la historia no os pide nada más por ahora.'));
+        dashboard.appendChild(story);
+    }
+    if (inTown) return;
+
+    const people = options?.getPeopleHere?.() ?? [];
+    if (people.length > 0) {
+        const column = exploreColumn('fa-comments', 'Gente de aquí', 'people');
+        for (const person of people) {
+            const label = `Hablar con ${person.label || person.name}`;
+            const card = exploreCard('gs-person', 'fa-comments', label, 'gs-place-name', ['', '']);
+            card.dataset.chip = `talk-local:${person.name}`;
+            card.addEventListener('click', () => options?.onChip?.(/** @type {import('./action-chips.js').ActionChip} */ ({
+                id: `talk-local:${person.name}`, label, icon: 'fa-comments', source: 'motor', draft: '',
+            })));
+            column.appendChild(card);
+        }
+        dashboard.appendChild(column);
+    }
+
+    /** @type {Array<{id: string, label: string, icon: string, command?: string, detail?: string}>} */
+    const looks = [...(Array.isArray(data?.looseLooks) ? data.looseLooks : [])];
+    const rumors = Number(data?.rumors) || 0;
+    if (rumors > 0) looks.push({ id: 'rumor', label: `Escuchar lo que se cuenta (${rumors})`, icon: 'fa-ear-listen', command: '/rumor' });
+    if (looks.length > 0) {
+        const column = exploreColumn('fa-eye', 'Mirar', 'looks');
+        for (const look of looks) {
+            const card = exploreCard('gs-look', look.icon || 'fa-eye', look.label, 'gs-place-name', [look.detail ?? '', '']);
+            card.dataset.chip = look.id;
+            card.addEventListener('click', () => options?.onChip?.(/** @type {import('./action-chips.js').ActionChip} */ ({ ...look, source: 'motor' })));
+            column.appendChild(card);
+        }
+        dashboard.appendChild(column);
+    }
+}
+
 /**
  * La Exploración, a pantalla entera (Gem director de UX, 2026-09-27): sin el tablero, que
  * aquí no pinta nada, y con lo que se puede hacer en tres columnas en vez de una lista
@@ -1886,6 +1964,8 @@ function renderExploration(panel, view) {
         onService: (/** @type {string} */ id) => runPlaceAction(id),
         onChip: (/** @type {any} */ chip) => options?.onChip?.(chip),
         refresh: () => refreshGameShell(),
+        // D-J62: con el modo guiado, lo que se mira suelto y los rumores van dentro de su sitio.
+        guided: offline && Boolean(options?.isGuided?.()),
     };
     const town = view.here ? buildTown(townCtx) : null;
     const inTown = Boolean(town && town.places.length > 0);
@@ -1950,6 +2030,16 @@ function renderExploration(panel, view) {
     }
     if (services.length === 0) local.appendChild(el('div', 'ex-empty', 'Aquí no hay posada, ni tienda, ni nadie que venda nada.'));
     if (!inTown || services.length > 0) dashboard.appendChild(local);
+
+    // D-J62, el modo guiado: sin «Tableros de aquí» ni «Viajar». En su lugar, lo que pide la
+    // historia (ir adonde manda, a su pelea o intentarlo) y, fuera de un pueblo con sitios, la
+    // gente de aquí y lo que se puede mirar, que antes solo estaban en la fila de abajo.
+    if (townCtx.guided) {
+        renderGuidedColumns(dashboard, { inTown, data: townCtx.data });
+        panel.appendChild(dashboard);
+        panel.scrollTop = scroll;
+        return;
+    }
 
     // Los tableros de aquí: entrar lleva la pantalla al tablero.
     const boards = exploreColumn('fa-chess-board', 'Tableros de aquí', 'boards');

@@ -23,6 +23,7 @@ import { friendlyFactions } from './factions.js';
 import { getCurrentSlotLabel } from './time.js';
 import { askBeforeTravelling, travelWithTime } from './travel.js';
 import { renderLocationMapsPreview } from './board-view.js';
+import { guidedNow, storyStepsNow, travelForStory } from './guided.js';
 
 /**
  * El mapa de ahora, listo para pintar: los sitios del mundo con sus caminos y sus puertas,
@@ -67,7 +68,13 @@ export async function openWorldMap() {
         return;
     }
     const { openCampaignMap } = await import('../game-engine/ui/campaign-map.js');
+    // D-J62, el modo guiado: el mapa enseña todos los sitios, pero solo se viaja adonde manda la
+    // historia o el encargo (como «Ir a…»), y al llegar se entra en su pelea si la hay.
+    const guided = guidedNow();
+    const goes = guided ? storyStepsNow().filter(step => step.kind === 'go' && step.enabled && step.place) : [];
+    const stepTo = (/** @type {string} */ name) => goes.find(step => String(step.place).toLowerCase() === String(name).toLowerCase()) ?? null;
     const { travelTo } = await openCampaignMap({
+        ...(guided ? { canTravel: (/** @type {string} */ name) => Boolean(stepTo(name)) } : {}),
         model,
         title: mapTitle(),
         pack: lastPack,
@@ -79,6 +86,10 @@ export async function openWorldMap() {
         },
     });
     if (!travelTo) return;
+    if (guided) {
+        await travelForStory(travelTo, stepTo(travelTo)?.board ?? '');
+        return;
+    }
     const { reason } = await travelWithTime(travelTo, { confirm: askBeforeTravelling });
     // Cancelar no lleva motivo: solo se avisa de lo que impide viajar.
     if (reason) toastr.info(reason, 'No se puede viajar');

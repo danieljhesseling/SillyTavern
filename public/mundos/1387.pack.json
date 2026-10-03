@@ -4044,6 +4044,36 @@
       "rewardText": "El ahorcado te cuenta un atajo secreto en el Camino Viejo",
       "twist": "El enterrador Yorick tiene el anillo. Te lo dará si le consigues un cadáver fresco o le pagas el equivalente en oro.",
       "boardId": ""
+    },
+    {
+      "id": "e-las-deudas-de-garth",
+      "title": "Las deudas de Garth",
+      "verb": "limpiar",
+      "chain": null,
+      "patron": "Giles",
+      "faction": null,
+      "where": "El Pueblo de Barro",
+      "act": 2,
+      "noFight": false,
+      "reward": 20,
+      "rewardText": "20 de oro y la cuenta de la posada a cero",
+      "twist": "Garth cobraba deudas que nadie le debía: los pagarés que llevaba encima eran falsos, escritos todos con la misma letra.",
+      "boardId": "enc-pelea-callejon"
+    },
+    {
+      "id": "e-lobos-en-el-callejon",
+      "title": "Lobos en el callejón",
+      "verb": "aguantar",
+      "chain": null,
+      "patron": "Torres",
+      "faction": null,
+      "where": "El Pueblo de Barro",
+      "act": 3,
+      "noFight": false,
+      "reward": 25,
+      "rewardText": "25 de oro de la bolsa del alguacil",
+      "twist": "Los lobos no bajaron solos del monte: el hambre los trajo siguiendo a los refugiados, y el callejón de los cubos de la posada era lo primero que olía a comida.",
+      "boardId": "enc-emboscada-lobos-alfa"
     }
   ],
   "rumors": [
