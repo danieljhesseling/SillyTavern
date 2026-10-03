@@ -101,7 +101,12 @@ Es la fase G5 de [[ROADMAP_AUTOMATIZAR]], que se puede adelantar.
 
 ## E8 · La larga vida: el techo de nivel, el relevo y la gente que se gasta
 
-*Propuesta para decidir (lo planteaste el 2026-10-03). Con campañas largas, el héroe llega al nivel máximo; y la gente escrita como en *Persona* cuesta mucho de hacer, así que no puede haber muchos.*
+*Lo planteaste el 2026-10-03. Con campañas largas, el héroe llega al nivel máximo; y la gente escrita como en *Persona* cuesta mucho de hacer, así que no puede haber muchos.*
+
+**Decidido (D-J64):**
+- **Retirarse al gremio** (E8.3), no resetear al nivel 1.
+- **Los confidentes pueden morir.** Como cualquiera, con las salvaciones de muerte, y se les puede resucitar en el templo pagando, con secuela (E8.7).
+- **Modo duro opcional:** la muerte de un confidente es para siempre, sin resurrección.
 
 | ID | Idea | Hoy | D&D | Tamaño |
 | :--- | :--- | :---: | :--- | :---: |
