@@ -41,13 +41,13 @@ author: DanielJHesseling / Claude Opus 5.5
 
 ---
 
-## 📍 Cómo va (2026-10-02)
+## 📍 Cómo va (2026-10-03, noche)
 
 **Avance, sobre 160 filas activas** (sin lo aparcado ni las decisiones):
-- **97 % jugable** (155 filas).
-- **99 % construido** (159 filas).
+- **99 % jugable** (159 filas).
+- **100 % construido** (160 filas).
 
-Todo lo contado está en commits (el último, 51bfd75f8).
+Casi todo está en commits (el último, c9c41512b); los retoques y las tres campañas terminadas esperan al commit de cierre.
 
 | Hito | Jugable | Construido |
 | :--- | :---: | :---: |
@@ -55,7 +55,7 @@ Todo lo contado está en commits (el último, 51bfd75f8).
 | M2 · El gremio y la primera campaña | 100 % | 100 % |
 | M3 · El pueblo y su gente | 100 % | 100 % |
 | M4 · Strahd con mapas y magia | 100 % | 100 % |
-| M5 · Una campaña bien contada | 94 % | 100 % |
+| M5 · Una campaña bien contada | 100 % | 100 % |
 | M6 · Los compañeros a fondo | 100 % | 100 % |
 | M7 · En el móvil | 100 % | 100 % |
 
@@ -113,15 +113,36 @@ Todo lo contado está en commits (el último, 51bfd75f8).
   - quedar y el romance como en *Persona* (D-J63).
 - ***Las tierras del ocaso*, escrita entera.**
 
-**En marcha ahora (2026-10-03, 15:05): cinco agentes.**
+**Terminado hoy (pendiente del commit de cierre):**
+- **Las tres campañas experimentales, escritas enteras**, cada una con su final alcanzado por el bot (0 silencios, 0 atascos):
+  - *Las tierras del ocaso*, final «El paso de Brezo»;
+  - *La costa que no duerme*;
+  - *El mundo tras la pantalla*, final «La torre que cuida».
+- **Retoques del combate:**
+  - la escena del principio antes de la pelea;
+  - «Seguir con la historia» como botón principal;
+  - enemigos con competencia y Strahd con 120 PG;
+  - los dados de la iniciativa juntos;
+  - los avisos que esperan;
+  - las salvaciones de muerte en puntos;
+  - «común» en castellano;
+  - los bugs H13, H15 y H17.
+- **Retoques de la gente:**
+  - lo que quedaba del narrador lo dice alguien;
+  - Grimm gruñe;
+  - todo pone «Rango»;
+  - aspecto para los enemigos que hablan;
+  - pasan los días al volver al gremio (H16).
+
+**En marcha ahora (2026-10-03, 20:00): tres agentes.**
 
 | Tarea | % aprox. |
 | :--- | :---: |
-| Modo guiado (D-J62), con las pruebas que rompió | ~75 % |
-| *La costa que no duerme*, escrita entera | ~95 % |
-| *El mundo tras la pantalla*, escrita entera | ~75 % |
-| Retoques del combate y bugs (empezar desde el tablón, enemigos con competencia, Strahd 120 PG, dados juntos…) | 0 % |
-| Retoques de la gente (lo que queda del narrador, Grimm, «Rango», aspecto de enemigos, días al volver) | 0 % |
+| Modo guiado (D-J62) y las pruebas que tocó | ~85 % |
+| Entretenimiento E3: combos y el vínculo que se nota en la pelea | ~80 % |
+| Entretenimiento E1: otras victorias, empujar donde duele, superficies que reaccionan | ~60 % |
+
+Al acabar el modo guiado este roadmap queda **al 100 %** de lo que no está aparcado. Desde ahí se sigue con [[ROADMAP_ENTRETENIDO]], de dos en dos frentes.
 
 **Retoques que he decidido, con la libertad que me diste.** Van en la próxima tanda pequeña:
 - **Los enemigos también suman su bonificador de competencia** al atacar, como en D&D, y un 1 natural siempre les falla. Después se vuelve a pasar la simulación.
