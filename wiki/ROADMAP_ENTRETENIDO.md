@@ -21,20 +21,20 @@ created: 2026-10-02
 - 🟡 existe a medias o sin contenido que lo use;
 - ⬜ no existe.
 
-## 📍 Cómo va (2026-10-03, 23:00)
+## 📍 Cómo va (2026-10-03, 23:20)
 
-**Avance: ~60 %** (19 de 32 ideas ya se juegan; el resto, en marcha). Nada de esto está aún en un commit: entra con el commit de cierre del modo guiado o en el siguiente.
+**Avance: ~70 %** (21 de 32 ideas ya se juegan; casi todo lo demás, en sus últimas pruebas). Nada de esto está aún en un commit de código: entra con el commit de cierre del modo guiado.
 
-| Bloque | Hecho | % aprox. | Quién |
+| Bloque | Hecho | % aprox. | Estado |
 | :--- | :--- | :---: | :--- |
-| E1 · El tablero que se usa | E1.1, E1.2, E1.3 | 60 % | Un agente con E1.4 (derrumbes) y E1.5 (puzles) |
-| E2 · La mazmorra que pesa | Todo; ahora se ajusta con tus dos decisiones | 100 % | Un agente con los ajustes |
-| E3 · El grupo y sus combos | E3.1, E3.4 | 50 % | Un agente con E3.2 (combos para todas las parejas) y otro con E3.3 (Arma elemental, decidido por Daniel) |
-| E4 · Compañeros con roce | — | 0 % | Un agente, empezando |
-| E5 · El gremio que paga | — | 0 % | Un agente, empezando |
-| E6 · El camino entre campañas | — | 0 % | Un agente, empezando |
-| E7 · Sin fricción aburrida | Todo (probado en el navegador, 19 de 19) | 100 % | — |
-| E8 · La larga vida | Todo: E8.1-E8.7 (probado en el navegador; E8.4, los mercenarios de paso, 8 de 8) | 100 % | — |
+| E1 · El tablero que se usa | E1.1, E1.2, E1.3 | 65 % | E1.4 (derrumbes) y E1.5 (puzles): un agente a medias. Hay escritos `board/mechanisms.js`, `party/board-mechanisms.js` y casillas nuevas en `terrain.js`; faltan el dibujo, la leyenda del paquete y del Gem, los ejemplos en 1387 y Strahd y las pruebas. **Se pausa si se acaba la cuota** |
+| E2 · La mazmorra que pesa | Todo | 100 % | Ajustes de tus decisiones (ganzúas y 5 antorchas) escritos; faltan sus pruebas |
+| E3 · El grupo y sus combos | E3.1, E3.2, E3.4 | 95 % | E3.3 (Arma elemental) escrita y probada; solo falta marcar la fila |
+| E4 · Compañeros con roce | — | ~70 % | Escrito; en la prueba del navegador |
+| E5 · El gremio que paga | — | ~75 % | Escrito y con pruebas; falta el navegador |
+| E6 · El camino entre campañas | — | ~75 % | Escrito y con pruebas; falta el navegador |
+| E7 · Sin fricción aburrida | Todo, también el cuadro de preparar del héroe ya marcado | 100 % | — |
+| E8 · La larga vida | Todo: E8.1-E8.7 (E8.4, los mercenarios de paso, 8 de 8 en el navegador) | 100 % | — |
 
 **Decisiones abiertas para Daniel (de E8, la larga vida):**
 - Solo mueren de verdad los confidentes (D-J64). Tu héroe y los demás de los tuyos, si caen, quedan malheridos. ¿Quieres que el héroe también pueda morir y volver en el templo?
@@ -44,8 +44,8 @@ created: 2026-10-02
 - Retirarse: desde el nivel 5; el nuevo empieza 1 nivel más por cada 4 del maestro (hasta el 5); ventajas del gremio: mercenarios −25 %, 50 de oro a cada nuevo, templo −25 %. ¿Las cambias?
 - Un mercenario se hace veterano a la tercera vuelta al gremio con vida. ¿Cuentan también las peleas ganadas?
 
-**Decidido por Daniel (de E7), un agente lo está metiendo:**
-- **Sí:** tras dormir, los compañeros que preparan conjuros los preparan solos según su papel (la clériga, curas primero). A tu héroe le sigue saliendo su cuadro de preparar, vacío como siempre. Ahora le saldrá ya marcado con lo de su papel, y lo puede cambiar.
+**Decidido por Daniel (E7): el cuadro de preparar del héroe sale ya marcado con lo de su papel (hecho).**
+- Tras dormir, los compañeros preparan solos según su papel (la clériga, curas primero). A tu héroe le sale su cuadro de preparar ya marcado igual, con la línea «Marcado lo de su papel: curar. Cámbialo si quieres.», y lo cambia antes de aceptar.
 
 **Decididas por Daniel (2026-10-03), un agente las está metiendo:**
 - **Forzar cerraduras requiere herramientas de ladrón** (E2.2), como en 5e. Se quita la vía «con maña».
@@ -121,7 +121,7 @@ Es la fase G5 de [[ROADMAP_AUTOMATIZAR]], que se puede adelantar.
 | E7.1 | **«Explorar hacia delante»:** el grupo avanza en formación y se para en seco ante una trampa, un cofre, una puerta o un enemigo. | ✅ | — | M |
 | E7.2 | **«Resolver rápido»** las peleas triviales: dos ratas a nivel 5 se resuelven al instante con las reglas de siempre y cuestan un par de PG. `quick-sim.js` ya existe, del taller. | ✅ | — | S |
 | E7.3 | **Equipar lo mejor con un clic** a cada compañero, según su clase y lo que domina. | ✅ | — | S |
-| E7.4 | **Subir de nivel recomendado** y preparar conjuros según el papel (G5.4 y G5.6). | ✅ | — | S |
+| E7.4 | **Subir de nivel recomendado** y preparar conjuros según el papel (G5.4 y G5.6). Al despertar, el cuadro de preparar de tu héroe sale ya marcado con lo de su papel y lo dice; lo puedes cambiar. | ✅ | — | S |
 
 ---
 
