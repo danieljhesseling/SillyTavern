@@ -44,10 +44,10 @@ author: DanielJHesseling / Claude Opus 5.5
 ## 📍 Cómo va (2026-10-02)
 
 **Avance, sobre 160 filas activas** (sin lo aparcado ni las decisiones):
-- **95 % jugable** (150 filas).
-- **97 % construido** (153 filas).
+- **97 % jugable** (155 filas).
+- **99 % construido** (159 filas).
 
-Todo lo contado está en commits (el último, 135fa19f7).
+Todo lo contado está en commits (el último, 51bfd75f8).
 
 | Hito | Jugable | Construido |
 | :--- | :---: | :---: |
@@ -97,36 +97,31 @@ Todo lo contado está en commits (el último, 135fa19f7).
 - el guion en Word (J5.7, J5.8) y el taller de campañas (J5.9);
 - las caras neutras (D-J61).
 
-**Terminado y probado, pendiente de commit** (se guarda cuando acaben los que tocan los mismos archivos):
-- **Vueltas automáticas (J16.1, J16.2, J16.4):** 1387, el gremio, Strahd y cualquier campaña, a clics, hasta un final, con 0 silencios y 0 atascos.
-- **El bonificador de competencia** en los ataques del grupo; un 1 natural siempre falla.
-- **Los objetivos en el menú, con rojo y azul (J12.18), y los efectos de golpe y muerte (J12.19).**
-- **Lo que se cuenta, dicho por la gente (J13.9).** En el guion en Word las líneas «Narrador» bajan:
-  - gremio, de 150 a 89;
-  - 1387, de 315 a 223;
-  - Strahd, de 228 a 147.
-- **Las correcciones como ronda del guion (J5.10) y el aspecto de toda la gente (J5.11).**
+**Lo último que ha entrado** (commits de Daniel 75deaca31, edc2b08cc y 164ccd0b2, del 2026-10-03):
+- **Vueltas automáticas (J16)** y **`ProbarCampañas.exe` (J16.6)**.
+- **Combate:**
+  - el bonificador de competencia;
+  - los objetivos en el menú (J12.18) y los efectos (J12.19);
+  - el muelle táctico (J12.20);
+  - la pantalla de victoria o derrota (J12.21);
+  - la embestida, una sola vez.
+- **Gente:**
+  - lo que se cuenta, dicho por la gente (J13.9);
+  - el aspecto de todos (J5.11);
+  - la ronda del guion (J5.10);
+  - directo a la ventana de la pelea;
+  - quedar y el romance como en *Persona* (D-J63).
+- ***Las tierras del ocaso*, escrita entera.**
 
-**En marcha ahora (2026-10-03, 06:40): siete agentes.**
+**En marcha ahora (2026-10-03, 15:05): cinco agentes.**
 
 | Tarea | % aprox. |
 | :--- | :---: |
-| Directo a la ventana de la pelea, sin la caja vacía | ~85 % |
-| Modo guiado (D-J62) | ~40 % |
-| Quedar y el romance como en *Persona* (D-J63) | ~30 % |
-| La app del bot, `ProbarCampañas.exe` (J16.6) | 0 % (nuevo) |
-| *El mundo tras la pantalla*, escrita entera | 0 % (nuevo) |
-| *Las tierras del ocaso*, escrita entera | 0 % (nuevo) |
-| *La costa que no duerme*, escrita entera | 0 % (nuevo) |
-
-**Se cortó por el límite de uso (2026-10-03, 07:00; vuelve a las 10:00).** Al volver, por este orden:
-1. **Retomar** el modo guiado (~75 %), lo de *Persona* (~65 %) y las tres campañas (~15-25 %), cada uno desde su `progreso.md`.
-2. **El combate:**
-   - la embestida, una sola vez;
-   - el muelle táctico (J12.20);
-   - la pantalla de victoria o derrota (J12.21).
-3. **La tanda de retoques** de abajo.
-4. **Guardar todo en un commit** con las pruebas en verde. Hay mucho trabajo terminado sin guardar: las vueltas, la competencia, los objetivos y efectos, lo dicho por la gente, el aspecto, directo a la pelea y `ProbarCampañas.exe`.
+| Modo guiado (D-J62), con las pruebas que rompió | ~75 % |
+| *La costa que no duerme*, escrita entera | ~95 % |
+| *El mundo tras la pantalla*, escrita entera | ~75 % |
+| Retoques del combate y bugs (empezar desde el tablón, enemigos con competencia, Strahd 120 PG, dados juntos…) | 0 % |
+| Retoques de la gente (lo que queda del narrador, Grimm, «Rango», aspecto de enemigos, días al volver) | 0 % |
 
 **Retoques que he decidido, con la libertad que me diste.** Van en la próxima tanda pequeña:
 - **Los enemigos también suman su bonificador de competencia** al atacar, como en D&D, y un 1 natural siempre les falla. Después se vuelve a pasar la simulación.
