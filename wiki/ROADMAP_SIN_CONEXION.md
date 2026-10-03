@@ -97,19 +97,51 @@ Todo lo contado está en commits (el último, 135fa19f7).
 - el guion en Word (J5.7, J5.8) y el taller de campañas (J5.9);
 - las caras neutras (D-J61).
 
-**En marcha ahora (2026-10-03, 05:30): cinco agentes**, retomados tras el corte del límite de uso.
+**Terminado y probado, pendiente de commit** (se guarda cuando acaben los que tocan los mismos archivos):
+- **Vueltas automáticas (J16.1, J16.2, J16.4):** 1387, el gremio, Strahd y cualquier campaña, a clics, hasta un final, con 0 silencios y 0 atascos.
+- **El bonificador de competencia** en los ataques del grupo; un 1 natural siempre falla.
+- **Los objetivos en el menú, con rojo y azul (J12.18), y los efectos de golpe y muerte (J12.19).**
+- **Lo que se cuenta, dicho por la gente (J13.9).** En el guion en Word las líneas «Narrador» bajan:
+  - gremio, de 150 a 89;
+  - 1387, de 315 a 223;
+  - Strahd, de 228 a 147.
+- **Las correcciones como ronda del guion (J5.10) y el aspecto de toda la gente (J5.11).**
+
+**En marcha ahora (2026-10-03, 06:40): siete agentes.**
 
 | Tarea | % aprox. |
 | :--- | :---: |
-| Vueltas automáticas, con el bot para cualquier campaña (J16) | ~90 % |
-| El bonificador de competencia en los ataques; falta repasar el equilibrio con la simulación | ~80 % |
-| Objetivos en el menú, rojo y azul al pasar el ratón (J12.18), y efectos de golpe y muerte (J12.19) | ~25 % |
-| Lo que se cuenta, dicho por la gente (J13.9) | ~10 % |
-| Correcciones como ronda del guion (J5.10) y el aspecto de la gente (J5.11) | ~10 % |
-| Directo a la ventana de la pelea tras una conversación, sin la caja vacía de en medio | ~0 % (nuevo) |
-| Modo guiado (D-J62): esconder la fila de acciones libres, «Viajar» y «Tableros de aquí»; entrar en los tableros por la conversación o el encargo | ~0 % (nuevo) |
-| Quedar y el romance, como en *Persona* (D-J63) | ~0 % (nuevo) |
-| La app del bot, `ProbarCampañas.exe` (J16.6) | En cola, tras las vueltas |
+| Directo a la ventana de la pelea, sin la caja vacía | ~85 % |
+| Modo guiado (D-J62) | ~40 % |
+| Quedar y el romance como en *Persona* (D-J63) | ~30 % |
+| La app del bot, `ProbarCampañas.exe` (J16.6) | 0 % (nuevo) |
+| *El mundo tras la pantalla*, escrita entera | 0 % (nuevo) |
+| *Las tierras del ocaso*, escrita entera | 0 % (nuevo) |
+| *La costa que no duerme*, escrita entera | 0 % (nuevo) |
+
+**Retoques que he decidido, con la libertad que me diste.** Van en la próxima tanda pequeña:
+- **Los enemigos también suman su bonificador de competencia** al atacar, como en D&D, y un 1 natural siempre les falla. Después se vuelve a pasar la simulación.
+- **Strahd sube de 90 a 120 PG.** Con la competencia del grupo, la cripta se había quedado corta (6-8 rondas). D-J59 dice que los finales se quedan duros.
+- **Los dados de la iniciativa salen todos juntos** en una tarjeta, y la barra no se enciende hasta que acaban (H19).
+- **Los avisos (fama, final, «Tras la pelea»)** esperan a que se cierre la tarjeta del final o de la victoria, en vez de taparla (H18).
+- **Las salvaciones de muerte**, en puntos, en la ficha y en la iniciativa.
+- **El menú de objetivos** no tapa las fichas que brillan: la cámara las centra encima del menú.
+- **Lo que queda del narrador** pasa a decirlo alguien:
+  - lo que se ve al mirar;
+  - lo que pasa al evitar o hablar una pelea;
+  - las respuestas de las tarjetas de suceso;
+  - los finales;
+  - las visitas del gremio;
+  - el aviso de una trampa;
+  - las misiones personales;
+  - lo que vuelve días después.
+
+  Se quitan los avisos al entrar en un tablero, en un edificio y al morir alguien, porque el objetivo ya sale en la cabecera.
+- **Grimm, que no habla hasta el rango 8,** contesta con un gruñido («Mm.»).
+- **Las personas nuevas sin retrato** usan el del mismo personaje si existe; si no, van a `PIXELLAB_PENDIENTE.md`.
+- **El aspecto también para los enemigos que hablan** (el ratero, Strahd…), con la guía del Gem regenerada.
+- **Los retratos que no cuadran con su texto** (Madre Elvira, Valerius, Hilda, Donavich, Ireena) se quedan; el aspecto describe el dibujo.
+- **Al volver al gremio desde una campaña** pasan en el gremio los días del viaje, y el cansancio se cura descansando allí (H16).
 
 **Bugs y retoques abiertos** (lo que has visto jugando y lo que han encontrado los agentes). Todos tienen a alguien trabajando:
 
@@ -135,6 +167,11 @@ Todo lo contado está en commits (el último, 135fa19f7).
 | Atacar a un enemigo desde el menú, y que se note quién se lleva el golpe | Objetivos en el menú (J12.18) |
 | Golpes y muertes que apenas se notan | Efectos (J12.19) |
 | Tras la conversación del muelle sale una caja vacía con «Continuar», «Salir del tablero» y «Buscar trampas» antes de la ventana de la pelea; debe ir directo a esa ventana, y en todas las campañas | Directo a la decisión |
+| Los avisos verdes y naranjas tapan el título de la tarjeta del final, de la victoria y del Salón de la fama (H18) | Próxima tanda pequeña |
+| Los dados de la iniciativa salen de uno en uno y la barra ya deja atacar entre medias (H19) | Próxima tanda pequeña |
+| La rareza del botín sale en inglés («common») en el texto (H20) | Próxima tanda pequeña |
+| A veces no sale la escena del principio de Strahd (H15), la puerta de la taberna aparece antes de «Empezar» (H17) y «Volver al gremio» falla a veces (H13) | Próxima tanda pequeña |
+| Al volver al gremio no pasa el tiempo y se arrastra el cansancio de Barovia (H16) | Próxima tanda pequeña |
 
 **Después de este roadmap, en este orden** (lo dijiste el 2026-10-02):
 1. **Escribir bien las tres campañas experimentales**, con la calidad de 1387 y Strahd: *El mundo tras la pantalla* (isekai), *Las tierras del ocaso* (fantasía épica) y *La costa que no duerme* (terror). Cada una tendrá:
