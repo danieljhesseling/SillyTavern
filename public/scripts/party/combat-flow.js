@@ -1793,7 +1793,8 @@ export function endCombat(reason = 'ended', { said = '', told = '' } = {}) {
             : `salen ${gendered(groupGender(woundedMembers), 'malheridos', 'malheridas')}`}.`,
         botin: listNames((loot?.items ?? []).map((/** @type {any} */ item) => String(item?.name || '')).filter(Boolean).slice(0, 3)),
     });
-    postForModel(epilogue, { show: told || ending }).catch(error => console.error('[party] could not post the combat epilogue', error));
+    // J13.9: sin conexión, el final de la pelea no lo cuenta nadie (la pantalla de la victoria ya lo dice).
+    postForModel(epilogue, { show: told || ending, moment: 'fin-combate' }).catch(error => console.error('[party] could not post the combat epilogue', error));
 
     // Idea 191: ganar se celebra, con la cuenta delante.
     if (reason === 'victory') {

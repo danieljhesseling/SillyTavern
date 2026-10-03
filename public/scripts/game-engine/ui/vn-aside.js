@@ -26,6 +26,9 @@ const ICONS = {
     refused: 'fa-lock',
     summary: 'fa-bookmark',
     narration: 'fa-eye',
+    // D-J63: la pista de que el vínculo subirá hoy, y el aviso del punto de inflexión.
+    hint: 'fa-link',
+    warn: 'fa-feather',
 };
 
 /**

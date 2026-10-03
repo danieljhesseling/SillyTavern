@@ -923,7 +923,8 @@ export async function travelWithTime(name, options = {}) {
         sucesos: trip.length > 0 ? `${trip.map(event => lowerFirst(String(event.note || event.name).replace(/\.$/, ''))).join('; ')}.` : '',
     });
     const arrival = tellMoment('llegada', placeFacts(match.name, !visitedBefore.includes(match.name)));
-    postForModel(note, { show: [road, arrival].filter(Boolean).join('\n\n') }).catch(error => console.error('[party] travel note failed', error));
+    // J13.9: sin conexión, el viaje y la llegada no los cuenta nadie (el aviso del viaje y el mapa ya lo dicen).
+    postForModel(note, { show: [road, arrival].filter(Boolean).join('\n\n'), moment: 'viaje' }).catch(error => console.error('[party] travel note failed', error));
     // J14.7 y J14.8: en un viaje de más de un día se duerme por el camino, y a veces dos de los
     // tuyos charlan junto al fuego. Es la noche de ayer: la de hoy, aquí, queda libre.
     if (total >= 2) await playNight({ road: true, day: Math.max(1, campaignDay() - 1) });

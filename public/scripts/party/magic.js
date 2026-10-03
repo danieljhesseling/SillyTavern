@@ -13,7 +13,7 @@ import { chat_metadata, saveMetadata } from '../../script.js';
 import { loadWorldInfo, saveWorldInfo, METADATA_KEY } from '../world-info.js';
 import { getAbilityModifier, removeItemFromInventory, addItemToInventory, createItem } from '../dnd-system.js';
 import { asAbility } from '../game-engine/compendio/skills.js';
-import { rollDiceDetailed, getDistanceInFeet, getPlayerAttackModifier } from './combat-rules.js';
+import { rollDiceDetailed, getDistanceInFeet, getPlayerAttackBonus } from './combat-rules.js';
 import { setCell as setTerrainCell, getCell, TERRAIN_TYPES } from '../game-engine/board/terrain.js';
 import { areaCells, creaturesIn, isArea, describeArea } from '../game-engine/rules/area.js';
 import { elementOf, reactTerrain, comboFor, ELEMENT_ICONS } from '../game-engine/rules/tags.js';
@@ -1616,7 +1616,8 @@ export function resolveAbilityOnBoard({ actor, side, ability, subject }) {
                 attackModifier: spell && typeof ability.attackBonus === 'number' && side === 'party'
                     ? ability.attackBonus
                     : side === 'party'
-                        ? getPlayerAttackModifier(actor, ability.rangeFeet)
+                        // Una técnica del grupo ataca como su arma: característica y competencia.
+                        ? getPlayerAttackBonus(actor, ability.rangeFeet)
                         : Math.max(getAbilityModifier(actor.strength || 10), getAbilityModifier(actor.dexterity || 10)),
                 targetAc: friendly || target === actor ? 10 : getTargetArmorClass(target, actor).ac,
                 saveModifier: abilityModifier(target, ability.saveAbility),

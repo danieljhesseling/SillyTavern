@@ -8,9 +8,10 @@
  * quién lo permite, en `compendio/companeros.json` (su campo `romance`). Esto lo junta con la
  * partida:
  *
- * - **Quedar** (`social.js`, `playMeetup`): si toca, la quedada es la señal, una cita o la noche
- *   (`romanceMeetup`), y al acabar se apunta lo elegido (`romanceAfterMeetup`). Con pareja, el
- *   rato juntos lleva una frase suya.
+ * - **Quedar** (`social.js`, `playMeetup`): si toca, la quedada es el punto de inflexión del
+ *   rango 9 (D-J63), una cita o la noche (`romanceMeetup`), y al acabar se apunta lo elegido
+ *   (`romanceAfterMeetup`). Con pareja, el rato juntos lleva una frase suya (de fiesta o de
+ *   noche, si toca).
  * - **Lo que se ve**: junto al vínculo en el selector de quedar y en «El grupo»
  *   (`romanceLabelFor`, `romanceGlanceLine`); «quiere quedar contigo» si hay cita
  *   (`romanceWantsFor`).
@@ -118,20 +119,40 @@ function personCard(name) {
  * @param {number} input.rank Su vínculo.
  * @param {any} input.picked La quedada que tocaba (`meetupFor`): solo en un rato cabe el romance.
  * @param {string} [input.slot] La franja.
+ * @param {number} [input.reaches] D-J63: el rango al que llega esta quedada (el punto de inflexión es el 9).
+ * @param {boolean} [input.known] J13.7: con quien aún no se ha presentado, nunca.
+ * @param {string} [input.festival] D-J63: la fiesta de hoy aquí: la frase de pareja es de fiesta.
  * @returns {Love|null}
  */
-export function romanceMeetup({ name, rank, picked, slot = '' }) {
-    if (!romanceOn() || !chat_metadata) return null;
+export function romanceMeetup({ name, rank, picked, slot = '', reaches = 0, known = true, festival = '' }) {
+    if (!romanceOn() || !chat_metadata || !known) return null;
     const { cards, rows } = romanceData();
     const card = romanceCardOf(cards, name);
     if (!card) return null;
     const state = getRomances();
     const free = picked?.kind === 'rato';
     if (isCouple(state, card.who)) {
-        const note = free ? coupleNote(rows, card.who, campaignDay()) : '';
+        // D-J63: en una fiesta o de noche, lo que te dice es de esa fiesta o de esa noche.
+        const note = free ? coupleNote(rows, card.who, campaignDay(), { festival, night: slot === 'night' }) : '';
         return note ? { scene: withCoupleNote(picked, note), stage: 'pareja', allowed: true } : null;
     }
-    return romanceScene({ data: rows, card, state, name: card.who, rank, hero: heroNow(), slot, free, on: true, day: campaignDay() });
+    return romanceScene({ data: rows, card, state, name: card.who, rank, hero: heroNow(), slot, free, on: true, day: campaignDay(), reaches, known });
+}
+
+/**
+ * D-J63: si con alguien os toca una cita o la noche (ya en la ruta de pareja), para su saludo.
+ *
+ * @param {string} name
+ * @param {string} [slot]
+ * @returns {''|'cita'|'final'}
+ */
+export function romanceDateFor(name, slot = '') {
+    if (!romanceOn() || !chat_metadata) return '';
+    const card = romanceCardOf(romanceData().cards, name);
+    if (!card) return '';
+    const stage = stageOf(romanceOf(getRomances(), card.who), campaignDay());
+    if (stage === 'cita') return 'cita';
+    return stage === 'final' && slot === 'night' ? 'final' : '';
 }
 
 /**

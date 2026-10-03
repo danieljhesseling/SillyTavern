@@ -820,7 +820,8 @@ try {
                 .then(() => page.evaluate(() => Number(/** @type {any} */ (window).__tapLag) || 0));
             if (lag > 0) tapLags.push(Math.round(lag));
             await page.evaluate(() => { delete (/** @type {any} */ (window)).__tapLag; });
-            const target = page.locator('#game-shell .gs-targets .gs-target');
+            // J12.18: los que no alcanzas salen también, apagados: se toca uno que sí.
+            const target = page.locator('#game-shell .gs-targets .gs-target:not([disabled])');
             if (await target.first().waitFor({ state: 'visible', timeout: 3000 }).then(() => true).catch(() => false)) {
                 if (!fight.sheet) {
                     fight.sheet = true;
@@ -828,8 +829,13 @@ try {
                 }
                 // Con la CPU de un móvil (J20.6) la hoja acaba de deslizarse y el toque tarda en
                 // llegar: 4 s se quedaban cortos a veces. Si aun así falla, se apunta por qué.
-                await target.first().tap({ timeout: 12000 }).then(() => { fight.attacks++; })
-                    .catch((/** @type {any} */ e) => { /** @type {any} */ (fight).tapError = String(e?.message || e).split('\n').filter(l => /Timeout|intercept|outside|not stable|detached/.test(l)).slice(0, 3).join(' | '); });
+                // J12.18: con el dedo, el primer toque lo enciende («Toca otra vez») y el segundo ataca.
+                const tapError = (/** @type {any} */ e) => { /** @type {any} */ (fight).tapError = String(e?.message || e).split('\n').filter(l => /Timeout|intercept|outside|not stable|detached/.test(l)).slice(0, 3).join(' | '); };
+                const armed = page.locator('#game-shell .gs-targets .gs-target.gs-card-armed');
+                if (await target.first().tap({ timeout: 12000 }).then(() => true).catch((/** @type {any} */ e) => { tapError(e); return false; })) {
+                    if (await armed.count() > 0) await armed.first().tap({ timeout: 12000 }).then(() => { fight.attacks++; }).catch(tapError);
+                    else fight.attacks++;
+                }
             }
             await page.waitForTimeout(700);
             continue;

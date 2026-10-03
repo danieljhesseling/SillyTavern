@@ -13,7 +13,9 @@
 
 import { getAbilityModifier } from '../dnd-system.js';
 import { createEncounter, normalizeEncounter } from '../game-engine/combat/turn-machine.js';
-import { weaponDamage, weaponRange } from '../game-engine/rules/equipment.js';
+import { weaponDamage, weaponRange, weaponOf } from '../game-engine/rules/equipment.js';
+import { attackBonusParts } from '../game-engine/rules/attack-bonus.js';
+import { isLightWeapon } from '../game-engine/rules/weapon-mastery.js';
 import { brawlOf, fistsFor, FIST_REACH_FEET } from '../game-engine/combat/brawl.js';
 import { combatEncounter } from './state.js';
 
@@ -263,6 +265,33 @@ export function getPlayerAttackModifier(member, rangeFeet) {
     const strMod = getAbilityModifier(member?.strength || 10);
     const dexMod = getAbilityModifier(member?.dexterity || 10);
     return rangeFeet > 5 ? dexMod : Math.max(strMod, dexMod);
+}
+
+/**
+ * Lo que suma al d20 quien ataca, por partes y con su explicación: la característica (la de
+ * `getPlayerAttackModifier`) **y la competencia** con lo que empuña (`rules/attack-bonus.js`).
+ * El daño sigue sumando solo la característica, como en D&D. En una pelea sin muertes, a
+ * puñetazos: con los puños siempre hay competencia.
+ *
+ * @param {PartyMember|null} member
+ * @param {number} rangeFeet
+ * @param {Array<{label: string, value: number}>} [extras] Lo demás que suma (el «+1» del arma…).
+ * @returns {import('../game-engine/rules/attack-bonus.js').AttackBonusParts}
+ */
+export function getPlayerAttackParts(member, rangeFeet, extras = []) {
+    const weapon = brawlOf(combatEncounter) ? null : weaponOf(member);
+    return attackBonusParts({ member, rangeFeet, weapon, light: weapon ? isLightWeapon(weapon) : false, extras });
+}
+
+/**
+ * Lo que suma al d20 quien ataca con su arma: característica y competencia.
+ *
+ * @param {PartyMember|null} member
+ * @param {number} rangeFeet
+ * @returns {number}
+ */
+export function getPlayerAttackBonus(member, rangeFeet) {
+    return getPlayerAttackParts(member, rangeFeet).total;
 }
 
 export function createEmptyCombatEncounter() {

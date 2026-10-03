@@ -31,6 +31,28 @@
  * @property {boolean} [enabled]
  * @property {string} [reason]
  * @property {string} [note] Algo más que decir (lo que ya se sabe de él).
+ * @property {string|number} [token] J12.18: su ficha en el tablero (`data-token-id`), para encenderla.
+ * @property {'enemy'|'ally'} [side] De qué bando es (sin decir, enemigo).
+ * @property {number} [cover] Lo que le tapa: lo que suma a su CA (+2, +5).
+ * @property {number} [dc] La CD de lo que le haces, si salva él.
+ * @property {string} [save] Con qué salva («Destreza»).
+ * @property {Array<{id: string, token?: string|number, name: string, side: 'enemy'|'ally'}>} [caught] Un área apuntada a
+ *   él: a quién más pilla (él incluido).
+ * @property {Array<{x: number, y: number}>} [cells] Un área apuntada a él: sus casillas.
+ */
+
+/**
+ * @typedef {Object} AimMark J12.18: alguien que se lleva lo que hace una opción del menú.
+ * @property {string} id Su fila en la iniciativa (`data-entry-id`).
+ * @property {string|number} [token] Su ficha (`data-token-id`).
+ * @property {'harm'|'help'} tone Rojo si le hace daño o va contra él; azul si le cura o le ayuda.
+ */
+
+/**
+ * @typedef {Object} Aim Lo que se enciende en el tablero al pasar por una opción.
+ * @property {AimMark[]} marks
+ * @property {Array<{x: number, y: number}>} [cells] Las casillas de un área.
+ * @property {'harm'|'help'} [cellsTone]
  */
 
 /**
@@ -124,12 +146,14 @@
  * @property {Record<string, number>} [studied] Cuántas cosas se saben ya de cada enemigo.
  * @property {number} [magicCount] Cuántos conjuros y objetos mágicos hay, si la foto es la ligera
  *   (la de la barra sola, sin los menús).
+ * @property {{id: string, token: string|number}} [actor] J12.18: quien juega, para encender su
+ *   ficha con lo que se hace a sí mismo.
  */
 
 /**
  * @typedef {Object} Badge
  * @property {string} text
- * @property {'damage'|'heal'|'reach'|'cost'|'dc'|'mastery'|'plain'} kind
+ * @property {'damage'|'heal'|'reach'|'cost'|'dc'|'mastery'|'plain'|'chance'} kind
  */
 
 /**
@@ -149,6 +173,9 @@
  * @property {string} [tone] El color de su icono: weapon, magic, action, bonus, fire, cold, heal…
  * @property {{id: string, options: Array<{level: number, label: string, title: string, active: boolean}>}} [levels]
  *   J19.3: con qué espacio lanzarlo, si hay más de uno; `id` es el del conjuro.
+ * @property {Aim} [aim] J12.18: a quién se encienden en el tablero al pasar por ella.
+ * @property {{hp: number, max: number}} [meter] Un objetivo: su vida, en una barra.
+ * @property {string} [caught] Un área apuntada a él: a quién pilla, en palabras.
  */
 
 /**
@@ -218,22 +245,125 @@ export function targetDetail(t) {
 }
 
 /**
- * Un objetivo como fila de la lista: pulsarlo es hacer lo de `pickPrefix` sobre él.
+ * «A», «A y B», «A, B y C».
+ *
+ * @param {string[]} names
+ * @returns {string}
+ */
+export function joinNames(names) {
+    const list = (names || []).map(n => text(n)).filter(Boolean);
+    if (list.length <= 1) return list[0] ?? '';
+    return `${list.slice(0, -1).join(', ')} y ${list[list.length - 1]}`;
+}
+
+/**
+ * J12.18: a quién pilla un área apuntada a un objetivo, en palabras. Si va a hacer daño y pilla
+ * a alguno de los tuyos, lo avisa.
+ *
+ * @param {TargetView} t
+ * @param {'harm'|'help'} tone
+ * @returns {string}
+ */
+export function caughtWords(t, tone) {
+    const list = Array.isArray(t.caught) ? t.caught : [];
+    if (list.length === 0) return 'Ahí no pilla a nadie.';
+    const own = list.filter(c => c.side === 'ally').map(c => c.name);
+    if (tone === 'help') return `Alcanza a ${joinNames(list.map(c => c.name))}.`;
+    const warn = own.length === 0 ? '' : ` Ojo: ${joinNames(own)} ${own.length === 1 ? 'es' : 'son'} de los tuyos.`;
+    return `Pilla a ${joinNames(list.map(c => c.name))}.${warn}`;
+}
+
+/**
+ * J12.18: lo que se enciende en el tablero con un objetivo: él, en rojo si va contra él y en azul
+ * si es para ayudarle; si es un área apuntada a él, todos los que pilla y sus casillas.
+ *
+ * @param {TargetView} t
+ * @param {'harm'|'help'} tone
+ * @returns {Aim}
+ */
+export function targetAim(t, tone) {
+    if (Array.isArray(t.caught)) {
+        return {
+            marks: t.caught.map(c => ({ id: String(c.id), token: c.token, tone })),
+            cells: Array.isArray(t.cells) ? t.cells : [],
+            cellsTone: tone,
+        };
+    }
+    return { marks: [{ id: String(t.id), token: t.token, tone }] };
+}
+
+/**
+ * J12.18: lo que se enciende con una tarjeta que pide a quién: todos los que se pueden elegir
+ * (solo ellos: el área se ve al pasar por cada uno).
+ *
+ * @param {TargetView[]} targets
+ * @param {'harm'|'help'} tone
+ * @returns {Aim|undefined}
+ */
+export function choicesAim(targets, tone) {
+    const marks = (targets || [])
+        .filter(t => t.enabled !== false)
+        .map(t => ({ id: String(t.id), token: t.token, tone }));
+    return marks.length > 0 ? { marks } : undefined;
+}
+
+/**
+ * Lo que se hace a uno mismo (un conjuro sobre ti, beber una poción): tu ficha, en azul.
+ *
+ * @param {BarSnapshot} s
+ * @returns {Aim|undefined}
+ */
+function selfAim(s) {
+    return s.actor ? { marks: [{ id: String(s.actor.id), token: s.actor.token, tone: 'help' }] } : undefined;
+}
+
+/**
+ * Un objetivo como fila de la lista: pulsarlo es hacer lo de `pickPrefix` sobre él. J12.18: con
+ * su vida en una barra, lo que tienes de acertar (o la CD, si salva él), si vas con ventaja o
+ * está tras algo que le tapa, y lo que se enciende en el tablero al pasar por él. Fuera de
+ * alcance sale igual, apagado y diciendo por qué.
  *
  * @param {TargetView} t
  * @param {string} pickPrefix
- * @param {{showChance?: boolean}} [opts]
+ * @param {{showChance?: boolean, tone?: 'harm'|'help'}} [opts] `tone`: sin decir, rojo para un
+ *   enemigo y azul para uno de los tuyos.
  * @returns {MenuItem}
  */
-function targetItem(t, pickPrefix, { showChance = false } = {}) {
+function targetItem(t, pickPrefix, { showChance = false, tone } = {}) {
     const pick = `${pickPrefix}:${t.id}`;
+    const color = tone ?? (t.side === 'ally' ? 'help' : 'harm');
     /** @type {Badge[]} */
     const badges = [];
-    if (showChance && Number.isFinite(Number(t.chance))) badges.push({ text: `${Math.round(Number(t.chance))} %${t.edge ? ` · ${t.edge}` : ''}`, kind: 'plain' });
-    return {
-        kind: 'target', key: pick, pick, name: t.name, art: t.art || '', icon: 'fa-skull',
-        desc: targetDetail(t), badges, enabled: t.enabled !== false, reason: t.reason || '',
+    const chance = showChance && t.chance !== undefined && t.chance !== null && Number.isFinite(Number(t.chance));
+    if (chance) badges.push({ text: `${Math.round(Number(t.chance))} %`, kind: 'chance' });
+    if (Number(t.dc) > 0) badges.push({ text: `CD ${Math.round(Number(t.dc))}${t.save ? ` · ${t.save}` : ''}`, kind: 'dc' });
+    const edge = text(t.edge);
+    const notes = [
+        text(t.note),
+        edge && !/^con /.test(edge) ? `con ${edge}` : edge,
+        // Lo que le tapa cuenta contra un ataque (su CA ya lo lleva sumado), no contra una salvación.
+        chance && Number(t.cover) > 0 ? `tras cobertura (+${Math.round(Number(t.cover))} CA)` : '',
+    ].filter(Boolean);
+    /** @type {MenuItem} */
+    const item = {
+        kind: 'target', key: pick, pick, name: t.name, art: t.art || '', icon: color === 'help' ? 'fa-user-shield' : 'fa-skull',
+        desc: targetDetail({ ...t, note: notes.join(' · ') }), badges, enabled: t.enabled !== false, reason: t.reason || '',
+        aim: targetAim(t, color),
     };
+    if (Number(t.maxHp) > 0) item.meter = { hp: Math.max(0, Number(t.hp) || 0), max: Number(t.maxHp) };
+    if (Array.isArray(t.caught)) item.caught = caughtWords(t, color);
+    return item;
+}
+
+/**
+ * Si la lista que abre una opción es la de a quién (se abre debajo de ella, en el mismo menú) o
+ * es otra elección (empujar lejos o al suelo, qué usar), que va en su propio paso.
+ *
+ * @param {MenuItem} item
+ * @returns {boolean}
+ */
+export function unfolds(item) {
+    return Boolean(item?.next) && (item.next?.items ?? []).every(i => i.kind === 'target');
 }
 
 /**
@@ -339,11 +469,15 @@ export function buildAttackMenu(s) {
     const weaponItems = [];
     if (s.weapon) {
         const face = weaponFace(s.weapon);
+        // J12.18: también los que están lejos, apagados y diciendo a cuántos pies: a quién llegas
+        // se ve de un vistazo.
+        const reachable = s.weapon.targets.some(t => t.enabled !== false);
         weaponItems.push({
             kind: 'weapon', key: `weapon:${s.weapon.id}`, name: s.weapon.name, art: s.weapon.art || '', icon: s.weapon.ranged ? 'fa-crosshairs' : 'fa-khanda',
             tone: 'weapon', desc: face.desc, tags: face.tags, badges: [...face.badges, { text: 'Acción', kind: 'cost' }],
-            enabled: !blocked && s.weapon.targets.length > 0,
-            reason: blocked || (s.weapon.targets.length === 0 ? nearestWords(s) : ''),
+            enabled: !blocked && reachable,
+            reason: blocked || (reachable ? '' : nearestWords(s)),
+            aim: blocked ? undefined : choicesAim(s.weapon.targets, 'harm'),
         });
         for (const t of s.weapon.targets) {
             const row = targetItem({ ...t, enabled: !blocked && t.enabled !== false, reason: blocked || t.reason || '' }, 'attack', { showChance: true });
@@ -357,12 +491,12 @@ export function buildAttackMenu(s) {
     const spares = [];
     for (const weapon of s.spareWeapons || []) {
         const face = weaponFace(weapon);
-        const why = blocked || (!s.swap.ok ? s.swap.reason : '') || (weapon.targets.length === 0 ? `Con ${weapon.name.toLowerCase()} no llegas a nadie.` : '');
+        const why = blocked || (!s.swap.ok ? s.swap.reason : '') || (!weapon.targets.some(t => t.enabled !== false) ? `Con ${weapon.name.toLowerCase()} no llegas a nadie.` : '');
         spares.push({
             kind: 'card', key: `swapattack:${weapon.id}`, name: `${weapon.name}`, art: weapon.art || '', icon: weapon.ranged ? 'fa-crosshairs' : 'fa-khanda',
             tone: 'weapon', desc: `Cambias a ella gratis y atacas. ${face.desc}`, tags: face.tags,
             badges: [...face.badges, { text: 'Cambiar y atacar', kind: 'cost' }],
-            enabled: !why, reason: why,
+            enabled: !why, reason: why, aim: why ? undefined : choicesAim(weapon.targets, 'harm'),
             next: { title: `${weapon.name}: ¿a quién?`, items: weapon.targets.map(t => targetItem(t, `swapattack:${weapon.id}`, { showChance: true })) },
         });
     }
@@ -380,32 +514,32 @@ export function buildAttackMenu(s) {
                 kind: 'card', key: 'unarmed:golpe', name: 'Golpe sin armas', icon: 'fa-hand-back-fist', tone: 'weapon',
                 desc: 'Puñetazo, codazo o patada.',
                 badges: [{ text: `${s.unarmed.damage} contundente`, kind: 'damage' }, { text: '5 pies', kind: 'reach' }],
-                enabled: !(blocked || noOne), reason: blocked || noOne,
+                enabled: !(blocked || noOne), reason: blocked || noOne, aim: choicesAim(close, 'harm'),
                 next: { title: 'Golpe sin armas: ¿a quién?', items: close.map(t => targetItem(t, 'unarmed:golpe', { showChance: true })) },
             },
             {
                 kind: 'card', key: 'unarmed:agarrar', name: 'Agarrar', icon: 'fa-hands-holding', tone: 'weapon', tags: [dcTag],
                 desc: 'Salva con Fuerza o Destreza. Si falla, no se mueve mientras lo sujetes.',
                 badges: [{ text: 'Agarrado', kind: 'cost' }, { text: '5 pies', kind: 'reach' }],
-                enabled: !grabWhy, reason: grabWhy,
+                enabled: !grabWhy, reason: grabWhy, aim: choicesAim(close, 'harm'),
                 next: { title: 'Agarrar: ¿a quién?', items: close.map(t => targetItem(t, 'unarmed:agarrar')) },
             },
             {
                 kind: 'card', key: 'unarmed:empujar', name: 'Empujar', icon: 'fa-person-falling', tone: 'weapon', tags: [dcTag],
                 desc: 'Salva con Fuerza o Destreza. Si falla, lo apartas 5 pies o lo tiras al suelo.',
                 badges: [{ text: 'Apartar o tirar', kind: 'cost' }, { text: '5 pies', kind: 'reach' }],
-                enabled: !(blocked || noOne), reason: blocked || noOne,
+                enabled: !(blocked || noOne), reason: blocked || noOne, aim: choicesAim(close, 'harm'),
                 next: {
                     title: 'Empujar: ¿cómo?',
                     items: [
                         {
                             kind: 'card', key: 'unarmed:apartar', name: 'Apartarlo 5 pies', icon: 'fa-arrows-left-right', tone: 'weapon',
-                            desc: 'Lo echas una casilla hacia atrás, lejos de ti.', enabled: true,
+                            desc: 'Lo echas una casilla hacia atrás, lejos de ti.', enabled: true, aim: choicesAim(close, 'harm'),
                             next: { title: 'Apartar: ¿a quién?', items: close.map(t => targetItem(t, 'unarmed:apartar')) },
                         },
                         {
                             kind: 'card', key: 'unarmed:tirar', name: 'Tirarlo al suelo', icon: 'fa-person-falling', tone: 'weapon',
-                            desc: 'Cae derribado: pegarle de cerca va con ventaja; de lejos, con desventaja.', enabled: true,
+                            desc: 'Cae derribado: pegarle de cerca va con ventaja; de lejos, con desventaja.', enabled: true, aim: choicesAim(close, 'harm'),
                             next: { title: 'Tirar al suelo: ¿a quién?', items: close.map(t => targetItem(t, 'unarmed:tirar')) },
                         },
                     ],
@@ -548,13 +682,20 @@ export function abilityItem(a, s, chosenLevel = 0) {
             options: ups.map(u => ({ level: u.level, label: `Nivel ${u.level}`, title: upcastWords(a, u), active: u.level === up.level })),
         };
     }
-    if (a.target === 'self') return { ...item, pick };
+    // J12.18: sobre ti, tu ficha en azul; contra alguien, todos a los que se puede apuntar (rojo
+    // si hace daño o va contra ellos, azul si cura o ayuda).
+    if (a.target === 'self') return { ...item, pick, aim: why ? undefined : selfAim(s) };
+    const tone = a.target === 'ally' ? 'help' : 'harm';
     const who = a.target === 'ally' ? '¿a quién de los tuyos?' : '¿contra quién?';
     return {
         ...item,
+        aim: why ? undefined : choicesAim(a.targets || [], tone),
         next: {
             title: `${a.name}: ${who}`,
-            items: (a.targets || []).map(t => targetItem(t, pick)),
+            // Primero a los que llega, del más cerca al más lejos; detrás, los apagados con su porqué.
+            items: [...(a.targets || [])]
+                .sort((x, y) => Number(y.enabled !== false) - Number(x.enabled !== false) || (Number(x.distanceFeet) || 0) - (Number(y.distanceFeet) || 0))
+                .map(t => targetItem(t, pick, { showChance: true, tone })),
             empty: a.target === 'ally' ? 'No hay nadie de los tuyos a su alcance.' : 'No hay nadie a su alcance.',
         },
     };
@@ -600,11 +741,13 @@ function optionItem(option, s, prefix, tone) {
         desc: option.enabled ? option.detail : '', badges: [{ text: 'Acción', kind: 'cost' }], enabled: !why, reason: why,
     };
     if (!option.needsTarget) return { ...item, pick };
+    const views = (option.targets || []).map(t => byId.get(t.id) ?? allies.get(t.id) ?? { id: t.id, name: t.name, distanceFeet: 0 });
     return {
         ...item,
+        aim: why ? undefined : { marks: views.map(t => ({ id: String(t.id), token: t.token, tone: /** @type {'harm'|'help'} */ (t.side === 'ally' ? 'help' : 'harm') })) },
         next: {
             title: `${option.label}: ¿a quién?`,
-            items: (option.targets || []).map(t => targetItem(byId.get(t.id) ?? allies.get(t.id) ?? { id: t.id, name: t.name, distanceFeet: 0 }, pick)),
+            items: views.map(t => targetItem(t, pick)),
         },
     };
 }
@@ -692,9 +835,10 @@ export function buildActionsMenu(s, words, numbers) {
     const help = maneuver(s, 'ayudar');
     const helpWhy = blocked || (help && !help.enabled ? help.detail : '') || (help ? '' : 'Ahora no se puede.');
     const byId = new Map((s.enemies || []).map(e => [e.id, e]));
+    const helpViews = (help?.targets || []).map(t => byId.get(t.id) ?? { id: t.id, name: t.name, distanceFeet: 5 });
     items.push({
-        ...card('ayudar'), pick: undefined, enabled: !helpWhy, reason: helpWhy,
-        next: { title: 'Ayudar: ¿a quién distraes?', items: (help?.targets || []).map(t => targetItem(byId.get(t.id) ?? { id: t.id, name: t.name, distanceFeet: 5 }, 'act:ayudar')) },
+        ...card('ayudar'), pick: undefined, enabled: !helpWhy, reason: helpWhy, aim: helpWhy ? undefined : choicesAim(helpViews, 'harm'),
+        next: { title: 'Ayudar: ¿a quién distraes?', items: helpViews.map(t => targetItem(t, 'act:ayudar', { tone: 'harm' })) },
     });
 
     // Tanda 16: Estabilizar a uno de los tuyos que ha caído (2024: Ayudar a quien está a 0 PG,
@@ -705,10 +849,11 @@ export function buildActionsMenu(s, words, numbers) {
         const steadyWhy = blocked || (near.length === 0 ? `Tienes que estar pegado a ${fallen.length === 1 ? fallen[0].name : 'quien ha caído'}.` : '');
         items.push({
             ...card('estabilizar', { tags: [{ text: 'CD 10 · Medicina', kind: 'dc' }] }), pick: undefined, enabled: !steadyWhy, reason: steadyWhy,
+            aim: steadyWhy ? undefined : choicesAim(near, 'help'),
             next: {
                 title: 'Estabilizar: ¿a quién?',
                 items: fallen.map(t => ({
-                    ...targetItem({ ...t, note: 'en el suelo', enabled: (Number(t.distanceFeet) || 0) <= 5, reason: (Number(t.distanceFeet) || 0) <= 5 ? '' : 'No está pegado a ti.' }, 'act:estabilizar'),
+                    ...targetItem({ ...t, note: 'en el suelo', enabled: (Number(t.distanceFeet) || 0) <= 5, reason: (Number(t.distanceFeet) || 0) <= 5 ? '' : 'No está pegado a ti.' }, 'act:estabilizar', { tone: 'help' }),
                     icon: 'fa-kit-medical',
                 })),
             },
@@ -722,6 +867,7 @@ export function buildActionsMenu(s, words, numbers) {
     const studyWhy = blocked || ((s.enemies || []).length === 0 ? 'No queda nadie a quien estudiar.' : '');
     items.push({
         ...card('estudiar', { tags: [{ text: 'Inteligencia', kind: 'dc' }] }), pick: undefined, enabled: !studyWhy, reason: studyWhy,
+        aim: studyWhy ? undefined : choicesAim(s.enemies || [], 'harm'),
         next: {
             title: 'Estudiar: ¿a quién?',
             items: (s.enemies || []).map(t => {
@@ -740,7 +886,8 @@ export function buildActionsMenu(s, words, numbers) {
             kind: 'card', key: `give:${potion.itemId}`, name: `Darle ${potion.name.toLowerCase()}`, icon: 'fa-flask', tone: 'heal',
             desc: 'Se la das a quien tienes pegado y se la bebe.', badges: [{ text: `Cura ${potion.heal}`, kind: 'heal' }, { text: `×${potion.count}`, kind: 'plain' }],
             enabled: (s.adjacentAllies || []).length > 0, reason: (s.adjacentAllies || []).length > 0 ? '' : 'No tienes a nadie de los tuyos pegado a ti.',
-            next: { title: `${potion.name}: ¿a quién?`, items: (s.adjacentAllies || []).map(a => targetItem(a, `give:${potion.itemId}`)) },
+            aim: choicesAim(s.adjacentAllies || [], 'help'),
+            next: { title: `${potion.name}: ¿a quién?`, items: (s.adjacentAllies || []).map(a => targetItem(a, `give:${potion.itemId}`, { tone: 'help' })) },
         });
     }
     for (const option of s.throws || []) uses.push(optionItem(option, s, 'maneuver', 'action'));
@@ -787,7 +934,7 @@ export function buildBonusMenu(s, slotChoice = {}) {
             kind: 'card', key: `drink:${potion.itemId}`, pick: `drink:${potion.itemId}`, name: `Beber ${potion.name.toLowerCase()}`, icon: 'fa-flask', tone: 'heal',
             desc: 'Te la bebes tú. Dársela a otro es «Utilizar», en Acciones.',
             badges: [{ text: `Cura ${potion.heal}`, kind: 'heal' }, { text: `×${potion.count}`, kind: 'plain' }, { text: 'Adicional', kind: 'cost' }],
-            enabled: !blocked, reason: blocked,
+            enabled: !blocked, reason: blocked, aim: blocked ? undefined : selfAim(s),
         });
     }
     if ((s.potions || []).length === 0) {
@@ -813,7 +960,7 @@ export function buildBonusMenu(s, slotChoice = {}) {
             { text: '5 pies', kind: 'reach' },
             { text: off.free ? 'Gratis (Mellar)' : 'Adicional', kind: 'cost' },
         ]),
-        enabled: !offWhy, reason: offWhy,
+        enabled: !offWhy, reason: offWhy, aim: offWhy ? undefined : choicesAim(offWeapon?.targets || [], 'harm'),
         next: { title: 'Otra mano: ¿a quién?', items: (offWeapon?.targets || []).map(t => targetItem(t, 'offhand', { showChance: true })) },
     });
 

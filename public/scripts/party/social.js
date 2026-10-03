@@ -13,6 +13,10 @@
  *   una ficha («Gerd quiere decirte algo»): no se abre encima de lo que se esté leyendo.
  * - **Quedar** gasta la parte del día (`/quedar`, «Quedar con alguien», o en la pantalla del
  *   pueblo). Sale su escena; al acabar, el vínculo sube y, si toca, se abre lo de su rango.
+ * - **D-J63, como en *Persona***: en el pueblo no hay botones de charlar ni de quedar. Se pulsa a
+ *   la persona (`inviteFrom`, `/invitacion`): te saluda en contexto, con su charla corta dentro
+ *   si la tiene, y elige quien juega: «Pasar el rato con X» (quedar) o «Hablamos en otro
+ *   momento» (nada). Los botones de antes, detrás de `DIRECT_SOCIAL_BUTTONS` (wiki/LO_OCULTO.md).
  */
 
 import { chat_metadata, saveMetadata } from '../../script.js';
@@ -28,8 +32,12 @@ import {
 } from '../game-engine/campaign/small-talk.js';
 import {
     readMeetupRows, personOf, meetupFor, renderScene, sceneOutcome, applyMeetup, recordMeetup, meetupSummary, wantsToMeet,
-    bondDiscounts,
+    bondDiscounts, replyTraits,
 } from '../game-engine/campaign/meetups.js';
+import { DIRECT_SOCIAL_BUTTONS, INVITE_CHOICES, hangoutReach, invitationFor, rankUpHint } from '../game-engine/campaign/invitations.js';
+import { cardOf } from '../game-engine/campaign/companion-cards.js';
+import { leanOn } from '../game-engine/campaign/companion-opinions.js';
+import { introFor, knowsName, meetPerson } from '../game-engine/ui/shown-names.js';
 import { dayStrip } from '../game-engine/campaign/day-parts.js';
 import { whoIsWhere, meetPlaces, placeLabel, socialChips } from '../game-engine/campaign/whereabouts.js';
 import { normalizeCalendar, getElapsedSlots } from '../game-engine/campaign/calendar.js';
@@ -38,7 +46,7 @@ import { noteApproval } from '../game-engine/campaign/approval.js';
 import { HIRELINGS } from '../game-engine/campaign/guests.js';
 import { hubTrial } from '../game-engine/campaign/hub.js';
 import { readReasons } from '../game-engine/rules/companions.js';
-import { openMeetupScene, openMeetupPicker } from '../game-engine/ui/meetup-scene.js';
+import { openMeetupScene, openMeetupPicker, openInvitation } from '../game-engine/ui/meetup-scene.js';
 import { openPack } from '../game-engine/ui/pixel-art.js';
 import { isShellOpen, refreshGameShell } from '../game-engine/ui/shell/game-shell.js';
 import { APPROVAL_KEY, PLOT_STATE_KEY } from './keys.js';
@@ -50,11 +58,11 @@ import {
     campaignDay, getCampaignBonds, getCampaignCalendar, recordCampaignBondEvent, saveCampaignState, spendDayPart,
 } from './time.js';
 import { getPlot } from './plot.js';
-import { changeAttitude, offerPersonalQuests } from './companions.js';
+import { changeAttitude, companionCards, offerPersonalQuests } from './companions.js';
 import { partyPurse, payFromParty } from './roster.js';
 import { lastVoicedLine, postCombatNarration } from './narration.js';
 import { festivalHere } from './town.js';
-import { romanceMeetup, romanceAfterMeetup, romanceWantsFor, romanceLabelFor, packRomance, unpackRomance } from './romance.js';
+import { romanceMeetup, romanceAfterMeetup, romanceWantsFor, romanceLabelFor, romanceDateFor, packRomance, unpackRomance } from './romance.js';
 
 /** @typedef {import('../game-engine/campaign/whereabouts.js').Here} Here */
 
@@ -74,6 +82,8 @@ import { romanceMeetup, romanceAfterMeetup, romanceWantsFor, romanceLabelFor, pa
  * @property {boolean} waiting Si tiene algo que decirte ya (una charla que salió sola).
  * @property {string} talk La orden de charlar con él.
  * @property {string} meet La orden de quedar con él.
+ * @property {string} invite D-J63: la orden de acercarte a él (su invitación).
+ * @property {boolean} love D-J63: ya en la ruta de pareja, os toca una cita (o la noche): el único corazón del pueblo.
  */
 
 /** @param {any} value @returns {string} */
@@ -292,15 +302,44 @@ export function offerSmallTalk(event) {
 export function afterFight(reason, { board = '' } = {}) {
     if (!chat_metadata) return;
     if (text(board) && !lastHub && ['victory', 'defeat', 'fled'].includes(reason)) spendDayPart('pelea');
-    if (reason === 'victory') offerSmallTalk('combat');
+    if (reason === 'victory') {
+        lately = { what: 'pelea', at: elapsedNow() };
+        offerSmallTalk('combat');
+    }
 }
 
 /**
  * J14.1: al llegar de viaje. Primero lo de llegar; si nadie dice nada, lo del camino.
  */
 export function afterArrival() {
+    lately = { what: 'llegada', at: elapsedNow() };
     if (!offerSmallTalk('arrive')) offerSmallTalk('travel');
 }
+
+/**
+ * D-J63: lo último que habéis hecho (una pelea ganada, un viaje), para el saludo de quien pulsas.
+ * Vale lo que queda de esa parte del día y la siguiente.
+ *
+ * @type {{what: string, at: number}|null}
+ */
+let lately = null;
+
+/**
+ * D-J63: lo de hace poco con alguien, para su saludo: la pelea o el viaje de hace un momento, o
+ * que quedasteis hace poco (en los últimos dos días).
+ *
+ * @param {string} key
+ * @returns {string}
+ */
+function latelyWith(key) {
+    const now = elapsedNow();
+    if (lately && now - lately.at <= 1) return lately.what;
+    const met = getSocial().met[key];
+    return Number.isFinite(met) && now - Number(met) <= 6 ? 'quedada' : '';
+}
+
+/** D-J63: con quién ha salido ya la charla corta dentro del saludo, y en qué día (una al día). */
+const greetedTalk = new Map();
 
 /**
  * Charlar con alguien (J14.1): su charla del pueblo, o la que salió sola si es la suya. No gasta
@@ -365,8 +404,24 @@ export async function chatWith(name) {
         if (isShellOpen()) refreshGameShell();
         return '';
     }
+    const note = answerSmallTalk(who, person, talk, choice.reply);
+    if (isShellOpen()) refreshGameShell();
+    return note;
+}
+
+/**
+ * Lo que deja contestar una charla corta (J14.1): la aprobación de los tuyos o el trato de la
+ * gente del pueblo, una vez al día. Lo usan la charla suelta y la que va dentro del saludo (D-J63).
+ *
+ * @param {Here} who
+ * @param {{name: string, wants: string}} person
+ * @param {any} talk
+ * @param {number} index La respuesta elegida.
+ * @returns {string} Lo que se cuenta.
+ */
+function answerSmallTalk(who, person, talk, index) {
     const said = answerTalk({
-        talk, index: choice.reply, social: getSocial(), day: campaignDay(),
+        talk, index, social: getSocial(), day: campaignDay(),
         inParty: who.inParty, id: who.inParty ? String(who.source?.id ?? '') : '', wants: person.wants,
     });
     saveSocial(said.social);
@@ -379,8 +434,82 @@ export async function chatWith(name) {
     }
     if (said.attitude !== 0) changeAttitude(who.name, said.attitude, 'por lo que le dijiste en una charla');
     else if (said.note) toastr.info(said.note, who.name, { timeOut: 5000 });
-    if (isShellOpen()) refreshGameShell();
     return said.note;
+}
+
+// ---------------------------------------------------------------------------------------
+// D-J63: pulsar a alguien, como en *Persona*: su saludo, y quedar o dejarlo para otro momento.
+
+/**
+ * Acercarte a alguien de tu gente: te saluda en contexto y con su voz (si no os conocíais, se
+ * presenta), con su charla corta dentro si toca, y la pista si el vínculo va a subir hoy.
+ * «Pasar el rato con X» es la quedada (gasta esta parte del día); «Hablamos en otro momento»
+ * no gasta nada.
+ *
+ * @param {string} name
+ * @returns {Promise<string>} Lo que se eligió (`quedar`, `luego`) o vacío.
+ */
+export async function inviteFrom(name) {
+    if (!chat_metadata || !partyMembers[0]) return '';
+    if (combatEncounter.active) {
+        toastr.warning('No mientras peleáis.');
+        return '';
+    }
+    const wanted = keyOf(name);
+    const same = (/** @type {any} */ who) => keyOf(who) === wanted || keyOf(text(who).split(' ')[0]) === wanted;
+    const who = peopleHere().people.find(p => p.canMeet && same(p.name));
+    if (!wanted || !who) {
+        toastr.info(`${name || 'Esa persona'} no está por aquí ahora.`);
+        return '';
+    }
+    const data = socialRows().meet;
+    const social = getSocial();
+    const slot = slotNow();
+    const location = hereLocation();
+    const person = personFor(who);
+    const card = personOf(data, who.name);
+    const known = knowsName(who.name);
+    // J13.7: quien no os conocía se presenta, y desde ahí ya sabes cómo se llama.
+    const intro = known ? '' : introFor(who.name);
+    if (!known) meetPerson(who.name, 'charla');
+    const bondKey = bondKeyForHere(who);
+    const points = normalizeBondState(getCampaignBonds()).bonds[bondKey]?.points ?? 0;
+    const scene = Boolean(wantsToMeet({ person, rank: rankOf(bondKey), data, social, campaign: campaignId() }).scene);
+    const greeting = invitationFor({
+        name: who.name, known, intro, place: who.place, slot: slot.id, lately: latelyWith(who.key), festival: festivalName(),
+        wants: person.wants, scene, date: romanceDateFor(who.name, slot.id), hero: partyMembers[0],
+    });
+    // J14.1 dentro del saludo: su charla corta del pueblo, una al día como mucho.
+    const today = campaignDay();
+    const picked = greetedTalk.get(who.key) === today ? { talk: null, social } : pickTalk({
+        rows: socialRows().talk, person, moment: 'pueblo', social, random: seeded('saludo', who.key, elapsedNow()),
+        slot: slot.id, hero: partyMembers[0], party: partyMembers, place: text(currentLocationName),
+    });
+    const talk = picked.talk ? renderScene(talkScene(picked.talk), { hero: partyMembers[0], party: partyMembers }) : null;
+    const result = await openInvitation({
+        person: { name: who.name, className: card?.className || text(who.source?.className || who.source?.charClass), gender: card?.gender || text(who.source?.gender) },
+        lines: greeting.lines,
+        ask: greeting.ask,
+        options: greeting.options,
+        hint: rankUpHint({ name: who.name, points, scene, known, canMeet: who.canMeet }),
+        talk: talk ? { say: text(talk.beats[0]?.say), replies: talk.beats[0]?.replies ?? [] } : null,
+        pack: campaignId(),
+        place: who.place,
+        town: text(location?.name || currentLocationName),
+        night: slot.id === 'night',
+        placeLabel: who.place ? placeLabel(who.place, location) : '',
+    });
+    if (picked.talk && result.talkReply !== null) {
+        greetedTalk.set(who.key, today);
+        saveSocial(picked.social);
+        answerSmallTalk(who, person, picked.talk, result.talkReply);
+    }
+    if (result.choice === INVITE_CHOICES.quedar) {
+        await playMeetup(who, who.place);
+        return INVITE_CHOICES.quedar;
+    }
+    if (isShellOpen()) refreshGameShell();
+    return result.choice;
 }
 
 // ---------------------------------------------------------------------------------------
@@ -462,12 +591,22 @@ async function playMeetup(who, place) {
         person: personFor(who), rank: rankOf(bondKey), data, talkRows: socialRows().talk, social: getSocial(),
         random: seeded('quedada', who.key, elapsedNow()), place, slot: slot.id, campaign: campaignId(), hero, party: partyMembers,
     });
-    // J14.10: si toca, la quedada es de romance (la señal, una cita o la noche), o el rato lleva
-    // una frase de pareja. Apagado en las opciones, nada.
-    const love = romanceMeetup({ name: who.name, rank: rankOf(bondKey), picked: picked.scene, slot: slot.id });
+    // J14.10: si toca, la quedada es de romance (el punto de inflexión del rango 9, una cita o la
+    // noche), o el rato lleva una frase de pareja. Apagado en las opciones, nada. D-J63: el punto
+    // de inflexión sale en la quedada que llega al rango 9 (`reaches`), y nunca con quien no se
+    // ha presentado.
+    const points = normalizeBondState(getCampaignBonds()).bonds[bondKey]?.points ?? 0;
+    const love = romanceMeetup({
+        name: who.name, rank: rankOf(bondKey), picked: picked.scene, slot: slot.id,
+        reaches: hangoutReach({ points, scene: picked.scene.kind === 'escena' }).reaches, known: knowsName(who.name), festival: festivalName(),
+    });
     const scene = renderScene(love?.scene ?? picked.scene, { hero, party: partyMembers });
     const card = personOf(data, who.name);
     const location = hereLocation();
+    // D-J63: lo que va con su forma de pensar (lo que busca y lo que su ficha dice que le gusta) le llega más.
+    const mind = cardOf(companionCards(), who.name);
+    const way = { wants: mind?.wants || personFor(who).wants, likes: mind?.likes ?? [], dislikes: mind?.dislikes ?? [] };
+    const fits = (/** @type {any} */ reply) => replyTraits(reply).some(trait => leanOn(way, trait) > 0);
     /** @type {string[]} */
     let told = [];
     const result = await openMeetupScene({
@@ -479,7 +618,7 @@ async function playMeetup(who, place) {
         night: slot.id === 'night',
         placeLabel: placeLabel(place, location),
         summarize: (choices) => {
-            const outcome = sceneOutcome({ scene, choices, likedPlace: Boolean(card?.likes?.includes(place)) });
+            const outcome = sceneOutcome({ scene, choices, likedPlace: Boolean(card?.likes?.includes(place)), fits });
             const applied = applyMeetup({ bonds: getCampaignBonds(), bondKey, outcome, data, name: who.name });
             saveCampaignState(null, applied.bonds);
             if (outcome.gold < 0) payFromParty(Math.min(-outcome.gold, partyPurse()));
@@ -532,7 +671,9 @@ export function peopleChips() {
     const first = waiting ? [{
         id: `charla-sola:${waiting.key}`, label: `${waiting.name.split(' ')[0]} quiere decirte algo`, icon: 'fa-comment-dots', command: `/charlar ${waiting.name}`,
     }] : [];
-    if (currentBoardName) return first;
+    // D-J63: sin «Quedar con alguien» ni «Charlar con…» en la fila: a la gente se la pulsa en el
+    // pueblo. Lo que sale solo («Gerd quiere decirte algo») se queda: es ella quien te busca.
+    if (currentBoardName || !DIRECT_SOCIAL_BUTTONS) return first;
     const talkRows = socialRows().talk;
     const chips = socialChips({
         people: peopleHere().people.filter(p => p.key !== waiting?.key),
@@ -566,6 +707,8 @@ export function townPeople() {
         waiting: waiting?.key === p.key,
         talk: `/charlar ${p.name}`,
         meet: `/quedar ${p.name}`,
+        invite: `/invitacion ${p.name}`,
+        love: p.canMeet && Boolean(romanceWantsFor(p.name, slotNow().id)),
     }));
 }
 
@@ -685,8 +828,18 @@ export function carryBondOf(member, how = 'join') {
 // ---------------------------------------------------------------------------------------
 // Las órdenes.
 
-/** `/quedar` y `/charlar`. Las registra `registerPartyCommands`. */
+/** `/quedar`, `/charlar` y `/invitacion`. Las registra `registerPartyCommands`. */
 export function registerSocialCommands() {
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'invitacion',
+        helpString: '<div>Acercarte a alguien de tu gente, como al pulsarle en el pueblo: <code>/invitacion Gerd</code>. '
+            + 'Te saluda, y eliges pasar el rato (gasta la parte del día) o hablar en otro momento.</div>',
+        unnamedArgumentList: [SlashCommandArgument.fromProps({ description: 'A quién', typeList: [ARGUMENT_TYPE.STRING], isRequired: true })],
+        callback: async (_args, value) => {
+            await inviteFrom(String(value ?? ''));
+            return '';
+        },
+    }));
     SlashCommandParser.addCommandObject(SlashCommand.fromProps({
         name: 'quedar',
         helpString: '<div>Quedar con alguien de tu gente: <code>/quedar</code> para elegir con quién y dónde, o '

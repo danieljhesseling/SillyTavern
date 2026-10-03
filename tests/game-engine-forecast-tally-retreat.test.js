@@ -9,9 +9,11 @@ describe('forecast', () => {
         expect(hitChance(5, 15)).toBeCloseTo(0.55);
     });
 
-    test('un 20 siempre entra, y el 1 no falla solo', () => {
+    test('un 20 siempre entra, y un 1 siempre falla', () => {
         expect(hitChance(0, 30)).toBeCloseTo(0.05);
-        expect(hitChance(20, 5)).toBe(1);
+        // Con +20 contra CA 5 entraría todo, pero el 1 falla igual: 19 de 20.
+        expect(hitChance(20, 5)).toBeCloseTo(0.95);
+        expect(hitChance(20, 5, 'advantage')).toBeCloseTo(1 - 0.05 ** 2);
     });
 
     test('ventaja y desventaja', () => {

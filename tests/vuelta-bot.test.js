@@ -13,7 +13,7 @@
 import { describe, test, expect } from '@jest/globals';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { targetsFromPack, boardGoalsFromPack, fixedNumbers, proseNotes, plain, restNeed, exitPick, QUIET_MOTION, COMBAT_PACE } from '../tools/vuelta-bot.mjs';
+import { targetsFromPack, boardGoalsFromPack, fixedNumbers, proseNotes, plain, restNeed, exitPick, clickVerdict, QUIET_MOTION, COMBAT_PACE } from '../tools/vuelta-bot.mjs';
 import { MOTION_KEY, readMotionChoice, motionLevel, motionMs } from '../public/scripts/game-engine/ui/motion.js';
 import { PACE_KEY } from '../public/scripts/game-engine/ui/combat-vtt/fx.js';
 
@@ -105,6 +105,25 @@ describe('J16: lo que pide cada hito, para el jugador automático', () => {
         // Fuera de esa ventana, o sin la opción, no elige: decide `pickOption` como siempre.
         expect(exitPick('', before)).toBeNull();
         expect(exitPick('avoid', [{ id: 'pelear', text: 'Pelear', locked: true }])).toBeNull();
+    });
+
+    test('un clic de la barra que no entra: la página ocupada (llega tarde) o una ventana encima', () => {
+        // Lo que dice Playwright cuando el clic sale pero la página no lo atiende en 800 ms.
+        const busy = ['locator.click: Timeout 800ms exceeded.', 'Call log:', '  - waiting for locator', '    - done scrolling', '    - performing click action'].join('\n');
+        expect(clickVerdict(busy)).toEqual({ busy: true, covered: '' });
+        // Una ventana (la pregunta de «Fin de turno») encima del botón.
+        const dialog = ['locator.click: Timeout 800ms exceeded.', 'Call log:', '    - performing click action',
+            '    - <dialog open class="popup">…</dialog> intercepts pointer events', '  - retrying click action'].join('\n');
+        const said = clickVerdict(dialog);
+        expect(said.busy).toBe(false);
+        expect(said.covered).toMatch(/^<dialog.*intercepts pointer events$/);
+        // Los dados de la iniciativa, que salen encima entre un turno y el siguiente.
+        const dice = ['locator.click: Timeout 800ms exceeded.', '    - <div class="wm-dice-backdrop"></div> from <div role="dialog" class="wm-dice-overlay active">…</div> subtree intercepts pointer events', '  - retrying click action'].join('\n');
+        expect(clickVerdict(dice).covered).toMatch(/wm-dice-backdrop.*intercepts pointer events$/);
+        expect(clickVerdict(dice).busy).toBe(false);
+        // Ni lo uno ni lo otro: un botón que no está.
+        expect(clickVerdict(['locator.click: Timeout 800ms exceeded.', '  - waiting for locator'].join('\n'))).toEqual({ busy: false, covered: '' });
+        expect(clickVerdict('')).toEqual({ busy: false, covered: '' });
     });
 
     test('las campañas de un Gem (vuelta-campana): «any», confidentes y «Lobo 2»', () => {

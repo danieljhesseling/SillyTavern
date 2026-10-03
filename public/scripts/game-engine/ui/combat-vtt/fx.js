@@ -25,6 +25,8 @@
 
 import { motionLevel, motionMs } from '../motion.js';
 import { buildDie, damageSentence, edgeSentence, rollSentence, rollVerdict, spinDie } from './dice.js';
+// J12.19: cómo se ve un golpe según lo que lo hace, y lo que se dice de quien cae.
+import { downCaption, downMarkNode, impactKind, impactNode } from './impact.js';
 // El cartel del turno es de «que el tablero se sienta» (`turn-banner.js`): aquí se usa el mismo, por
 // su nombre, para los turnos que pasan dentro de la secuencia. Si no está, sale el de aquí.
 import * as turnBanner from './turn-banner.js';
@@ -43,7 +45,8 @@ import * as turnBanner from './turn-banner.js';
  *     `edge`, `side`).
  *   - `damage`: la línea del daño bajo el dado (`total`, `dice`, `modifier`, `crit`).
  *   - `impact`: el golpe llega (`tokenId`, `entryId`, `text`, `style`: damage, crit o heal;
- *     `hp`, `max`: la vida que queda).
+ *     `hp`, `max`: la vida que queda). J12.19: `damageType` (o el del golpe que salió, `attack`)
+ *     dice cómo se dibuja; `name` y `team` (enemy o party), lo que se dice si cae.
  *   - `miss`: no llega (`tokenId`).
  *   - `bark`: alguien grita algo (`tokenId`, `text`).
  *   - `call`: algo que tiene que pasar en su sitio de la secuencia (`fn`), como una ventana de
@@ -73,6 +76,8 @@ import * as turnBanner from './turn-banner.js';
  * @property {number} [max]
  * @property {Array<{x: number, y: number}>} [path]
  * @property {() => void} [fn]
+ * @property {string} [damageType] J12.19: el tipo de daño, o el arma («cortante», «fire», «Hacha»).
+ * @property {'enemy'|'party'} [team] J12.19: de qué lado es quien recibe (lo que se dice si cae).
  */
 
 /** Lo que dura cada paso, normal (en el teléfono, la mitad). En milisegundos. */
@@ -87,8 +92,11 @@ export const FX_MS = Object.freeze({
     read: 750,
     damage: 420,
     impact: 650,
-    miss: 500,
+    // J12.19: «¡Falla!» se lee antes de que el tablero se redibuje (era 500).
+    miss: 750,
     gap: 150,
+    // J12.19: quien cae se tumba y se apaga, y se dice.
+    down: 700,
 });
 
 /** Con «Animaciones: ninguna», lo que hay que leer (la tirada, de quién es el turno) se ve esto. */
@@ -133,6 +141,8 @@ const owed = new Set();
 let waiters = [];
 /** Las esperas en marcha, para cortarlas al pasar. @type {Set<() => void>} */
 const sleepers = new Set();
+/** J12.19: el último golpe que salió (cómo, con qué y hacia dónde), para dibujar cómo llega. */
+let lastBlow = { style: '', damageType: '', angle: 0 };
 
 /**
  * Para las pruebas: el nivel de las animaciones, a mano. `null` vuelve al de siempre.
@@ -640,6 +650,7 @@ let turnsSaid = 0;
  */
 async function runTurn(step) {
     hideCard();
+    lastBlow = { style: '', damageType: '', angle: 0 };
     focusIds = [step.tokenId];
     showTurnHolder(step);
     if (step.side === 'you') {
@@ -735,11 +746,14 @@ async function waitForWalks() {
 async function runAttack(step) {
     hideCard();
     focusIds = [step.from, step.to];
+    // J12.19: cómo llega el golpe (un tajo, una flecha, fuego…) se decide con esto.
+    lastBlow = { style: String(step.style || 'melee'), damageType: String(step.damageType ?? ''), angle: 0 };
     const from = tokenEl(step.from);
     const to = tokenEl(step.to);
     if (!from || !to) return;
     const dx = px(to, 'left') - px(from, 'left');
     const dy = px(to, 'top') - px(from, 'top');
+    lastBlow.angle = Math.atan2(dy, dx);
     from.classList.add('vfx-acting');
     to.classList.add('vfx-targeted');
     try {
@@ -863,9 +877,23 @@ async function runImpact(step) {
         token.classList.remove('vfx-hit', 'vfx-hit-crit', 'vfx-heal');
         void token.offsetWidth;
         token.classList.add(style === 'heal' ? 'vfx-heal' : style === 'crit' ? 'vfx-hit-crit' : 'vfx-hit');
-        const float = el('div', `wm-float wm-float-${style} vfx-float`, String(step.text ?? ''));
+        // J12.19: el golpe dibujado según lo que lo hace (tres tajos, una punzada, una llamarada…);
+        // la cura, unas chispas verdes. Con «Animaciones: ninguna», aparece quieto y se va.
+        const still = (forcedLevel ?? level) === 'none';
+        const kind = style === 'heal' ? 'heal' : impactKind(step.damageType || lastBlow.damageType, { style: lastBlow.style });
+        const blow = impactNode(token.ownerDocument, kind, { crit: style === 'crit', still, angle: lastBlow.angle, ms: fxMs(FX_MS.impact) || STILL_READ_MS });
+        token.appendChild(blow);
+        setTimeout(() => blow.remove(), Math.max(900, total * 1.6));
+        token.dataset.vfxImpact = kind;
+        // El número, grande; un crítico, en oro con «¡Crítico!» encima.
+        const float = el('div', `wm-float wm-float-${style} vfx-float vfx-float-big`, String(step.text ?? ''));
         token.appendChild(float);
         setTimeout(() => float.remove(), Math.max(1600, total * 2.5));
+        if (style === 'crit') {
+            const word = el('div', 'wm-float vfx-float vfx-crit-word', '¡Crítico!');
+            token.appendChild(word);
+            setTimeout(() => word.remove(), Math.max(1800, total * 2.8));
+        }
         if (style !== 'heal') {
             void animate(token, [
                 { translate: '0px 0px' }, { translate: '-5px 1px' }, { translate: '5px -1px' },
@@ -877,7 +905,33 @@ async function runImpact(step) {
     if (step.max) showHp(step.entryId, step.tokenId, Number(step.hp) || 0, Number(step.max) || 0);
     await wait(total * 0.6);
     token?.classList.remove('vfx-hit', 'vfx-hit-crit', 'vfx-heal', 'vfx-targeted');
+    if (token) delete token.dataset.vfxImpact;
+    // J12.19: si cae, se tumba, se apaga y se dice; su marca se queda (el tablero, al dibujarse de
+    // verdad, la pone igual: `isDownToken` en world-map-renderer.js).
+    if (style !== 'heal' && Number(step.max) > 0 && (Number(step.hp) || 0) <= 0) await runDown(step, token);
     await wait(fxMs(FX_MS.gap));
+}
+
+/**
+ * J12.19: quien cae. La ficha se tumba y se apaga con su marca (calavera, o el corazón roto de
+ * uno de los tuyos) y encima se lee «Cae Ratero del muelle» o «Nerea cae inconsciente».
+ *
+ * @param {FxStep} step
+ * @param {HTMLElement|null} token
+ */
+async function runDown(step, token) {
+    if (!token) return;
+    const team = step.team === 'party' ? 'party' : 'enemy';
+    token.classList.add('vfx-down', 'vfx-fall', 'wm-token-down');
+    token.dataset.down = team;
+    if (!token.querySelector('.wm-token-down-mark')) token.appendChild(downMarkNode(token.ownerDocument, team));
+    const said = String(step.name ?? '').trim();
+    if (said) {
+        const caption = el('div', `vfx-down-caption vfx-down-${team}`, downCaption({ name: said, side: team }));
+        token.appendChild(caption);
+        setTimeout(() => caption.remove(), Math.max(1800, fxMs(FX_MS.down, { read: true }) * 2.6));
+    }
+    await wait(fxMs(FX_MS.down, { read: true }));
 }
 
 /**
@@ -889,9 +943,15 @@ async function runMiss(step) {
     const token = tokenEl(step.tokenId);
     const total = fxMs(FX_MS.miss, { read: true });
     if (token) {
-        const float = el('div', 'wm-float vfx-float vfx-float-miss', 'Falla');
+        // J12.19: «¡Falla!», claro y grande, y un silbido al lado de la ficha.
+        const float = el('div', 'wm-float vfx-float vfx-float-miss', '¡Falla!');
         token.appendChild(float);
         setTimeout(() => float.remove(), Math.max(1400, total * 2.5));
+        const whoosh = el('div', `vfx-miss-whoosh${(forcedLevel ?? level) === 'none' ? ' vfx-still' : ''}`);
+        whoosh.setAttribute('aria-hidden', 'true');
+        whoosh.style.setProperty('--vfx-angle', `${lastBlow.angle}rad`);
+        token.appendChild(whoosh);
+        setTimeout(() => whoosh.remove(), Math.max(700, total * 1.4));
         await animate(token, [{ translate: '0px 0px' }, { translate: '9px -4px', offset: 0.35 }, { translate: '0px 0px' }], fxMs(FX_MS.miss) * 0.7);
         token.classList.remove('vfx-targeted');
     }

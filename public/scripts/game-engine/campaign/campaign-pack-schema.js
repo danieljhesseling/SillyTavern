@@ -912,6 +912,8 @@ function buildSectionSchemas() {
             who: { type: 'string', description: 'Con attitude o bond: con quién, si no es quien habla.' },
             time: { type: 'boolean', description: 'Se va un rato del día.' },
             end: { type: 'boolean', description: 'Se acaba la charla.' },
+            board: { type: 'string', description: 'Al acabar la charla se va a ese tablero, y la pelea empieza sola: «Bajo a la bodega». Por su nombre en boards.' },
+            go: { type: 'string', description: 'Al acabar la charla se viaja a ese sitio, por su nombre en locations.' },
         },
     };
     const branch = {

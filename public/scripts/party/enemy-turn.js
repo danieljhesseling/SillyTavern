@@ -217,6 +217,8 @@ function enemyStrike(enemy, target, { weapon = null, noModifier = false } = {}) 
         stage: {
             by: enemy, at: target, hit: isHit, roll: edged, edge: edge.mode, against: 'CA',
             style: weapon?.ranged || enemyFeet > 10 ? 'ranged' : 'melee',
+            // J12.19: con qué pega, para dibujar cómo llega el golpe.
+            damageType: `${/** @type {any} */ (weapon)?.damageType || ''} ${weapon?.name || ''}`.trim(),
         },
     });
 
@@ -425,7 +427,7 @@ function resolveEnemyAbility(enemy, choice) {
         }
     }
     // Tanda 17: lo que lanza sale hacia quien lo recibe, en la secuencia del combate.
-    if (target !== enemy) stageAttack(enemy, target, 'spell');
+    if (target !== enemy) stageAttack(enemy, target, 'spell', undefined, `${ability.damageType || ''} ${ability.name || ''}`.trim());
     // R3: el mismo camino que el grupo: con área, alcanza también a los suyos si están ahí.
     const lines = [
         ...counter.lines,

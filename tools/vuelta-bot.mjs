@@ -211,6 +211,25 @@ export function exitPick(exit, options) {
     return free.find(o => o.id === id) ?? free.find(o => words.test(plain(o.text))) ?? null;
 }
 
+/**
+ * Por qué no entró un clic de Playwright en la barra de combate: `busy` si el clic salió pero la
+ * página no lo atendió a tiempo (se quedó en «performing click action»: está ocupada pintando, y el
+ * clic llega tarde), `covered` si una ventana (`<dialog>`) se ha puesto encima del botón.
+ *
+ * @param {string} text El mensaje del error de Playwright.
+ * @returns {{busy: boolean, covered: string}}
+ */
+export function clickVerdict(text) {
+    const said = String(text || '');
+    const afterAction = said.split('performing click action').slice(1).pop() ?? '';
+    return {
+        busy: /Timeout/.test(said) && said.includes('performing click action') && !/intercepts pointer events/.test(afterAction),
+        // Playwright lo dice así: `<dialog open class="popup …">…</dialog> intercepts pointer events`;
+        // los dados que salen encima (combat-log.js), `<div class="wm-dice-backdrop"></div> from … subtree …`.
+        covered: /<(?:dialog\b|div [^>\n]*wm-dice-)[^\n]*?intercepts pointer events/.exec(said)?.[0]?.slice(0, 160) ?? '',
+    };
+}
+
 /** Las palabras que quitan los acentos, para comparar nombres como los lee una persona. */
 export const plain = (/** @type {string} */ v) => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
 
@@ -691,6 +710,9 @@ export function createBot(page, { fast = true, log = console.log, prefer = [] } 
                 fightMissed = [];
                 return;
             }
+            // Una ventana encima de la barra (la pregunta de «Fin de turno» de un clic que entró tarde,
+            // o un aviso): no es la barra la que falla; la ventana se atiende en la vuelta siguiente.
+            if (!did && /tapado por (una ventana|los dados)/.test(String(last?.what || ''))) return;
             fightFails++;
             fightMissed.push(`«${String(last?.what || '').slice(0, 320)}»${last?.silent ? ' (no cambia nada)' : ''}`);
         };
@@ -713,11 +735,18 @@ export function createBot(page, { fast = true, log = console.log, prefer = [] } 
             let tries = 0;
             // Por qué no entró el último clic (lo que tapa el botón, sobre todo).
             let clickError = '';
-            while (Date.now() < until2) {
+            // El clic salió pero la página no lo atendió a tiempo («performing click action»: está
+            // ocupada pintando), o una ventana se ha puesto encima de la barra: no se insiste.
+            let busy = false;
+            let covered = '';
+            while (Date.now() < until2 && !busy && !covered) {
                 tries++;
                 if (await locator.count() > 0 && await locator.first().click({ timeout: 800 }).then(() => true).catch((/** @type {any} */ e) => {
                     const text = String(e?.message || e);
-                    clickError = (/<[^>]+> from <[^>]+> subtree intercepts pointer events|<[^>]+> intercepts pointer events|element is not (visible|enabled|stable)|element is outside of the viewport|element was detached/.exec(text)?.[0] ?? text.split('\n')[0]).slice(0, 160);
+                    ({ busy, covered } = clickVerdict(text));
+                    // Lo que dice Playwright al final de su registro (lo último que esperaba), si no hay algo más claro.
+                    const tail = text.split('\n').map(l => l.trim()).filter(Boolean).slice(-2).join(' / ');
+                    clickError = (/<[^>]+> from <[^>]+> subtree intercepts pointer events|<[^>]+> intercepts pointer events|element is not (visible|enabled|stable)|element is outside of the viewport|element was detached/.exec(text)?.[0] ?? tail).slice(0, 220);
                     return false;
                 })) {
                     if (tries > 2 && !oddSeen.has(`barra:${v.board}:${what}`)) {
@@ -733,9 +762,19 @@ export function createBot(page, { fast = true, log = console.log, prefer = [] } 
             const seen = await page.evaluate((/** @type {string} */ words) => {
                 const all = [...document.querySelectorAll('button, .menu_button, .gs-btn, .gs-target')].filter(b => (b.textContent || '').includes(words));
                 const shown = all.filter(b => { const r = b.getBoundingClientRect(); return r.width > 1 && r.height > 1 && window.getComputedStyle(b).visibility !== 'hidden'; });
-                return `en la página: ${all.length}, a la vista: ${shown.length}, apagados: ${all.filter(b => /** @type {HTMLButtonElement} */ (b).disabled || b.getAttribute('aria-disabled') === 'true').length}`;
+                // Lo que hay justo encima de su centro (si no es él, algo lo tapa) y si deja pulsarse.
+                const first = shown[0];
+                const box = first?.getBoundingClientRect();
+                const hit = box ? document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2) : null;
+                const hitSaid = !first ? '' : !hit ? 'nada' : first.contains(hit) ? 'él mismo'
+                    : `${hit.tagName.toLowerCase()}.${String(hit.className || '').trim().split(/\s+/).slice(0, 3).join('.')}`;
+                const pointer = first ? window.getComputedStyle(first).pointerEvents : '';
+                return `en la página: ${all.length}, a la vista: ${shown.length}, apagados: ${all.filter(b => /** @type {HTMLButtonElement} */ (b).disabled || b.getAttribute('aria-disabled') === 'true').length}${first ? `, encima de su centro: ${hitSaid}, pointer-events: ${pointer}` : ''}`;
             }, what === 'Fin de turno' ? 'Fin de turno' : '').catch(() => '');
-            pressError = `no está (${tries} intentos en 2,5 s${what === 'Fin de turno' && seen ? `; «Fin de turno» ${seen}` : ''}${clickError ? `; el clic: ${clickError}` : ''})`;
+            // «Timeout» hace que act() mire si la pantalla cambia después (clic lento, no fallo).
+            pressError = busy ? `Timeout: la página no atendió el clic en 800 ms (estaba ocupada); intento ${tries}`
+                : covered ? `tapado por ${/wm-dice-/.test(covered) ? 'los dados' : 'una ventana'} (${covered}; intento ${tries})`
+                    : `no está (${tries} intentos en 2,5 s${what === 'Fin de turno' && seen ? `; «Fin de turno» ${seen}` : ''}${clickError ? `; el clic: ${clickError}` : ''})`;
             return false;
         };
         const attack = page.locator('#game-shell .gs-actions .gs-btn-attack:not([disabled])');
@@ -755,8 +794,17 @@ export function createBot(page, { fast = true, log = console.log, prefer = [] } 
             if (await targets.count() === 0) {
                 await press(attack);
                 await page.waitForTimeout(200);
+                // Los dados de la iniciativa salen de uno en uno, y entre uno y otro la barra ya dice
+                // «Turno de …»: si han salido encima, se pasan en la vuelta siguiente (no cuenta).
+                if (await page.locator('.wm-dice-overlay.active').count() > 0 && await targets.count() === 0) {
+                    lastAttack = '';
+                    steps.push({ n: steps.length + 1, what: `atacar (${v.fight.who}): tapado por los dados (salen otros dados encima)`, silent: false, ms: 0, where: where(v) });
+                    return;
+                }
             }
-            const anyTarget = await page.locator('#game-shell .gs-targets .gs-target').count();
+            // Nadie a su alcance: las tarjetas apagadas, o el menú que lo dice («Nadie a tu alcance: el más
+            // cercano…», `.gs-grimoire-empty`).
+            const anyTarget = await page.locator('#game-shell .gs-targets .gs-target, #game-shell .gs-targets .gs-grimoire-empty').count();
             if (anyTarget > 0 && await targets.count() === 0) {
                 // Nadie a su alcance (las tarjetas, apagadas): se anda; no cuenta para el gancho.
                 steps.push({ n: steps.length + 1, what: `atacar (${v.fight.who}): nadie a su alcance`, silent: false, ms: 0, where: where(v) });

@@ -254,6 +254,8 @@ export function workshopWord(pack, when = '2026-01-01T00:00:00Z') {
  * @typedef {Object} WordImport
  * @property {any} pack El paquete con lo cambiado (una copia).
  * @property {string[]} applied Lo que se ha cambiado, dicho: «Tomás: "…" → "…"».
+ * @property {Array<{path: Array<string|number>, before: string, after: string}>} changes J5.10: lo
+ *   mismo, con su sitio en el paquete, para sacarlo como una ronda del guion (`guion-round.js`).
  * @property {string[]} refused Lo que no, con por qué.
  * @property {string[]} notes Las líneas nuevas sin marca: para el Gem guionista.
  * @property {number} same Las que siguen igual.
@@ -277,6 +279,8 @@ export function importWordInto(pack, documentXml) {
     const applied = [];
     /** @type {string[]} */
     const refused = [];
+    /** @type {WordImport['changes']} */
+    const changes = [];
     /** @type {Map<string, Set<string>>} */
     const wanted = new Map();
     const key = (/** @type {any} */ change) => JSON.stringify(change.block?.src?.path ?? []);
@@ -304,6 +308,7 @@ export function importWordInto(pack, documentXml) {
             continue;
         }
         at[last] = change.after;
+        changes.push({ path: [...path], before: String(change.before ?? ''), after: String(change.after ?? '') });
         applied.push(`${who ? `${who}: ` : ''}«${change.before}» → «${change.after}»`);
     }
     for (const line of review.newer) refused.push(`«${line.word}» — el juego la cambió después de exportar el guion: se queda «${line.now}».`);
@@ -317,5 +322,5 @@ export function importWordInto(pack, documentXml) {
         notes.length > 0 ? `${notes.length} ${notes.length === 1 ? 'línea nueva' : 'líneas nuevas'} para tu Gem` : '',
         `${review.same} igual`,
     ].filter(Boolean).join(', ');
-    return { pack: copy, applied, refused, notes, same: review.same, said: `${said}.` };
+    return { pack: copy, applied, changes, refused, notes, same: review.same, said: `${said}.` };
 }

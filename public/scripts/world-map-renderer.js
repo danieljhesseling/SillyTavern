@@ -23,6 +23,7 @@ import { motionMs } from './game-engine/ui/motion.js';
 import { planSlide, slideFrames, slideLeft } from './game-engine/ui/combat-vtt/token-slide.js';
 import { tokenLabel } from './game-engine/ui/combat-vtt/token-label.js';
 import { announceTurn, forgetTurn } from './game-engine/ui/combat-vtt/turn-banner.js';
+import { downMarkNode, isDownToken } from './game-engine/ui/combat-vtt/impact.js';
 
 /** Si cada casilla en pixel carga: la que no, se pinta con los colores de antes. */
 const tileLoads = new Map();
@@ -1598,6 +1599,8 @@ export function renderLocationView(target, options) {
         const cellH = imgH / gridHeight;
 
         tokensLayer.css({ width: imgW + 'px', height: imgH + 'px' });
+        // J12.18: el tamaño de la cuadrícula, para pintar encima las casillas de un área (aim-glow.js).
+        tokensLayer.attr({ 'data-grid-w': gridWidth, 'data-grid-h': gridHeight });
 
         // Tanda 17: la ficha que ha cambiado de casilla desde el dibujo anterior anda hasta ella por
         // el camino (el mismo A* del juego, sin pasar por encima de nadie), en vez de aparecer allí.
@@ -1738,6 +1741,15 @@ export function renderLocationView(target, options) {
             if (token.isSummon) {
                 el.append($('<i class="wm-token-role wm-token-summon-mark fa-solid fa-paw"></i>')
                     .attr('title', metaText));
+            }
+
+            // J12.19: quien ha caído se queda tumbado y apagado, con su marca (una calavera, o el
+            // corazón roto de uno de los tuyos): al redibujarse el tablero no vuelve a parecer en pie.
+            if (isDownToken(token, vtt ? Boolean(vtt.combat) : true)) {
+                const team = token.isEnemy ? 'enemy' : 'party';
+                el.addClass('wm-token-down').attr('data-down', team);
+                el.append(downMarkNode(document, team));
+                el.find('.wm-token-tooltip-meta').text(token.isEnemy ? 'Derrotado' : 'En el suelo, inconsciente');
             }
 
             // Tanda 10: tu ficha enseña hasta dónde llega al pasar el ratón por encima, sin pulsar.

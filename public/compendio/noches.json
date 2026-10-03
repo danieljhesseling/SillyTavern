@@ -1,7 +1,7 @@
 {
   "version": 1,
   "domain": "noches",
-  "about": "La noche y las charlas de pareja (J14.7 y J14.8 de ROADMAP_SIN_CONEXION). Dos clases de fila (KIND). NOCHE: lo que pasa una noche en la posada, si toca; una por noche como mucho. TYPE es llegada (alguien llega) o ronda (una ronda, un juego, una canción). CAMPAIGN la deja para un sitio (gremio es Puerto Alba); sin ella, vale en cualquier posada. NEEDS.WITH pide que esos vayan en el grupo; EXTRAS es gente del sitio que sale, para su retrato. PAREJA: dos de tus compañeros hablan entre ellos. Con PAIR (sus dos nombres) es de esa pareja, y salen en orden (ORDER); con WANTS (lo que busca cada uno: coin, glory, blood, quiet, knowledge, o * para cualquiera) es una plantilla para cualquier pareja que encaje. Las dos se escriben en pasos (BEATS): WHO es quien habla (a y b son los dos compañeros; también vale un nombre, como Tomás), NOTE lo que pasa, SAY lo que dice y MOOD su cara (alegre, enfadado, triste). En REPLIES, lo que contestas: THEN lo que te dicen (WHO, quién lo dice), BONDS a quién acerca (1) o aleja (-1): a, b, un nombre o todos (los del grupo); GOLD lo que cuesta (negativo) o se gana; ATTITUDE cómo os mira alguien del pueblo. Huecos: {a} y {b} son sus nombres; {a:callado|callada} concuerda con a. Lo que concuerda con tu héroe va entre llaves con las dos formas, separadas por una barra vertical.",
+  "about": "La noche y las charlas de pareja (J14.7 y J14.8 de ROADMAP_SIN_CONEXION). Dos clases de fila (KIND). NOCHE: lo que pasa una noche en la posada, si toca; una por noche como mucho. TYPE es llegada (alguien llega) o ronda (una ronda, un juego, una canción). CAMPAIGN la deja para un sitio (gremio es Puerto Alba); sin ella, vale en cualquier posada. NEEDS.WITH pide que esos vayan en el grupo; EXTRAS es gente del sitio que sale, para su retrato. PAREJA: dos de tus compañeros hablan entre ellos. Con PAIR (sus dos nombres) es de esa pareja, y salen en orden (ORDER); con WANTS (lo que busca cada uno: coin, glory, blood, quiet, knowledge, o * para cualquiera) es una plantilla para cualquier pareja que encaje. Las dos se escriben en pasos (BEATS): WHO es quien habla (a y b son los dos compañeros; también vale un nombre, como Tomás o «El tabernero»), SAY lo que dice y MOOD su cara (alegre, enfadado, triste). No hay narrador (D-J60): cada paso lo dice alguien que está allí, y lo que pasa se cuenta con sus palabras. En REPLIES, lo que contestas: THEN lo que te dicen (WHO, quién lo dice), BONDS a quién acerca (1) o aleja (-1): a, b, un nombre o todos (los del grupo); GOLD lo que cuesta (negativo) o se gana; ATTITUDE cómo os mira alguien del pueblo. Huecos: {a} y {b} son sus nombres; {a:callado|callada} concuerda con a. Lo que concuerda con tu héroe va entre llaves con las dos formas, separadas por una barra vertical.",
   "rows": [
     {
       "id": "gremio-noche-buhonero",
@@ -14,7 +14,8 @@
       "extras": ["Tomás"],
       "beats": [
         {
-          "note": "Llueve sobre el puerto. La puerta de la posada se abre de golpe y entra un buhonero chorreando, con un fardo a la espalda."
+          "who": "Tomás",
+          "say": "¡Cierre esa puerta, que entra el agua! … Pase, pase, buen hombre, que viene chorreando. Deje el fardo junto al fuego."
         },
         {
           "who": "El buhonero",
@@ -31,7 +32,8 @@
           ]
         },
         {
-          "note": "Tomás le trae un cuenco de caldo sin que nadie se lo pida. Al rato, el buhonero ronca junto al fuego con el fardo abrazado."
+          "who": "Tomás",
+          "say": "Tome, un cuenco de caldo, que invita la casa. … Mirad, ya ronca junto al fuego, abrazado al fardo. Dejadle dormir."
         }
       ]
     },
@@ -46,7 +48,8 @@
       "extras": ["Brunilda"],
       "beats": [
         {
-          "note": "Entra una mujer mayor con una pierna de palo y una espada más vieja que tú. Brunilda baja las escaleras de dos en dos."
+          "who": "Rosalía",
+          "say": "¡Buenas noches! No os asustéis por la pierna de palo, ni por esta espada, que es más vieja que vosotros. ¿Está Brunilda? Que baje, que tengo mucho que contarle."
         },
         {
           "who": "Brunilda",
@@ -80,10 +83,12 @@
       "extras": ["Tomás"],
       "beats": [
         {
-          "note": "Llega una compañía de cómicos: tres hombres, una mujer y un carro con un dragón de trapo. Tomás les deja actuar a cambio de la cena."
+          "who": "Tomás",
+          "say": "¡Esta noche hay función! Son cómicos de paso: tres hombres, una mujer y un dragón de trapo en el carro. Actúan a cambio de la cena."
         },
         {
-          "note": "Hacen la historia de un caballero que mata al dragón con una cuchara. La sala se ríe. Al final, la mujer pasa el sombrero.",
+          "who": "La cómica",
+          "say": "¡Y así, con una cuchara, el caballero venció al dragón! ¡Gracias, gracias! Si os ha gustado, una moneda al sombrero.",
           "replies": [
             { "text": "Echas dos monedas en el sombrero.", "gold": -2, "bonds": { "todos": 1 }, "who": "a", "then": "Bien hecho. Lo de la cuchara me ha llegado al alma.", "mood": "alegre" },
             { "text": "Aplaudes, pero no echas nada.", "who": "a", "then": "Un aplauso no llena la tripa, pero algo es algo." },
@@ -108,7 +113,8 @@
       "extras": ["Brunilda"],
       "beats": [
         {
-          "note": "Pasada la medianoche llama a la puerta un chico con botas de barro hasta las rodillas. Trae una carta sellada para el gremio."
+          "who": "El chico del recado",
+          "say": "¡Perdón por la hora! Traigo una carta sellada para el gremio. Vengo andando desde ayer, con barro hasta las rodillas."
         },
         {
           "who": "Brunilda",
@@ -137,11 +143,8 @@
       "extras": ["Tomás"],
       "beats": [
         {
-          "note": "Cerrada la cocina, Tomás saca una baraja sobada y reparte en la mesa grande. Se juega a monedas de cobre."
-        },
-        {
           "who": "Tomás",
-          "say": "Una mano, que mañana hay que madrugar. Y el que haga trampas, friega los platos una semana.",
+          "say": "Cocina cerrada: saco la baraja y se juega a monedas de cobre. Una mano, que mañana hay que madrugar. Y el que haga trampas, friega los platos una semana.",
           "mood": "alegre",
           "replies": [
             { "text": "Juegas y ganas la mano.", "gold": 3, "attitude": { "Tomás": -1 }, "who": "Tomás", "then": "¡Tres monedas! Juraría que te has guardado un rey en la manga.", "mood": "enfadado" },
@@ -150,7 +153,8 @@
           ]
         },
         {
-          "note": "La partida acaba entre risas. Nadie friega los platos: Tomás los deja para mañana, como cada noche."
+          "who": "Tomás",
+          "say": "¡Bueno, se acabó! Hoy no friega nadie: los platos, para mañana, como cada noche."
         }
       ]
     },
@@ -165,11 +169,8 @@
       "needs": { "with": ["Gerd el Mellado"] },
       "beats": [
         {
-          "note": "Gerd ha ganado cuatro pulsos seguidos a los pescadores. Se remanga, pone el codo en la mesa y te mira a ti."
-        },
-        {
           "who": "Gerd el Mellado",
-          "say": "¿Qué? ¿Te atreves? Si me ganas, pago la cena de mañana. Si pierdes, me la pagas tú.",
+          "say": "¡Cuatro pescadores, cuatro pulsos ganados! Codo en la mesa. ¿Qué? ¿Te atreves? Si me ganas, pago la cena de mañana. Si pierdes, me la pagas tú.",
           "mood": "alegre",
           "replies": [
             { "text": "Pones el codo en la mesa.", "gold": -2, "bonds": { "Gerd el Mellado": 1 }, "who": "Gerd el Mellado", "then": "¡Ja! Has aguantado más que los pescadores. Pero pagas tú, que así es el trato.", "mood": "alegre" },
@@ -178,7 +179,8 @@
           ]
         },
         {
-          "note": "Al final gana un pescador pelirrojo que nadie había visto, y la sala entera le invita a vino."
+          "who": "Gerd el Mellado",
+          "say": "¿Y ese pelirrojo de dónde ha salido? ¡Me ha tumbado el brazo como si nada! Vino para él, que se lo ha ganado. Y otro para mí, que me duele el orgullo."
         }
       ]
     },
@@ -193,11 +195,8 @@
       "needs": { "with": ["Nella Tresflechas"] },
       "beats": [
         {
-          "note": "En la pared del fondo hay una diana de corcho. Nella ya ha dejado sin monedas a dos marineros."
-        },
-        {
           "who": "Nella Tresflechas",
-          "say": "Tres dardos cada uno. Si haces más que yo, te doy dos monedas. Si no, me las das tú.",
+          "say": "Ya van dos marineros sin monedas. ¿Te apuntas? En la diana de corcho del fondo: tres dardos cada uno. Si haces más que yo, te doy dos monedas. Si no, me las das tú.",
           "mood": "alegre",
           "replies": [
             { "text": "Tiras los tres dardos.", "gold": -2, "bonds": { "Nella Tresflechas": 1 }, "who": "Nella Tresflechas", "then": "Dos en la madera y uno en el corcho. Me vale. Pagas, pero me caes bien.", "mood": "alegre" },
@@ -206,7 +205,8 @@
           ]
         },
         {
-          "note": "Al final de la noche, Nella invita a los marineros a una jarra con lo que les ha ganado. Nadie se va enfadado."
+          "who": "Nella Tresflechas",
+          "say": "¡Eh, marineros! Una jarra para cada uno, que pago yo con lo vuestro. Así nadie se va enfadado."
         }
       ]
     },
@@ -221,11 +221,8 @@
       "needs": { "with": ["Osric Mediapaga"] },
       "beats": [
         {
-          "note": "Cuando la posada se vacía, Osric arrastra una silla hasta la puerta y se sienta con la espada sobre las rodillas."
-        },
-        {
           "who": "Osric Mediapaga",
-          "say": "Id a dormir. Yo hago la guardia. No es por nada. Es que duermo poco.",
+          "say": "Ya no queda nadie. Yo me quedo aquí, en la silla junto a la puerta, con la espada en las rodillas. Id a dormir. Yo hago la guardia. No es por nada. Es que duermo poco.",
           "replies": [
             { "text": "Te acompaño un rato.", "bonds": { "Osric Mediapaga": 1 }, "who": "Osric Mediapaga", "then": "Como quieras. Pero no hables mucho, que se oye peor la calle." },
             { "text": "Te traigo algo caliente.", "gold": -1, "bonds": { "Osric Mediapaga": 1 }, "who": "Osric Mediapaga", "then": "Vino con canela. Esto no me lo había hecho nadie en años." },
@@ -233,7 +230,8 @@
           ]
         },
         {
-          "note": "Al amanecer, Osric sigue despierto en la silla. Tomás le deja al lado un pan recién hecho, sin decir nada."
+          "who": "Tomás",
+          "say": "Buenos días, Osric. ¿Toda la noche en la silla? Toma, pan recién hecho. No digas nada, que se enfría."
         }
       ]
     },
@@ -249,7 +247,8 @@
       "needs": { "companions": 1 },
       "beats": [
         {
-          "note": "La sala está llena: pescadores, dos carreteros y la gente del gremio. Alguien empieza a cantar la del barco que se llevó la niebla."
+          "who": "Tomás",
+          "say": "¡Qué llena está la sala esta noche! Pescadores, carreteros y la gente del gremio. Ya empiezan con la del barco que se llevó la niebla."
         },
         {
           "who": "a",
@@ -262,7 +261,8 @@
           ]
         },
         {
-          "note": "La canción acaba como siempre: con el barco perdido y la sala gritando el último verso."
+          "who": "Tomás",
+          "say": "¡Como siempre: el barco se pierde y toda la sala gritando el último verso! Otra ronda, que cantar da sed."
         }
       ]
     },
@@ -275,7 +275,8 @@
       "title": "El viajero sin nombre",
       "beats": [
         {
-          "note": "Tarde ya, entra un viajero con la capucha puesta. Pide sopa, paga por adelantado y se sienta de espaldas a la pared."
+          "who": "El viajero",
+          "say": "Una sopa, por favor. Le pago ahora, por adelantado. Me siento allí, en el rincón, de espaldas a la pared."
         },
         {
           "who": "a",
@@ -287,7 +288,8 @@
           ]
         },
         {
-          "note": "Por la mañana, el viajero ya no está. Ha dejado la cuenta pagada, y también la vuestra."
+          "who": "El tabernero",
+          "say": "Buenos días. El de la capucha se fue antes del alba. Dejó pagada su cuenta… y también la vuestra."
         }
       ]
     },
@@ -300,7 +302,8 @@
       "title": "Una familia en la puerta",
       "beats": [
         {
-          "note": "Una mujer con dos críos y un hombre con la mano vendada piden sitio en el establo. Vienen de una aldea que se ha quedado sin comida."
+          "who": "La madre",
+          "say": "Perdonad… ¿nos dejan dormir en el establo? Mi marido se ha herido la mano, y los críos no pueden más. En nuestra aldea ya no queda comida."
         },
         {
           "who": "a",
@@ -313,7 +316,8 @@
           ]
         },
         {
-          "note": "Los críos se duermen junto al fuego antes de terminarse el caldo."
+          "who": "La madre",
+          "say": "Mirad, se han dormido junto al fuego sin acabarse el caldo. Gracias. De verdad."
         }
       ]
     },
@@ -326,11 +330,8 @@
       "title": "Una partida de dados",
       "beats": [
         {
-          "note": "En una mesa del rincón se juega a los dados. {a} se ha sentado a mirar y ya no se levanta."
-        },
-        {
           "who": "a",
-          "say": "Llevo tres tiradas adivinando qué sale. ¿Jugamos?",
+          "say": "¿Ves la mesa del rincón? Juegan a los dados, y yo ya no me levanto de aquí. Llevo tres tiradas adivinando qué sale. ¿Jugamos?",
           "mood": "alegre",
           "replies": [
             { "text": "Juegas una tirada.", "gold": -1, "bonds": { "a": 1 }, "who": "a", "then": "¡Un uno y un dos! Qué mala suerte. Pero qué bien lo pasamos.", "mood": "alegre" },
@@ -339,7 +340,8 @@
           ]
         },
         {
-          "note": "A medianoche el tabernero apaga las velas de la mesa del rincón. Los jugadores se van contando monedas."
+          "who": "El tabernero",
+          "say": "¡Medianoche! Apago las velas del rincón. Cada uno a su casa, con sus monedas, que mañana se trabaja."
         }
       ]
     },
@@ -352,7 +354,8 @@
       "title": "Una canción triste",
       "beats": [
         {
-          "note": "El tabernero coge un laúd viejo y canta, sin mirar a nadie, una canción de alguien que se fue a la guerra y no volvió."
+          "who": "El tabernero",
+          "say": "Esta noche os canto una vieja, con el laúd. Va de uno que se fue a la guerra y no volvió."
         },
         {
           "who": "a",
@@ -365,7 +368,8 @@
           ]
         },
         {
-          "note": "Cuando acaba la canción, nadie aplaude. Pero nadie se levanta tampoco."
+          "who": "El tabernero",
+          "say": "Ya está. No hace falta aplaudir. Con que nadie se haya levantado, me vale."
         }
       ]
     },
@@ -381,9 +385,8 @@
         { "who": "b", "say": "Gerd, te apuesto dos monedas a que no te acabas tres cuencos del guiso de Tomás.", "mood": "alegre" },
         { "who": "a", "say": "¿Tres? Yo me como tres cuencos antes de desayunar. Apuesta aceptada.", "mood": "alegre" },
         {
-          "note": "Al tercer cuenco, Gerd suda. Nella le mira con los brazos cruzados. Los dos te miran a ti.",
           "who": "b",
-          "say": "Decide tú. ¿Ha ganado o no ha ganado?",
+          "say": "Mira cómo suda el Mellado con el tercer cuenco. Yo, de brazos cruzados. Decide tú. ¿Ha ganado o no ha ganado?",
           "replies": [
             { "text": "Ha ganado Gerd. Tres cuencos, limpios.", "bonds": { "a": 1, "b": -1 }, "who": "a", "then": "¡Ja! Paga, Tresflechas. Y dile a Tomás que me ponga otro.", "mood": "alegre" },
             { "text": "Se ha dejado un trozo de nabo. Gana Nella.", "bonds": { "a": -1, "b": 1 }, "who": "b", "then": "Las normas son las normas. El nabo cuenta.", "mood": "alegre" },
@@ -406,7 +409,8 @@
         { "who": "b", "say": "Pensaba en los míos. Hace años que no sé nada de ellos.", "mood": "triste" },
         { "who": "a", "say": "Mira, yo tengo madre en Robledo y le mando lo que puedo. No es mucho, pero la tengo en la cabeza cada día. Eso ya es algo." },
         {
-          "note": "Nella no contesta. Gerd le acerca su cuenco de guiso, que en él es mucho decir.",
+          "who": "a",
+          "say": "Toma, mi cuenco de guiso. Para ti. Y no digas nada.",
           "replies": [
             { "text": "Gerd tiene razón: pensar en ellos también cuenta.", "bonds": { "a": 1 }, "who": "b", "then": "Puede. Pero pensar no les llena el plato." },
             { "text": "Un día iremos a verlos, Nella.", "bonds": { "b": 1 }, "who": "b", "then": "No lo digas si no lo piensas. Pero gracias.", "mood": "triste" },
@@ -447,8 +451,7 @@
       "title": "La barca",
       "where": "muelle",
       "beats": [
-        { "note": "En el muelle, Gerd y Osric miran las barcas. Gerd tiene un plan, y se le nota." },
-        { "who": "a", "say": "Osric, si compras la barca, yo pongo la mitad. Tú pescas y yo vendo el pescado en la plaza. Socios.", "mood": "alegre" },
+        { "who": "a", "say": "Osric, mira esas barcas. Tengo un plan. Si compras la barca, yo pongo la mitad. Tú pescas y yo vendo el pescado en la plaza. Socios.", "mood": "alegre" },
         { "who": "b", "say": "El mar no se comparte, Gerd. Y tú no sabes nadar." },
         {
           "who": "a",
@@ -470,8 +473,7 @@
       "title": "Quién habla menos",
       "where": "camino",
       "beats": [
-        { "note": "Llevan una hora sin decir palabra. Nella mira a Osric de reojo. Osric mira el camino." },
-        { "who": "a", "say": "Te apuesto una moneda a que aguanto callada más que tú.", "mood": "alegre" },
+        { "who": "a", "say": "Una hora sin decir palabra, Osric. Te apuesto una moneda a que aguanto callada más que tú.", "mood": "alegre" },
         { "who": "b", "say": "Acabas de perder." },
         {
           "who": "a",
@@ -497,7 +499,9 @@
         { "who": "b", "say": "Los he oído. Eran malos." },
         { "who": "a", "say": "¡Ves! Nadie se resiste tanto. Apuesto dos monedas a que esta noche sonríes.", "mood": "alegre" },
         {
-          "note": "Osric no dice nada. Pero en la esquina de la boca se le mueve algo.",
+          "who": "a",
+          "say": "¡Eh! ¡Se te ha movido la esquina de la boca! ¿Eso ha sido una sonrisa?",
+          "mood": "alegre",
           "replies": [
             { "text": "¡Ha sonreído! Lo he visto.", "bonds": { "a": 1, "b": -1 }, "who": "b", "then": "Era un gesto de dolor. Me duele una muela." },
             { "text": "No ha sonreído. Osric gana.", "bonds": { "b": 1 }, "who": "a", "then": "Pues mañana otra vez. No me rindo." },
@@ -514,8 +518,7 @@
       "title": "El reparto",
       "where": "posada",
       "beats": [
-        { "note": "Esta noche {a} cuenta monedas en la mesa. {b} le mira sin mucha paciencia." },
-        { "who": "a", "say": "Lo justo es que quien más se arriesga, más cobre. Y hoy {a:el que|la que} más se ha arriesgado he sido yo." },
+        { "who": "a", "say": "Ya tengo las monedas contadas. Lo justo es que quien más se arriesga, más cobre. Y hoy {a:el que|la que} más se ha arriesgado he sido yo." },
         { "who": "b", "say": "Lo que importa es que se hable de lo que hicimos, no quién se lleva una moneda más." },
         {
           "who": "a",
@@ -536,8 +539,7 @@
       "title": "Después de la pelea",
       "where": "camino",
       "beats": [
-        { "note": "Junto al fuego, {b} limpia su arma silbando. {a} no le quita la vista de encima." },
-        { "who": "a", "say": "Hoy parecía que te lo pasabas bien ahí fuera. Demasiado bien.", "mood": "enfadado" },
+        { "who": "a", "say": "Deja de silbar mientras limpias el arma, {b}. Hoy parecía que te lo pasabas bien ahí fuera. Demasiado bien.", "mood": "enfadado" },
         { "who": "b", "say": "Nos querían {muertos|muertas}. Prefiero pasármelo bien a pasármelo mal." },
         {
           "who": "a",
@@ -562,7 +564,8 @@
         { "who": "b", "say": "Una pregunta más y me voy a dormir al establo.", "mood": "enfadado" },
         { "who": "a", "say": "Es que me interesa. De verdad. Nadie me cuenta nunca nada." },
         {
-          "note": "Los dos te miran, como si tú tuvieras que decidir quién tiene razón.",
+          "who": "a",
+          "say": "A ver, que lo decida quien manda. ¿Quién de los dos tiene razón?",
           "replies": [
             { "text": "Contesta una, {b}. Solo una.", "bonds": { "a": 1 }, "who": "b", "then": "Una. Lo primero que recuerdo es el olor del pan de mi casa. Ya está." },
             { "text": "Deja a {b} en paz, {a}.", "bonds": { "b": 1, "a": -1 }, "who": "a", "then": "Vale, vale. Pero algún día me lo cuentas.", "mood": "triste" },
@@ -579,8 +582,7 @@
       "title": "La guardia",
       "where": "camino",
       "beats": [
-        { "note": "A {a} y a {b} les toca la guardia juntos. El fuego está bajo y hace frío." },
-        { "who": "a", "say": "¿Tú qué harás cuando esto acabe? Cuando ya no haya que dormir con un ojo abierto." },
+        { "who": "a", "say": "Qué frío, y el fuego ya casi no calienta. Nos ha tocado la guardia juntos, {b}. ¿Tú qué harás cuando esto acabe? Cuando ya no haya que dormir con un ojo abierto." },
         { "who": "b", "say": "Dormir con los dos cerrados. Una semana entera. Luego ya veré." },
         {
           "who": "a",

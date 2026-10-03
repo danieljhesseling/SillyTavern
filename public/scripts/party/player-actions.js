@@ -12,7 +12,7 @@ import { getAbilityModifier, consumeItemInInventory } from '../dnd-system.js';
 import { rollWith } from '../game-engine/combat/seeded-random.js';
 import {
     rollDiceDetailed, getDistanceInFeet, getAttackRangeFeet, describeCover, getPlayerDamageFormula,
-    getPlayerAttackModifier, nextRandom,
+    getPlayerAttackModifier, getPlayerAttackBonus, nextRandom,
 } from './combat-rules.js';
 import { weaponOf as heldWeapon, weaponBonus } from '../game-engine/rules/equipment.js';
 import {
@@ -200,14 +200,15 @@ export function resolveFollowUpAttack(actorId, target, how = 'ataca de seguimien
     if (!ally || (target.currentHp || 0) <= 0) return;
 
     const rangeFeet = getAttackRangeFeet(ally);
-    const attackMod = getPlayerAttackModifier(ally, rangeFeet);
+    // Al d20, la característica y la competencia; al daño, solo la característica.
+    const attackMod = getPlayerAttackBonus(ally, rangeFeet);
     // R3: la jugada en pareja va con ventaja.
     const edged = rollWithEdge(() => rollDiceDetailed('1d20', 20).total, mode);
     const attackRoll = { total: edged.natural, natural: edged.natural };
     const attackTotal = attackRoll.total + attackMod;
     const { ac: targetAc, cover } = getTargetArmorClass(target, ally);
     const isCrit = attackRoll.natural === 20;
-    const isHit = isCrit || attackTotal >= targetAc;
+    const isHit = isCrit || (attackRoll.natural !== 1 && attackTotal >= targetAc);
 
     showCombatDiceRoll({
         title: `${ally.name}: ataque de seguimiento`,
@@ -1170,8 +1171,9 @@ function strikeEnemy(member, target, opts = {}) {
     // Tanda 10: un arma de cuerpo a cuerpo que también se lanza (la daga, a 20 pies), contra
     // quien tienes pegado, va con la regla de cuerpo a cuerpo (la mejor de Fuerza o Destreza).
     const modFeet = weapon && distanceFeet <= 5 && !isRangedWeapon(weapon) ? 5 : rangeFeet;
+    // Al d20, la característica y la competencia; al daño (y a Rozar), solo la característica.
     const abilityMod = getPlayerAttackModifier(wielder, modFeet);
-    const attackMod = abilityMod + traitBonus(member, target.name) + perkBonus(member, 'attack') + weaponBonus(wielder);
+    const attackMod = getPlayerAttackBonus(wielder, modFeet) + traitBonus(member, target.name) + perkBonus(member, 'attack') + weaponBonus(wielder);
     const round = Number(combatEncounter.round) || 1;
     // Tanda 10: Molestar (la maestría de 2024) da ventaja en el siguiente golpe contra él.
     const vexed = hasVex(combatEncounter.tactics, { by: String(member.id), target: String(target.instanceId), round });
@@ -1202,7 +1204,7 @@ function strikeEnemy(member, target, opts = {}) {
     const attackTotal = attackRoll.total + attackMod;
     const { ac: targetAc, cover: targetCover } = getTargetArmorClass(target, member);
     const isCrit = attackRoll.natural === 20;
-    const isHit = isCrit || attackTotal >= targetAc;
+    const isHit = isCrit || (attackRoll.natural !== 1 && attackTotal >= targetAc);
 
     showCombatDiceRoll({
         title: `${member.name} ataca`,

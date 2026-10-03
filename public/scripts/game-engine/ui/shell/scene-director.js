@@ -44,6 +44,12 @@ import { holdDuringCombat } from '../../combat/combat-hold.js';
  *           del motor). Sin conexión, que cambie es que hay algo nuevo que leer.
  * @property {{kind: 'story'|'next'|'board'|'place', title: string}|null} [afterFight] D-J45: recién
  *           ganada una pelea en un tablero, a dónde sigue el hilo (`game-engine/combat/after-fight.js`).
+ * @property {boolean} [fightWaiting] Directo a la decisión (Daniel, 2026-10-03): en el tablero
+ *           abierto espera una pelea que empieza sola en cuanto se ve (os han visto y aún no se ha
+ *           abierto en esta visita), o se está decidiendo o colocando (`party/fight-entry.js`).
+ * @property {boolean} [novelNews] Sin conexión: si la novela tiene algo nuevo por leer (lo que se
+ *           acaba de contar, o el final de una pelea) y aún no se ha seguido con «Continuar». Lo que
+ *           había antes de una charla en su ventana cuenta como leído al acabarla.
  */
 
 /**
@@ -248,6 +254,9 @@ const EVENT_REASONS = {
     story_told: 'hay algo nuevo que leer',
 };
 
+/** Directo a la decisión: por qué se va al tablero sin pasar por la novela (`fightComesFirst`). */
+const FIGHT_FIRST_REASON = 'os han visto: empieza la pelea';
+
 /**
  * What happened between two situations, if anything worth changing the screen for.
  *
@@ -335,12 +344,18 @@ function sceneForEvent(event, situation) {
  */
 export function directScene(previous, situation, manual = null) {
     const event = detectSceneEvent(previous, situation);
+    // Directo a la decisión: la novela sin nada que leer no se pone delante de una pelea que
+    // empieza sola. Va el tablero, y en él sale la decisión (`fightComesFirst`).
+    const first = fightComesFirst(situation);
 
     if (event) {
-        const scene = sceneForEvent(event, situation);
+        const told = sceneForEvent(event, situation);
+        // Lo nuevo que se cuenta (y el final de una pelea) se lee: solo abrir la partida no tiene
+        // nada que leer delante.
+        const scene = first && event === 'game_opened' && told === SCENE.DIALOGUE ? SCENE.COMBAT : told;
         return {
             scene,
-            reason: EVENT_REASONS[event],
+            reason: scene === told ? EVENT_REASONS[event] : FIGHT_FIRST_REASON,
             source: 'engine',
             manualHeld: false,
             override: scene,
@@ -349,7 +364,30 @@ export function directScene(previous, situation, manual = null) {
     }
 
     const choice = chooseScene(situation, manual);
+    if (first && choice.scene === SCENE.DIALOGUE) {
+        return { scene: SCENE.COMBAT, reason: FIGHT_FIRST_REASON, source: 'engine', manualHeld: false, override: SCENE.COMBAT, event: null };
+    }
     return { ...choice, override: choice.manualHeld ? manual : null, event: null };
+}
+
+/**
+ * Directo a la decisión (Daniel, 2026-10-03: «este menú sigue apareciendo justo tras la
+ * conversación, no le veo sentido»). Acabada una charla, si lo siguiente es una pelea que empieza
+ * sola (la decisión, colocarse y la iniciativa: `party/fight-entry.js`), la novela vacía, con
+ * «Continuar», «Salir del tablero» y «Buscar trampas», sobraba: la ventana de la decisión ya es
+ * lo que se hace antes de pelear. Entonces va el tablero, y la decisión sale sola.
+ *
+ * Solo sin conexión, sin pelea en marcha y si la novela no tiene nada nuevo por leer
+ * (`novelNews`): lo que se acaba de contar se lee, y «Continuar» lleva a la pelea como siempre
+ * (con las ventanas de historia apagadas, la escena se cuenta así). Tras huir, la pelea ya se abrió
+ * en esta visita (`fightWaiting` es falso): se lee cómo acabó, con «Salir del tablero» a mano.
+ *
+ * @param {GameSituation} situation
+ * @returns {boolean}
+ */
+export function fightComesFirst(situation) {
+    const state = situation || {};
+    return Boolean(state.hasChat && state.offline && state.fightWaiting && state.boardName && !state.combatActive && !state.novelNews);
 }
 
 /**

@@ -1242,6 +1242,29 @@
     margin: 2px 0;
 }
 
+/* J13.9: «Anteriormente…» dicho por uno de los tuyos: su cara, su nombre y lo que dice. */
+.rc-card.rc-said {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+}
+
+.rc-face {
+    width: 56px;
+    height: 56px;
+    flex: none;
+    object-fit: cover;
+    image-rendering: pixelated;
+    border-radius: 6px;
+    border: 1px solid rgba(214, 180, 106, 0.5);
+}
+
+.rc-who {
+    font-weight: bold;
+    margin-bottom: 4px;
+    color: var(--gs-accent-gold);
+}
+
 /* Ideas 38, 44, 47 y 56: qué quiere ahora y lo que se ha ganado. */
 .cc-wants {
     margin: 6px 0 2px;

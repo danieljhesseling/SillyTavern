@@ -209,7 +209,8 @@ describe('J14.5: las escenas de confidente, jugadas', () => {
         const answered = views.filter(v => v.answer);
         expect(answered.length).toBe(scene.beats.filter((/** @type {any} */ b) => b.replies.length > 0).length);
         const outcome = sceneOutcome({ scene, choices: state.choices });
-        expect(outcome.events[0]).toBe('confidant_scene');
+        // D-J63: la quedada tiene sus propios eventos de vínculo (su escena, o un rato).
+        expect(outcome.events[0]).toBe('meetup_scene');
         expect(outcome.liked).toBe(answered.length);
         expect(outcome.points).toBeGreaterThan(3);
     });
@@ -304,11 +305,12 @@ describe('cómo se juega un paso', () => {
     });
 
     test('lo que deja: sus eventos de vínculo, los puntos y el oro', () => {
-        expect(sceneOutcome({ scene, choices: [{ beat: 0, reply: 0 }] })).toEqual({ events: ['confidant_scene', 'approved'], points: 4, gold: 0, liked: 1, disliked: 0 });
+        // D-J63: su escena vale 8 y un rato 6 (`meetup_scene`, `meetup_rato`); cada respuesta, uno arriba o abajo.
+        expect(sceneOutcome({ scene, choices: [{ beat: 0, reply: 0 }] })).toEqual({ events: ['meetup_scene', 'approved'], points: 9, gold: 0, liked: 1, disliked: 0, fitted: 0 });
         expect(sceneOutcome({ scene, choices: [{ beat: 0, reply: 1 }], likedPlace: true })).toEqual({
-            events: ['confidant_scene', 'disapproved', 'approved'], points: 3, gold: -2, liked: 0, disliked: 1,
+            events: ['meetup_scene', 'disapproved', 'approved'], points: 8, gold: -2, liked: 0, disliked: 1, fitted: 0,
         });
-        expect(sceneOutcome({ scene: { ...scene, kind: 'rato' }, choices: [] }).events).toEqual(['shared_downtime']);
+        expect(sceneOutcome({ scene: { ...scene, kind: 'rato' }, choices: [] }).events).toEqual(['meetup_rato']);
         expect(sceneOutcome({ scene: { ...scene, kind: 'charla' }, choices: [{ beat: 0, reply: 0 }] }).events).toEqual(['approved']);
     });
 });
@@ -339,29 +341,35 @@ describe('quedar tres veces con Gerd y subir un rango; se ve lo que abre', () =>
         return { results, social, bonds, key };
     }
 
-    test('contestando sin mojarse: la escena de rango 1 y dos ratos, y a la tercera sube', () => {
+    test('contestando sin mojarse: al principio, como en Persona, cada quedada es su escena y sube un rango (D-J63)', () => {
         const { results, social, bonds, key } = meetGerd(3, neutral);
-        expect(results.map(r => r.scene.kind)).toEqual(['escena', 'rato', 'rato']);
-        expect(results.map(r => r.result.rankedUp)).toEqual([false, false, true]);
-        expect(getRank(bonds, key)).toBe(2);
-        const opened = results[2].result.unlocks;
+        expect(results.map(r => r.scene.kind)).toEqual(['escena', 'escena', 'escena']);
+        expect(results.map(r => r.result.rankedUp)).toEqual([true, true, true]);
+        expect(getRank(bonds, key)).toBe(4);
+        const opened = results[0].result.unlocks;
         expect(opened.map((/** @type {any} */ u) => u.label)).toEqual(['Amigo de Ramiro']);
-        expect(results[2].summary).toEqual([
-            'Te acercas a Gerd el Mellado (+2 de vínculo).',
-            'Vuestro vínculo sube a rango 2.',
+        // El momento, claro, lo primero: «Rango 2 con Gerd».
+        expect(results[0].summary).toEqual([
+            'Rango 2 con Gerd',
+            'Te acercas a Gerd el Mellado (+8 de vínculo).',
             'Se abre: Amigo de Ramiro. Ramiro le debe a Gerd más de un favor de la guerra: la herrería os cobra un 10 % menos.',
         ]);
-        expect(social.seen['gerd-el-mellado']).toEqual(['gremio-gerd-1']);
-        expect(social.opened['gerd-el-mellado']).toEqual(['rango-gerd-2']);
+        expect(social.seen['gerd-el-mellado']).toEqual(['gremio-gerd-1', 'gremio-gerd-2', 'gremio-gerd-3']);
+        expect(social.opened['gerd-el-mellado']).toEqual(['rango-gerd-2', 'rango-gerd-3', 'rango-gerd-4']);
         expect(social.met['gerd-el-mellado']).toBe(2);
-        // Y la siguiente quedada es ya la escena de rango 2.
-        expect(meetupFor({ person: GERD, rank: 2, data, talkRows, social, random: () => 0 }).scene.id).toBe('gremio-gerd-2');
+        // Y la siguiente quedada es ya la escena de rango 4.
+        expect(meetupFor({ person: GERD, rank: 4, data, talkRows, social, random: () => 0 }).scene.id).toBe('gremio-gerd-4');
     });
 
-    test('contestando lo que le gusta, sube antes; contestando lo que no, no sube', () => {
-        expect(meetGerd(2, best).results.map(r => r.result.rankedUp)).toEqual([false, true]);
+    test('contestando lo que le gusta, se acerca más; contestando lo que no, menos', () => {
         const worst = (/** @type {any[]} */ replies) => replies.findIndex(r => r.bond === Math.min(...replies.map(x => x.bond)));
-        expect(getRank(meetGerd(3, worst).bonds, bondKeyOf(GERD))).toBe(1);
+        const pointsOf = (/** @type {(replies: any[]) => number} */ choose) => {
+            const run = meetGerd(3, choose);
+            return run.bonds.bonds[run.key].points;
+        };
+        expect(pointsOf(best)).toBeGreaterThan(pointsOf(neutral));
+        expect(pointsOf(neutral)).toBeGreaterThan(pointsOf(worst));
+        expect(getRank(meetGerd(3, best).bonds, bondKeyOf(GERD))).toBeGreaterThan(getRank(meetGerd(3, worst).bonds, bondKeyOf(GERD)));
     });
 
     test('lo que abre cada rango: el descuento cuenta con los favores de siempre, y la misión trae sus dos finales', () => {

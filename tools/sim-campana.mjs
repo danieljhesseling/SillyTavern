@@ -147,6 +147,14 @@ try {
     }, pattern.source);
     /** Cierra lo que se abra solo (subir de nivel, un botín, una rendición): lo de por defecto. */
     const closePopups = async () => {
+        // Los dados del combate (la tirada de iniciativa, la del golpe) esperan a «Cerrar»: sin
+        // pasarlos, la pantalla se queda en la primera pelea y las siguientes no se abren.
+        for (let i = 0; i < 40; i++) {
+            const dice = page.locator('.wm-dice-overlay.active .wm-dice-next');
+            if (await dice.count() === 0) break;
+            if (!await dice.first().click({ timeout: 1500 }).then(() => true).catch(() => false)) break;
+            await page.waitForTimeout(150);
+        }
         for (let i = 0; i < 6; i++) {
             const open = await page.locator('dialog[open] .popup-button-ok, dialog[open] .popup-controls .menu_button').filter({ visible: true }).first();
             if (await open.count() === 0) return;
@@ -172,6 +180,7 @@ try {
         const chatBefore = await page.evaluate(() => (window.SillyTavern.getContext().chat ?? []).length).catch(() => 0);
         // Tanda 10: ya no hay «Iniciar combate»: la pelea se abre sola (decidir, colocarse,
         // iniciativa). Se entra como quien juega; la ficha vieja, por si el árbol es de antes.
+        await closePopups();
         const enter = async () => (await entrarEnLaPelea(page, { ms: 8000 }) && await until(fighting, 10000))
             || (await clickChip(/^Iniciar combate/) && await until(fighting, 10000));
         let entered = await enter();

@@ -43,7 +43,7 @@ import {
     recordDecisions, sceneDecisionEntries, buildStoryBook, bookInputFromMetadata, guildChapterLine, focusClock,
 } from '../game-engine/campaign/story-book.js';
 import { HUB_BOARD_NAME_KEY } from '../game-engine/campaign/hub.js';
-import { isShellOpen, refreshGameShell } from '../game-engine/ui/shell/game-shell.js';
+import { isShellOpen, markNovelRead, refreshGameShell } from '../game-engine/ui/shell/game-shell.js';
 import { addItemToInventory, createItem, removeItemFromInventory } from '../dnd-system.js';
 import { rollDiceDetailed } from './combat-rules.js';
 import {
@@ -185,7 +185,8 @@ async function closeAct(plot, closed, opened) {
     saveMetadata();
     // Z1: si cuenta el motor, el cierre en su prosa; si no, el resumen. Una vez, no las dos.
     const closing = tellMoment('acto', { acto: closed, hitos: listNames(milestones) });
-    postCombatNarration(closing ? `📜 [HILO] ${closing}` : `📜 [HILO] Se cierra el acto ${closed}. ${summary}`);
+    // J13.9: sin conexión, el cierre del acto no lo cuenta nadie: queda en el libro de la historia.
+    postCombatNarration(closing ? `📜 [HILO] ${closing}` : `📜 [HILO] Se cierra el acto ${closed}. ${summary}`, { moment: 'acto' });
     if (range) {
         try {
             const { hideChatMessageRange } = await import('../chats.js');
@@ -658,12 +659,19 @@ function queuePlotScenes(entries) {
     scenesPending += entries.length;
     sceneQueue = sceneQueue.then(async () => {
         for (const entry of entries) {
+            let played = false;
             try {
-                if (await sceneStage(owner) && !sceneIsStale(entry)) await playPlotScene(entry.milestone, entry.scene);
+                if (await sceneStage(owner) && !sceneIsStale(entry)) {
+                    await playPlotScene(entry.milestone, entry.scene);
+                    played = true;
+                }
             } catch (error) {
                 console.error('[party] la escena del hilo falló', error);
             } finally {
                 scenesPending = Math.max(0, scenesPending - 1);
+                // Directo a la decisión (2026-10-03): acabada la charla, lo de antes en la novela
+                // ya está leído; si lo siguiente es una pelea que empieza sola, sale su decisión.
+                if (played) markNovelRead();
                 // D-J45: acabada la escena, «Continuar» ya no lleva a ella: la fila se redibuja.
                 if (isShellOpen()) refreshGameShell();
             }

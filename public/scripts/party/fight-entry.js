@@ -28,6 +28,7 @@ import { fightOpening, startCells, defaultPlacement, placeMember, placementHint 
 import { mountPlacementBar } from '../game-engine/ui/combat-vtt/placement-bar.js';
 import { isPlainFace } from '../game-engine/ui/pixel-art.js';
 import { isShellOpen, refreshGameShell } from '../game-engine/ui/shell/game-shell.js';
+import { isChatSwitching } from '../game-engine/ui/shell/chat-switch.js';
 import { parseCellKey } from '../game-engine/board/terrain.js';
 import { combatEncounter, currentBoardName, currentLocationName, partyMembers, setCombatBoardSelection } from './state.js';
 import { getActiveBoardContext, isBoardWon, knownTrapsHere } from './board.js';
@@ -76,6 +77,46 @@ let opened = 0;
  * un respiro antes de abrir la pelea, para que salga antes la escena que la empieza.
  */
 let waitedForParty = false;
+
+/**
+ * Directo a la decisión (Daniel, 2026-10-03): el tablero donde la pelea ya se ha abierto (o ya ha
+ * habido pelea) en esta visita. Tras huir, la novela se queda delante para leer cómo acabó.
+ *
+ * @type {{board: string, location: string}|null}
+ */
+let seenHere = null;
+
+/** Apuntar que la pelea del tablero abierto ya se ha abierto en esta visita. */
+function noteSeenHere() {
+    if (currentBoardName) seenHere = { board: currentBoardName, location: currentLocationName };
+}
+
+/**
+ * Directo a la decisión (Daniel, 2026-10-03): si en el tablero abierto espera una pelea que empieza
+ * sola en cuanto se ve el tablero (os han visto y aún no se ha abierto en esta visita), o se está
+ * decidiendo o colocando. Entonces el Modo Juego no se queda en la novela sin nada que leer: va al
+ * tablero (`fightComesFirst`, en `scene-director.js`), y la decisión sale sin pulsar «Continuar».
+ *
+ * Mientras se abre una campaña (el cambio de chat), todavía no: su primera escena aún no está en
+ * cola, y la pelea saldría antes que ella.
+ *
+ * @returns {boolean}
+ */
+export function fightWaitingHere() {
+    if (combatEncounter.active) {
+        noteSeenHere();
+        return false;
+    }
+    if (deciding || placingNow()) return true;
+    // Otro tablero (o se ha salido y se vuelve a entrar): una visita nueva.
+    if (seenHere && (seenHere.board !== currentBoardName || seenHere.location !== currentLocationName)) seenHere = null;
+    if (seenHere || isChatSwitching()) return false;
+    if (!currentBoardName || lastWaiting.board !== currentBoardName || lastWaiting.placements.length === 0) return false;
+    if (isBoardWon(currentLocationName, currentBoardName) || !partyMembers.some(m => !m.dead)) return false;
+    const board = getActiveBoardContext().board;
+    // J12.7: una pelea de taberna o un duelo se decide en la taberna, no aquí.
+    return Boolean(board && !board.brawl);
+}
 
 /**
  * Si el tablero se ve ahora: en el Modo Juego, su escena; fuera, su panel.
@@ -149,6 +190,7 @@ async function openFightIfNoticed() {
     const ways = avoidFor(board, foesOf(placements)).length;
     const opening = fightOpening({ ways });
     opened++;
+    noteSeenHere();
     if (!opening.decide) {
         beginPlacement({ placements });
         return;
@@ -234,6 +276,7 @@ export function beginPlacement({ placements, ambush = false, said = '', start = 
     if (combatEncounter.active) return false;
     const { board, terrain, gridWidth, gridHeight } = getActiveBoardContext();
     if (!board) return false;
+    noteSeenHere();
     const launch = start ?? (() => startWaitingFight(placements, said ? { said } : {}));
     const people = placers(only);
     if (people.length === 0) {

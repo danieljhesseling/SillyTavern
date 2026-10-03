@@ -25,6 +25,7 @@
  */
 
 import { BOND_EVENTS, BOND_PERKS, CONTROL_RANK, MAX_RANK, recordBondEvent, getRankForPoints, normalizeBondState } from './bonds.js';
+import { optionTraits } from './companion-opinions.js';
 import { resolveGenderDeep } from './grammar.js';
 import { keyOf, readSocial } from './social.js';
 import { pickTalk, talkScene } from './small-talk.js';
@@ -32,8 +33,15 @@ import { pickTalk, talkScene } from './small-talk.js';
 /** Las caras que tienen los retratos: `<persona>--<cara>.png`. */
 export const FACES = ['alegre', 'enfadado', 'triste'];
 
-/** Lo que vale cada clase de quedada, como evento de vínculo. */
-export const MEETUP_EVENTS = { escena: 'confidant_scene', rato: 'shared_downtime' };
+/**
+ * Lo que vale cada clase de quedada, como evento de vínculo. D-J63: sus propios eventos
+ * (`meetup_scene`, `meetup_rato` de `bonds.js`), para ajustar el ritmo de las quedadas sin tocar
+ * lo que suman las escenas del hilo o la charla del campamento.
+ */
+export const MEETUP_EVENTS = { escena: 'meetup_scene', rato: 'meetup_rato' };
+
+/** D-J63: la línea del momento en que sube el rango, al acabar la quedada: «Rango 3 con Gerd». */
+export const RANK_UP_LINE = /^Rango \d+ con /;
 
 /**
  * Lo que abre un rango: una ayuda en combate, un descuento, su misión personal o, en el rango
@@ -51,12 +59,15 @@ const text = (value) => String(value ?? '').trim();
  * @property {string} then
  * @property {string} mood
  * @property {number} gold Lo que cuesta (negativo), si cuesta.
+ * @property {string[]} [decision] D-J63: lo que es la respuesta (palabras de `TRAITS` de
+ *   `companion-opinions.js`), si quien la escribe lo dice: a quien piensa así le gusta más.
  */
 
 /**
  * @typedef {Object} Beat
- * @property {string} note Lo que pasa, contado.
+ * @property {string} note Lo que pasa, contado (D-J60: ya no se escribe; lo dice alguien).
  * @property {string} say  Lo que dice.
+ * @property {string} [who] J13.9: si lo dice otro que está allí (el tabernero, alguien del sitio), su nombre.
  * @property {string} mood Su cara mientras lo dice.
  * @property {Reply[]} replies
  */
@@ -133,14 +144,21 @@ function readBeat(raw) {
     const replies = (Array.isArray(raw?.replies) ? raw.replies : [])
         .filter((/** @type {any} */ r) => text(r?.text))
         .slice(0, 3)
-        .map((/** @type {any} */ r) => ({
-            text: text(r.text),
-            bond: bondOf(r.bond),
-            then: text(r.then),
-            mood: faceOf(r.mood),
-            gold: Math.min(0, Math.floor(Number(r.gold) || 0)),
-        }));
-    return { note, say, mood: faceOf(raw?.mood), replies };
+        .map((/** @type {any} */ r) => {
+            // D-J63: lo que es la respuesta, si lo dice (`"decision": "preguntar"` o una lista).
+            const decision = (Array.isArray(r.decision) ? r.decision : r.decision ? [r.decision] : []).map(text).filter(Boolean);
+            return {
+                text: text(r.text),
+                bond: bondOf(r.bond),
+                then: text(r.then),
+                mood: faceOf(r.mood),
+                gold: Math.min(0, Math.floor(Number(r.gold) || 0)),
+                ...(decision.length > 0 ? { decision } : {}),
+            };
+        });
+    // J13.9: un paso lo puede decir otro que está allí (`who`): el tabernero, un borracho…
+    const who = text(raw?.who);
+    return { note, say, mood: faceOf(raw?.mood), replies, ...(who ? { who } : {}) };
 }
 
 /**
@@ -527,7 +545,7 @@ export function sceneView(scene, state) {
     const last = state.beat >= steps - 1;
     const reply = state.answered !== null ? beat.replies[state.answered] : null;
     const waiting = beat.replies.length > 0 && !reply;
-    const speaker = text(/** @type {any} */ (beat).who) || base.who;
+    const speaker = text(beat.who) || base.who;
     return {
         ...base,
         speaker: (reply && reply.then && text(/** @type {any} */ (reply).who)) || speaker,
@@ -541,16 +559,34 @@ export function sceneView(scene, state) {
 }
 
 /**
+ * D-J63: lo que es una respuesta de quedada, con las palabras de `companion-opinions.js`: lo que
+ * diga quien la escribe (`decision`), pagar si cuesta oro, y preguntar si es una pregunta.
+ *
+ * @param {any} reply
+ * @returns {string[]}
+ */
+export function replyTraits(reply) {
+    if (!reply || typeof reply !== 'object') return [];
+    const traits = optionTraits({ decision: reply.decision, effects: Number(reply.gold) < 0 ? [{ gold: Number(reply.gold) }] : [] });
+    if (/[¿?]/.test(text(reply.text))) traits.push('preguntar');
+    return [...new Set(traits)];
+}
+
+/**
  * Lo que deja una escena jugada: los eventos de vínculo (en orden), los puntos que suman, el
  * oro que cuesta y cuántas respuestas le gustaron o no.
+ *
+ * D-J63: una respuesta que le gusta y que además va con su forma de pensar (`fits`: lo que busca
+ * y lo que su ficha dice que le gusta, de `companion-opinions.js`) suma un punto más.
  *
  * @param {Object} input
  * @param {Scene} input.scene
  * @param {Array<{beat: number, reply: number}>} input.choices
  * @param {boolean} [input.likedPlace] Si se quedó en un sitio que le gusta.
- * @returns {{events: string[], points: number, gold: number, liked: number, disliked: number}}
+ * @param {((reply: Reply) => boolean)|null} [input.fits] Si una respuesta va con su forma de pensar.
+ * @returns {{events: string[], points: number, gold: number, liked: number, disliked: number, fitted: number}}
  */
-export function sceneOutcome({ scene, choices, likedPlace = false }) {
+export function sceneOutcome({ scene, choices, likedPlace = false, fits = null }) {
     /** @type {string[]} */
     const events = [];
     const base = /** @type {Record<string, string>} */ (MEETUP_EVENTS)[scene?.kind ?? ''];
@@ -558,6 +594,7 @@ export function sceneOutcome({ scene, choices, likedPlace = false }) {
     let gold = 0;
     let liked = 0;
     let disliked = 0;
+    let fitted = 0;
     for (const choice of Array.isArray(choices) ? choices : []) {
         const reply = scene?.beats?.[choice.beat]?.replies?.[choice.reply];
         if (!reply) continue;
@@ -565,6 +602,10 @@ export function sceneOutcome({ scene, choices, likedPlace = false }) {
         if (reply.bond > 0) {
             liked += 1;
             events.push('approved');
+            if (typeof fits === 'function' && fits(reply)) {
+                fitted += 1;
+                events.push('approved');
+            }
         } else if (reply.bond < 0) {
             disliked += 1;
             events.push('disapproved');
@@ -572,7 +613,7 @@ export function sceneOutcome({ scene, choices, likedPlace = false }) {
     }
     if (likedPlace && base) events.push('approved');
     const points = events.reduce((sum, id) => sum + (/** @type {Record<string, {points: number}>} */ (BOND_EVENTS)[id]?.points ?? 0), 0);
-    return { events, points, gold, liked, disliked };
+    return { events, points, gold, liked, disliked, fitted };
 }
 
 /**
@@ -683,6 +724,9 @@ export function recordMeetup(social, { name, scene, elapsed, unlocks = [] }) {
 /**
  * Lo que se cuenta al acabar: cuánto se acerca, si sube de rango, lo que abre y lo que costó.
  *
+ * D-J63: si sube, lo primero es el momento, claro: «Rango 3 con Gerd» (`RANK_UP_LINE`; la
+ * ventana lo enseña en grande). Y si una respuesta le llegó por ir con su forma de pensar, se dice.
+ *
  * @param {{name: string, result: ReturnType<typeof applyMeetup>, outcome: ReturnType<typeof sceneOutcome>}} input
  * @returns {string[]}
  */
@@ -690,10 +734,11 @@ export function meetupSummary({ name, result, outcome }) {
     const who = text(name) || 'Alguien';
     /** @type {string[]} */
     const lines = [];
+    if (result.rankedUp) lines.push(`Rango ${result.rankAfter} con ${who.split(' ')[0]}`);
     if (result.points > 0) lines.push(`Te acercas a ${who} (+${result.points} de vínculo).`);
     else if (result.points < 0) lines.push(`${who} se queda más lejos (${result.points} de vínculo).`);
     else lines.push(`Con ${who}, todo sigue igual.`);
-    if (result.rankedUp) lines.push(`Vuestro vínculo sube a rango ${result.rankAfter}.`);
+    if ((outcome?.fitted ?? 0) > 0) lines.push('Lo que dijiste va con su forma de pensar: le llega más.');
     for (const unlock of result.unlocks) lines.push(`Se abre: ${unlock.label}. ${unlock.describe}`.trim());
     if (outcome.gold < 0) lines.push(`Te cuesta ${-outcome.gold} de oro.`);
     return lines;

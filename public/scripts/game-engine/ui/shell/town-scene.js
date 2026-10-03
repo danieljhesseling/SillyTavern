@@ -20,6 +20,7 @@ import { firstArt, openPack } from '../pixel-art.js';
 import { PLACE_KINDS, townPlaces, townNpcsFromEntries, greetingFor, describeWho, slotOf } from '../../campaign/town.js';
 import { hallSections, hallHeader } from '../../campaign/guild-hall.js';
 import { hearLine, knowsName, shownName, shownText } from '../shown-names.js';
+import { DIRECT_SOCIAL_BUTTONS } from '../../campaign/invitations.js';
 
 /**
  * @typedef {import('../../campaign/town.js').TownPlace} TownPlace
@@ -80,6 +81,8 @@ import { hearLine, knowsName, shownName, shownText } from '../shown-names.js';
  * @property {boolean} [waiting] Tiene algo que decirte ya.
  * @property {string} talk La orden de charlar con él.
  * @property {string} meet La orden de quedar con él.
+ * @property {string} [invite] D-J63: la orden de acercarte a él (su invitación).
+ * @property {boolean} [love] D-J63: ya en la ruta de pareja, os toca una cita: el único corazón.
  */
 
 /** Cada cuánto se vuelve a leer el mundo: la gente cambia poco, y leerlo copia el mundo entero. */
@@ -261,14 +264,35 @@ function shownPlace(place) {
 }
 
 /**
+ * D-J63: si se marca a alguien en el pueblo (el corazón, la tarjeta resaltada). Sin los botones
+ * directos, solo quien te espera para una cita: al principio no hay corazones.
+ *
+ * @param {YourPerson} person
+ * @returns {boolean}
+ */
+const eager = (person) => (DIRECT_SOCIAL_BUTTONS ? Boolean(person.wantsToMeet) : Boolean(person.love));
+
+/**
  * Las fichas de charlar y quedar con alguien, con la orden que ya hace la fila (`/charlar`,
  * `/quedar`).
+ *
+ * D-J63: sin los botones directos (`DIRECT_SOCIAL_BUTTONS`), una sola ficha con su nombre: se le
+ * pulsa y te saluda (`persona:`, su invitación). Quien solo tiene algo que contar, su charla.
  *
  * @param {YourPerson} person
  * @returns {{meet: ActionChip|null, talk: ActionChip|null}}
  */
 function personChips(person) {
     const who = calledHere(person.name);
+    if (!DIRECT_SOCIAL_BUTTONS) {
+        const name = calledHere(person.name, 'placa');
+        return {
+            meet: person.canMeet ? {
+                id: `persona:${person.key}`, label: name, icon: person.love ? 'fa-heart' : 'fa-user', source: 'motor', command: person.invite || `/invitacion ${person.name}`,
+            } : null,
+            talk: !person.canMeet && person.canTalk ? { id: `charlar:${person.key}`, label: name, icon: 'fa-user', source: 'motor', command: person.talk } : null,
+        };
+    }
     return {
         meet: person.canMeet ? { id: `quedar:${person.key}`, label: `Quedar con ${who}`, icon: 'fa-mug-hot', source: 'motor', command: person.meet } : null,
         talk: person.canTalk ? {
@@ -288,14 +312,14 @@ function personChips(person) {
 function peopleBadges(people, pack) {
     const row = el('span', 'gs-town-yours');
     for (const person of people.slice(0, 4)) {
-        const badge = el('span', `gs-town-you${person.wantsToMeet ? ' gs-town-wants' : ''}`);
+        const badge = el('span', `gs-town-you${eager(person) ? ' gs-town-wants' : ''}`);
         badge.dataset.person = person.key;
-        badge.title = person.wantsToMeet ? `${shownName(person.name)}: quiere quedar contigo` : `${shownName(person.name)}, aquí ahora`;
+        badge.title = eager(person) ? `${shownName(person.name)}: quiere quedar contigo` : `${shownName(person.name)}, aquí ahora`;
         const face = faceOf(person.name, pack);
         if (face) badge.appendChild(pixelImage(face, 'gs-town-you-face', person.name));
         else badge.appendChild(el('span', 'gs-town-you-initial', calledHere(person.name, 'placa').slice(0, 1)));
         badge.appendChild(el('span', 'gs-town-you-name', calledHere(person.name, 'placa')));
-        if (person.wantsToMeet) badge.appendChild(el('i', 'fa-solid fa-heart gs-town-you-heart'));
+        if (eager(person)) badge.appendChild(el('i', 'fa-solid fa-heart gs-town-you-heart'));
         row.appendChild(badge);
     }
     if (people.length > 4) row.appendChild(el('span', 'gs-town-you-more', `+${people.length - 4}`));
@@ -438,7 +462,7 @@ export function renderTownSelector(town, ctx) {
         const yours = town.yours?.[place.id] ?? [];
         if (yours.length > 0) {
             body.appendChild(peopleBadges(yours, pack));
-            if (yours.some(p => p.wantsToMeet)) card.classList.add('gs-town-place-wants');
+            if (yours.some(eager)) card.classList.add('gs-town-place-wants');
         }
         card.appendChild(body);
         card.addEventListener('click', () => {
@@ -456,12 +480,12 @@ export function renderTownSelector(town, ctx) {
         row.appendChild(el('span', 'gs-town-loose-title', 'Por el pueblo:'));
         for (const person of town.loose) {
             const { meet, talk } = personChips(person);
-            const chip = (person.wantsToMeet ? meet : null) ?? talk ?? meet;
+            const chip = (eager(person) ? meet : null) ?? (DIRECT_SOCIAL_BUTTONS ? talk ?? meet : meet ?? talk);
             if (!chip) continue;
-            const go = button(`gs-town-act gs-town-extra-btn${person.wantsToMeet ? ' gs-town-wants' : ''}`);
+            const go = button(`gs-town-act gs-town-extra-btn${eager(person) ? ' gs-town-wants' : ''}`);
             go.dataset.chip = chip.id;
-            go.title = person.wantsToMeet ? `${shownName(person.name)} quiere quedar contigo` : `${shownName(person.name)}, en ${person.placeLabel.toLowerCase()}`;
-            go.appendChild(el('i', `fa-solid ${person.wantsToMeet ? 'fa-heart' : chip.icon}`));
+            go.title = eager(person) ? `${shownName(person.name)} quiere quedar contigo` : `${shownName(person.name)}, en ${person.placeLabel.toLowerCase()}`;
+            go.appendChild(el('i', `fa-solid ${eager(person) ? 'fa-heart' : chip.icon}`));
             go.appendChild(el('span', 'gs-btn-label', `${chip.label} (${person.placeLabel.toLowerCase()})`));
             go.addEventListener('click', () => ctx.onChip(chip));
             row.appendChild(go);
@@ -556,6 +580,16 @@ function placeActs(place, town, ctx) {
         const acts = [];
         for (const person of yours) {
             const { meet, talk } = personChips(person);
+            // D-J63: una ficha por persona, con su nombre: te acercas, te saluda y eliges.
+            if (!DIRECT_SOCIAL_BUTTONS) {
+                const go = meet ?? talk;
+                if (go) {
+                    acts.push({
+                        id: go.id, label: go.label, icon: go.icon, detail: person.love ? 'Te está esperando.' : 'Te acercas a saludar.', enabled: true, cost: 0, run: () => ctx.onChip(go),
+                    });
+                }
+                continue;
+            }
             if (meet) {
                 acts.push({
                     id: meet.id, label: meet.label, icon: person.wantsToMeet ? 'fa-heart' : meet.icon,

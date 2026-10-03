@@ -15,8 +15,9 @@ import { normalizeElevation } from '../game-engine/board/heights.js';
 import { normalizeZones } from '../game-engine/board/zones.js';
 import { escapeHtml } from '../utils.js';
 import {
-    getDistanceInFeet, getAttackRangeFeet, getPlayerDamageFormula, getPlayerAttackModifier,
+    getDistanceInFeet, getAttackRangeFeet, getPlayerDamageFormula, getPlayerAttackModifier, getPlayerAttackParts,
 } from './combat-rules.js';
+import { describeAttackBonus } from '../game-engine/rules/attack-bonus.js';
 import { weaponBonus } from '../game-engine/rules/equipment.js';
 import {
     normalizeTerrain, setCell as setTerrainCell, getTerrainOptions, cellKey,
@@ -373,8 +374,14 @@ function openTargetCard(member, enemy) {
         attackerId: String(member.id),
         hindered: attackHindrance(partyCell(member), { x: Number(enemy.gridX) || 0, y: Number(enemy.gridY) || 0 }, distanceFeet),
     });
+    // El número que suma al d20, por partes: la característica, la competencia y lo demás.
+    const attackParts = getPlayerAttackParts(member, forecastRange, [
+        { label: 'del arma', value: weaponBonus(member) },
+        { label: 'contra los de su clase', value: traitBonus(member, enemy.name) },
+        { label: 'de lo aprendido', value: perkBonus(member, 'attack') },
+    ]);
     const forecast = describeForecast({
-        attackMod: getPlayerAttackModifier(member, forecastRange) + traitBonus(member, enemy.name) + perkBonus(member, 'attack') + weaponBonus(member),
+        attackMod: attackParts.total,
         armorClass: ac,
         mode: forecastEdge.mode,
         reasons: forecastEdge.reasons,
@@ -433,6 +440,8 @@ function openTargetCard(member, enemy) {
     root.append(nameRow.append($('<span></span>').text(card.name)));
     root.append($('<div class="tc-stats"></div>').text(describeTargetCard(card)));
     if (card.inRange) root.append($('<div class="tc-forecast"></div>').text(forecast.text));
+    // De dónde sale el número del ataque: «+5 al ataque: +3 de Fuerza y +2 de competencia».
+    if (card.inRange) root.append($('<div class="tc-bonus"></div>').text(describeAttackBonus(attackParts)));
     if (intentTarget) root.append($('<div class="tc-intent"></div>').text(`Va a por ${intentTarget.name}.`));
     // R3: lo que alcanzaría cada habilidad de área, antes de usarla. Colocarse importa.
     for (const ability of knownAbilitiesOf(member).filter(a => a.target === 'enemy' && isArea(a.area))) {

@@ -167,8 +167,9 @@ describe('lo que el motor deja en la secuencia (party/combat-fx.js)', () => {
         const wolf = { instanceId: 'e2', name: 'Lobo', currentHp: 4, maxHp: 11 };
         setCombatEncounter({ ...combatEncounter, active: true, enemies: [{ instanceId: 'e1', currentHp: 0, maxHp: 5 }, wolf], turnOrder: [] });
         setPartyMembers([{ id: 7, name: 'Nerea', hp: 22, maxHp: 34 }]);
-        expect(whoIsToken(-2)).toEqual({ entryId: 'e2', hp: 4, max: 11 });
-        expect(whoIsToken(7)).toEqual({ entryId: '7', hp: 22, max: 34 });
+        // J12.19: y su nombre y su lado, para decir quién cae.
+        expect(whoIsToken(-2)).toEqual({ entryId: 'e2', hp: 4, max: 11, name: 'Lobo', team: 'enemy' });
+        expect(whoIsToken(7)).toEqual({ entryId: '7', hp: 22, max: 34, name: 'Nerea', team: 'party' });
         expect(whoIsToken(-9)).toBeNull();
     });
 });

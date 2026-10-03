@@ -1,7 +1,7 @@
 {
   "version": 1,
   "domain": "romances",
-  "about": "Los romances (J14.10 de ROADMAP_SIN_CONEXION): opcionales, con quien lo permita su ficha (el campo ROMANCE de companeros.json). Una fila por escena. KIND: senal (la quedada en que sale la pregunta, a partir del vínculo 4), cita (STEP 1, 2 y 3: una por quedada), final (la noche: solo de noche, y acaba en fundido a negro), pareja (LINES: frases que te dice cuando ya sois pareja, en un rato juntos) y epilogo (HOME: su línea al final de una campaña del gremio; AWAY: al final de una campaña suelta; HALL: su línea en el Salón de la fama). WHO es su nombre tal cual; WHO «*» es la señal común, para quien tiene ficha pero no señal escrita. Las escenas son conversaciones (D-J54), como las quedadas: BEATS con SAY (lo que dice), MOOD (alegre, enfadado, triste) y REPLIES (TEXT, BOND 1/0/-1, THEN lo que contesta: solo lo que dice, sin narrar). NOTE es lo que se ve, en una línea corta y sin nombre: como mucho una por escena, en el primer paso; lo demás lo cuenta quien está contigo. La respuesta que hace avanzar el romance lleva ROMANCE «avanza» (sale con un corazón delante); la que lo cierra como amigos, ROMANCE «amigos»; la de la noche que funde a negro, además FADE true. Pon la decisión en el último paso. Huecos: {nombre} (su nombre corto), {heroe}, {ending} (el final), {day} (el día); y {chico|chica} para concordar con tu héroe. Nada explícito: se funde a negro.",
+  "about": "Los romances (J14.10 de ROADMAP_SIN_CONEXION): opcionales, con quien lo permita su ficha (el campo ROMANCE de companeros.json). Una fila por escena. KIND: senal (la quedada en que sale la pregunta, a partir del vínculo 4), cita (STEP 1, 2 y 3: una por quedada), final (la noche: solo de noche, y acaba en fundido a negro), pareja (LINES: frases que te dice cuando ya sois pareja, en un rato juntos) y epilogo (HOME: su línea al final de una campaña del gremio; AWAY: al final de una campaña suelta; HALL: su línea en el Salón de la fama). WHO es su nombre tal cual; WHO «*» es la señal común, para quien tiene ficha pero no señal escrita. Las escenas son conversaciones (D-J54), como las quedadas: BEATS con SAY (lo que dice), MOOD (alegre, enfadado, triste) y REPLIES (TEXT, BOND 1/0/-1, THEN lo que contesta: solo lo que dice, sin narrar). No hay narrador (D-J60): lo que se ve lo cuenta quien está contigo, con sus palabras. La respuesta que hace avanzar el romance lleva ROMANCE «avanza» (sale con un corazón delante); la que lo cierra como amigos, ROMANCE «amigos»; la de la noche que funde a negro, además FADE true. Pon la decisión en el último paso. Huecos: {nombre} (su nombre corto), {heroe}, {ending} (el final), {day} (el día); y {chico|chica} para concordar con tu héroe. Nada explícito: se funde a negro.",
   "rows": [
     {
       "id": "romance-comun-senal",
@@ -12,8 +12,7 @@
       "where": "",
       "beats": [
         {
-          "note": "{nombre} se sienta a tu lado, más cerca de lo normal.",
-          "say": "Por una vez no hay nada urgente que hacer. Me alegro de que hayas venido. Contigo se está bien.",
+          "say": "¿Me hago sitio a tu lado? Un poco más cerca… así. Por una vez no hay nada urgente que hacer. Me alegro de que hayas venido. Contigo se está bien.",
           "replies": [
             { "text": "Le dices que te gusta. Que te gusta de verdad.", "bond": 1, "romance": "avanza", "then": "" },
             { "text": "Le dices que tú también estás a gusto.", "bond": 0, "then": "Pues eso. Se está bien." },
@@ -31,8 +30,7 @@
       "where": "plaza",
       "beats": [
         {
-          "note": "Nella ha clavado una diana nueva en un poste y te espera con el arco en las rodillas.",
-          "say": "Te propongo una apuesta. Tiras una flecha. Si das en el centro, te digo una cosa que no le he dicho a nadie. Si fallas, me invitas a cenar.",
+          "say": "Mira, diana nueva en el poste. Te esperaba con el arco listo. Te propongo una apuesta. Tiras una flecha. Si das en el centro, te digo una cosa que no le he dicho a nadie. Si fallas, me invitas a cenar.",
           "mood": "alegre",
           "replies": [
             { "text": "Acepto. Y voy a acertar.", "bond": 1, "then": "Eso dicen todos. Venga, tira.", "mood": "alegre" },
@@ -59,8 +57,7 @@
       "where": "posada",
       "beats": [
         {
-          "note": "La mesa del rincón de la posada, la de la vela buena.",
-          "say": "Me he peinado, sí. No digas nada del pelo. Ni una palabra.",
+          "say": "Te he guardado la mesa del rincón, la de la vela buena. Me he peinado, sí. No digas nada del pelo. Ni una palabra.",
           "replies": [
             { "text": "Estás muy guapa.", "bond": 1, "then": "Te he dicho que ni una palabra. …Gracias.", "mood": "alegre" },
             { "text": "¿Qué pelo?", "bond": 1, "then": "Así me gusta." },
@@ -94,8 +91,7 @@
       "where": "plaza",
       "beats": [
         {
-          "note": "Desde el tejado del almacén se ve todo el puerto, con la niebla entrando del mar.",
-          "say": "Aquí subo cuando no puedo dormir. Nadie mira hacia arriba. Es lo primero que aprende una furtiva.",
+          "say": "Desde este tejado se ve todo el puerto. Mira cómo entra la niebla del mar. Aquí subo cuando no puedo dormir. Nadie mira hacia arriba. Es lo primero que aprende una furtiva.",
           "replies": [
             { "text": "Es precioso.", "bond": 1, "then": "Lo sé. Por eso no se lo enseño a cualquiera." },
             { "text": "¿Y si nos ven?", "bond": 0, "then": "Nadie mira hacia arriba. Te lo acabo de decir." }
@@ -130,8 +126,7 @@
       "where": "plaza",
       "beats": [
         {
-          "note": "Ha llegado a Puerto Alba una feria pequeña: tres carros, un oso viejo y un puesto de tiro.",
-          "say": "¡Corre, al puesto de tiro! Tres manzanas a cincuenta pasos, como en Hoz. Hoy tiro por ti: si acierto las tres, el premio es tuyo.",
+          "say": "¡Ha llegado una feria! Pequeña, tres carros y un oso viejo, pero tiene puesto de tiro. ¡Corre! Tres manzanas a cincuenta pasos, como en Hoz. Hoy tiro por ti: si acierto las tres, el premio es tuyo.",
           "mood": "alegre",
           "replies": [
             { "text": "¿Y si fallas?", "bond": 1, "then": "Yo no fallo. Salvo contigo, que no hay quien te acierte." },
@@ -165,8 +160,7 @@
       "where": "posada",
       "beats": [
         {
-          "note": "De noche, en lo alto de la escalera de la posada, Nella te espera con una vela.",
-          "say": "Pasa. Es pequeña: una cama, el arco en su clavo y una ventana que da al mar. No es gran cosa, pero es lo primero que tengo que es mío. Quería que la vieras.",
+          "say": "Sube, que te alumbro con la vela. Pasa. Es pequeña: una cama, el arco en su clavo y una ventana que da al mar. No es gran cosa, pero es lo primero que tengo que es mío. Quería que la vieras.",
           "replies": [
             { "text": "Es perfecta.", "bond": 1, "then": "No mientas. Pero gracias." },
             { "text": "Se oye el mar.", "bond": 1, "then": "Por eso la elegí. Dicen que ayuda a dormir. A mí, casi nunca." }
@@ -210,8 +204,7 @@
       "where": "posada",
       "beats": [
         {
-          "note": "La posada está casi vacía. Osric sigue en su rincón, con su jarra.",
-          "say": "Siéntate. Te he guardado las aceitunas negras. Las verdes no te gustan. Me he fijado.",
+          "say": "Ya casi no queda nadie. Siéntate en mi rincón. Te he guardado las aceitunas negras. Las verdes no te gustan. Me he fijado.",
           "replies": [
             { "text": "Qué detalle.", "bond": 1, "then": "No es un detalle. Es que me fijo. Es mi oficio." },
             { "text": "¿Desde cuándo compartes?", "bond": 0, "then": "Desde hace poco. No te acostumbres." }
@@ -237,8 +230,7 @@
       "where": "muelle",
       "beats": [
         {
-          "note": "Osric te espera en el muelle con un montón de redes rotas.",
-          "say": "Aquí nadie me llama Mediapaga. Mi padre decía que quien sabe remendar una red no pasa hambre. Siéntate. Te enseño.",
+          "say": "Mira cuántas redes rotas. Aquí nadie me llama Mediapaga. Mi padre decía que quien sabe remendar una red no pasa hambre. Siéntate. Te enseño.",
           "replies": [
             { "text": "Enséñame.", "bond": 1, "then": "Así. Nudo, vuelta y aprieta. Otra vez." },
             { "text": "No se me dan bien las manos.", "bond": 0, "then": "A mí tampoco se me daba bien nada. Se aprende." }
@@ -271,8 +263,7 @@
       "where": "templo",
       "beats": [
         {
-          "note": "En la capilla del templo, Osric tiene dos velas en la mano.",
-          "say": "Una es por él, como siempre. La otra no sé por quién es. Enciéndela tú, si quieres.",
+          "say": "Hoy traigo dos velas. Una es por él, como siempre. La otra no sé por quién es. Enciéndela tú, si quieres.",
           "replies": [
             { "text": "Por los que seguimos aquí.", "bond": 1, "then": "Por los que seguimos aquí. Eso está bien." },
             { "text": "Por tu barca.", "bond": 1, "then": "Ja. Por la «Gaviota». Que no se hunda.", "mood": "alegre" },
@@ -307,8 +298,7 @@
       "where": "muelle",
       "beats": [
         {
-          "note": "La «Gaviota», recién pintada de azul, se aleja de Puerto Alba.",
-          "say": "La vela la he cosido yo. El mar no te pregunta a quién servías. Ya te lo dije una vez. Tampoco te pregunta a quién quieres.",
+          "say": "Mírala, recién pintada de azul. Ya nos alejamos de Puerto Alba. La vela la he cosido yo. El mar no te pregunta a quién servías. Ya te lo dije una vez. Tampoco te pregunta a quién quieres.",
           "replies": [
             { "text": "¿Y a quién quieres, Osric?", "bond": 1, "then": "Ya lo sabes. No me hagas decirlo, que se me da fatal." },
             { "text": "Aquí se está bien.", "bond": 1, "then": "Se está bien. Contigo, mejor." }
@@ -341,8 +331,7 @@
       "where": "muelle",
       "beats": [
         {
-          "note": "De noche, la «Gaviota» está amarrada al muelle con un farol en la proa.",
-          "say": "Esta noche no llevo la espada. Es la primera noche en once años que no hago guardia. Se la he dejado a Gerd. Le he dicho que tenía algo mejor que hacer.",
+          "say": "He colgado un farol en la proa, para que la encontraras. Esta noche no llevo la espada. Es la primera noche en once años que no hago guardia. Se la he dejado a Gerd. Le he dicho que tenía algo mejor que hacer.",
           "replies": [
             { "text": "¿Algo mejor?", "bond": 1, "then": "Alguien. Me he equivocado de palabra a propósito." },
             { "text": "Gerd ronca.", "bond": 1, "then": "Por eso. Que ronque lejos.", "mood": "alegre" }

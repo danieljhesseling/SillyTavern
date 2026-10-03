@@ -1,7 +1,7 @@
 {
   "version": 1,
   "domain": "quedadas",
-  "about": "Quedar con alguien (J14.3 a J14.6 de ROADMAP_SIN_CONEXION): gastas una parte del día con alguien de tu gente y se juega su escena. Tres clases de fila (KIND). GENTE: dónde anda cada uno a cada hora (PLACES: morning, afternoon, night; los sitios son posada, tienda, herreria, templo, tablon, plaza, muelle y gremio), su pueblo (HOME: solo allí se queda con él si no va contigo) y los sitios donde le gusta quedar (LIKES: allí suma un punto más). ESCENA: la escena de cada rango de vínculo (RANK), en dos a cuatro pasos (BEATS); cada paso cuenta lo que pasa (NOTE) y lo que dice (SAY), con su cara (MOOD: alegre, enfadado o triste), y casi todos ofrecen dos o tres respuestas (REPLIES) con lo que acercan (BOND: 1 acerca, 0 nada, -1 aleja), lo que contesta (THEN) y, si cuesta algo, GOLD (negativo). Las escenas de CAMPAIGN strahd y 1387 son las cinco de cada confidente del paquete, pasadas a pasos: RANK y TITLE tienen que ser los del paquete. RANGO: lo que abre llegar a ese rango (UNLOCK): TYPE apoyo (una ventaja de combate de las de vínculo, PERK), descuento (ON: tienda, herreria, posada o templo; AMOUNT: 0.1 es un 10 %), mision (su misión personal, QUEST, con dos ENDINGS) o control (en el rango 5, el de «amigo»: desde ahí lo mueves tú en combate; antes lo mueve el juego; es para todos, y aquí solo se escribe cómo se dice de cada uno). Lo que concuerda con tu héroe va entre llaves con las dos formas, separadas por una barra vertical.",
+  "about": "Quedar con alguien (J14.3 a J14.6 de ROADMAP_SIN_CONEXION): gastas una parte del día con alguien de tu gente y se juega su escena. Tres clases de fila (KIND). GENTE: dónde anda cada uno a cada hora (PLACES: morning, afternoon, night; los sitios son posada, tienda, herreria, templo, tablon, plaza, muelle y gremio), su pueblo (HOME: solo allí se queda con él si no va contigo) y los sitios donde le gusta quedar (LIKES: allí suma un punto más). ESCENA: la escena de cada rango de vínculo (RANK), en dos a cuatro pasos (BEATS); cada paso es lo que dice (SAY), con su cara (MOOD: alegre, enfadado o triste); no hay narrador (D-J60): lo que pasa lo cuenta quien habla, con sus palabras, y si lo dice otro que está allí (el tabernero, alguien del sitio), su nombre va en WHO; y casi todos ofrecen dos o tres respuestas (REPLIES) con lo que acercan (BOND: 1 acerca, 0 nada, -1 aleja), lo que contesta (THEN) y, si cuesta algo, GOLD (negativo). Las escenas de CAMPAIGN strahd y 1387 son las cinco de cada confidente del paquete, pasadas a pasos: RANK y TITLE tienen que ser los del paquete. RANGO: lo que abre llegar a ese rango (UNLOCK): TYPE apoyo (una ventaja de combate de las de vínculo, PERK), descuento (ON: tienda, herreria, posada o templo; AMOUNT: 0.1 es un 10 %), mision (su misión personal, QUEST, con dos ENDINGS) o control (en el rango 5, el de «amigo»: desde ahí lo mueves tú en combate; antes lo mueve el juego; es para todos, y aquí solo se escribe cómo se dice de cada uno). Lo que concuerda con tu héroe va entre llaves con las dos formas, separadas por una barra vertical.",
   "rows": [
     {
       "id": "gente-gerd",
@@ -668,8 +668,7 @@
       "where": "posada",
       "beats": [
         {
-          "note": "Gerd se sienta enfrente con dos jarras y un plato de guiso que nadie más ha pedido.",
-          "say": "¿Sabes por qué me llaman el Mellado? Venga, adivina. Todo el mundo falla.",
+          "say": "Hazme sitio, que traigo dos jarras y guiso para los dos. ¿Sabes por qué me llaman el Mellado? Venga, adivina. Todo el mundo falla.",
           "mood": "alegre",
           "replies": [
             {
@@ -714,8 +713,7 @@
           ]
         },
         {
-          "note": "Gerd se ríe hasta que se le escapa un silbido por el hueco de los dientes. Luego empuja la otra jarra hacia ti.",
-          "say": "Desde entonces, escudo arriba, pero no tanto. Bebe, que esta la pago yo. La próxima, tú.",
+          "say": "¿Oyes cómo silbo al reírme? Es por el hueco de los dientes. Desde entonces, escudo arriba, pero no tanto. Toma, esta jarra es para ti, que la pago yo. La próxima, tú.",
           "mood": "alegre"
         }
       ]
@@ -731,8 +729,7 @@
       "where": "plaza",
       "beats": [
         {
-          "note": "Gerd te espera en la plaza con un papel doblado en la mano. Lo aprieta tanto que está arrugado.",
-          "say": "Ha llegado carta de Robledo. De mi madre, creo. Léemela tú, que tengo la vista cansada.",
+          "say": "¡Por fin llegas! Ha llegado carta de Robledo. De mi madre, creo. La he apretado tanto que está toda arrugada. Léemela tú, que tengo la vista cansada.",
           "replies": [
             {
               "text": "Trae, que te la leo.",
@@ -754,8 +751,7 @@
           ]
         },
         {
-          "note": "La carta la ha escrito el cura de Robledo, de parte de su madre: ella está bien, el invierno ha sido duro y el tejado gotea. Al final le pide una cosa: una línea escrita por él, aunque sea torcida.",
-          "say": "No sé leer. Ni escribir. Nunca aprendí. Le pago la renta de la casa porque es lo único que sé mandarle.",
+          "say": "Así que la escribe el cura por ella. Que está bien, que el invierno ha sido duro, que el tejado gotea… Y que le mande una línea escrita por mí, aunque sea torcida. No sé leer. Ni escribir. Nunca aprendí. Le pago la renta de la casa porque es lo único que sé mandarle.",
           "mood": "triste",
           "replies": [
             {
@@ -778,8 +774,7 @@
           ]
         },
         {
-          "note": "Gerd dobla la carta con cuidado y se la guarda dentro de la camisa.",
-          "say": "No se lo digas a nadie. Ramiro lo sabe: en la guerra me escribía él las cartas. Pero Ramiro escribe como habla: tres palabras y se cansa."
+          "say": "Trae, que la guardo aquí, dentro de la camisa. No se lo digas a nadie. Ramiro lo sabe: en la guerra me escribía él las cartas. Pero Ramiro escribe como habla: tres palabras y se cansa."
         }
       ]
     },
@@ -794,8 +789,7 @@
       "where": "posada",
       "beats": [
         {
-          "note": "Gerd está en una mesa del fondo con un trozo de carbón y una tabla. Ha escrito tres letras torcidas.",
-          "say": "G, E, R… La D se me resiste. Me sale una barriga.",
+          "say": "Ven, siéntate aquí al fondo. Mira la tabla: tres letras con carbón, y torcidas. G, E, R… La D se me resiste. Me sale una barriga.",
           "mood": "alegre",
           "replies": [
             {
@@ -834,8 +828,7 @@
           ]
         },
         {
-          "note": "Tardáis horas. Al final, en la tabla, pone ESTOY BIEN MADRE, con letras de todos los tamaños.",
-          "say": "La voy a copiar en papel bueno y se la mando con Lope, el arriero, que sube a Robledo cada mes. La primera carta de mi vida, con mi letra.",
+          "say": "¡Mira! Nos ha costado horas, pero ahí pone ESTOY BIEN MADRE. Con letras de todos los tamaños, pero lo pone. La voy a copiar en papel bueno y se la mando con Lope, el arriero, que sube a Robledo cada mes. La primera carta de mi vida, con mi letra.",
           "mood": "alegre"
         }
       ]
@@ -851,8 +844,7 @@
       "where": "muelle",
       "beats": [
         {
-          "note": "Gerd no está comiendo, y eso ya es raro. Tiene en la mano la respuesta del cura de Robledo. Se la ha traído Lope, el arriero, que no sabe leer y ya va de vuelta a Robledo. Esta vez Gerd la ha leído él solo, despacio.",
-          "say": "Mi madre lloró con mi carta. Pero el cura me cuenta algo más: el señor de Robledo le va a quitar la casa. Dice que le debe tres años de renta. ¡Mentira! Yo mando la renta cada mes, con Lope, el arriero.",
+          "say": "No, hoy no tengo hambre. Ha llegado la respuesta del cura. Me la ha traído Lope, el arriero, que no sabe leer, y esta vez la he leído yo solo, despacio. Mi madre lloró con mi carta. Pero el cura me cuenta algo más: el señor de Robledo le va a quitar la casa. Dice que le debe tres años de renta. ¡Mentira! Yo mando la renta cada mes, con Lope, el arriero.",
           "mood": "enfadado",
           "replies": [
             {
@@ -874,8 +866,7 @@
           ]
         },
         {
-          "note": "Gerd saca de la camisa un montón de papeles viejos, doblados en cuatro.",
-          "say": "Cada mes, Lope me traía un recibo firmado. Tres años guardándolos. Ahora que sé leer, mira lo que pone: «dos sacos de nabos», «una mula coja». ¡Son listas de la compra!",
+          "say": "Mira estos papeles, doblados en cuatro. Cada mes, Lope me traía un recibo firmado. Tres años guardándolos. Ahora que sé leer, mira lo que pone: «dos sacos de nabos», «una mula coja». ¡Son listas de la compra!",
           "mood": "enfadado",
           "replies": [
             {
@@ -898,8 +889,7 @@
           ]
         },
         {
-          "note": "Gerd baja la voz. El enfado se le ha ido de golpe.",
-          "say": "Y hay más. Lope le decía a mi madre que a mí me iba mal y que no mandaba nada. Y ella, para no pedirme, lleva tres años fregando suelos en casa del señor para pagarle lo que puede. Tengo que ir a Robledo, y no quiero ir solo.",
+          "say": "Y hay más, y esto se me hace cuesta arriba. Lope le decía a mi madre que a mí me iba mal y que no mandaba nada. Y ella, para no pedirme, lleva tres años fregando suelos en casa del señor para pagarle lo que puede. Tengo que ir a Robledo, y no quiero ir solo.",
           "mood": "triste",
           "replies": [
             {
@@ -916,8 +906,7 @@
           ]
         },
         {
-          "note": "Gerd te da un abrazo que te deja sin aire. Huele a guiso. Luego se queda callado un rato, y eso en él es mucho.",
-          "say": "Lo que no sé es qué haré con Lope. Si lo llevo ante el señor, lo cuelgan en la plaza, y tiene cinco críos. Robledo está a una semana al norte. Cuando quieras, avísame."
+          "say": "Ven aquí, que te doy un abrazo. … Perdona, me he quedado callado, y eso en mí es mucho. Lo que no sé es qué haré con Lope. Si lo llevo ante el señor, lo cuelgan en la plaza, y tiene cinco críos. Robledo está a una semana al norte. Cuando quieras, avísame."
         }
       ]
     },
@@ -932,8 +921,7 @@
       "where": "plaza",
       "beats": [
         {
-          "note": "Nella está en la plaza, tirando a una diana de paja. Cada flecha, en el centro. Te ve mirando y no para.",
-          "say": "Tresflechas me llaman desde una feria: tres manzanas a cincuenta pasos y tres flechas. Nadie más acertó ni una.",
+          "say": "Mira si quieres, que no paro por ti. Otra al centro de la diana. Tresflechas me llaman desde una feria: tres manzanas a cincuenta pasos y tres flechas. Nadie más acertó ni una.",
           "mood": "alegre",
           "replies": [
             {
@@ -977,8 +965,7 @@
           ]
         },
         {
-          "note": "Al final tiras. Tu flecha se clava en el borde de la paja, de milagro. Nella se ríe por primera vez desde que la conoces.",
-          "say": "Vale, cuenta. Hoy pago yo la cena. Pero la próxima vez tira con los ojos abiertos.",
+          "say": "Al final has tirado, ¿eh? ¡Ja! En el borde de la paja, y de milagro, pero cuenta. Hacía tiempo que no me reía así. Hoy pago yo la cena. Pero la próxima vez tira con los ojos abiertos.",
           "mood": "alegre"
         }
       ]
@@ -994,8 +981,7 @@
       "where": "posada",
       "beats": [
         {
-          "note": "En la posada, Nella juega a las cartas con un chaval del puerto. Pierde una mano, y luego otra. Nella nunca pierde.",
-          "say": "Mala noche. Las cartas no me quieren.",
+          "say": "Yo, que no pierdo nunca, y ya van dos manos que me gana el chaval. Mala noche. Las cartas no me quieren.",
           "replies": [
             {
               "text": "Estás perdiendo a propósito.",
@@ -1017,8 +1003,7 @@
           ]
         },
         {
-          "note": "El chaval se va corriendo con las monedas en el puño.",
-          "say": "Mi hermano pequeño tenía su edad cuando me fui de Hoz. No sé si come. No sé nada de él.",
+          "say": "Mira cómo corre con las monedas en el puño. Mi hermano pequeño tenía su edad cuando me fui de Hoz. No sé si come. No sé nada de él.",
           "mood": "triste",
           "replies": [
             {
@@ -1040,8 +1025,7 @@
           ]
         },
         {
-          "note": "Nella recoge las cartas. Luego saca del carcaj una flecha torcida, de plumas rojas, y le da vueltas entre los dedos. Esta vez no te propone ninguna apuesta.",
-          "say": "Me la hizo Tobías el día que me fui. Vuela fatal, así que no la tiro nunca. Y no se lo cuentes a Gerd, que se pone tierno y me invita a guiso."
+          "say": "Hoy no te propongo ninguna apuesta. Mira esta flecha torcida, la de plumas rojas. Me la hizo Tobías el día que me fui. Vuela fatal, así que no la tiro nunca. Y no se lo cuentes a Gerd, que se pone tierno y me invita a guiso."
         }
       ]
     },
@@ -1056,8 +1040,7 @@
       "where": "plaza",
       "beats": [
         {
-          "note": "En la plaza han clavado un papel nuevo, con una cara mal dibujada que se reconoce igual: «Se busca a Nella la Ratera, cazadora furtiva. Veinte monedas. Barón de Hoz».",
-          "say": "La Ratera. Así me llamaban los guardas del barón. Y veinte monedas… Me ofende más el dibujo que el precio.",
+          "say": "¿Has visto el papel que han clavado? «Se busca a Nella la Ratera, cazadora furtiva. Veinte monedas. Barón de Hoz». Con mi cara mal dibujada, pero soy yo. La Ratera. Así me llamaban los guardas del barón. Y veinte monedas… Me ofende más el dibujo que el precio.",
           "replies": [
             {
               "text": "¿Qué hiciste?",
@@ -1100,8 +1083,7 @@
           ]
         },
         {
-          "note": "Nella arranca el papel, lo dobla y se lo guarda en el carcaj.",
-          "say": "Me lo quedo. Algún día se lo devolveré al barón en persona."
+          "say": "Este papel me lo quedo: lo arranco y al carcaj. Algún día se lo devolveré al barón en persona."
         }
       ]
     },
@@ -1116,8 +1098,7 @@
       "where": "plaza",
       "beats": [
         {
-          "note": "Nella te espera al amanecer con la mochila hecha. Tiene los ojos rojos, de no dormir.",
-          "say": "Ha llegado un buhonero de Hoz. A Tobías lo han pillado cazando en el bosque del barón, y dentro de un mes lo mandan a las minas. Por eso ha salido ahora mi cartel: a Tobías le habrán hecho decir dónde estoy. Y el barón sabe que iré a buscarlo.",
+          "say": "Tengo la mochila hecha desde antes del amanecer, y no he pegado ojo. Ha llegado un buhonero de Hoz. A Tobías lo han pillado cazando en el bosque del barón, y dentro de un mes lo mandan a las minas. Por eso ha salido ahora mi cartel: a Tobías le habrán hecho decir dónde estoy. Y el barón sabe que iré a buscarlo.",
           "mood": "triste",
           "replies": [
             {
@@ -1140,7 +1121,6 @@
           ]
         },
         {
-          "note": "Nella aprieta las correas de la mochila, más fuerte de lo que hace falta.",
           "say": "Cazaba para que comieran en casa. Lo que hacía yo. Me fui, y le tocó a él.",
           "mood": "triste",
           "replies": [
@@ -1178,8 +1158,7 @@
           ]
         },
         {
-          "note": "Nella saca la flecha torcida de Tobías, la de las plumas rojas, y te la pone en la mano.",
-          "say": "Guárdamela. Cuando Tobías esté fuera, me la devuelves. Hasta entonces, es tuya."
+          "say": "Toma. La flecha torcida de Tobías, la de las plumas rojas. Guárdamela. Cuando Tobías esté fuera, me la devuelves. Hasta entonces, es tuya."
         }
       ]
     },
@@ -1194,8 +1173,7 @@
       "where": "posada",
       "beats": [
         {
-          "note": "Osric está en su rincón de la posada, con una jarra que le dura toda la noche. Gerd te ha dicho que le preguntes por su mote.",
-          "say": "¿Te manda Gerd? Mediapaga, porque una vez me pagaron la mitad. Y era lo justo. No hay más que contar.",
+          "say": "¿Te manda Gerd a preguntarme por el mote? Siéntate, que esta jarra me dura toda la noche. Mediapaga, porque una vez me pagaron la mitad. Y era lo justo. No hay más que contar.",
           "replies": [
             {
               "text": "¿La mitad de qué?",
@@ -1236,8 +1214,7 @@
           ]
         },
         {
-          "note": "Osric levanta la jarra un dedo, que en él es un brindis.",
-          "say": "Buenas noches. Mañana, a lo que haya."
+          "say": "Por ti. Buenas noches. Mañana, a lo que haya."
         }
       ]
     },
@@ -1252,8 +1229,7 @@
       "where": "muelle",
       "beats": [
         {
-          "note": "Por la mañana, en el muelle, Osric mira una barca de pesca con un cartel de venta. La pintura está vieja, pero el casco es bueno.",
-          "say": "Esa. La «Gaviota». Trescientas monedas de oro y es mía. Para eso son los ahorros.",
+          "say": "¿Ves esa barca de pesca, la del cartel de venta? La «Gaviota». La pintura está vieja, pero el casco es bueno. Trescientas monedas de oro y es mía. Para eso son los ahorros.",
           "replies": [
             {
               "text": "¿Cuánto te falta?",
@@ -1290,8 +1266,7 @@
           ]
         },
         {
-          "note": "Osric pasa la mano por el casco de la barca, despacio.",
-          "say": "Ochenta monedas. Ya casi."
+          "say": "Toca el casco. Madera buena. Ochenta monedas. Ya casi."
         }
       ]
     },
@@ -1306,8 +1281,7 @@
       "where": "templo",
       "beats": [
         {
-          "note": "Por la tarde encuentras a Osric en la capilla, delante de una vela recién encendida.",
-          "say": "Enciendo una cada tarde. Hoy hace once años.",
+          "say": "Esta vela la acabo de encender. Enciendo una cada tarde. Hoy hace once años.",
           "mood": "triste",
           "replies": [
             {
@@ -1373,8 +1347,7 @@
           ]
         },
         {
-          "note": "Osric saca de la bolsa un anillo de plata con una torre grabada, lo mira y lo vuelve a guardar.",
-          "say": "Era suyo. Lo llevaba colgado del cuello, y los bandidos no lo vieron. Se lo quité para llevárselo a su viuda, y nunca he tenido valor. Todos creen que no pude con los bandidos. Nadie sabe que me dormí. Ahora lo sabes tú."
+          "say": "Mira este anillo de plata, el de la torre grabada. Era suyo. Lo llevaba colgado del cuello, y los bandidos no lo vieron. Se lo quité para llevárselo a su viuda, y nunca he tenido valor. Todos creen que no pude con los bandidos. Nadie sabe que me dormí. Ahora lo sabes tú."
         }
       ]
     },
@@ -1389,8 +1362,7 @@
       "where": "muelle",
       "beats": [
         {
-          "note": "Osric te espera en el muelle, delante de la «Gaviota». Lleva al cinto una bolsa llena: ya tiene las trescientas monedas.",
-          "say": "Ya tengo el dinero. Mañana podría comprarla. Pero antes de subirme a ella, tengo que cerrar una cosa.",
+          "say": "Mira la bolsa: trescientas monedas. Ya tengo el dinero. Mañana podría comprar la «Gaviota». Pero antes de subirme a ella, tengo que cerrar una cosa.",
           "replies": [
             {
               "text": "El anillo.",
@@ -1431,7 +1403,6 @@
           ]
         },
         {
-          "note": "Osric mira el mar un buen rato.",
           "say": "Cuando quieras ir a Valdés, avísame. Por el camino, las guardias las hago yo. Y esta vez no me voy a dormir."
         }
       ]
@@ -1447,8 +1418,7 @@
       "where": "posada",
       "beats": [
         {
-          "note": "En la taberna de la aldea, Ismark paga dos vasos de vino y se sienta frente a ti. Tarda un rato en hablar.",
-          "say": "Aquí me llaman «el Menor» desde que era un crío. Mi padre lo hacía todo mejor que yo, y el pueblo no lo olvida.",
+          "say": "Dos vasos de vino, pago yo. Siéntate. … Perdona, me cuesta empezar. Aquí me llaman «el Menor» desde que era un crío. Mi padre lo hacía todo mejor que yo, y el pueblo no lo olvida.",
           "mood": "triste",
           "replies": [
             {
@@ -1490,8 +1460,7 @@
           ]
         },
         {
-          "note": "Ismark apura el vaso y, por primera vez en toda la noche, sonríe un poco.",
-          "say": "La próxima ronda la pago yo también. Y no me llames Menor, ¿eh?",
+          "say": "Vaya, me has hecho sonreír, y eso aquí cuesta. La próxima ronda la pago yo también. Y no me llames Menor, ¿eh?",
           "mood": "alegre"
         }
       ]
@@ -1507,8 +1476,7 @@
       "where": "camino",
       "beats": [
         {
-          "note": "Bajáis entre los dos el ataúd de Kolyan por la cuesta embarrada. Las contraventanas siguen cerradas: nadie del pueblo sale a echar una mano.",
-          "say": "Mi padre cuidó de esta gente toda su vida. Y míralos. Ni una puerta abierta.",
+          "say": "Cuidado, que la cuesta está embarrada. Agarra bien tu lado del ataúd. Mira las contraventanas: todas cerradas. Nadie sale a echar una mano. Mi padre cuidó de esta gente toda su vida. Y míralos. Ni una puerta abierta.",
           "mood": "enfadado",
           "replies": [
             {
@@ -1530,8 +1498,7 @@
           ]
         },
         {
-          "note": "A mitad de la cuesta, Ismark deja su lado del ataúd en el suelo y te mira de frente.",
-          "say": "Quiero la verdad, no consuelo. ¿De verdad crees que Ireena estará más segura lejos de casa?",
+          "say": "Espera, déjalo un momento en el suelo. Mírame. Quiero la verdad, no consuelo. ¿De verdad crees que Ireena estará más segura lejos de casa?",
           "replies": [
             {
               "text": "Sí. Aquí él entra cuando quiere. Fuera, al menos, podemos pelear.",
@@ -1552,8 +1519,7 @@
           ]
         },
         {
-          "note": "Ismark vuelve a coger su lado del ataúd. Llegáis al cementerio sin decir nada más, pero él camina más derecho.",
-          "say": "Gracias por cargar con él. Mi padre te habría caído bien."
+          "say": "Ya estamos en el cementerio. Gracias por cargar con él. Mi padre te habría caído bien."
         }
       ]
     },
@@ -1568,8 +1534,7 @@
       "where": "plaza",
       "beats": [
         {
-          "note": "De madrugada oyes golpes detrás de la casa. Ismark lanza tajos contra un poste con la espada de su padre. Falla más de lo que acierta.",
-          "say": "Pesa más de lo que parece. O yo soy más flojo de lo que creía.",
+          "say": "¿Te he despertado con los golpes? Llevo desde la madrugada dándole a este poste con la espada de mi padre, y fallo más que acierto. Pesa más de lo que parece. O yo soy más flojo de lo que creía.",
           "replies": [
             {
               "text": "Sujétala más cerca de la guarda. Así, mira.",
@@ -1613,8 +1578,7 @@
           ]
         },
         {
-          "note": "El sol asoma por encima de la niebla. Ismark limpia la hoja con la manga, despacio, con mucho cuidado.",
-          "say": "Era de mi padre. Algún día quiero que sea mía de verdad."
+          "say": "Ya sale el sol. Déjame limpiar la hoja, con cuidado. Era de mi padre. Algún día quiero que sea mía de verdad."
         }
       ]
     },
@@ -1629,8 +1593,7 @@
       "where": "posada",
       "beats": [
         {
-          "note": "Un chico de la aldea llega sin aliento con un recado para Ismark. Él lo lee dos veces y lo arruga en el puño.",
-          "say": "Sin mi padre, alguien tiene que mandar en la aldea. Y quieren que sea yo. El burgomaestre, nada menos.",
+          "say": "Me ha traído este recado un chico de la aldea, sin aliento. Lo he leído dos veces. Sin mi padre, alguien tiene que mandar en la aldea. Y quieren que sea yo. El burgomaestre, nada menos.",
           "replies": [
             {
               "text": "¿Y tú qué quieres?",
@@ -1674,7 +1637,6 @@
           ]
         },
         {
-          "note": "Ismark dobla el recado y se lo guarda en el pecho. Se queda un rato mirando hacia el camino de la aldea.",
           "say": "Mi padre siempre sabía qué hacer. Yo tengo que preguntar. Gracias por contestarme."
         }
       ]
@@ -1690,8 +1652,7 @@
       "where": "camino",
       "beats": [
         {
-          "note": "Ante las puertas de Ravenloft, Ismark se ata al cuello la capa de su padre. Le queda algo grande, pero no se la quita.",
-          "say": "Si caigo ahí dentro, que en mi tumba no pongan «el Menor». Solo mi nombre. Con eso me basta.",
+          "say": "Ayúdame con el nudo. Es la capa de mi padre. Me queda grande, pero me la pongo igual. Si caigo ahí dentro, que en mi tumba no pongan «el Menor». Solo mi nombre. Con eso me basta.",
           "replies": [
             {
               "text": "Pondrán Ismark Kolyanovich. Me encargo yo.",
@@ -1735,8 +1696,7 @@
           ]
         },
         {
-          "note": "Ismark se pone a tu lado con la espada en la mano. Por primera vez, no va un paso por detrás de nadie.",
-          "say": "Vamos. Ya no soy el Menor."
+          "say": "A tu lado, espada en mano. Ni un paso por detrás. Vamos. Ya no soy el Menor."
         }
       ]
     },
@@ -1751,8 +1711,7 @@
       "where": "posada",
       "beats": [
         {
-          "note": "Junto a la chimenea, Ireena se aparta el pelo del cuello. Tiene dos marcas pequeñas y rojas que no terminan de cerrarse.",
-          "say": "Entró en casa dos noches. De lo demás no recuerdo nada. Solo sus ojos, mirándome.",
+          "say": "Mira. Aquí, en el cuello. Dos marcas pequeñas y rojas que no terminan de cerrarse. Entró en casa dos noches. De lo demás no recuerdo nada. Solo sus ojos, mirándome.",
           "mood": "triste",
           "replies": [
             {
@@ -1796,7 +1755,6 @@
           ]
         },
         {
-          "note": "Ireena se vuelve a tapar el cuello con el pelo y se queda mirando el fuego.",
           "say": "Mi hermano dice que no hable de esto con nadie. Contigo ya me he saltado la regla."
         }
       ]
@@ -1812,7 +1770,6 @@
       "where": "camino",
       "beats": [
         {
-          "note": "Camináis despacio por el borde del camino. Ireena habla sin mirarte, con las manos metidas en la capa.",
           "say": "No recuerdo nada de antes de que Kolyan me encontrara. Yo era una niña, sola, al borde del bosque. Me llevó a casa y ya está.",
           "replies": [
             {
@@ -1856,8 +1813,7 @@
           ]
         },
         {
-          "note": "Ireena se queda un rato en silencio, mirando hacia donde la niebla tapa las torres.",
-          "say": "Sea lo que sea lo que hay en ese castillo, prefiero saberlo por ti que por él."
+          "say": "Allí, detrás de la niebla, están las torres. Sea lo que sea lo que hay en ese castillo, prefiero saberlo por ti que por él."
         }
       ]
     },
@@ -1872,7 +1828,10 @@
       "where": "camino",
       "beats": [
         {
-          "note": "En el camino, un vistani os corta el paso. Mira a Ireena, se quita el sombrero y la saluda con una reverencia: «Tatyana».",
+          "who": "Un vistani",
+          "say": "Buenos días, señora Tatyana. A vuestros pies."
+        },
+        {
           "say": "¡No me llamo así! ¡Apártate de mí!",
           "mood": "enfadado",
           "replies": [
@@ -1895,8 +1854,7 @@
           ]
         },
         {
-          "note": "Ireena no abre la boca en todo el día. Por la noche, junto al fuego, por fin te habla.",
-          "say": "Tatyana. Ese nombre me persigue. ¿Y si soy ella y no lo sé?",
+          "say": "Perdona. Me he pasado el día sin abrir la boca. Tatyana. Ese nombre me persigue. ¿Y si soy ella y no lo sé?",
           "mood": "triste",
           "replies": [
             {
@@ -1918,7 +1876,6 @@
           ]
         },
         {
-          "note": "Ireena se envuelve en la manta y se tumba cerca del fuego.",
           "say": "Me llamo Ireena. Ese nombre me lo puso Kolyan, y me lo quedo."
         }
       ]
@@ -1934,8 +1891,7 @@
       "where": "camino",
       "beats": [
         {
-          "note": "Ireena te espera en un claro con una espada vieja en la mano. La sujeta mal, pero con fuerza.",
-          "say": "Estoy harta de que me escondan detrás de una puerta o de mi hermano. Enséñame a usar esto.",
+          "say": "Aquí, en el claro. Mira, una espada vieja. Ya sé que la cojo mal, pero la cojo fuerte. Estoy harta de que me escondan detrás de una puerta o de mi hermano. Enséñame a usar esto.",
           "mood": "enfadado",
           "replies": [
             {
@@ -1958,8 +1914,7 @@
           ]
         },
         {
-          "note": "Pasan tres tardes de práctica. A la tercera, Ireena para tu golpe con la hoja y ni siquiera retrocede.",
-          "say": "¿Lo has visto? ¡Lo he parado!",
+          "say": "¡Tres tardes, y por fin! ¿Lo has visto? ¡He parado tu golpe sin dar un paso atrás!",
           "mood": "alegre",
           "replies": [
             {
@@ -1997,7 +1952,7 @@
           ]
         },
         {
-          "note": "Ireena envaina la espada y se la cuelga del cinto. Esa noche no se la quita ni para cenar."
+          "say": "Esta espada se queda en mi cinto. No me la quito ni para cenar."
         }
       ]
     },
@@ -2012,8 +1967,7 @@
       "where": "camino",
       "beats": [
         {
-          "note": "Frente al castillo, Ireena se detiene. El viento le aparta el pelo y deja ver las marcas del cuello. Esta vez no se las tapa.",
-          "say": "Se acabó esconderme. Si el conde me quiere, me va a tener delante. Con una espada en la mano.",
+          "say": "Que se vean las marcas del cuello. Esta vez no me las tapo. Se acabó esconderme. Si el conde me quiere, me va a tener delante. Con una espada en la mano.",
           "replies": [
             {
               "text": "Así me gusta. Que te vea llegar.",
@@ -2057,8 +2011,7 @@
           ]
         },
         {
-          "note": "Ireena desenvaina la espada que le enseñaste a usar y empuja la puerta con el hombro.",
-          "say": "Me llamo Ireena Kolyana. Que lo oiga bien."
+          "say": "Fuera la espada, la que me enseñaste a usar. La puerta la empujo yo. Me llamo Ireena Kolyana. Que lo oiga bien."
         }
       ]
     },
@@ -2073,8 +2026,7 @@
       "where": "tienda",
       "beats": [
         {
-          "note": "En su tienda, Madam Eva baraja las cartas sin mirarte. Antes de que abras la boca, dice tu nombre.",
-          "say": "{heroe}. Siéntate. Y no pongas esa cara, que yo no muerdo. Eso lo hace otro.",
+          "say": "{heroe}. Sí, sé cómo te llamas. Siéntate. Y no pongas esa cara, que yo no muerdo. Eso lo hace otro.",
           "replies": [
             {
               "text": "Te sientas frente a ella sin decir nada.",
@@ -2095,8 +2047,7 @@
           ]
         },
         {
-          "note": "Eva deja una carta sobre la mesa y te cuenta, con todo detalle, algo que hiciste hace años y que no sabe nadie.",
-          "say": "Las cartas no mienten. La gente sí, pero las cartas no. ¿A que tengo razón?",
+          "say": "Esta carta habla de ti. De algo que hiciste hace años y que no sabe nadie. No lo voy a decir en voz alta: tú ya sabes qué es. Las cartas no mienten. La gente sí, pero las cartas no. ¿A que tengo razón?",
           "replies": [
             {
               "text": "La tienes. No sé cómo lo haces.",
@@ -2132,8 +2083,7 @@
           ]
         },
         {
-          "note": "Eva recoge las cartas y te sirve un vaso de vino dulce sin preguntarte.",
-          "say": "Vuelve cuando quieras. Aquí siempre hay vino para quien sabe escuchar."
+          "say": "Toma, vino dulce. No te he preguntado, ya lo sé. Vuelve cuando quieras. Aquí siempre hay vino para quien sabe escuchar."
         }
       ]
     },
@@ -2148,8 +2098,7 @@
       "where": "camino",
       "beats": [
         {
-          "note": "Junto a la hoguera del campamento, los vistani cantan y se pasan una bota de vino. Madam Eva ve tu cara seria y se echa a reír.",
-          "say": "¡Qué cara traes! Toma, bebe. Esta noche aquí no se muere nadie.",
+          "say": "¡Ja, ja! ¡Qué cara traes! Aquí, junto a la hoguera, se canta y corre la bota de vino. Toma, bebe. Esta noche aquí no se muere nadie.",
           "mood": "alegre",
           "replies": [
             {
@@ -2191,7 +2140,7 @@
           ]
         },
         {
-          "note": "Eva te vuelve a llenar el vaso y se pone a cantar con los demás. Desafina muchísimo, y le da igual.",
+          "say": "Otro vaso, que se te ha acabado. ¡Y ahora a cantar! Desafino muchísimo, ¿y qué? Aquí nadie canta para que le aplaudan.",
           "mood": "alegre"
         }
       ]
@@ -2207,8 +2156,7 @@
       "where": "tienda",
       "beats": [
         {
-          "note": "En la tienda, Eva enciende una vela y habla despacio, como quien cuenta algo que ha contado muy pocas veces.",
-          "say": "Hace muchísimo tiempo, el conde era un soldado joven. Cayó herido en una guerra y los míos lo curaron y lo llevaron a casa.",
+          "say": "Deja que encienda una vela. Esto lo he contado muy pocas veces. Hace muchísimo tiempo, el conde era un soldado joven. Cayó herido en una guerra y los míos lo curaron y lo llevaron a casa.",
           "replies": [
             {
               "text": "La escuchas sin interrumpir.",
@@ -2250,7 +2198,6 @@
           ]
         },
         {
-          "note": "Eva apaga la vela con los dedos.",
           "say": "No te lo he contado para que me perdones. Te lo he contado para que sepas con quién te sientas."
         }
       ]
@@ -2266,8 +2213,7 @@
       "where": "tienda",
       "beats": [
         {
-          "note": "Es muy tarde. En el campamento solo queda encendida la lámpara de Eva. Te hace una seña para que entres y cierra la tienda.",
-          "say": "Te voy a contar algo que no sabe nadie. Ni siquiera los míos.",
+          "say": "Pasa, rápido, que cierro la tienda. Es muy tarde y solo queda mi lámpara encendida. Te voy a contar algo que no sabe nadie. Ni siquiera los míos.",
           "replies": [
             {
               "text": "Te sientas y esperas a que hable.",
@@ -2286,7 +2232,7 @@
           "mood": "triste"
         },
         {
-          "note": "Eva se calla de golpe y aprieta los labios. Se queda mirando la llama. Está claro que no piensa decir nada más.",
+          "say": "… No. Hasta aquí. De lo que pasó después no voy a decir nada más.",
           "replies": [
             {
               "text": "¿Quién eres de verdad, Eva?",
@@ -2308,7 +2254,6 @@
           ]
         },
         {
-          "note": "Eva apaga la lámpara de un soplo.",
           "say": "Vete a dormir. Y de esto, ni una palabra a nadie."
         }
       ]
@@ -2324,8 +2269,7 @@
       "where": "camino",
       "beats": [
         {
-          "note": "Al pie del camino del castillo, Madam Eva saca una sola carta de la baraja. La mira y se la guarda sin enseñártela.",
-          "say": "No, no te la enseño. Lo que tengas que ver, lo verás tú ahí dentro. Mejor sin avisos.",
+          "say": "He sacado una sola carta para ti. No, no te la enseño. Lo que tengas que ver, lo verás tú ahí dentro. Mejor sin avisos.",
           "replies": [
             {
               "text": "Está bien. Prefiero no saberlo.",
@@ -2370,7 +2314,7 @@
           ]
         },
         {
-          "note": "Eva te da un beso en la frente, como a {un nieto|una nieta}. Luego vuelve hacia el campamento sin mirar atrás."
+          "say": "Ven aquí, que te doy un beso en la frente, como a {un nieto|una nieta}. Y ahora me vuelvo al campamento. No mires cómo me voy."
         }
       ]
     },
@@ -2385,8 +2329,7 @@
       "where": "posada",
       "beats": [
         {
-          "note": "En la posada, un bardo con un sombrero de colores cuenta que cazó un dragón con una cuchara. Dice llamarse Rictavio. Nadie le cree, y todos se ríen.",
-          "say": "¡Y el dragón, amigos míos, se rindió antes del postre! Otra ronda, que la historia sigue.",
+          "say": "¡Rictavio, para serviros! ¡Y así cacé un dragón con una cuchara! ¿Os reís? ¡Y el dragón, amigos míos, se rindió antes del postre! Otra ronda, que la historia sigue.",
           "mood": "alegre",
           "replies": [
             {
@@ -2408,8 +2351,7 @@
           ]
         },
         {
-          "note": "Ya de noche, cuando la posada se vacía, Rictavio se sienta a tu mesa y se quita el sombrero. Debajo hay un anciano muy cansado.",
-          "say": "Me llamo Rudolph van Richten y cazo vampiros. Aquí nadie puede saberlo, o no llegaré vivo al castillo. ¿Me guardarás el secreto?",
+          "say": "Ya se han ido todos. ¿Me dejas tu mesa? Fuera el sombrero, que pesa más de lo que parece. Me llamo Rudolph van Richten y cazo vampiros. Aquí nadie puede saberlo, o no llegaré vivo al castillo. ¿Me guardarás el secreto?",
           "replies": [
             {
               "text": "Le guardas el secreto. Para todos, sigue siendo Rictavio.",
@@ -2430,8 +2372,7 @@
           ]
         },
         {
-          "note": "Van Richten se vuelve a calar el sombrero de colores. En un momento, vuelve a ser Rictavio.",
-          "say": "¡Y mañana, la historia del gigante que tenía miedo a los gatos! No te la pierdas.",
+          "say": "Sombrero en su sitio, y vuelvo a ser Rictavio. ¡Y mañana, la historia del gigante que tenía miedo a los gatos! No te la pierdas.",
           "mood": "alegre"
         }
       ]
@@ -2447,8 +2388,7 @@
       "where": "plaza",
       "beats": [
         {
-          "note": "Van Richten te lleva al corral donde guarda su carro de feria. De dentro sale un golpe sordo. Luego otro. Algo grande se mueve ahí.",
-          "say": "No te asustes. Está bien encerrado. Casi siempre.",
+          "say": "Este es mi carro de feria. ¿Oyes esos golpes? Algo grande se mueve ahí dentro. No te asustes. Está bien encerrado. Casi siempre.",
           "replies": [
             {
               "text": "Te quedas {quieto|quieta} y esperas a que te lo explique.",
@@ -2489,8 +2429,7 @@
           ]
         },
         {
-          "note": "Van Richten echa otra cadena a la puerta y da unas palmadas a la madera, como quien calma a un caballo.",
-          "say": "Tranquilo, tranquilo. Ya queda menos."
+          "say": "Otra cadena más, por si acaso. Tranquilo, tranquilo. Ya queda menos."
         }
       ]
     },
@@ -2505,8 +2444,7 @@
       "where": "posada",
       "beats": [
         {
-          "note": "Una noche, junto al fuego, van Richten saca un retrato pequeño de un chico y lo mira un buen rato antes de hablar.",
-          "say": "Se llamaba Erasmus. Era mi hijo. Unos vistani se lo llevaron y se lo vendieron a un vampiro.",
+          "say": "Mira este retrato. Este chico… Se llamaba Erasmus. Era mi hijo. Unos vistani se lo llevaron y se lo vendieron a un vampiro.",
           "mood": "triste",
           "replies": [
             {
@@ -2549,7 +2487,6 @@
           ]
         },
         {
-          "note": "Van Richten guarda el retrato en el bolsillo del pecho y se queda mirando el fuego.",
           "say": "Perdona. Un viejo no debería cargar a nadie con esto."
         }
       ]
@@ -2565,8 +2502,7 @@
       "where": "camino",
       "beats": [
         {
-          "note": "Van Richten te espera a las afueras con el equipaje hecho. No te mira a la cara.",
-          "say": "Hace años, una vieja vistani me maldijo. Desde entonces, todo el que se me acerca acaba muerto. Todos, sin excepción.",
+          "say": "Ya tengo el equipaje hecho. No, no me mires; prefiero no verte la cara. Hace años, una vieja vistani me maldijo. Desde entonces, todo el que se me acerca acaba muerto. Todos, sin excepción.",
           "mood": "triste",
           "replies": [
             {
@@ -2609,7 +2545,6 @@
           ]
         },
         {
-          "note": "Van Richten se cala el sombrero. Por un momento parece mucho más viejo.",
           "say": "Pase lo que pase, gracias por escucharme."
         }
       ]
@@ -2625,8 +2560,7 @@
       "where": "camino",
       "beats": [
         {
-          "note": "Frente al castillo, van Richten abre su maletín de cuero y saca una estaca oscura, pulida por los años. Te la pone en las manos.",
-          "say": "Es la mejor que tengo. Si caigo yo, que esto no quede a medias.",
+          "say": "Toma. Esta estaca la llevo en el maletín desde hace años. Es la mejor que tengo. Si caigo yo, que esto no quede a medias.",
           "replies": [
             {
               "text": "Te la guardas en el cinto, con cuidado.",
@@ -2668,8 +2602,7 @@
           ]
         },
         {
-          "note": "Van Richten cierra el maletín, se quita el sombrero de Rictavio y lo deja sobre una piedra.",
-          "say": "Ya no hace falta disfrazarse. Que sepa quién viene a por él."
+          "say": "El sombrero de Rictavio se queda aquí, en esta piedra. Ya no hace falta disfrazarse. Que sepa quién viene a por él."
         }
       ]
     },
@@ -2684,8 +2617,7 @@
       "where": "camino",
       "beats": [
         {
-          "note": "Ezmerelda se sienta en un tronco, se sube la pernera y afloja una correa. De la rodilla para abajo, la pierna es de madera.",
-          "say": "Un hombre lobo se quedó con la de verdad, hace años. Esta la hice yo. Y aguanta mejor que la otra.",
+          "say": "Espera, que me siento y aflojo la correa. Mira: de la rodilla para abajo, madera. Un hombre lobo se quedó con la de verdad, hace años. Esta la hice yo. Y aguanta mejor que la otra.",
           "replies": [
             {
               "text": "Está muy bien hecha. Al andar no se nota nada.",
@@ -2744,7 +2676,7 @@
           ]
         },
         {
-          "note": "Ezmerelda se aprieta la correa, se levanta de un salto y echa a andar como si nada."
+          "say": "¡Correa apretada! Venga, en marcha, que se nos hace tarde."
         }
       ]
     },
@@ -2759,8 +2691,7 @@
       "where": "camino",
       "beats": [
         {
-          "note": "Ezmerelda te para en el camino y saca un dibujo arrugado: un anciano con barba y cara de pocos amigos.",
-          "say": "¿Has visto a este hombre? Es un cazador de vampiros, ya mayor. Llevo meses buscándolo.",
+          "say": "Espera. Mira este dibujo: un anciano con barba y cara de pocos amigos. ¿Has visto a este hombre? Es un cazador de vampiros, ya mayor. Llevo meses buscándolo.",
           "replies": [
             {
               "text": "Miras el dibujo despacio, con atención.",
@@ -2814,7 +2745,6 @@
           ]
         },
         {
-          "note": "Ezmerelda dobla el dibujo con cuidado y se lo guarda.",
           "say": "Cuando lo encuentre, le voy a gritar un buen rato. Y luego le daré un abrazo."
         }
       ]
@@ -2830,8 +2760,7 @@
       "where": "posada",
       "beats": [
         {
-          "note": "Esa noche, Ezmerelda bebe más de la cuenta y habla más bajo de lo normal.",
-          "say": "Te voy a contar algo feo. Los que se llevaron al hijo de van Richten eran de mi familia. Yo era una niña, y lo vi todo.",
+          "say": "Creo que he bebido más de la cuenta. Acércate, que lo digo bajito. Te voy a contar algo feo. Los que se llevaron al hijo de van Richten eran de mi familia. Yo era una niña, y lo vi todo.",
           "mood": "triste",
           "replies": [
             {
@@ -2874,8 +2803,7 @@
           ]
         },
         {
-          "note": "Ezmerelda aparta la jarra y se queda mirando sus manos, llenas de cicatrices.",
-          "say": "Mañana no me hables de esto. Pero hoy, gracias por escucharme."
+          "say": "Aparta esa jarra, que ya vale. Mira mis manos: cicatrices y más cicatrices. Mañana no me hables de esto. Pero hoy, gracias por escucharme."
         }
       ]
     },
@@ -2890,8 +2818,7 @@
       "where": "camino",
       "beats": [
         {
-          "note": "Ezmerelda abre la puerta de su carro con mucho cuidado. Dentro hay estacas, ristras de ajos, agua bendita y cien frascos de fuego colgados del techo.",
-          "say": "Si alguien abre esta puerta sin mi permiso, vuela. Él y medio camino. No es broma.",
+          "say": "Despacio, que abro yo. Mira: estacas, ristras de ajos, agua bendita y cien frascos de fuego colgados del techo. Si alguien abre esta puerta sin mi permiso, vuela. Él y medio camino. No es broma.",
           "replies": [
             {
               "text": "Silbas de admiración.",
@@ -2934,8 +2861,7 @@
           ]
         },
         {
-          "note": "Ezmerelda cierra la puerta, echa el cerrojo y da unas palmadas a la madera.",
-          "say": "Es lo único que tengo. Si te lo enseño, es que me fío de ti."
+          "say": "Cerrojo echado. Es lo único que tengo. Si te lo enseño, es que me fío de ti."
         }
       ]
     },
@@ -2950,8 +2876,7 @@
       "where": "camino",
       "beats": [
         {
-          "note": "En la puerta del castillo, Ezmerelda revisa su equipo dos veces: estacas, frascos de fuego, agua bendita, la correa de la pierna.",
-          "say": "Ya entré ahí una vez, sola. Salí de milagro, y todavía no sé cómo.",
+          "say": "Estacas, frascos de fuego, agua bendita, la correa de la pierna… Lo he repasado dos veces. Ya entré ahí una vez, sola. Salí de milagro, y todavía no sé cómo.",
           "replies": [
             {
               "text": "Esta vez no vas sola.",
@@ -2994,8 +2919,7 @@
           ]
         },
         {
-          "note": "Ezmerelda se aprieta la correa de la pierna una última vez y empuja la puerta del castillo.",
-          "say": "Vamos, antes de que me lo piense mejor."
+          "say": "Un último tirón a la correa, y empujo la puerta. Vamos, antes de que me lo piense mejor."
         }
       ]
     },
@@ -3010,8 +2934,7 @@
       "where": "posada",
       "beats": [
         {
-          "note": "Bran se sienta junto al fuego de la posada y afila su espada con una piedra, sin prisa. Te hace sitio en el banco.",
-          "say": "Esta hoja no es mía. Era de mi hijo. La cuido más que a mí mismo.",
+          "say": "Siéntate aquí, en el banco, junto al fuego. Yo sigo afilando, que esto va sin prisa. Esta hoja no es mía. Era de mi hijo. La cuido más que a mí mismo.",
           "replies": [
             {
               "text": "¿Qué le pasó a tu hijo?",
@@ -3053,8 +2976,7 @@
           ]
         },
         {
-          "note": "Bran guarda la piedra, enfunda la espada y te pasa la mitad de su pan.",
-          "say": "La ración de hoy te la cobro, como siempre. La charla, no. Esa va gratis."
+          "say": "Toma, la mitad de mi pan. La ración de hoy te la cobro, como siempre. La charla, no. Esa va gratis."
         }
       ]
     },
@@ -3069,8 +2991,7 @@
       "where": "camino",
       "beats": [
         {
-          "note": "En plena marcha por la nieve, a Bran le falla la rodilla. Tropieza, cae de lado y no consigue levantarse.",
-          "say": "Seguid sin mí. Un mercenario cojo es carne muerta, y en la nieve más.",
+          "say": "¡Maldita rodilla! Me ha fallado otra vez, y no me puedo levantar. Seguid sin mí. Un mercenario cojo es carne muerta, y en la nieve más.",
           "mood": "triste",
           "replies": [
             {
@@ -3092,8 +3013,7 @@
           ]
         },
         {
-          "note": "Le haces una tablilla con dos ramas y una correa. Bran se apoya en ti para andar, y cada paso le arranca un gruñido.",
-          "say": "¿Por qué haces esto? En mi vieja compañía me habrían dejado atrás sin pensarlo.",
+          "say": "Dos ramas y una correa… Aguanta, sí. Déjame apoyarme en ti. ¡Ay! ¿Por qué haces esto? En mi vieja compañía me habrían dejado atrás sin pensarlo.",
           "replies": [
             {
               "text": "Porque aquí no se abandona a nadie. Ni a ti.",
@@ -3108,8 +3028,7 @@
           ]
         },
         {
-          "note": "Al anochecer llegáis a un refugio. Bran se deja caer junto al fuego y se frota la rodilla.",
-          "say": "No lo voy a olvidar. Y como se lo cuentes a alguien, lo niego."
+          "say": "Por fin, un refugio y un fuego. Ay, mi rodilla… No lo voy a olvidar. Y como se lo cuentes a alguien, lo niego."
         }
       ]
     },
@@ -3124,8 +3043,7 @@
       "where": "camino",
       "beats": [
         {
-          "note": "En el fondo de un barranco encontráis cuerpos congelados bajo la nieve. Bran reconoce el estandarte medio quemado: es su antigua compañía.",
-          "say": "Son los míos. Los de antes. Si los dejamos así, los carroñeros se llevarán hasta los anillos.",
+          "say": "Mira ahí abajo, en el barranco. Cuerpos helados… y ese estandarte medio quemado. Lo conozco. Son los míos. Los de antes, mi vieja compañía. Si los dejamos así, los carroñeros se llevarán hasta los anillos.",
           "mood": "triste"
         },
         {
@@ -3150,8 +3068,7 @@
           ]
         },
         {
-          "note": "Apiláis ramas y prendéis la hoguera al caer la tarde. Bran dice sus nombres en voz baja, uno por uno, y mira el fuego hasta que se apaga.",
-          "say": "Gracias, {capitán|capitana}. Desde hoy te llamo así, te guste o no."
+          "say": "Ya arde la hoguera. Voy a decir sus nombres, uno por uno, hasta que se apague. … Gracias, {capitán|capitana}. Desde hoy te llamo así, te guste o no."
         }
       ]
     },
@@ -3166,8 +3083,7 @@
       "where": "posada",
       "beats": [
         {
-          "note": "En la taberna de Giles, Bran deja su paga entera en la barra y pide la mejor cerveza de la casa. Giles sirve dos jarras tan aguadas como siempre.",
-          "say": "Invito yo. Es la mejor cerveza aguada del valle, que ya es decir.",
+          "say": "¡Giles! Ahí va mi paga entera: dos jarras de la mejor cerveza de la casa. … Invito yo. Es la mejor cerveza aguada del valle, que ya es decir.",
           "mood": "alegre",
           "replies": [
             {
@@ -3209,8 +3125,7 @@
           ]
         },
         {
-          "note": "Giles cuenta las monedas dos veces antes de guardárselas. Bran levanta la jarra hacia ti.",
-          "say": "Por los que no están. Y por mi {capitán|capitana}."
+          "say": "Mira a Giles, contando las monedas dos veces. Arriba esa jarra. Por los que no están. Y por mi {capitán|capitana}."
         }
       ]
     },
@@ -3225,8 +3140,7 @@
       "where": "camino",
       "beats": [
         {
-          "note": "La noche antes de la batalla final, Bran afila por última vez la espada de su hijo. Te sientas a su lado junto al fuego.",
-          "say": "Mañana es el día. O salimos de esta, o nos entierra la nieve.",
+          "say": "Siéntate a mi lado. Es la última vez que afilo la espada de mi hijo antes de la batalla. Mañana es el día. O salimos de esta, o nos entierra la nieve.",
           "replies": [
             {
               "text": "Saldremos. Y la espada de tu hijo, con nosotros.",
@@ -3247,8 +3161,7 @@
           ]
         },
         {
-          "note": "Bran deja la piedra y te mira a los ojos.",
-          "say": "Hacía años que no luchaba por algo que no fuera oro. Gracias por devolverme la honra.",
+          "say": "Mírame. Hacía años que no luchaba por algo que no fuera oro. Gracias por devolverme la honra.",
           "replies": [
             {
               "text": "La honra te la has ganado tú. Yo solo miraba.",
@@ -3263,8 +3176,7 @@
           ]
         },
         {
-          "note": "Bran enfunda la espada y se tumba junto al fuego, con la mano en la empuñadura.",
-          "say": "Duerme algo, {capitán|capitana}. Mañana te cubro la espalda."
+          "say": "Yo me tumbo aquí, con la mano en la empuñadura. Duerme algo, {capitán|capitana}. Mañana te cubro la espalda."
         }
       ]
     },
@@ -3279,8 +3191,7 @@
       "where": "camino",
       "beats": [
         {
-          "note": "Aldara saca un conejo congelado de una de sus trampas. Se sienta en un tronco, saca el cuchillo y te hace un gesto para que mires.",
-          "say": "Un corte aquí y tiras hacia abajo. La piel sale entera, como un guante.",
+          "say": "Mira. Un conejo de la trampa, congelado. Fíjate en el cuchillo: un corte aquí y tiras hacia abajo. La piel sale entera, como un guante.",
           "replies": [
             {
               "text": "Déjame probar a mí.",
@@ -3316,7 +3227,6 @@
           ]
         },
         {
-          "note": "Aldara limpia el cuchillo en la nieve y te mira de arriba abajo.",
           "say": "Espero que no seas como esos nobles estúpidos que se creen inmortales. Ya he enterrado a unos cuantos."
         }
       ]
@@ -3332,8 +3242,7 @@
       "where": "camino",
       "beats": [
         {
-          "note": "Aldara te lleva por el bosque hasta unas ruinas cubiertas de nieve: unas vigas negras y un hogar de piedra.",
-          "say": "Era la cabaña de mi padre. Los Montesclaros la quemaron hace diez años, por no pagar un impuesto absurdo.",
+          "say": "Es aquí. Esas vigas negras y ese hogar de piedra. Era la cabaña de mi padre. Los Montesclaros la quemaron hace diez años, por no pagar un impuesto absurdo.",
           "replies": [
             {
               "text": "Malditos sean.",
@@ -3375,8 +3284,7 @@
           ]
         },
         {
-          "note": "Tras un buen rato cavando, aparece un fardo de cuero podrido. Dentro, el arco sigue entero. Aldara lo tensa con cuidado y se queda callada.",
-          "say": "Aguanta. Mi padre sabía hacer las cosas bien."
+          "say": "¡Ahí está el fardo! El cuero se ha podrido, pero el arco… está entero. A ver si tensa. … Aguanta. Mi padre sabía hacer las cosas bien."
         }
       ]
     },
@@ -3391,8 +3299,7 @@
       "where": "camino",
       "beats": [
         {
-          "note": "Mientras exploráis, un furtivo sale de entre los árboles, le hace a Aldara un corte feo en el brazo y huye. Ella se aprieta la herida y sigue andando.",
-          "say": "No es nada. Sigamos, que se va la luz.",
+          "say": "¡Maldito furtivo! Me ha abierto el brazo y se ha escapado. No es nada. Sigamos, que se va la luz.",
           "replies": [
             {
               "text": "Siéntate, por favor. Solo un momento.",
@@ -3414,8 +3321,7 @@
           ]
         },
         {
-          "note": "Al final Aldara se sienta y te deja vendarle el brazo. Aprieta los dientes, pero no se queja.",
-          "say": "Mi padre decía que quien pide ayuda no sabe valerse. Llevo toda la vida sin pedirla.",
+          "say": "Vale, vale. Me siento y me lo vendas. Aprieta, que aguanto. Mi padre decía que quien pide ayuda no sabe valerse. Llevo toda la vida sin pedirla.",
           "replies": [
             {
               "text": "Aceptar ayuda no es ser débil. Es llegar viva a mañana.",
@@ -3436,8 +3342,7 @@
           ]
         },
         {
-          "note": "Aldara se mira la venda, bien apretada. Coge el arco y, por primera vez, te espera en vez de adelantarse.",
-          "say": "Gracias. No te acostumbres a oírlo."
+          "say": "La venda está bien apretada. Gracias. No te acostumbres a oírlo. Y hoy no me adelanto: vamos a tu paso."
         }
       ]
     },
@@ -3452,8 +3357,7 @@
       "where": "plaza",
       "beats": [
         {
-          "note": "Tras dos días siguiendo el rastro, cazáis un gran ciervo blanco. Aldara se queda mirándolo, con el arco bajado.",
-          "say": "En el castillo pagarían una fortuna por él. Con esto podría ser rica. ¿Tú qué harías?",
+          "say": "Dos días tras su rastro, y aquí lo tenemos: un ciervo blanco, enorme. En el castillo pagarían una fortuna por él. Con esto podría ser rica. ¿Tú qué harías?",
           "replies": [
             {
               "text": "En el pueblo hay gente que se muere de hambre.",
@@ -3473,8 +3377,7 @@
           ]
         },
         {
-          "note": "Aldara no lo vende. Lo despieza en la plaza de El Pueblo de Barro y reparte la carne entre los que más hambre pasan.",
-          "say": "Ayúdame a cortar. Si lo hago yo sola, no acabamos hasta mañana.",
+          "say": "No lo vendo. Lo despiezo aquí, en la plaza, y la carne para los que más hambre pasan. Ayúdame a cortar. Si lo hago yo sola, no acabamos hasta mañana.",
           "replies": [
             {
               "text": "Te remangas y cortas a su lado.",
@@ -3489,8 +3392,7 @@
           ]
         },
         {
-          "note": "Cuando ya no queda nada, Aldara te da un paquete envuelto en tela: el mejor trozo, guardado aparte. Y sonríe por primera vez desde que la conoces.",
-          "say": "Este es para ti. No se lo digas a nadie.",
+          "say": "Ya no queda nada. Bueno, casi: toma este paquete. El mejor trozo, guardado aparte. Este es para ti. No se lo digas a nadie.",
           "mood": "alegre"
         }
       ]
@@ -3506,8 +3408,7 @@
       "where": "camino",
       "beats": [
         {
-          "note": "Con el deshielo, la nieve se convierte en barro. Aldara te espera a la salida del pueblo con un rollo de cuero en la mano.",
-          "say": "Toma. Es un mapa. Lo he hecho yo. Marca unos pasos hacia el sur que no conoce casi nadie.",
+          "say": "Con el deshielo, todo es barro. Te esperaba aquí, a la salida del pueblo. Toma este rollo de cuero. Es un mapa. Lo he hecho yo. Marca unos pasos hacia el sur que no conoce casi nadie.",
           "replies": [
             {
               "text": "Lo desenrollas y lo estudias con calma.",
@@ -3543,8 +3444,7 @@
           ]
         },
         {
-          "note": "Aldara te da un golpe seco en el hombro y deja la mano ahí un momento. Es lo más parecido a un abrazo que le vas a sacar.",
-          "say": "Eso es todo. No esperes nada más."
+          "say": "Ven. … Esto es lo más parecido a un abrazo que te voy a dar. Eso es todo. No esperes nada más."
         }
       ]
     },
@@ -3559,8 +3459,7 @@
       "where": "posada",
       "beats": [
         {
-          "note": "Arthur te cose una herida del brazo a la luz de una vela. Le tiemblan las manos, huele a licor barato y la aguja entra torcida.",
-          "say": "Quieto. No, no es culpa tuya. Es mía. Estas manos ya no son lo que eran.",
+          "say": "Acerca el brazo a la vela, que te coso. Quieto. … Ay, la aguja ha entrado torcida. No, no es culpa tuya. Es mía. Estas manos ya no son lo que eran. Y sí, huelo a licor.",
           "replies": [
             {
               "text": "Tómate tu tiempo, Doc.",
@@ -3602,8 +3501,7 @@
           ]
         },
         {
-          "note": "Arthur hace el último nudo, corta el hilo con los dientes y se sube las gafas con el dorso de la mano.",
-          "say": "Listo. No es bonito, pero aguanta. Y lo del conde no se lo cuento a cualquiera, que lo sepas."
+          "say": "Último nudo, y corto el hilo. Listo. No es bonito, pero aguanta. Y lo del conde no se lo cuento a cualquiera, que lo sepas."
         }
       ]
     },
@@ -3618,12 +3516,11 @@
       "where": "plaza",
       "beats": [
         {
-          "note": "En la calle, un campesino reconoce a Arthur. Os escupe a los dos, grita que su mujer murió por culpa de ese matasanos y le da un puñetazo.",
-          "say": "Déjalo. Tiene sus motivos. No pude salvarla.",
+          "say": "¿Has oído lo que me grita? Que su mujer murió por culpa de este matasanos. Y el puñetazo me lo he ganado. Déjalo. Tiene sus motivos. No pude salvarla.",
           "mood": "triste"
         },
         {
-          "note": "El campesino levanta el puño otra vez. Arthur no se defiende: se queda quieto, con las gafas torcidas, esperando el golpe.",
+          "say": "No, no me aparto. Que pegue otra vez, si eso le alivia.",
           "replies": [
             {
               "text": "Te pones en medio y apartas al campesino.",
@@ -3645,8 +3542,7 @@
           ]
         },
         {
-          "note": "El campesino se marcha. Arthur se limpia la sangre del labio con la manga.",
-          "say": "No sé si pude hacer más por ella. Eso es lo peor: que nunca lo sabré.",
+          "say": "Ya se va. Me ha partido el labio… da igual. No sé si pude hacer más por ella. Eso es lo peor: que nunca lo sabré.",
           "replies": [
             {
               "text": "Hiciste lo que pudiste.",
@@ -3661,8 +3557,7 @@
           ]
         },
         {
-          "note": "Arthur se endereza las gafas, se sacude el abrigo y respira hondo.",
-          "say": "Vamos. Todavía hay gente que me paga por coser."
+          "say": "Gafas en su sitio. Vamos. Todavía hay gente que me paga por coser."
         }
       ]
     },
@@ -3677,8 +3572,7 @@
       "where": "camino",
       "beats": [
         {
-          "note": "Cruzando un lodazal, Arthur resbala y su bolsa de médico cae en un charco de fango. Las hojas de sus libros de anatomía quedan esparcidas por el barro.",
-          "say": "Mis libros... Todos mis apuntes. Es lo único que me traje de la capital.",
+          "say": "¡No, no, no! La bolsa, en el fango… y mis libros de anatomía, hoja por hoja en el barro. Todos mis apuntes. Es lo único que me traje de la capital.",
           "mood": "triste",
           "replies": [
             {
@@ -3700,8 +3594,7 @@
           ]
         },
         {
-          "note": "Pasáis la tarde sacando hojas del fango, una a una. Luego las tendéis junto al fuego, colgadas de una cuerda como si fueran ropa.",
-          "say": "Esta mancha se ha comido el hígado entero. Da igual, me lo sé de memoria.",
+          "say": "Toda la tarde sacando hojas del barro. Cuélgalas de la cuerda, junto al fuego, como si fueran ropa. Mira: esta mancha se ha comido el hígado entero. Da igual, me lo sé de memoria.",
           "replies": [
             {
               "text": "¿Qué pone en esta otra?",
@@ -3716,8 +3609,7 @@
           ]
         },
         {
-          "note": "Arthur guarda las hojas secas en la bolsa y te mira por encima de las gafas.",
-          "say": "Para casi todos soy «el curandero», y ya está. Ya veo que para ti no."
+          "say": "Ya están secas. A la bolsa. Para casi todos soy «el curandero», y ya está. Ya veo que para ti no."
         }
       ]
     },
@@ -3732,8 +3624,7 @@
       "where": "camino",
       "beats": [
         {
-          "note": "En pleno bosque, a un compañero de la escuadra se le queda una punta de flecha clavada muy hondo. Hay que sacarla ya. Arthur busca su botella: está vacía.",
-          "say": "No queda licor. Sin un trago me tiemblan las manos. No puedo, lo siento. Busca a otro.",
+          "say": "Esa punta de flecha está muy honda: hay que sacarla ya. Mi botella… vacía. No queda licor. Sin un trago me tiemblan las manos. No puedo, lo siento. Busca a otro.",
           "mood": "triste",
           "replies": [
             {
@@ -3755,7 +3646,7 @@
           ]
         },
         {
-          "note": "Arthur respira hondo tres veces, coge el bisturí y abre. No le tiembla el pulso. Saca la punta, limpia la herida y cose sin decir una palabra."
+          "say": "Uno. Dos. Tres. Bisturí. Sujétale fuerte. … Ya está la punta fuera. Ahora, limpiar y coser."
         },
         {
           "say": "¿Lo has visto? Ni un temblor. Hacía años que no operaba así.",
@@ -3774,7 +3665,7 @@
           ]
         },
         {
-          "note": "Arthur se limpia las manos en la nieve y se las mira un buen rato. Siguen quietas. Ha recuperado la confianza."
+          "say": "Me lavo las manos en la nieve y… míralas. Siguen quietas. Creo que vuelvo a fiarme de ellas."
         }
       ]
     },
@@ -3789,8 +3680,7 @@
       "where": "posada",
       "beats": [
         {
-          "note": "En la posada, Arthur saca su botella de licor, la mira un momento y la tira al fuego. Las llamas suben de golpe.",
-          "say": "Se acabó. No la voy a necesitar más.",
+          "say": "¿Ves esta botella? Al fuego. Mira cómo suben las llamas. Se acabó. No la voy a necesitar más.",
           "replies": [
             {
               "text": "Bien hecho, Doc.",
@@ -3811,7 +3701,6 @@
           ]
         },
         {
-          "note": "Se ajusta las gafas y se planta delante de ti, muy serio.",
           "say": "Te juro que te mantendré con vida hasta que acabe este maldito invierno. Y esta vez lo juro sin haber bebido.",
           "replies": [
             {
@@ -3834,7 +3723,7 @@
           ]
         },
         {
-          "note": "Arthur se sienta junto al fuego, abre sus libros manchados de barro y se pone a repasar. Esta vez le crees."
+          "say": "Y ahora, a repasar. Estos libros están manchados de barro, pero me los sé de memoria. Un cirujano que no estudia se oxida."
         }
       ]
     },
@@ -3849,8 +3738,7 @@
       "where": "posada",
       "beats": [
         {
-          "note": "Detrás de la posada, Isolda, vestida de mozo de cuadra, se limpia la sangre de los nudillos en un cubo de agua.",
-          "say": "No me mires así. Empezó él. Bueno, empecé yo, pero se lo merecía.",
+          "say": "¿Qué miras? ¿La ropa de mozo de cuadra, o la sangre de los nudillos? No me mires así. Empezó él. Bueno, empecé yo, pero se lo merecía.",
           "replies": [
             {
               "text": "¿Te has hecho daño? Déjame ver.",
@@ -3892,7 +3780,6 @@
           ]
         },
         {
-          "note": "Isolda se seca las manos en el pantalón y te mira fijamente.",
           "say": "Voy contigo porque eres {el único|la única} que no me trata como si fuera de cristal. Pero no te fíes de mí. Yo no me fío de nadie."
         }
       ]
@@ -3908,8 +3795,7 @@
       "where": "posada",
       "beats": [
         {
-          "note": "Al contar la paga, echas en falta unas monedas y un anillo de plata. Encuentras a Isolda en el establo de la posada, con el anillo en la mano.",
-          "say": "Vale, me has pillado. Lo cogí yo. Pero no es para mí.",
+          "say": "¿Buscas esto? Tu anillo de plata. Y las monedas que te faltan también las tengo yo. Vale, me has pillado. Lo cogí yo. Pero no es para mí.",
           "replies": [
             {
               "text": "Explícate. Y rápido.",
@@ -3954,8 +3840,7 @@
           ]
         },
         {
-          "note": "Isolda te devuelve el anillo.",
-          "say": "No lo volveré a hacer. Por lo menos, a ti no."
+          "say": "Toma tu anillo. No lo volveré a hacer. Por lo menos, a ti no."
         }
       ]
     },
@@ -3970,11 +3855,10 @@
       "where": "camino",
       "beats": [
         {
-          "note": "Unos asesinos del castillo os asaltan en el camino. Vienen a por Isolda. Tras un combate corto y sucio, quedan tendidos en la nieve."
+          "say": "¿Estás bien? Esos asesinos venían a por mí, no a por ti. Ya no se levantan. Llevan las botas de la guardia del castillo."
         },
         {
-          "note": "Isolda registra a uno y encuentra una orden con el sello de su padre. La lee dos veces y cae de rodillas.",
-          "say": "Borrar las pruebas, pone. La prueba soy yo. Mi propio padre me quiere muerta.",
+          "say": "Este lleva una orden. Con el sello de mi padre. … La he leído dos veces. Borrar las pruebas, pone. La prueba soy yo. Mi propio padre me quiere muerta.",
           "mood": "triste",
           "replies": [
             {
@@ -4011,8 +3895,7 @@
           ]
         },
         {
-          "note": "Isolda se seca la cara con la manga, rompe la orden en pedazos y se levanta. Todavía le tiemblan las piernas.",
-          "say": "Vámonos. Y no le cuentes a nadie que me has visto llorar."
+          "say": "Ya está: la orden, a pedazos. Ayúdame a levantarme, que me tiemblan las piernas. Vámonos. Y no le cuentes a nadie que me has visto llorar."
         }
       ]
     },
@@ -4027,8 +3910,7 @@
       "where": "plaza",
       "beats": [
         {
-          "note": "Ya de noche, Isolda te busca con dos palos de entrenar en la mano.",
-          "say": "Enséñame el golpe sucio con el que desarmas. El de la muñeca. Te lo he visto hacer tres veces y no lo pillo.",
+          "say": "Toma, un palo de entrenar. Ya sé que es de noche. Enséñame el golpe sucio con el que desarmas. El de la muñeca. Te lo he visto hacer tres veces y no lo pillo.",
           "replies": [
             {
               "text": "Vale. Ponte en guardia.",
@@ -4049,8 +3931,7 @@
           ]
         },
         {
-          "note": "Pasáis la noche entrenando en el barro. Isolda cae una y otra vez, se levanta cubierta de fango y vuelve a intentarlo.",
-          "say": "Otra vez. Hasta que me salga sin pensar.",
+          "say": "¡Al barro otra vez! Da igual, me levanto. Otra vez. Hasta que me salga sin pensar.",
           "replies": [
             {
               "text": "Le dejas ganar una vez para que se anime.",
@@ -4071,8 +3952,7 @@
           ]
         },
         {
-          "note": "Al amanecer, Isolda te desarma, te tira al suelo de una zancadilla y se echa a reír. Luego te tiende la mano para levantarte.",
-          "say": "A partir de hoy, donde vayas tú, voy yo. Sin trampas.",
+          "say": "¡Ja! Ya amanece, y mira: te he desarmado y al suelo de una zancadilla. Dame la mano, que te levanto. A partir de hoy, donde vayas tú, voy yo. Sin trampas.",
           "mood": "alegre"
         }
       ]
@@ -4088,8 +3968,7 @@
       "where": "camino",
       "beats": [
         {
-          "note": "Junto al río, Isolda saca de debajo de la camisa un colgante con el blasón de los Montesclaros. Lo sostiene por la cadena y lo mira un rato.",
-          "say": "Lo he llevado escondido toda la vida. Por si algún día mi padre me reconocía.",
+          "say": "Mira este colgante, con el blasón de los Montesclaros. Lo he llevado escondido toda la vida, debajo de la camisa. Por si algún día mi padre me reconocía.",
           "replies": [
             {
               "text": "¿Qué vas a hacer con él?",
@@ -4110,8 +3989,7 @@
           ]
         },
         {
-          "note": "Isolda lanza el colgante al río. Se hunde enseguida.",
-          "say": "Renuncio al apellido y a la herencia. No quiero nada de ese castillo.",
+          "say": "Al río. … Ya se ha hundido. Renuncio al apellido y a la herencia. No quiero nada de ese castillo.",
           "replies": [
             {
               "text": "Ese apellido te pesaba demasiado.",
@@ -4131,8 +4009,7 @@
           ]
         },
         {
-          "note": "Isolda se sacude las manos, como quien acaba un trabajo, y se pone a tu lado.",
-          "say": "Solo Isolda. Y soy de tu compañía.",
+          "say": "Hecho. Solo Isolda. Y soy de tu compañía.",
           "mood": "alegre"
         }
       ]
@@ -4148,10 +4025,10 @@
       "where": "posada",
       "beats": [
         {
-          "note": "En la posada ves cómo Grimm le da a un mensajero una bolsa con todo el sueldo de la semana. El mensajero se la guarda y sale hacia el sur."
+          "who": "El tabernero",
+          "say": "¿Has visto al grandullón? Le acaba de dar al mensajero del sur una bolsa con todo el sueldo de la semana. Todas las semanas igual. Y luego se queda mirando un dibujo que lleva en el pecho: una mujer y tres críos."
         },
         {
-          "note": "Grimm se da cuenta de que lo has visto. Se saca del pecho un dibujo arrugado: una mujer y tres niños. Te lo enseña y asiente.",
           "say": "Mm.",
           "replies": [
             {
@@ -4171,9 +4048,6 @@
               "mood": "enfadado"
             }
           ]
-        },
-        {
-          "note": "Grimm se sienta a tu lado y se queda allí, en silencio, hasta que se apaga la vela."
         }
       ]
     },
@@ -4188,10 +4062,11 @@
       "where": "posada",
       "beats": [
         {
-          "note": "En la taberna, unos mercenarios borrachos se burlan de Grimm. Uno le quita el dibujo de su familia y escupe encima. Los demás se ríen."
+          "who": "Un mercenario borracho",
+          "say": "¡Eh, mirad al mudo! ¿Qué guarda ahí? ¡Un dibujito de su familia! Trae… ¡Ptú! Venga, pégame, mudo. Pega, que el alguacil te encierra y tus críos se quedan sin la paga.",
+          "mood": "alegre"
         },
         {
-          "note": "Grimm aprieta los puños hasta que le crujen los nudillos, pero no se mueve. Si pelea, acabará preso y no podrá mandar dinero a los suyos.",
           "say": "Mm.",
           "mood": "enfadado",
           "replies": [
@@ -4212,9 +4087,6 @@
               "mood": "triste"
             }
           ]
-        },
-        {
-          "note": "Ya fuera, en el frío, Grimm limpia el dibujo con la manga hasta que no queda rastro del escupitajo. Luego se lo guarda en el pecho."
         }
       ]
     },
@@ -4229,33 +4101,31 @@
       "where": "camino",
       "beats": [
         {
-          "note": "En una emboscada, alguien te sale por la espalda con el arma en alto. Grimm se pone en medio, se lleva el tajo en el hombro y tumba al atacante de un hachazo."
+          "who": "Un bandido",
+          "say": "¡Te tengo, por la espalda! ¿Qué…? ¡Quita de en medio, grandullón! ¡Aaah!",
+          "mood": "enfadado"
         },
         {
-          "note": "Cuando acaba la pelea, Grimm se aprieta el hombro, que sangra mucho. Señala la herida y te enseña dos dedos: esta semana quiere cobrar el doble.",
           "say": "Mm.",
           "replies": [
             {
-              "text": "Primero te curo. Luego hablamos de dinero.",
+              "text": "¿Dos dedos? ¿El doble de paga? Primero te curo. Luego hablamos de dinero.",
               "bond": 0,
               "then": "(Se deja vendar, pero no baja los dos dedos.)"
             },
             {
-              "text": "Le pagas el doble sin discutir.",
+              "text": "¿El doble esta semana, por ese tajo? Hecho. Te lo has ganado.",
               "bond": 1,
               "gold": -5,
               "then": "(Grimm guarda las monedas y te da una palmada en la espalda que casi te tumba.)"
             },
             {
-              "text": "Es tu trabajo. Cobras lo de siempre.",
+              "text": "¿El doble? No. Es tu trabajo. Cobras lo de siempre.",
               "bond": -1,
               "then": "(Grimm baja la mano despacio y se da la vuelta.)",
               "mood": "enfadado"
             }
           ]
-        },
-        {
-          "note": "Esa noche, junto al fuego, Grimm te mira de otra manera. No dice nada, pero se le nota el respeto en la cara."
         }
       ]
     },
@@ -4270,7 +4140,6 @@
       "where": "camino",
       "beats": [
         {
-          "note": "Junto a la lumbre, le coses a Grimm la herida del hombro. Él no se mueve, pero aprieta la mandíbula a cada puntada.",
           "say": "Mm.",
           "replies": [
             {
@@ -4292,7 +4161,6 @@
           ]
         },
         {
-          "note": "Das la última puntada y le pasas la bota de vino. Grimm bebe un trago largo, se limpia la boca y te mira. Luego habla, con una voz grave y profunda.",
           "say": "Gracias, {jefe|jefa}.",
           "replies": [
             {
@@ -4311,9 +4179,6 @@
               "then": "(Grimm se encoge de hombros y no vuelve a abrir la boca.)"
             }
           ]
-        },
-        {
-          "note": "Es la primera vez que le oyes hablar. Os quedáis junto al fuego hasta tarde, sin decir nada más, y esta vez el silencio es cómodo."
         }
       ]
     },
@@ -4328,22 +4193,21 @@
       "where": "camino",
       "beats": [
         {
-          "note": "Grimm te pone en la mano una carta arrugada. La carta cuenta que su familia ha llegado a la capital y está a salvo. Ya no necesita tu plata para mantenerlos.",
           "say": "Mm.",
           "mood": "alegre",
           "replies": [
             {
-              "text": "Me alegro mucho, Grimm.",
+              "text": "«Hemos llegado a la capital, estamos a salvo». ¡Tu familia, Grimm! Me alegro mucho.",
               "bond": 1,
               "then": "(Grimm sonríe. Es una sonrisa enorme, como él.)"
             },
             {
-              "text": "Entonces, ¿te vas con ellos?",
+              "text": "Dice que ya no necesitan tu plata. Entonces, ¿te vas con ellos?",
               "bond": 0,
               "then": "(Grimm niega con la cabeza.)"
             },
             {
-              "text": "Bien. Entonces ya no te hace falta cobrar tanto.",
+              "text": "Si ya no les hace falta tu plata, ya no te hace falta cobrar tanto.",
               "bond": -1,
               "then": "(Grimm resopla y te quita la carta de la mano.)",
               "mood": "enfadado"
@@ -4351,7 +4215,6 @@
           ]
         },
         {
-          "note": "Grimm dobla la carta, se la guarda en el pecho, junto al dibujo, y se pone a tu lado en la fila.",
           "say": "Hasta el paso.",
           "replies": [
             {
@@ -4365,9 +4228,6 @@
               "then": "Mm."
             }
           ]
-        },
-        {
-          "note": "Es la frase más larga que le has oído. Hasta que se abra el paso del sur, Grimm no se va a mover de tu lado."
         }
       ]
     }

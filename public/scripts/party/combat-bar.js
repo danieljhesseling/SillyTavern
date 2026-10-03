@@ -17,8 +17,9 @@ import { getCurrentWorldEnemies } from '../world-info.js';
 import { tokenArt } from '../world-map-renderer.js';
 import { firstArt, isPlainFace } from '../game-engine/ui/pixel-art.js';
 import {
-    rollDiceDetailed, getDistanceInFeet, getAttackRangeFeet, getPlayerAttackModifier, getPlayerDamageFormula,
+    rollDiceDetailed, getDistanceInFeet, getAttackRangeFeet, getPlayerAttackModifier, getPlayerDamageFormula, getPlayerAttackParts, getPlayerAttackBonus,
 } from './combat-rules.js';
+import { describeAttackBonus, describeEdgeReason } from '../game-engine/rules/attack-bonus.js';
 import { hasAction, useAction, spendMovement } from '../game-engine/combat/turn-machine.js';
 import {
     attackEdge, judgeManeuvers, recordManeuver, noteKnockdown, rollWithEdge, describeEdge,
@@ -38,10 +39,11 @@ import {
     ACTIONS_2024, HIDE_DC, canHide2024, studyDC, studyFacts, newFacts, potionsOf, canStand, offHandWeaponOf, judgeOffHand,
 } from '../game-engine/rules/actions-2024.js';
 import { canUseAbility, usesLeft } from '../game-engine/rules/abilities.js';
-import { describeArea } from '../game-engine/rules/area.js';
+import { describeArea, isArea } from '../game-engine/rules/area.js';
+import { ABILITY_NAMES } from '../game-engine/rules/spell-catalogue.js';
 import { slotsLeft, slotsFor, casterOf } from '../game-engine/rules/spell-slots.js';
 import { chargesLeft, CIRCLE_CHARGES } from '../game-engine/rules/grimoire.js';
-import { skillModifier } from '../game-engine/rules/checks.js';
+import { skillModifier, proficiencyBonus } from '../game-engine/rules/checks.js';
 import { rollLine } from '../game-engine/rules/roll-line.js';
 import { traitBonus } from '../game-engine/campaign/feats.js';
 import { perkBonus } from '../game-engine/rules/level-perks.js';
@@ -57,7 +59,7 @@ import {
     heightFor, partyCell, partyFlanks, saveCombatState, speedOf, enemyTokenId,
 } from './combat-state.js';
 import {
-    abilityOf, applyTimedCondition, carriedNames, castsLikeFifth, classRowOf, getAbilityCatalogue, knownAbilitiesOf, spellAbilityAt,
+    abilityOf, abilityVictims, applyTimedCondition, carriedNames, castsLikeFifth, classRowOf, getAbilityCatalogue, knownAbilitiesOf, spellAbilityAt,
     useAbility, useMagicItem,
 } from './magic.js';
 import {
@@ -139,11 +141,19 @@ function memberFace(member) {
  * @param {any} wielder
  * @param {any} enemy
  * @param {number} distanceFeet
- * @returns {{chance: number, edge: string}}
+ * Con el número explicado en `note` («+5 al ataque: +3 de Fuerza y +2 de competencia») y, si
+ * va con ventaja o desventaja, por qué, en `edge` («desventaja: está en el suelo…»).
+ *
+ * @returns {{chance: number, edge: string, note: string}}
  */
 function forecastAgainst(member, wielder, enemy, distanceFeet) {
     const rangeFeet = getAttackRangeFeet(wielder);
-    const attackMod = getPlayerAttackModifier(wielder, rangeFeet) + traitBonus(member, enemy.name) + perkBonus(member, 'attack') + weaponBonus(wielder);
+    const parts = getPlayerAttackParts(wielder, rangeFeet, [
+        { label: 'del arma', value: weaponBonus(wielder) },
+        { label: 'contra los de su clase', value: traitBonus(member, enemy.name) },
+        { label: 'de lo aprendido', value: perkBonus(member, 'attack') },
+    ]);
+    const attackMod = parts.total;
     const base = attackEdge({
         targetId: String(enemy.instanceId),
         height: heightFor(partyCell(member), cellOf(enemy)),
@@ -161,7 +171,8 @@ function forecastAgainst(member, wielder, enemy, distanceFeet) {
     const { ac } = getTargetArmorClass(enemy, member);
     return {
         chance: Math.round(hitChance(attackMod, ac, edge.mode) * 100),
-        edge: edge.mode === 'advantage' ? 'ventaja' : edge.mode === 'disadvantage' ? 'desventaja' : '',
+        edge: describeEdgeReason(edge.mode, edge.reasons),
+        note: describeAttackBonus(parts),
     };
 }
 
@@ -173,16 +184,98 @@ function forecastAgainst(member, wielder, enemy, distanceFeet) {
  * @returns {TargetView & {cr: number}}
  */
 function enemyView(member, enemy) {
+    const armor = getTargetArmorClass(enemy, member);
     return {
         id: String(enemy.instanceId),
         name: String(enemy.name),
         art: enemyFace(enemy),
         hp: Number(enemy.currentHp) || 0,
         maxHp: Number(enemy.maxHp) || 0,
-        ac: getTargetArmorClass(enemy, member).ac,
+        ac: armor.ac,
         distanceFeet: feetBetween(member, enemy),
         cr: Number(enemy.cr) || 0,
+        // J12.18: su ficha (para encenderla al pasar por él en el menú), su bando y lo que le tapa.
+        token: enemyTokenId(enemy),
+        side: 'enemy',
+        cover: Number(armor.cover) || 0,
     };
+}
+
+/**
+ * J12.18: uno de los tuyos como lo enseña una lista, con su ficha (para encenderla en azul).
+ *
+ * @param {any} member Quien juega.
+ * @param {any} who
+ * @returns {TargetView}
+ */
+function allyView(member, who) {
+    return {
+        id: String(who.id), name: String(who.name), art: memberFace(who), hp: Number(who.hp) || 0, maxHp: Number(who.maxHp) || 0,
+        distanceFeet: feetBetween(member, who), token: who.id, side: 'ally',
+    };
+}
+
+/**
+ * J12.18: lo lejos que se ve en la pelea (de noche, con niebla), o `Infinity`: los que no alcanzas
+ * salen en el menú, apagados, solo si se ven.
+ *
+ * @returns {number}
+ */
+function sightFeet() {
+    const max = boardVisibility().maxFeet;
+    return max === null || max === undefined || !Number.isFinite(Number(max)) ? Infinity : Number(max);
+}
+
+/**
+ * J12.18: un conjuro o una técnica contra alguien, lo que se sabe antes: si es de ataque, lo que
+ * tienes de acertar; si salva él, la CD y con qué; si es un área (o va a varios), a quién más
+ * pilla y sus casillas.
+ *
+ * @param {any} member
+ * @param {any} ability
+ * @param {any} who
+ * @param {boolean} isEnemy
+ * @param {number} distanceFeet
+ * @returns {Partial<TargetView>}
+ */
+function abilityForecast(member, ability, who, isEnemy, distanceFeet) {
+    /** @type {Partial<TargetView>} */
+    const out = {};
+    if (isEnemy && ability.resolution === 'attack') {
+        const spell = typeof ability.spellLevel === 'number' && typeof ability.attackBonus === 'number';
+        // Una técnica ataca como el arma: característica y competencia (como `useAbility` en magic.js).
+        const mod = spell ? Number(ability.attackBonus) : getPlayerAttackBonus(member, Number(ability.rangeFeet) || 5);
+        const edge = attackEdge({
+            targetId: String(who.instanceId),
+            height: heightFor(partyCell(member), cellOf(who)),
+            targetConditions: who.activeConditions ?? [],
+            attackerConditions: member.activeConditions ?? [],
+            distanceFeet,
+            maneuvers: combatEncounter.maneuvers,
+            byParty: true,
+            flanked: (Number(ability.rangeFeet) || 5) <= 5 && partyFlanks(member, who),
+            attackerId: String(member.id),
+            hindered: attackHindrance(partyCell(member), cellOf(who), distanceFeet),
+        });
+        out.chance = Math.round(hitChance(mod, getTargetArmorClass(who, member).ac, edge.mode) * 100);
+        out.edge = describeEdgeReason(edge.mode, edge.reasons);
+    }
+    if (ability.resolution === 'save' && Number(ability.saveDc) > 0) {
+        out.dc = Number(ability.saveDc);
+        out.save = /** @type {Record<string, string>} */ (ABILITY_NAMES)[String(ability.saveAbility)] ?? '';
+    }
+    if (isArea(ability.area) || (Number(ability.targets) || 1) > 1) {
+        try {
+            const { cells, victims } = abilityVictims(member, 'party', ability, who);
+            out.caught = victims.map(v => (v.kind === 'enemy'
+                ? { id: String(v.ref.instanceId), token: enemyTokenId(v.ref), name: String(v.ref.name), side: /** @type {const} */ ('enemy') }
+                : { id: String(v.ref.id), token: v.ref.id, name: String(v.ref.name), side: /** @type {const} */ ('ally') }));
+            if (isArea(ability.area)) out.cells = cells.map(c => ({ x: Number(c.x) || 0, y: Number(c.y) || 0 }));
+        } catch (error) {
+            console.warn('[combat-bar] el área de', ability?.name, error);
+        }
+    }
+    return out;
 }
 
 /**
@@ -210,11 +303,21 @@ function weaponView(member, weapon, { offHand = false } = {}) {
     const formula = getPlayerDamageFormula(wielder, rangeFeet);
     const abilityMod = getPlayerAttackModifier(wielder, rangeFeet);
     const mod = (offHand ? Math.min(0, abilityMod) : Math.max(0, abilityMod)) + weaponBonus(wielder);
-    const targets = getAliveEnemies()
+    // J12.18: primero a los que llegas; detrás, los que se ven pero no alcanzas, apagados y diciendo
+    // a cuántos pies están.
+    const sight = sightFeet();
+    const all = getAliveEnemies()
         .map(enemy => ({ enemy, distanceFeet: feetBetween(member, enemy) }))
-        .filter(({ distanceFeet }) => distanceFeet <= rangeFeet)
-        .sort((a, b) => a.distanceFeet - b.distanceFeet)
-        .map(({ enemy, distanceFeet }) => ({ ...enemyView(member, enemy), ...forecastAgainst(member, wielder, enemy, distanceFeet) }));
+        .sort((a, b) => a.distanceFeet - b.distanceFeet);
+    const name = `tu ${weapon ? String(weapon.name).toLowerCase() : 'puño'}`;
+    const targets = [
+        ...all.filter(({ distanceFeet }) => distanceFeet <= rangeFeet)
+            .map(({ enemy, distanceFeet }) => ({ ...enemyView(member, enemy), ...forecastAgainst(member, wielder, enemy, distanceFeet) })),
+        ...all.filter(({ distanceFeet }) => distanceFeet > rangeFeet && distanceFeet <= sight)
+            .map(({ enemy, distanceFeet }) => ({
+                ...enemyView(member, enemy), enabled: false, reason: `Está a ${distanceFeet} pies; ${name} llega a ${rangeFeet}.`,
+            })),
+    ];
     return {
         id: String(weapon?.id ?? 'puños'),
         name: weapon ? String(weapon.name) : 'Puños',
@@ -314,9 +417,9 @@ function abilityViews(member) {
                 const distanceFeet = feetBetween(member, who);
                 const v = canUseAbility({ member, ability, distanceFeet, hasAction: action, hasBonus: bonus, targetAlive: true, carried });
                 return {
-                    ...(isEnemy ? enemyView(member, who) : {
-                        id: String(who.id), name: String(who.name), art: memberFace(who), hp: Number(who.hp) || 0, maxHp: Number(who.maxHp) || 0, distanceFeet,
-                    }),
+                    ...(isEnemy ? enemyView(member, who) : allyView(member, who)),
+                    // J12.18: lo que tienes de acertar (o su CD) y, si es un área, a quién pilla.
+                    ...(v.ok ? abilityForecast(member, ability, who, isEnemy, distanceFeet) : {}),
                     enabled: v.ok, reason: pies(v.reason),
                 };
             };
@@ -425,12 +528,12 @@ export function buildCombatBarSnapshot({ full = true } = {}) {
     const close = enemies.filter(e => e.distanceFeet <= 5);
     const adjacentAllies = partyMembers
         .filter(m => String(m.id) !== String(member.id) && !m.dead)
-        .map(m => ({ id: String(m.id), name: String(m.name), art: memberFace(m), hp: Number(m.hp) || 0, maxHp: Number(m.maxHp) || 0, distanceFeet: feetBetween(member, m) }))
+        .map(m => allyView(member, m))
         .filter(m => m.distanceFeet <= 5);
     // Tanda 16: los tuyos que están en el suelo tirando salvaciones (para Estabilizar).
     const dying = partyMembers
         .filter(m => String(m.id) !== String(member.id) && needsStabilizing(m))
-        .map(m => ({ id: String(m.id), name: String(m.name), art: memberFace(m), hp: 0, maxHp: Number(m.maxHp) || 0, distanceFeet: feetBetween(member, m) }))
+        .map(m => ({ ...allyView(member, m), hp: 0 }))
         .sort((a, b) => a.distanceFeet - b.distanceFeet);
 
     // La otra mano: otra ligera, tras atacar con la primera.
@@ -487,6 +590,8 @@ export function buildCombatBarSnapshot({ full = true } = {}) {
         maneuvers: judgeManeuvers({ hasAction: action, enemies: plain, hide: hideCheck(member) }),
         hide: canHide2024({ covered: hideCheck(member), dim: visibility.maxFeet !== null }),
         studied: Object.fromEntries(Object.entries(readTactics(combatEncounter.tactics).studied).map(([id, facts]) => [id, facts.length])),
+        // J12.18: quien juega, para encender su ficha con lo que se hace a sí mismo.
+        actor: { id: String(member.id), token: member.id },
     };
 }
 
@@ -597,7 +702,8 @@ export function unarmedStrike(mode, targetId) {
 
     if (mode === 'golpe') {
         const strength = getAbilityModifier(Number(member.strength) || 10);
-        const attackMod = strength + traitBonus(member, target.name) + perkBonus(member, 'attack');
+        // Con los puños todo el mundo tiene competencia (2024): Fuerza y competencia.
+        const attackMod = strength + proficiencyBonus(member.level) + traitBonus(member, target.name) + perkBonus(member, 'attack');
         const distanceFeet = feetBetween(member, target);
         const edge = attackEdge({
             targetId: id, height: heightFor(partyCell(member), cellOf(target)), targetConditions: target.activeConditions ?? [],
@@ -1030,7 +1136,8 @@ function castFromBar(abilityId, targetId, slotLevel = 0) {
     // Tanda 17: si sale, el conjuro va hacia quien lo recibe antes de lo que le hace (la secuencia).
     const mark = fxMark();
     const said = useAbility(member, ability, target, slotLevel);
-    if (said && target && target !== member) stageAttack(member, target, 'spell', mark);
+    // J12.19: con su tipo de daño (o su nombre: «Rayo de escarcha»), para dibujar cómo llega.
+    if (said && target && target !== member) stageAttack(member, target, 'spell', mark, `${ability.damageType || ''} ${ability.name || ''}`.trim());
     return said;
 }
 

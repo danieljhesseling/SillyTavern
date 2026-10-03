@@ -110,6 +110,8 @@ try {
             title: dialog?.querySelector('.qd-title')?.textContent ?? '',
             step: dialog?.querySelector('.qd-step')?.textContent ?? '',
             lines: [...(dialog?.querySelectorAll('.qd-line') ?? [])].map(l => `${l.className.replace('qd-line qd-', '')}: ${(l.textContent ?? '').trim()}`),
+            // D-J60: lo que no dice nadie va en el aviso de fuera de la caja.
+            aside: [...(dialog?.querySelectorAll('.qd-aside:not([hidden]) .vn-aside-line') ?? [])].map(l => (l.textContent ?? '').trim()),
             chips: [...(dialog?.querySelectorAll('.qd-chip') ?? [])].map(c => (c.textContent ?? '').trim()),
             portrait: img?.getAttribute('src') ?? '',
             drawn: Boolean(img && img.naturalWidth > 0),
@@ -143,15 +145,18 @@ try {
     const sceneBefore = await shellScene();
     let seen = await view();
     check('la escena se abre dentro del Modo Juego, con el nombre, el título y el paso', seen.inShell && seen.name === 'Gerd el Mellado' && /Los dientes · La posada/.test(seen.title) && seen.step === '1 / 3', JSON.stringify(seen));
-    check('el retrato de Gerd, alegre, dibujado; y detrás, la posada', /gerd-el-mellado--alegre\.png/.test(seen.portrait) && seen.drawn && /sitios\/taberna/.test(seen.backdrop), `${seen.portrait} ${seen.backdrop}`);
-    check('lo que pasa, lo que dice y tres respuestas', seen.lines.length === 2 && /^note: Gerd se sienta/.test(seen.lines[0]) && seen.chips.length === 3, JSON.stringify(seen));
+    // D-J61: las caras van neutras por ahora (`PORTRAIT_MOODS` apagado): basta con que sea el suyo.
+    check('el retrato de Gerd, dibujado; y detrás, la posada', /gerd-el-mellado(--\w+)?\.png/.test(seen.portrait) && seen.drawn && /sitios\/taberna/.test(seen.backdrop), `${seen.portrait} ${seen.backdrop}`);
+    // J13.9: sin nota de narrador; lo que pasa lo dice Gerd («Hazme sitio, que traigo dos jarras…»).
+    check('J13.9: lo dice Gerd, sin nota de narrador ni aviso, y tres respuestas', seen.lines.length === 1 && /^say: Hazme sitio, que traigo dos jarras/.test(seen.lines[0])
+        && seen.aside.length === 0 && seen.chips.length === 3, JSON.stringify(seen));
     if (shot('1-gerd')) await page.screenshot({ path: shot('1-gerd') });
 
     await page.locator('.qd-dialog[open] .qd-chip-reply').nth(2).click();
     await page.waitForTimeout(400);
     seen = await view();
-    check('contestar algo que no le gusta: tu respuesta, la suya y la cara enfadada', seen.lines.some(l => /^you: Tú/.test(l)) && seen.lines.some(l => /^then: Vaya/.test(l))
-        && /gerd-el-mellado--enfadado\.png/.test(seen.portrait) && seen.chips.length === 1 && /Seguir/.test(seen.chips[0]), JSON.stringify(seen));
+    check('contestar algo que no le gusta: tu respuesta y la suya', seen.lines.some(l => /^you: Tú/.test(l)) && seen.lines.some(l => /^then: Vaya/.test(l))
+        && /gerd-el-mellado(--\w+)?\.png/.test(seen.portrait) && seen.chips.length === 1 && /Seguir/.test(seen.chips[0]), JSON.stringify(seen));
     if (shot('2-respuesta')) await page.screenshot({ path: shot('2-respuesta') });
 
     // Con el teclado: Intro sigue, 2 elige la segunda.
@@ -162,7 +167,7 @@ try {
     await page.keyboard.press('2');
     await page.waitForTimeout(300);
     seen = await view();
-    check('la tecla 2 elige la segunda respuesta, y su cara cambia', seen.lines.some(l => /^you: Tú.*escudo funcionaba/.test(l)) && /--alegre\.png/.test(seen.portrait), JSON.stringify(seen));
+    check('la tecla 2 elige la segunda respuesta', seen.lines.some(l => /^you: Tú.*escudo funcionaba/.test(l)), JSON.stringify(seen));
     await page.keyboard.press('Enter');
     await page.waitForTimeout(300);
     seen = await view();
@@ -170,13 +175,42 @@ try {
     await page.keyboard.press('Enter');
     await page.waitForTimeout(400);
     seen = await view();
-    check('al acabar, lo que queda: cuánto os acercáis', seen.lines.some(l => /summary: Te acercas a Gerd el Mellado \(\+\d+ de vínculo\)/.test(l)) && /Cerrar/.test(seen.chips.join(' ')), JSON.stringify(seen));
+    // D-J60: lo que queda no lo dice nadie: va en el aviso de fuera de la caja.
+    check('al acabar, lo que queda: cuánto os acercáis (en el aviso, fuera de la caja)', seen.aside.some(l => /Te acercas a Gerd el Mellado \(\+\d+ de vínculo\)/.test(l))
+        && seen.lines.length === 0 && /Cerrar/.test(seen.chips.join(' ')), JSON.stringify(seen));
     if (shot('3-final')) await page.screenshot({ path: shot('3-final') });
     await page.locator('.qd-dialog[open] .qd-chip-finish').click();
     await page.waitForTimeout(400);
     const result = await page.evaluate(() => /** @type {any} */ (window).__qd.result);
     check('se cierra y devuelve lo elegido', !(await view()).open && result?.finished === true && JSON.stringify(result?.choices) === JSON.stringify([{ beat: 0, reply: 2 }, { beat: 1, reply: 1 }]), JSON.stringify(result));
     check('el Modo Juego no se enteró de las teclas (1-4 cambian su escena)', (await shellScene()) === sceneBefore, `${sceneBefore} -> ${await shellScene()}`);
+
+    // 1b. J13.9: Grimm no habla (hasta su rango 8). En la posada, lo que pasa lo dice el tabernero,
+    // con su nombre en la placa; luego Grimm («Mm.») y tus respuestas.
+    await page.evaluate(async () => {
+        const w = /** @type {any} */ (window);
+        const m = await import('/scripts/game-engine/campaign/meetups.js');
+        const ui = await import('/scripts/game-engine/ui/meetup-scene.js');
+        const data = m.readMeetupRows(await (await fetch('/compendio/quedadas.json')).json());
+        const scene = m.renderScene(data.scenes.find(s => s.id === '1387-grimm-2'), { hero: { name: 'Tessa', gender: 'Mujer' } });
+        w.__qd = { result: null };
+        void ui.openMeetupScene({ scene, person: { name: 'Grimm' }, pack: '1387', place: 'posada', placeLabel: 'La posada' })
+            .then((/** @type {any} */ r) => { w.__qd.result = r; });
+    });
+    await page.waitForSelector('.qd-dialog[open] .qd-chip', { timeout: 15000 });
+    await page.waitForTimeout(600);
+    seen = await view();
+    check('J13.9: Grimm, rango 2: lo cuenta el tabernero, con su nombre en la placa, sin nota', seen.name === 'El tabernero'
+        && seen.lines.length === 1 && /^say: ¿Has visto al grandullón\?/.test(seen.lines[0]) && seen.aside.length === 0, JSON.stringify(seen));
+    if (shot('1b-tabernero')) await page.screenshot({ path: shot('1b-tabernero') });
+    await page.locator('.qd-dialog[open] .qd-chip').first().click();
+    await page.waitForTimeout(400);
+    seen = await view();
+    check('J13.9: luego Grimm, con su placa: «Mm.» y tres respuestas', seen.name === 'Grimm' && seen.lines.length === 1 && /^say: Mm\.$/.test(seen.lines[0])
+        && seen.chips.length === 3, JSON.stringify(seen));
+    if (shot('1c-grimm')) await page.screenshot({ path: shot('1c-grimm') });
+    await page.locator('.qd-dialog[open] .qd-leave').click();
+    await page.waitForTimeout(300);
 
     // 2. El selector: con quién y dónde, con la gente de Puerto Alba por la tarde.
     await page.evaluate(async () => {

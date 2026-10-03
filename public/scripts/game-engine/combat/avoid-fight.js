@@ -821,6 +821,22 @@ export function avoidIntro(foes) {
 }
 
 /**
+ * Lo que dice el aviso de encima de la elección antes de pelear: una línea como mucho (Daniel,
+ * 2026-10-03). Quién espera y cómo («El ratero del muelle os cierra el paso.»); «Se puede pelear,
+ * o buscar otra salida» ya lo dicen las opciones de la ventana, y solo sale si no se sabe quién
+ * espera.
+ *
+ * @param {FoeInfo[]} foes
+ * @param {{auto?: boolean}} [options] `auto`: la elección se ha abierto sola porque os han visto.
+ * @returns {string[]}
+ */
+export function avoidNotices(foes, { auto = false } = {}) {
+    const who = avoidIntro(foes);
+    if (who) return [who];
+    return [auto ? 'Os han visto. Se puede pelear, o buscar otra salida.' : 'Se puede pelear, o buscar otra salida.'];
+}
+
+/**
  * @typedef {Object} ExitPlan Lo que hace el juego tras una salida, sin pensarlo dos veces.
  * @property {boolean} fight Si empieza la pelea.
  * @property {boolean} enemiesFirst Si empiezan ellos (os han pillado huyendo o escondidos).

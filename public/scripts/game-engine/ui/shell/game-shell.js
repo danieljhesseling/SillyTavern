@@ -1198,6 +1198,22 @@ const NOVEL_LINES = 4;
 /** J0.4: lo que ya salió en la caja, para que al redibujar solo entre lo nuevo. */
 let novelShown = new Set();
 
+/**
+ * Directo a la decisión (Daniel, 2026-10-03): si la novela tiene algo nuevo por leer (lo que se
+ * acaba de contar, el final de una pelea) y aún no se ha seguido con «Continuar». Sin eso, una
+ * pelea que empieza sola va delante (`fightComesFirst`, en `scene-director.js`).
+ */
+let novelUnread = false;
+
+/**
+ * Directo a la decisión: acabada una charla en su ventana (una escena del hilo), lo que había en
+ * la novela antes de ella ya no está por leer. Si lo siguiente es una pelea que empieza sola, sale
+ * su decisión, sin la novela con «Continuar» entre medias. Lo llama `party/plot.js`.
+ */
+export function markNovelRead() {
+    novelUnread = false;
+}
+
 /** J20.6: si la caja ya tiene pedido bajar hasta lo último en el siguiente fotograma, y cuál. */
 let novelScrollPending = false;
 /** @type {HTMLElement|null} */
@@ -1806,9 +1822,13 @@ function renderFooterChips(footer, skip) {
  */
 function storyMark() {
     const messages = document.querySelectorAll('#chat .mes:not([is_user="true"])');
+    // Lo que ya se ha visto en pantalla (`extra.quiet`: lo jugado en la ventana de una escena) no
+    // sale en la caja, así que tampoco es nada nuevo que leer.
+    const chatNow = /** @type {any[]} */ (/** @type {any} */ (globalThis).SillyTavern?.getContext?.()?.chat ?? []);
     for (let i = messages.length - 1; i >= 0; i--) {
         const node = messages[i];
         if (node.getAttribute('is_system') === 'true' && node.classList.contains('smallSysMes')) continue;
+        if (chatNow[Number(node.getAttribute('mesid'))]?.extra?.quiet) continue;
         const body = node.querySelector('.mes_text');
         const said = (body?.textContent || '').trim();
         if (!body || !said || /^\S{0,3}\s*\[GENTE\]/u.test(said)) continue;
@@ -2014,6 +2034,11 @@ export function refreshGameShell() {
     const situation = engine?.hasChat && !engine.combatActive && engine.locationName
         ? { ...engine, ...told, townPlaces: countTownPlaces(String(engine.locationName), options.getTown?.() ?? null, () => { if (isShellOpen()) refreshGameShell(); }) }
         : { ...engine, ...told };
+    // Directo a la decisión (2026-10-03): si la novela tiene algo nuevo por leer. Sin eso, una pelea
+    // que empieza sola va delante (`fightComesFirst`). Lo que quedaba por leer en otra partida (del
+    // gremio a una campaña, o de vuelta) no cuenta en esta.
+    if (String(lastSituation?.chatId ?? '') !== String(situation.chatId ?? '')) novelUnread = false;
+    if (offline) situation.novelNews = novelUnread;
     // The director decides from what *changed*, not only from what is. What it decides
     // becomes the standing pick, so the screen does not snap back on the next redraw.
     const choice = directScene(lastSituation, situation, manualScene);
@@ -2025,6 +2050,10 @@ export function refreshGameShell() {
     // closest thing this can show is the conversation. Better than a screen whose only
     // content is the news that it does not exist yet.
     const scene = BUILT_SCENES.has(choice.scene) ? choice.scene : SCENE.DIALOGUE;
+    // Directo a la decisión: lo nuevo que se cuenta, y el final de una pelea, quedan por leer
+    // mientras se está en la novela; salir de ella («Continuar») los da por leídos.
+    novelUnread = offline && scene === SCENE.DIALOGUE
+        && (novelUnread || choice.event === 'story_told' || choice.event === 'combat_ended');
     // Sin partida abierta no hay nada que pausar ni a donde volver.
     if (scene === SCENE.TITLE && paused) setPaused(false);
 

@@ -98,6 +98,14 @@
     font-size: 0.88em;
 }
 
+/* De dónde sale el número del ataque: la característica y la competencia. */
+.tc-bonus {
+    margin-top: 3px;
+    padding: 0 8px;
+    font-size: 0.8em;
+    opacity: 0.85;
+}
+
 /* Idea 14: a por quien va este enemigo. */
 .tc-intent {
     margin-top: 4px;

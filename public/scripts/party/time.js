@@ -85,7 +85,9 @@ export const campaign = createCampaignState({
     saveParty: () => savePartyState(),
     renderParty: () => renderPartyMembers(),
     renderCampaign: () => renderCampaignTab(),
-    narrate: (text) => postCombatNarration(text),
+    // J13.9: el descanso contado por el narrador (`🌙 [DESCANSO]`), sin conexión, solo si lo dice
+    // alguien (los buenos días del posadero); lo que cura, en su aviso, como siempre.
+    narrate: (text) => postCombatNarration(text, { moment: String(text).startsWith('🌙 [DESCANSO]') ? 'descanso' : '' }),
     // Z1 de ROADMAP_SIN_TOKENS: el descanso, contado por el narrador del motor.
     tellRest: (kind) => tellMoment('descanso', {
         largo: kind === 'largo' ? 'sí' : 'no',
@@ -241,7 +243,8 @@ function startWeekTable() {
         return;
     }
     const weekTold = tellMoment('semana', { semana: week, cuenta: 'La mesa, con lo que no cabe entero, está en su botón.' });
-    postCombatNarration(`📋 [PARTIDA] ${weekTold || `Empieza la semana ${week}: la mesa, con lo que no cabe entero, está en su botón.`}`);
+    // J13.9: sin conexión, la semana que empieza no la cuenta nadie: ya está en el reloj y en la mesa.
+    postCombatNarration(`📋 [PARTIDA] ${weekTold || `Empieza la semana ${week}: la mesa, con lo que no cabe entero, está en su botón.`}`, { moment: 'semana' });
     // Z4: la semana también trae lo suyo.
     playSucesos('semana');
 }

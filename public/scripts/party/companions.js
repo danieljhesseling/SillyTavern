@@ -78,7 +78,8 @@ import { noteDeed, refreshWorldMemoryPrompt, worldWrite } from './world-growth.j
 import { offlineGame, postCombatNarration, postForModel } from './narration.js';
 import { getActivePartyLeader, memberFromEntry, partyPurse, renderPartyMembers, savePartyState } from './roster.js';
 import { smithHere, smithPlaces, buyRemedy } from './town.js';
-import { bondFavors, carryBondOf, meetSomeone, meetupData, peopleHere, wantsToMeetAt } from './social.js';
+import { bondFavors, carryBondOf, inviteFrom, meetSomeone, meetupData, peopleHere, wantsToMeetAt } from './social.js';
+import { DIRECT_SOCIAL_BUTTONS } from '../game-engine/campaign/invitations.js';
 import { canChooseControl, controlOf, CONTROL_LABELS } from './spell-turn.js';
 import { chooseControl, startWaitingFight } from './combat-flow.js';
 import { applySceneEffectsToGame, storyHero, storyNight, storyWorld } from './plot.js';
@@ -1288,8 +1289,9 @@ export function openCompanionCard(memberId) {
                 closeCompanionCard();
                 // J14.3: en un pueblo, pasar tiempo con alguien es quedar: su escena, y la parte
                 // del día. Fuera (en el camino, en una cueva), un rato juntos como siempre.
+                // D-J63: y como al pulsarle en el pueblo, primero te saluda y eliges.
                 if (peopleHere().people.some(p => p.canMeet && p.key === keyOf(member.name))) {
-                    void meetSomeone(String(member.name));
+                    void (DIRECT_SOCIAL_BUTTONS ? meetSomeone(String(member.name)) : inviteFrom(String(member.name)));
                     return;
                 }
                 recordCampaignBondEvent(String(member.id), 'shared_downtime');

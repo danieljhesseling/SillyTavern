@@ -28,7 +28,7 @@ import { readFaceChoice, faceHue } from '../game-engine/campaign/face-choice.js'
 import { relieve } from '../game-engine/rules/needs.js';
 import { readGraves } from '../game-engine/campaign/legacy.js';
 import { SKILLS, rollCheck, DEFAULT_DC } from '../game-engine/rules/checks.js';
-import { buildRecap } from '../game-engine/campaign/guidance.js';
+import { buildRecap, recapSaid } from '../game-engine/campaign/guidance.js';
 import { splitModelNote } from '../game-engine/campaign/model-note.js';
 import { narrate as narrateMoment, rememberUsed, listNames } from '../game-engine/campaign/engine-narrator.js';
 import { countedName, sucesoProse } from '../game-engine/campaign/narration-notes.js';
@@ -86,7 +86,7 @@ import {
 import { getPlot } from './plot.js';
 import { savePartyState, partyPurse, payFromParty } from './roster.js';
 import { hearRumor, raiseFame, rumorsLeftHere } from './town.js';
-import { hearLine, shownText } from '../game-engine/ui/shown-names.js';
+import { hearLine, shownName, shownText } from '../game-engine/ui/shown-names.js';
 
 /**
  * How strictly the engine polices dice the model writes.
@@ -165,8 +165,10 @@ function sayGendered(text) {
  * postForModel instead.
  *
  * @param {string} text
+ * @param {{moment?: string}} [options] `moment`: el momento del narrador que cuenta (`descanso`,
+ *   `semana`, `acto`). J13.9: sin conexión, si no lo dice nadie que esté allí, no sale (`quietMoment`).
  */
-export function postCombatNarration(text) {
+export function postCombatNarration(text, options = {}) {
     if (typeof text !== 'string' || !text.trim()) return;
     text = sayGendered(text);
     pushCombatLogLines(text);
@@ -179,6 +181,13 @@ export function postCombatNarration(text) {
     const voice = narratorMode() === 'motor' ? voiceOf(text.trim(), prose) : null;
     if (voice && voice.mode !== 'notice') {
         postVoiced(text.trim(), prose, voice);
+        petReact(text);
+        return;
+    }
+    // J13.9 (D-J60): el narrador no cuenta el descanso, la semana ni el cierre de un acto sin
+    // conexión. Queda en el registro, pero no sale ni en la caja ni en el aviso de fuera.
+    if (quietMoment(options?.moment)) {
+        postVoiced(text.trim(), prose, { mode: 'quiet', text: '' });
         petReact(text);
         return;
     }
@@ -785,11 +794,13 @@ export function tellBoard(boardName) {
  * the player's next turn, so a finished combat still costs nothing by itself.
  *
  * @param {string} text
- * @param {{show?: string, speaker?: string, mood?: string, quiet?: boolean}} [options] `show`: lo que se ve si
+ * @param {{show?: string, speaker?: string, mood?: string, quiet?: boolean, moment?: string}} [options] `show`: lo que se ve si
  *   cuenta el motor (Z1). `speaker`: quien lo dice, si es alguien del mundo (la novela sale con
  *   su cara y su nombre en la placa, no con la del narrador); `mood`: con qué gesto (`alegre`,
  *   `enfadado`, `triste`), para la cara que toca. `quiet`: lo que ya se ha visto en pantalla (una
  *   escena jugada): queda en el registro y lo lee el modelo, pero no sale otra vez en la caja.
+ *   `moment`: el momento del narrador que cuenta (`viaje`, `fin-combate`); J13.9: sin conexión,
+ *   si no lo dice nadie que esté allí, tampoco sale (`quietMoment`).
  * @returns {Promise<void>}
  */
 export async function postForModel(text, options = {}) {
@@ -846,7 +857,8 @@ export async function postForModel(text, options = {}) {
         hearLine(speaker ? { who: speaker, text: told } : { who: '', text: told, quotes: true });
         const shown = shownText(told, { mask: true });
         if (shown !== message.mes) /** @type {any} */ (message.extra).display_text = shown;
-        if (quiet || voice?.mode === 'quiet') /** @type {any} */ (message.extra).quiet = true;
+        // J13.9: un momento del narrador sin nadie que lo diga, sin conexión, tampoco sale.
+        if (quiet || voice?.mode === 'quiet' || (!speaker && quietMoment(options?.moment))) /** @type {any} */ (message.extra).quiet = true;
     }
 
     chat.push(message);
@@ -1170,9 +1182,36 @@ export function showRecap() {
     });
     if (!recap) return;
     $('.rc-card').remove();
+    // J13.9 (D-J60): sin conexión no lo cuenta un narrador: te lo recuerda uno de los tuyos (o, si
+    // vas solo y estás en el gremio, quien lo lleva), con su cara y su nombre, en una o dos frases.
+    const mate = partyMembers.slice(1).find(m => m && !m.dead && String(m.name || '').trim());
+    const keeper = lastHub ? (lastWorldNpcs ?? []).find((/** @type {any} */ n) => String(n?.service || '') === 'gremio') : null;
+    const speaker = mate ? { name: String(mate.name).trim(), along: true, avatar: String(mate.avatar || '') }
+        : keeper?.name ? { name: String(keeper.name).trim(), along: false, avatar: '' } : null;
+    const said = offlineGame() && speaker ? recapSaid({
+        who: speaker.name,
+        along: speaker.along,
+        focus: focusOf(getPlot(), chat_metadata?.[PLOT_STATE_KEY], campaignDay()),
+        taken: chat_metadata?.[TAKEN_KEY] ?? null,
+        deeds: Array.isArray(chat_metadata?.[DEEDS_KEY]) ? chat_metadata[DEEDS_KEY] : [],
+    }) : null;
     const card = $('<div class="rc-card" role="status"></div>');
-    card.append($('<div class="rc-title"></div>').text(recap.title));
-    for (const line of recap.lines) card.append($('<div class="rc-line"></div>').text(line));
+    if (said) {
+        card.addClass('rc-said');
+        const face = firstArt('portrait', { name: said.who, pack: lastPack }) || (speaker?.avatar ?? '');
+        if (face) card.append($('<img class="rc-face" alt="">').attr('src', face));
+        const body = $('<div class="rc-body"></div>');
+        body.append($('<div class="rc-who"></div>').text(shownName(said.who)));
+        for (const line of said.lines) {
+            const spoken = sayGendered(line);
+            hearLine({ who: said.who, text: spoken });
+            body.append($('<div class="rc-line"></div>').text(shownText(spoken, { mask: true })));
+        }
+        card.append(body);
+    } else {
+        card.append($('<div class="rc-title"></div>').text(recap.title));
+        for (const line of recap.lines) card.append($('<div class="rc-line"></div>').text(line));
+    }
     $('body').append(card);
     setTimeout(() => card.addClass('rc-leaving'), 11000);
     setTimeout(() => card.remove(), 12000);
@@ -1220,6 +1259,26 @@ export function narratorMode() {
  */
 export function offlineGame() {
     return Boolean(lastHub) || Boolean(lastHubHome);
+}
+
+/**
+ * J13.9 (D-J60): los momentos que el narrador del motor ya no cuenta sin conexión. El viaje y
+ * la llegada ya salen en el aviso del viaje y en el mapa, el descanso y la semana en el reloj y
+ * en la vida, el final de una pelea en la pantalla de la victoria, y el cierre de un acto en el
+ * libro de la historia. Lo que dice alguien que está allí (los buenos días del posadero, el
+ * compañero que avisa al llegar) sigue saliendo; lo que es un hecho (el oro, una tirada,
+ * «Objetivos cumplidos») va en su aviso, como siempre.
+ */
+export const QUIET_MOMENTS = Object.freeze(['viaje', 'llegada', 'descanso', 'fin-combate', 'semana', 'acto']);
+
+/**
+ * Si un momento del narrador se calla: sin conexión, los de `QUIET_MOMENTS`.
+ *
+ * @param {any} moment
+ * @returns {boolean}
+ */
+export function quietMoment(moment) {
+    return QUIET_MOMENTS.includes(String(moment ?? '')) && offlineGame();
 }
 
 /**

@@ -190,6 +190,7 @@
   "bestiary": [
     {
       "name": "Strahd von Zarovich",
+      "aspecto": "propio: Hombre que aparenta unos cuarenta, de piel blanca de muerto, con el pelo negro peinado hacia atrás, un mechón en la frente y los ojos rojos. Capa negra de cuello alto forrado de granate y una joya de ámbar en el pecho; sonrisa fría.",
       "hp": 90,
       "armorClass": 16,
       "cr": 6,
@@ -239,6 +240,7 @@
     },
     {
       "name": "Bruja Baroviana",
+      "aspecto": "propio: Mujer flaca de unos sesenta, de piel gris lila, con el pelo gris lacio, ojos rojos y una sonrisa de dientes afilados. Túnica negra con capucha; manos huesudas como garras.",
       "hp": 16,
       "armorClass": 10,
       "cr": 0.5,
@@ -1654,10 +1656,173 @@
       ]
     }
   ],
+  "confidants": [
+    {
+      "name": "Ismark Kolyanovich",
+      "aspecto": "propio: Hombre de unos veinticinco, con el pelo castaño oscuro alborotado y cara seria. Bufanda gruesa verde oscuro, jubón de cuero marrón con hombreras de acero y el puño de una espada a la espalda."
+    },
+    {
+      "name": "Ireena Kolyana",
+      "aspecto": "propio: Mujer de unos veinte, de piel muy pálida, con el pelo castaño rojizo largo y suelto. Vestido granate de cuello alto bajo una capa gris; dos rasguños rojos en la mejilla."
+    },
+    {
+      "name": "Madam Eva",
+      "aspecto": "propio: Anciana de unos ochenta, flaca, con el pelo blanco largo en trenzas bajo un pañuelo morado bordado en oro. Túnica morada, collares y aros de oro; una baraja de cartas en las manos."
+    },
+    {
+      "name": "Rudolph van Richten",
+      "aspecto": "propio: Hombre de unos sesenta y cinco, delgado, con el pelo blanco peinado hacia atrás y barba blanca puntiaguda. Abrigo negro de cuello alto y un colgante de plata; una lanza larga en la mano."
+    },
+    {
+      "name": "Ezmerelda d'Avenir",
+      "aspecto": "propio: Mujer de unos veinticinco, con el pelo negro largo y rizado, una cinta morada en la frente, ojos violeta y aros de oro. Chaqueta granate de cuello alto con correas de cuero cruzadas y un collar de plata."
+    }
+  ],
   "npcs": [
     {
       "id": "izek-strazni",
+      "aspecto": "propio: Hombre de unos treinta y cinco, fornido, con el pelo negro rapado a los lados y barba de varios días. Abrigo largo negro sobre camisa morada; el brazo derecho es rojo, enorme y deforme, y le arde la mano.",
       "trade": "propio: Jefe de la guardia del barón"
+    },
+    {
+      "id": "donavich",
+      "aspecto": "propio: Hombre de unos cincuenta, cansado y ojeroso, con entradas y una barba negra espesa. Sotana negra con capucha y una cruz dorada colgada al pecho."
+    },
+    {
+      "id": "bildrath-cantemir",
+      "aspecto": "propio: Hombre de unos sesenta, calvo, con un bigote gris retorcido, barba gris larga y puntiaguda y el ceño fruncido. Chaleco de cuero marrón con botones dorados sobre camisa clara."
+    },
+    {
+      "id": "parriwimple",
+      "aspecto": "propio: Hombre de unos veinticinco, alto y fuerte, con el pelo rubio revuelto. Camisa beige remangada y mandil marrón oscuro; brazos cruzados y sonrisa tranquila."
+    },
+    {
+      "id": "maria-la-loca",
+      "aspecto": "propio: Mujer de unos cuarenta, con el pelo gris oscuro largo bajo un manto negro con capucha. Los ojos rojos de llorar y lágrimas de sangre por las mejillas; se aprieta el pecho con la mano."
+    },
+    {
+      "id": "arik-lorensk",
+      "aspecto": "propio: Hombre de unos treinta y cinco, delgado, con el pelo negro hasta la barbilla y la cara sin expresión. Camisa negra y mandil gris; un trapo en una mano y una copa de cerveza en la otra."
+    },
+    {
+      "id": "alenka",
+      "aspecto": "propio: Mujer de unos treinta, con el pelo negro largo bajo un pañuelo rojo bordado, grandes aros de oro y una sonrisa con todos los dientes. Corpiño verde oscuro con flores bordadas y un collar de monedas de oro."
+    },
+    {
+      "id": "stanimir",
+      "aspecto": "propio: Hombre de unos setenta, de piel morena, con barba gris larga, bigote retorcido, pañuelo morado en la cabeza y un aro de oro en la oreja. Chaqueta verde con botones rojos sobre camisa amarilla; levanta una copa de vino tinto."
+    },
+    {
+      "id": "luvash",
+      "aspecto": "propio: Hombre de unos cincuenta, corpulento, con el pelo negro en coleta, barba negra larga y los ojos rojos de llorar. Chaleco granate bordado en oro sobre camisa beige y cadenas de oro al cuello; una botella de vino en la mano."
+    },
+    {
+      "id": "baron-vargas-vallakovich",
+      "aspecto": "propio: Hombre de unos cincuenta, con el pelo negro engominado, un bigote negro enorme y rizado y una sonrisa forzada. Casaca azul marino de cuello alto con botones dorados, chaleco rojo y chorrera blanca."
+    },
+    {
+      "id": "fiona-wachter",
+      "aspecto": "propio: Mujer de unos cincuenta y cinco, delgada y pálida, con el pelo gris recogido hacia atrás y la mirada fría. Vestido negro de cuello alto y rígido y un colgante rojo de tres puntas."
+    },
+    {
+      "id": "urwin-martikov",
+      "aspecto": "propio: Hombre de unos cuarenta y cinco, con el pelo negro largo y ondulado, barba negra espesa y cara cansada y amable. Camisa blanca, chaleco azul oscuro de punto y una correa de cuero cruzada."
+    },
+    {
+      "id": "lucian-petrovich",
+      "aspecto": "propio: Hombre de unos treinta, delgado, con el pelo castaño revuelto y cara de preocupación. Túnica blanca con estola dorada y un sol pintado en el pecho; una hogaza de pan en la mano."
+    },
+    {
+      "id": "milivoj",
+      "aspecto": "propio: Chico de unos veinte, flaco, con el pelo negro despeinado y tierra en la cara. Camisa gris remangada con tirantes; una pala al hombro."
+    },
+    {
+      "id": "henrik-van-der-voort",
+      "aspecto": "propio: Hombre de unos sesenta y cinco, calvo con pelo blanco a los lados, gafas y cara de susto. Camisa clara y mandil de cuero oscuro; un mazo de madera en la mano."
+    },
+    {
+      "id": "gadof-blinsky",
+      "aspecto": "propio: Hombre de unos cincuenta, gordo y risueño, con nariz roja de payaso y un bigote negro enorme. Sombrero granate de ala ancha con cinta amarilla y chaleco a rayas rojas y naranjas; un muñeco de madera en la mano."
+    },
+    {
+      "id": "victor-vallakovich",
+      "aspecto": "propio: Chico de unos dieciséis, flaco y pálido, con el pelo negro revuelto y la mirada hacia otro lado. Bata morada con capucha sobre ropa negra; un muñeco de trapo en la mano."
+    },
+    {
+      "id": "szoldar-szoldarovich",
+      "aspecto": "propio: Hombre de unos cuarenta y cinco, curtido y con barba negra. Capucha negra con orejas de lobo, pieles grises en los hombros y una correa de cuero cruzada con hebilla redonda; flechas a la espalda."
+    },
+    {
+      "id": "gunther-arasek",
+      "aspecto": "propio: Hombre de unos treinta, con el pelo naranja de punta y una sonrisa nerviosa. Camisa gris remangada, chaleco de cuero marrón con llaves colgadas y cinturón de hebilla grande; las manos en la cintura."
+    },
+    {
+      "id": "bogdan-rusu",
+      "aspecto": "propio: Hombre de unos cuarenta y cinco, corpulento, con el pelo negro peinado hacia atrás, barba negra con canas y el ceño fruncido. Camisa negra remangada y mandil de cuero marrón."
+    },
+    {
+      "id": "morgantha",
+      "aspecto": "propio: Anciana de unos setenta, regordeta, con el pelo blanco en un moño alto, mejillas sonrosadas y ojos amarillos. Capa marrón con capucha; una cesta de pasteles dorados en los brazos."
+    },
+    {
+      "id": "vladimir-horngaard",
+      "aspecto": "propio: Hombre sin edad, de piel gris verdosa de muerto, con el pelo blanco largo y liso y los ojos azules brillantes. Armadura gris de cuello alto y capa de pieles negras."
+    },
+    {
+      "id": "godfrey-gwilym",
+      "aspecto": "propio: Caballero muerto, de piel gris plateada, calvo, con la cara hundida y los ojos pálidos. Armadura de placas plateada con sobreveste azul y un dragón dorado bordado; un yelmo bajo el brazo."
+    },
+    {
+      "id": "davian-martikov",
+      "aspecto": "propio: Hombre de unos setenta, calvo, con barba y bigote blancos largos y las cejas fruncidas. Camisa mostaza y mandil verde oscuro; un racimo de uvas moradas en la mano."
+    },
+    {
+      "id": "dmitri-krezkov",
+      "aspecto": "propio: Hombre de unos cincuenta, con el pelo negro corto, barba negra larga y lacia y cara seria. Ropa granate oscura con cuello ancho de piel negra; brazos cruzados."
+    },
+    {
+      "id": "el-abad",
+      "aspecto": "propio: Hombre que parece joven y es muy hermoso, con el pelo largo color cobre y los ojos dorados. Túnica negra de cuello alto sobre camisa blanca y un emblema de oro con un sol en el pecho."
+    },
+    {
+      "id": "clovin-belview",
+      "aspecto": "propio: Hombrecillo deforme de piel grisácea, nariz roja, orejas puntiagudas y dientes torcidos, con una segunda cabeza pequeña que le asoma junto al hombro. Camisa marrón oscura con botones."
+    },
+    {
+      "id": "zuleika-toranescu",
+      "aspecto": "propio: Mujer de unos treinta, con el pelo negro largo y salvaje, orejas de lobo, ojos amarillos y colmillos. Capa de piel gris sobre los hombros y corpiño marrón."
+    },
+    {
+      "id": "muriel-vinshaw",
+      "aspecto": "propio: Mujer de unos veinticinco, pálida, con el pelo negro largo bajo una capucha negra. Manto negro; pide silencio con un dedo en los labios y lleva un farol en la mano."
+    },
+    {
+      "id": "lazlo-ulrich",
+      "aspecto": "propio: Fantasma de un hombre enorme y calvo, de piel verde pálida, con una barba verde larga y los ojos blancos. Abrigo oscuro con una cadena gruesa cruzada al pecho."
+    },
+    {
+      "id": "rahadin",
+      "aspecto": "propio: Elfo de piel gris violácea, con el pelo negro largo, orejas puntiagudas y ojos rojos. Traje morado oscuro de cuello alto con ribetes dorados; el puño de una espada asoma tras el hombro."
+    },
+    {
+      "id": "cyrus-belview",
+      "aspecto": "propio: Hombre de unos cincuenta, flaco y encorvado, con el pelo negro engominado, orejas puntiagudas, una sonrisa enorme de dientes torcidos y un ojo verde de cristal. Chaqueta negra y una llave grande de hierro colgada al cuello."
+    },
+    {
+      "id": "nikolai-barquero",
+      "aspecto": "propio: Hombre de unos cuarenta y cinco, con una barba negra espesa y cejas pobladas. Gorra de visera parda y abrigo de lona marrón con cuello claro; un remo al hombro."
+    },
+    {
+      "id": "gavril-druida",
+      "aspecto": "propio: Chico de unos veinte, delgado, con el pelo castaño revuelto, ojeras y cara asustada. Capucha verde oliva y un collar de cuentas de piedra gris."
+    },
+    {
+      "id": "ermitano-cascada",
+      "aspecto": "propio: Anciano de unos ochenta, con el pelo y la barba blancos, largos y alborotados. Túnica azul con capucha y faja marrón con una piedra azul; un bastón de madera torcido."
+    },
+    {
+      "id": "dragomir-nido",
+      "aspecto": "propio: Hombre de unos sesenta, con el pelo gris corto y barba gris corta. Capa negra larga y ropa oscura; un cuervo negro posado en el hombro."
     }
   ],
   "sucesos": [

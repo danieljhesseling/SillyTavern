@@ -13,7 +13,8 @@
  *   un paquete no traen Fuerza ni Destreza, así que +0) y el daño de su desafío (la tabla de
  *   `getEnemyDamageFormula`). Un jefe contesta una vez por ronda (idea 24): pega dos veces.
  * - **El grupo** es el de siempre en D&D: guerrero, clérigo, pícaro y mago, con la vida de su
- *   dado de golpe, su modificador (+3, y +1 a nivel 4 y a nivel 8) y, cada cuatro niveles, un
+ *   dado de golpe, su modificador (+3, y +1 a nivel 4 y a nivel 8), su competencia al atacar
+ *   (+2, y +1 cada cuatro niveles, como en `rules/attack-bonus.js`) y, cada cuatro niveles, un
  *   punto de puntería y de CA, que es lo que dan las mejoras de subir (`level-perks.js`). El
  *   clérigo cura con sus espacios y el mago gasta los suyos en lo que da a varios.
  * - **Sin mapa**: no hay casillas, ni cobertura, ni flanqueo, ni puertas; solo que la primera
@@ -27,6 +28,7 @@
  */
 
 import { createSeededRandom, rollWith } from './seeded-random.js';
+import { proficiencyBonus } from '../rules/checks.js';
 
 /** Cuántas peleas se juegan por tablero. Con 200, el porcentaje baila menos de un 5 %. */
 export const SIM_RUNS = 200;
@@ -93,6 +95,8 @@ export function simParty(level, size = SIM_PARTY_SIZE) {
     const L = Math.max(1, Math.min(20, Math.floor(Number(level) || 1)));
     const mod = 3 + (L >= 4 ? 1 : 0) + (L >= 8 ? 1 : 0);
     const perk = Math.floor((L - 1) / 4);
+    // Al atacar, la característica y la competencia (`rules/attack-bonus.js`); al daño, solo la característica.
+    const prof = proficiencyBonus(L);
     // Con su dado de golpe: el primer nivel entero y luego la media, más la Constitución.
     const hp = (/** @type {number} */ die, /** @type {number} */ con) => die + con + (L - 1) * (die / 2 + 1 + con);
     // Las cargas de conjuro del grimorio (`CIRCLE_CHARGES` y `CIRCLE_LEVEL`): tres del 1.er
@@ -106,10 +110,10 @@ export function simParty(level, size = SIM_PARTY_SIZE) {
     const heals = [...(L >= 5 ? ['2d8+3'] : []), ...(L >= 3 ? ['2d4+2', '2d4+2'] : []), '1d8+3', '1d8+3', '1d8+3'];
     /** @type {SimFighter[]} */
     const roster = [
-        { name: 'Guerrero', role: 'guerrero', maxHp: hp(10, 2), hp: 0, ac: 16 + perk, attack: mod + perk, damage: '1d8', damageBonus: mod, attacks: 1, initiative: 1, reach: 5 },
-        { name: 'Clériga', role: 'clerigo', maxHp: hp(8, 2), hp: 0, ac: 16 + perk, attack: mod - 1 + perk, damage: '1d6', damageBonus: mod - 1, attacks: 1, initiative: 0, reach: 5, heals },
-        { name: 'Pícara', role: 'picaro', maxHp: hp(8, 1), hp: 0, ac: 14 + perk, attack: mod + perk, damage: '1d6', damageBonus: mod, attacks: 1, initiative: mod, reach: 80 },
-        { name: 'Mago', role: 'mago', maxHp: hp(6, 1), hp: 0, ac: 12 + perk, attack: mod + perk, damage: L >= 5 ? '2d10' : '1d10', damageBonus: 0, attacks: 1, initiative: 2, reach: 120, blasts },
+        { name: 'Guerrero', role: 'guerrero', maxHp: hp(10, 2), hp: 0, ac: 16 + perk, attack: mod + prof + perk, damage: '1d8', damageBonus: mod, attacks: 1, initiative: 1, reach: 5 },
+        { name: 'Clériga', role: 'clerigo', maxHp: hp(8, 2), hp: 0, ac: 16 + perk, attack: mod - 1 + prof + perk, damage: '1d6', damageBonus: mod - 1, attacks: 1, initiative: 0, reach: 5, heals },
+        { name: 'Pícara', role: 'picaro', maxHp: hp(8, 1), hp: 0, ac: 14 + perk, attack: mod + prof + perk, damage: '1d6', damageBonus: mod, attacks: 1, initiative: mod, reach: 80 },
+        { name: 'Mago', role: 'mago', maxHp: hp(6, 1), hp: 0, ac: 12 + perk, attack: mod + prof + perk, damage: L >= 5 ? '2d10' : '1d10', damageBonus: 0, attacks: 1, initiative: 2, reach: 120, blasts },
     ];
     /** @type {SimFighter[]} */
     const out = [];
@@ -187,7 +191,7 @@ export function simEnemies(placements, bestiary, abilities = []) {
 }
 
 /**
- * Un golpe: el d20 contra la CA (un 20 siempre entra, y dobla los dados).
+ * Un golpe: el d20 contra la CA (un 20 siempre entra, y dobla los dados; un 1 siempre falla).
  *
  * @param {SimFighter} by
  * @param {SimFighter} at
@@ -196,7 +200,7 @@ export function simEnemies(placements, bestiary, abilities = []) {
  */
 function strike(by, at, random) {
     const natural = Math.floor(random() * 20) + 1;
-    if (natural !== 20 && natural + by.attack < at.ac) return 0;
+    if (natural === 1 || (natural !== 20 && natural + by.attack < at.ac)) return 0;
     const dice = rollWith(by.damage, random).total + (natural === 20 ? rollWith(by.damage, random).total : 0);
     return Math.max(1, dice + by.damageBonus);
 }

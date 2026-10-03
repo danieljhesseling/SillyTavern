@@ -264,3 +264,51 @@ export function buildRecap({ day, place, focus = null, deeds = [], memory = '', 
     if (lines.length === 0) return null;
     return { title: `Anteriormente… (día ${Math.max(1, Math.floor(Number(day) || 1))}${place ? `, en ${text(place)}` : ''})`, lines };
 }
+
+/**
+ * Lo que se cuenta en «vosotros» («Huisteis del peaje.»), dicho por alguien que estaba («Huimos
+ * del peaje.»): el pasado en «-steis» pasa a «-mos», y «os» y «vuestro» a «nos» y «nuestro».
+ *
+ * @param {string} said
+ * @returns {string}
+ */
+export function saidByUs(said) {
+    return text(said)
+        .replace(/(\p{L}+)steis\b/gu, '$1mos')
+        .replace(/(^|[^\p{L}])([Oo])s(?=[^\p{L}]|$)/gu, (_, before, o) => `${before}${o === 'O' ? 'N' : 'n'}os`)
+        .replace(/(^|[^\p{L}])([Vv])uestr([oa]s?)(?=[^\p{L}]|$)/gu, (_, before, v, end) => `${before}${v === 'V' ? 'N' : 'n'}uestr${end}`);
+}
+
+/**
+ * J13.9 (D-J60): «Anteriormente…» dicho por alguien, no por un narrador. Uno de los tuyos te
+ * recuerda en una o dos frases qué teníais entre manos y lo último que pasó; si vas solo y estás
+ * en el gremio, quien lo lleva. Quien venía contigo habla en «nosotros» (lo vivió); quien se
+ * quedó, en «vosotros».
+ *
+ * @param {Object} input
+ * @param {string} input.who Quien lo dice.
+ * @param {boolean} [input.along] Si iba contigo.
+ * @param {{title: string, hint: string}|null} [input.focus]
+ * @param {any} [input.taken]
+ * @param {Array<{day: number, text: string}>} [input.deeds]
+ * @returns {{who: string, lines: string[]}|null} Null sin nadie que lo diga o sin nada que decir.
+ */
+export function recapSaid({ who, along = true, focus = null, taken = null, deeds = [] }) {
+    const name = text(who);
+    if (!name) return null;
+    /** @type {string[]} */
+    const lines = [];
+    if (text(focus?.title)) {
+        // De la pista, la primera frase: lo que toca, no cómo se juega («En el tablero, pulsa…»).
+        const hint = text(focus?.hint).match(/^.+?[.!?](?=\s|$)/u)?.[0] ?? text(focus?.hint);
+        lines.push(`${along ? 'Íbamos' : 'Ibais'} con lo de «${text(focus?.title)}».${hint ? ` ${hint}` : ''}`);
+    } else if (text(taken?.title)) {
+        lines.push(`${along ? 'Tenemos' : 'Tenéis'} el encargo «${text(taken.title)}»${text(taken.locationName) ? `, en ${text(taken.locationName)}` : ''}.`);
+    }
+    const last = (Array.isArray(deeds) ? deeds : []).filter(d => text(d?.text)).slice(-1)[0];
+    if (last) {
+        const deed = text(last.text);
+        lines.push(`¿Te acuerdas? ${along ? saidByUs(deed) : deed}`);
+    }
+    return lines.length > 0 ? { who: name, lines } : null;
+}

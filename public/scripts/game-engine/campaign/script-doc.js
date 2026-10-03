@@ -638,8 +638,10 @@ function walkRomanceScene(w, scene, { id, path, doc, who }) {
     w.line({ id: `${id}/titulo`, value: scene.title, src: at([...path, 'title'], doc), label: 'Título', kind: 'pantalla' });
     talkBeats(w, scene.beats, { id, path: [...path, 'beats'], doc, who });
     listOf(scene.lines).forEach((said, k) => w.line({ id: `${id}/frase${k + 1}`, value: said, src: at([...path, 'lines', k], doc), label: w.speaker(who) }));
-    for (const [key, said] of [['home', 'Si volvéis al gremio'], ['away', 'Si os quedáis'], ['hall', 'En el Salón de la fama']]) {
-        w.line({ id: `${id}/${key}`, value: scene[key], src: at([...path, key], doc), label: NARRATOR, pre: said });
+    // J13.9: el epílogo no lo dice nadie en la caja: se lee escrito, en «Qué fue de cada uno» al
+    // acabar la campaña y en la placa del Salón de la fama (como los epílogos de los finales).
+    for (const [key, said, label] of [['home', 'Si volvéis al gremio', 'Qué fue de'], ['away', 'Si os quedáis', 'Qué fue de'], ['hall', '', 'En el Salón de la fama']]) {
+        w.line({ id: `${id}/${key}`, value: scene[key], src: at([...path, key], doc), label, pre: said, kind: 'pantalla' });
     }
 }
 
@@ -1120,7 +1122,12 @@ function walkCompanions(w, pack, compendio, campaign, charlasPlaced) {
                 const sid = `${kid}/vinculo${text(scene.rank) || k + 1}`;
                 w.plain('nota', `Vínculo ${text(scene.rank)}`);
                 w.line({ id: `${sid}/titulo`, value: scene.title, src: at([...base, 'scenes', k, 'title']), label: 'Título', kind: 'pantalla' });
-                w.line({ id: sid, value: scene.scene, src: at([...base, 'scenes', k, 'scene']), label: NARRATOR });
+                // J13.9: con su conversación escrita (aquí, en `beats`, o como quedada en quedadas.json),
+                // la escena en prosa es solo su resumen: sin conexión se juega la conversación, y la
+                // prosa no la lee nadie. Sin conversación, sí la cuenta el narrador.
+                const talked = listOf(scene.beats).length > 0 || rowsOf('quedadas')
+                    .some(row => text(row?.kind) === 'escena' && mine(row, name) && Number(row?.rank) === Number(scene.rank));
+                w.line({ id: sid, value: scene.scene, src: at([...base, 'scenes', k, 'scene']), ...(talked ? { label: 'Resumen', kind: 'pantalla' } : { label: NARRATOR }) });
                 talkBeats(w, scene.beats, { id: sid, path: [...base, 'scenes', k, 'beats'], doc: 'pack', who: name });
             });
             if (isObject(conf.romance)) {

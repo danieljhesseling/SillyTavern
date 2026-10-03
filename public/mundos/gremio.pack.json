@@ -100,6 +100,7 @@
     {
       "id": "brunilda",
       "name": "Brunilda",
+      "aspecto": "Mujer de unos cuarenta, delgada y de hombros firmes, con el pelo gris en una trenza larga sobre el hombro. Túnica verde oliva con esclavina de cuero marrón, un broche de ámbar en el pecho y los brazos siempre cruzados.",
       "trade": "Maestra del gremio",
       "where": "Puerto Alba",
       "wants": "Que las compañías que salen de su casa vuelvan vivas.",
@@ -111,6 +112,7 @@
     {
       "id": "tomas",
       "name": "Tomás",
+      "aspecto": "Hombre de unos cincuenta, grueso y de cara colorada, con barba castaña y un bigote de puntas retorcidas hacia arriba. Camisa blanca remangada, chaleco marrón y mandil blanco; una jarra de cerveza en una mano y un trapo en la otra.",
       "trade": "Posadero",
       "where": "Puerto Alba",
       "wants": "Que le paguen las camas.",
@@ -122,6 +124,7 @@
     {
       "id": "marisa",
       "name": "Marisa",
+      "aspecto": "Mujer de unos treinta, morena, con el pelo rizado en trenzas bajo un pañuelo rojo y unos aros de oro grandes. Camisa verde remangada sobre blusa blanca, un collar de cuentas y los brazos cruzados.",
       "trade": "Tendera del mercado",
       "where": "Puerto Alba",
       "wants": "Vender la cuerda y las antorchas antes de que les coja la humedad del puerto.",
@@ -133,6 +136,7 @@
     {
       "id": "ramiro",
       "name": "Ramiro",
+      "aspecto": "Hombre de unos cuarenta y cinco, ancho y de brazos enormes, con el pelo negro peinado hacia atrás y una barba negra espesa. Camisa verde de manga corta y mandil de cuero con tirantes; siempre de brazos cruzados.",
       "trade": "Herrero",
       "where": "Puerto Alba",
       "wants": "Que le traigan las espadas melladas antes de que se partan, no después.",
@@ -144,6 +148,7 @@
     {
       "id": "elvira",
       "name": "Madre Elvira",
+      "aspecto": "Mujer de unos treinta y cinco, delgada, con el pelo negro largo y suelto bajo una capucha gris claro. Túnica blanca y un colgante redondo de oro al cuello; sonrisa tranquila.",
       "trade": "Sacerdotisa de la capilla",
       "where": "Puerto Alba",
       "wants": "Que nadie salga del puerto con una herida sin curar.",
@@ -157,6 +162,7 @@
   "bestiary": [
     {
       "name": "Ratero del muelle",
+      "aspecto": "Chaval de unos dieciséis, flaco, con el pelo negro despeinado bajo una gorra gris de visera. Chaqueta verde azulada y pañuelo morado al cuello; enseña los dientes y empuña un cuchillo de pescador.",
       "hp": 5,
       "armorClass": 11,
       "cr": 0.125,

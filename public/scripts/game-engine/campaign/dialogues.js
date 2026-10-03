@@ -51,7 +51,7 @@ import { followUpLine, hashOf } from './human-lines.js';
 export const MOODS = ['neutral', 'alegre', 'enfadado', 'triste'];
 
 /** Lo que puede hacer una opción, con la clave con que se escribe. */
-export const EFFECT_KINDS = ['attitude', 'clue', 'rumor', 'milestone', 'give', 'take', 'bond', 'gold', 'time', 'end'];
+export const EFFECT_KINDS = ['attitude', 'clue', 'rumor', 'milestone', 'give', 'take', 'bond', 'gold', 'time', 'end', 'board', 'go'];
 
 /** Las condiciones que se entienden, con la clave con que se escriben. */
 export const CONDITION_KEYS = ['attitude', 'milestone', 'item', 'gold', 'species', 'class', 'background', 'gender', 'said', 'chose'];
@@ -92,6 +92,8 @@ export const DC_LIMITS = { min: 5, max: 30 };
  * @property {string} [text] `clue`.
  * @property {string} [id] `rumor` y `milestone`.
  * @property {string} [item] `give` y `take`.
+ * @property {string} [board] D-J62: `board`, el tablero al que se va al acabar la charla («Bajo a la bodega»).
+ * @property {string} [place] D-J62: `go`, el sitio al que se viaja al acabar la charla.
  * @property {any} [raw] `unknown`: lo que venía.
  */
 
@@ -262,6 +264,9 @@ function readEffect(raw) {
     if ('give' in raw) return { kind: 'give', item: text(raw.give) };
     if ('take' in raw) return { kind: 'take', item: text(raw.take) };
     if ('time' in raw) return { kind: 'time' };
+    // D-J62, el modo guiado: a un tablero se entra (y adonde se viaja) por una opción de la charla.
+    if ('board' in raw) return { kind: 'board', board: text(raw.board) };
+    if ('go' in raw) return { kind: 'go', place: text(raw.go) };
     if ('end' in raw) return raw.end === false ? { kind: 'unknown', raw } : { kind: 'end' };
     return { kind: 'unknown', raw };
 }
@@ -1228,6 +1233,13 @@ export function checkDialogues(raw, { people = [], milestones = null, rumors = [
                 case 'give':
                 case 'take':
                     checkItem(effect.item ?? '', where);
+                    break;
+                // D-J62: el tablero o el sitio, por su nombre.
+                case 'board':
+                    if (!effect.board) errors.push({ path: where, message: '`board` necesita el nombre del tablero al que se va.' });
+                    break;
+                case 'go':
+                    if (!effect.place) errors.push({ path: where, message: '`go` necesita el nombre del sitio al que se viaja.' });
                     break;
                 default:
                     break;

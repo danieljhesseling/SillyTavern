@@ -19,10 +19,19 @@
  *
  * Lo que dibuja sale de la foto del turno (`party/combat-bar.js`); aquí no se decide nada del
  * juego.
+ *
+ * J12.18 (Daniel, 2026-10-02): elegir un ataque o un conjuro que pide a quién («Hacha») abre los
+ * objetivos **debajo de su tarjeta, en el mismo menú**: con su cara, su vida en una barra, los pies,
+ * lo que tienes de acertar (o la CD) y, apagados, los que no alcanzas con el porqué. Pulsar uno es
+ * hacerlo, lo mismo que pulsar su ficha. Al pasar el ratón (o con el teclado) por una tarjeta o un
+ * objetivo, en el tablero se encienden en rojo los que se llevarían el golpe y en azul los tuyos que
+ * se llevarían la ayuda (`aim-glow.js`). Con el dedo, el primer toque en un objetivo lo enciende y
+ * el segundo lo hace.
  */
 
-import { focusList } from '../keyboard-nav.js';
-import { pickable } from './action-menus.js';
+import { focusList, focusOn, keyboardInUse } from '../keyboard-nav.js';
+import { pickable, unfolds } from './action-menus.js';
+import { clearAim, showAim } from './aim-glow.js';
 
 /**
  * @typedef {import('./action-menus.js').BarView} BarView
@@ -53,7 +62,14 @@ const memory = {
     slots: /** @type {Record<string, number>} */ ({}),
     /** De quién era el turno al abrirlo: si cambia, el menú se cierra. */
     turn: '',
+    /** J12.18: la tarjeta con sus objetivos abiertos debajo (su `key`), o vacío. */
+    unfold: '',
+    /** J12.18: con el dedo, el objetivo tocado una vez (encendido; otro toque lo hace), o vacío. */
+    armed: '',
 };
+
+/** Cómo se pulsó lo último del menú: con el dedo, el primer toque en un objetivo solo lo enciende. */
+let lastPointer = '';
 
 /** @typedef {(id: string, filter?: string, slots?: Record<string, number>) => MenuView|null} MenuMaker */
 
@@ -104,6 +120,9 @@ export function closeActionMenu() {
     if (!memory.open) return;
     memory.open = '';
     memory.steps = [];
+    memory.unfold = '';
+    memory.armed = '';
+    clearAim();
     current.footer?.querySelector('.gs-grimoire')?.remove();
     current.footer?.querySelectorAll('.gs-btn.active-menu').forEach(b => b.classList.remove('active-menu'));
     current.footer?.querySelectorAll('.gs-btn[aria-expanded]').forEach(b => b.setAttribute('aria-expanded', 'false'));
@@ -130,6 +149,79 @@ function currentList(menu) {
         empty = next.empty ?? 'No hay a quién.';
     }
     return { title, items: sections.flatMap(s => s.items), empty, sections };
+}
+
+/**
+ * J12.18: lo que se ve de una lista, en orden: cada tarjeta y, si tiene sus objetivos abiertos,
+ * ellos detrás (para las teclas 1 a 9 y sus números).
+ *
+ * @param {MenuItem[]} items
+ * @returns {MenuItem[]}
+ */
+function visibleItems(items) {
+    return (items || []).flatMap(item => (item.key === memory.unfold && unfolds(item) && item.enabled ? [item, ...(item.next?.items ?? [])] : [item]));
+}
+
+/**
+ * J12.18: lo que vuelve a encenderse al salir de una opción: el objetivo tocado una vez con el
+ * dedo, si lo hay; si no, nada.
+ */
+function restoreAim() {
+    if (!memory.armed || !current.view || !memory.open) {
+        clearAim();
+        return;
+    }
+    const menu = current.view.menu(memory.open, memory.filter, memory.slots);
+    const list = menu ? currentList(menu) : null;
+    const armed = list ? visibleItems(list.items).find(i => i.key === memory.armed) : null;
+    if (armed?.aim) showAim(armed.aim);
+    else clearAim();
+}
+
+/**
+ * J12.18: al pasar por una opción (con el ratón, o con el teclado), su gente se enciende en el
+ * tablero; al salir, se apaga.
+ *
+ * @param {HTMLElement} node
+ * @param {MenuItem} item
+ */
+function aimOnHover(node, item) {
+    if (!item.aim) return;
+    const aim = item.aim;
+    node.addEventListener('pointerenter', (event) => {
+        if (event.pointerType !== 'touch') showAim(aim);
+    });
+    node.addEventListener('pointerleave', (event) => {
+        if (event.pointerType !== 'touch') restoreAim();
+    });
+    node.addEventListener('focus', () => {
+        if (keyboardInUse()) showAim(aim);
+    });
+    node.addEventListener('blur', () => {
+        if (keyboardInUse()) restoreAim();
+    });
+}
+
+/**
+ * La vida de un objetivo, en una barra pequeña con sus números.
+ *
+ * @param {{hp: number, max: number}} meter
+ * @returns {HTMLElement}
+ */
+function hpMeter(meter) {
+    const pct = Math.max(0, Math.min(100, (meter.hp / Math.max(1, meter.max)) * 100));
+    const box = el('span', `gs-card-hp${pct <= 50 ? ' gs-card-hp-low' : ''}`);
+    box.setAttribute('role', 'meter');
+    box.setAttribute('aria-label', 'Vida');
+    box.setAttribute('aria-valuemin', '0');
+    box.setAttribute('aria-valuemax', String(meter.max));
+    box.setAttribute('aria-valuenow', String(meter.hp));
+    const bar = el('span', 'gs-card-hp-bar');
+    const fill = el('span', 'gs-card-hp-fill');
+    fill.style.width = `${pct}%`;
+    bar.appendChild(fill);
+    box.append(bar, el('span', 'gs-card-hp-text', `${meter.hp}/${meter.max}`));
+    return box;
 }
 
 /**
@@ -190,14 +282,34 @@ function card(item, number) {
     name.appendChild(el('span', 'gs-card-name-text', item.name));
     for (const tag of item.tags ?? []) name.appendChild(el('span', tag.kind === 'mastery' ? 'gs-tag-mastery' : tag.kind === 'dc' ? 'gs-tag-dc' : 'gs-tag-plain', tag.text));
     body.appendChild(name);
+    // J12.18: un objetivo, con su vida en una barra.
+    if (item.meter) body.appendChild(hpMeter(item.meter));
     if (item.desc) body.appendChild(el('span', 'gs-card-desc', item.desc));
+    // J12.18: un área apuntada a él: a quién más pilla.
+    if (item.caught) body.appendChild(el('span', 'gs-card-caught', item.caught));
     // Lo que impide usarla, escrito: con el dedo no hay ratón que pase por encima (J20.2).
     if (!item.enabled && item.reason) body.appendChild(el('span', 'gs-card-why', item.reason));
+    // J12.18: con el dedo, tocado una vez: encendido en el tablero; otro toque lo hace.
+    if (item.kind === 'target' && memory.armed === item.key && item.enabled) {
+        node.classList.add('gs-card-armed');
+        body.appendChild(el('span', 'gs-card-confirm', 'Toca otra vez para hacerlo'));
+    }
     node.appendChild(body);
 
     const right = badges(item.badges ?? [], 'gs-card-badges');
     if (right) node.appendChild(right);
-    if (item.next && item.enabled) node.appendChild(icon('fa-chevron-right gs-card-more'));
+    if (item.next && item.enabled) {
+        // J12.18: la que abre sus objetivos debajo lleva la flecha hacia abajo (o arriba, abierta).
+        if (unfolds(item)) {
+            const open = memory.unfold === item.key;
+            node.appendChild(icon(`${open ? 'fa-chevron-up' : 'fa-chevron-down'} gs-card-more`));
+            node.setAttribute('aria-expanded', String(open));
+            node.classList.toggle('gs-card-open', open);
+        } else {
+            node.appendChild(icon('fa-chevron-right gs-card-more'));
+        }
+    }
+    aimOnHover(node, item);
     return node;
 }
 
@@ -239,13 +351,33 @@ function levelRow(levels) {
  * @param {MenuItem} item
  */
 function activate(item) {
+    const touch = lastPointer === 'touch';
+    lastPointer = '';
     if (!item.enabled || item.kind === 'weapon') return;
+    // J12.18: la lista de a quién se abre debajo de la tarjeta, en el mismo menú (otra vez, se
+    // cierra); con el teclado, el foco va al primero que se puede elegir.
+    if (item.next && unfolds(item)) {
+        memory.unfold = memory.unfold === item.key ? '' : item.key;
+        memory.armed = '';
+        const first = memory.unfold ? (item.next?.items ?? []).find(i => i.enabled) : null;
+        paintMenu(first ? first.key : item.key);
+        return;
+    }
     if (item.next) {
         memory.steps = [...memory.steps, item.key];
+        memory.unfold = '';
+        memory.armed = '';
         paintMenu();
         return;
     }
     if (!item.pick) return;
+    // J12.18: con el dedo, el primer toque en un objetivo lo enciende en el tablero (y dice «Toca
+    // otra vez»); el segundo lo hace.
+    if (touch && item.kind === 'target' && memory.armed !== item.key) {
+        memory.armed = item.key;
+        paintMenu(item.key);
+        return;
+    }
     const pick = item.pick;
     const handlers = current.handlers;
     closeActionMenu();
@@ -254,8 +386,33 @@ function activate(item) {
     if (after && after.keepOpen) {
         memory.open = after.keepOpen;
         memory.steps = [];
+        memory.unfold = '';
+        memory.armed = '';
         paintMenu();
     }
+}
+
+/**
+ * J12.18: los objetivos de una tarjeta, debajo de ella (abiertos), con lo que se dice si no hay
+ * ninguno.
+ *
+ * @param {MenuItem} item
+ * @param {MenuItem[]} order Lo que se puede pulsar, en orden (para sus números).
+ * @returns {HTMLElement}
+ */
+function unfoldedTargets(item, order) {
+    const box = el('div', 'gs-card-unfold');
+    box.setAttribute('role', 'group');
+    box.setAttribute('aria-label', item.next?.title ?? item.name);
+    const list = item.next?.items ?? [];
+    for (const target of list) {
+        const index = order.indexOf(target);
+        const node = card(target, index >= 0 && index < 9 ? index + 1 : 0);
+        node.addEventListener('click', () => activate(target));
+        box.appendChild(node);
+    }
+    if (list.length === 0) box.appendChild(el('div', 'gs-grimoire-empty', item.next?.empty ?? 'No hay nadie a su alcance.'));
+    return box;
 }
 
 /**
@@ -271,8 +428,12 @@ function roomAbove(bar) {
     return Math.max(140, Math.min(440, Math.floor(top - head - 14)));
 }
 
-/** Dibujar (o redibujar) el menú abierto, con el paso en que esté. */
-function paintMenu() {
+/**
+ * Dibujar (o redibujar) el menú abierto, con el paso en que esté.
+ *
+ * @param {string} [focusKey] J12.18: la opción que se queda con el foco (la que se acaba de abrir).
+ */
+function paintMenu(focusKey = '') {
     const footer = current.footer;
     const view = current.view;
     footer?.querySelector('.gs-grimoire')?.remove();
@@ -293,8 +454,12 @@ function paintMenu() {
     box.dataset.menu = menu.id;
     box.setAttribute('role', 'menu');
     box.setAttribute('aria-label', list.title);
-    // Pulsar dentro no es pulsar el mapa.
-    box.addEventListener('pointerdown', event => event.stopPropagation());
+    // Pulsar dentro no es pulsar el mapa. J12.18: y se apunta si fue con el dedo.
+    box.addEventListener('pointerdown', (event) => {
+        event.stopPropagation();
+        lastPointer = event.pointerType || '';
+    });
+    box.addEventListener('keydown', () => { lastPointer = ''; });
 
     const head = el('div', 'gs-grimoire-head');
     if (memory.steps.length > 0) {
@@ -304,6 +469,8 @@ function paintMenu() {
         back.title = 'Volver (Esc)';
         back.addEventListener('click', () => {
             memory.steps = memory.steps.slice(0, -1);
+            memory.unfold = '';
+            memory.armed = '';
             paintMenu();
         });
         head.appendChild(back);
@@ -360,6 +527,8 @@ function paintMenu() {
             tab.setAttribute('aria-selected', String(filter.active));
             tab.addEventListener('click', () => {
                 memory.filter = filter.id;
+                memory.unfold = '';
+                memory.armed = '';
                 paintMenu();
             });
             tabs.appendChild(tab);
@@ -368,7 +537,11 @@ function paintMenu() {
     }
 
     const body = el('div', 'gs-grimoire-body');
-    const order = pickable(list.items);
+    // J12.18: si la tarjeta abierta ya no está (o se ha apagado), se cierra.
+    const unfolded = list.items.find(i => i.key === memory.unfold && i.enabled && unfolds(i));
+    if (!unfolded) memory.unfold = '';
+    const order = pickable(visibleItems(list.items));
+    if (memory.armed && !order.some(i => i.key === memory.armed)) memory.armed = '';
     let shown = 0;
     for (const section of list.sections) {
         if (section.items.length === 0) continue;
@@ -379,6 +552,7 @@ function paintMenu() {
             if (item.kind !== 'weapon') node.addEventListener('click', () => activate(item));
             body.appendChild(node);
             if (item.levels) body.appendChild(levelRow(item.levels));
+            if (item === unfolded) body.appendChild(unfoldedTargets(item, order));
             shown++;
         }
     }
@@ -393,8 +567,16 @@ function paintMenu() {
         b.classList.toggle('active-menu', on);
         b.setAttribute('aria-expanded', String(on));
     });
+    // J12.18: lo tocado una vez con el dedo sigue encendido en el tablero; lo demás, apagado (con
+    // el teclado, se enciende lo que coge el foco, aquí debajo).
+    restoreAim();
     // J15.5: el foco, a la primera que se puede pulsar; al cerrarlo, vuelve al botón.
     focusList(box);
+    // J12.18: o a la que se acaba de abrir (o al primero de sus objetivos).
+    if (focusKey) {
+        const again = /** @type {HTMLElement|null} */ (box.querySelector(`[data-pick="${CSS.escape(focusKey)}"]`));
+        if (again) focusOn(again);
+    }
 }
 
 /**
@@ -409,6 +591,8 @@ export function toggleActionMenu(id) {
     }
     memory.open = id;
     memory.steps = [];
+    memory.unfold = '';
+    memory.armed = '';
     paintMenu();
 }
 
@@ -425,8 +609,10 @@ function pressNumber(n) {
     if (memory.open) {
         const menu = view.menu(memory.open, memory.filter, memory.slots);
         const list = menu ? currentList(menu) : null;
-        const item = list ? pickable(list.items)[n - 1] : null;
+        // J12.18: con los objetivos de una tarjeta abiertos debajo, también ellos llevan número.
+        const item = list ? pickable(visibleItems(list.items))[n - 1] : null;
         if (!item) return true;
+        lastPointer = '';
         activate(item);
         return true;
     }
@@ -450,17 +636,29 @@ function listen() {
         if (tag === 'input' || tag === 'textarea' || target?.isContentEditable) return;
         if (document.querySelector('dialog[open], .tc-overlay, .wm-dice-overlay.active, .gs-keys') || document.body.classList.contains('game-shell-paused')) return;
         if (event.ctrlKey || event.metaKey || event.altKey) return;
+        // J12.18: Esc con los objetivos de una tarjeta abiertos: se cierran, y el foco vuelve a ella.
+        if ((event.key === 'Escape' || event.key === 'Backspace') && memory.open && memory.unfold) {
+            event.preventDefault();
+            event.stopPropagation();
+            const key = memory.unfold;
+            memory.unfold = '';
+            memory.armed = '';
+            paintMenu(key);
+            return;
+        }
         // Esc dentro de un paso: un paso atrás. En lo alto del menú lo cierra el teclado del juego.
         if (event.key === 'Escape' && memory.open && memory.steps.length > 0) {
             event.preventDefault();
             event.stopPropagation();
             memory.steps = memory.steps.slice(0, -1);
+            memory.armed = '';
             paintMenu();
             return;
         }
         if (event.key === 'Backspace' && memory.open && memory.steps.length > 0) {
             event.preventDefault();
             memory.steps = memory.steps.slice(0, -1);
+            memory.armed = '';
             paintMenu();
             return;
         }
@@ -515,10 +713,15 @@ export function renderCombatActionBar(footer, view, handlers) {
         memory.slots = {};
         memory.open = '';
         memory.steps = [];
+        memory.unfold = '';
+        memory.armed = '';
+        clearAim();
     }
     if (!bar.isPlayerTurn) {
         memory.open = '';
         memory.steps = [];
+        memory.unfold = '';
+        memory.armed = '';
     }
 
     footer.textContent = '';
@@ -617,6 +820,9 @@ export function releaseCombatActionBar(footer) {
     if (current.footer === footer) {
         memory.open = '';
         memory.steps = [];
+        memory.unfold = '';
+        memory.armed = '';
+        clearAim();
         current.footer = null;
         current.view = null;
         current.handlers = null;
@@ -625,5 +831,5 @@ export function releaseCombatActionBar(footer) {
 
 /** Para las pruebas: el estado del menú. */
 export function actionMenuState() {
-    return { open: memory.open, steps: [...memory.steps], filter: memory.filter, slots: { ...memory.slots } };
+    return { open: memory.open, steps: [...memory.steps], filter: memory.filter, slots: { ...memory.slots }, unfold: memory.unfold, armed: memory.armed };
 }

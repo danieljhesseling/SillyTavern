@@ -473,6 +473,8 @@ export function chooseInScene(scene, index, optionId, { hero = null, world = {},
  * @property {string[]} clues Lo que se apunta en el Diario.
  * @property {Array<{id: string, text: string, by: string}>} heard Los rumores que se acaban de oír.
  * @property {string[]} notes Cómo decirlo en la ventana.
+ * @property {Array<{kind: 'board'|'go', name: string}>} moves D-J62: el tablero al que se va o el sitio
+ *   al que se viaja al acabar la charla («Bajo a la bodega»). Lo hace quien llama, con la ventana cerrada.
  */
 
 /**
@@ -497,7 +499,7 @@ export function applySceneEffects(effects, game = {}) {
     let items = listOf(game.items);
     const rumors = readRumors(game.rumors);
     /** @type {Omit<SceneApplied, 'attitudes'|'rumorsHeard'|'rumorsHeardOn'|'gold'|'goldChange'|'items'>} */
-    const out = { give: [], take: [], bonds: [], time: 0, milestones: [], reveal: [], clues: [], heard: [], notes: [] };
+    const out = { give: [], take: [], bonds: [], time: 0, milestones: [], reveal: [], clues: [], heard: [], notes: [], moves: /** @type {Array<{kind: 'board'|'go', name: string}>} */ ([]) };
     const note = (/** @type {string} */ said) => {
         if (text(said)) out.notes.push(text(said));
     };
@@ -580,6 +582,13 @@ export function applySceneEffects(effects, game = {}) {
                 out.time += 1;
                 note(describeDialogueEffect({ kind: 'time' }));
                 break;
+            // D-J62: ir a un tablero o a un sitio, al acabar; el último que se pide manda.
+            case 'board':
+            case 'go': {
+                const name = text(effect.kind === 'board' ? effect?.board : effect?.place);
+                if (name) out.moves = [...out.moves.filter(m => m.kind !== effect.kind), { kind: /** @type {'board'|'go'} */ (effect.kind), name }];
+                break;
+            }
             default:
                 break;
         }

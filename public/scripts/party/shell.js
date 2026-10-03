@@ -73,7 +73,7 @@ import {
     judgeCurrentScenario, resolveAllyTurnAction, retreatFromCombat,
     afterFightNow, followAfterFight,
 } from './combat-flow.js';
-import { fightStarting, noticeBoardFight } from './fight-entry.js';
+import { fightStarting, fightWaitingHere, noticeBoardFight } from './fight-entry.js';
 import {
     confirmEndTurn, endPlayerCombatTurn, handlePlayerCombatAttack, hideCheck, performManeuver, throwItem,
     throwScenery,
@@ -116,7 +116,7 @@ import {
     exportCampaignPack, openHallOfFame, checkCurrentWorld, openCompendiumLibrary, openRules,
 } from './menus.js';
 import { lastMeter } from './events.js';
-import { chatWith, dayStripNow, meetSomeone, peopleChips, townNow } from './social.js';
+import { chatWith, dayStripNow, inviteFrom, meetSomeone, peopleChips, townNow } from './social.js';
 import { withPastimes } from './pastimes.js';
 import { hallShown } from './romance.js';
 import { canParleyNow, openParleyChoice } from './avoid.js';
@@ -207,6 +207,8 @@ function buildShellSituation() {
         chatId: String(getCurrentChatId() ?? ''),
         // D-J45: recién ganada una pelea en un tablero, a dónde sigue «Continuar».
         afterFight: offlineGame() ? afterFightNow() : null,
+        // Directo a la decisión (2026-10-03): una pelea que empieza sola va antes que la novela vacía.
+        fightWaiting: offlineGame() && fightWaitingHere(),
     };
 }
 
@@ -489,10 +491,12 @@ export function runShellChip(chip) {
     }
     // J14 y J15.4: quedar y charlar con tu gente, sin pasar por la orden escrita. El nombre
     // entero va en su orden («/quedar Gerd el Mellado»); sin nombre, se elige con quién.
-    const social = /^(quedar|charlar|charla-sola)(:|$)/.exec(chip.id);
+    // D-J63: pulsar a alguien de tu gente en el pueblo (`persona:`) abre su invitación.
+    const social = /^(quedar|charlar|charla-sola|persona)(:|$)/.exec(chip.id);
     if (social) {
-        const name = String(chip.command ?? '').replace(/^\/(quedar|charlar)\s*/i, '').trim();
-        if (social[1] === 'quedar') void meetSomeone(name);
+        const name = String(chip.command ?? '').replace(/^\/(quedar|charlar|invitacion)\s*/i, '').trim();
+        if (social[1] === 'persona') void inviteFrom(name);
+        else if (social[1] === 'quedar') void meetSomeone(name);
         else if (name) void chatWith(name);
         return;
     }

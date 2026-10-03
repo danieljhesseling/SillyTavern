@@ -2,7 +2,7 @@ import { describe, test, expect } from '@jest/globals';
 import {
     SCENE, SWITCHABLE_SCENES, SCENE_INFO,
     chooseScene, isSceneAvailable, sceneForShortcut, describeScene, sceneTransition,
-    detectSceneEvent, directScene, continueScene,
+    detectSceneEvent, directScene, continueScene, fightComesFirst,
 } from '../public/scripts/game-engine/ui/shell/scene-director.js';
 
 /** A campaign open, standing in a location, no fight. */
@@ -318,5 +318,56 @@ describe('offline: scenes change by actions', () => {
         expect(continueScene({ ...won, afterFight: { kind: 'board', title: '' } })).toBe(SCENE.COMBAT);
         // Nada ganado: lo de siempre.
         expect(continueScene({ ...won, afterFight: null })).toBe(SCENE.COMBAT);
+    });
+});
+
+describe('directo a la decisión (Daniel, 2026-10-03): la novela vacía no va delante de una pelea que empieza sola', () => {
+    const town = { hasChat: true, offline: true, chatId: 'gremio', locationName: 'Puerto Alba', townPlaces: 5, story: '3:Llegáis' };
+    const pier = { ...town, boardName: 'El muelle de Puerto Alba' };
+    const waiting = { ...pier, fightWaiting: true };
+
+    test('acabada la charla, con nada nuevo que leer: el tablero, donde sale la decisión, y no la novela con «Continuar»', () => {
+        expect(fightComesFirst(waiting)).toBe(true);
+        // La novela era lo de delante (se abrió la partida en ella): pasa al tablero, y se queda.
+        const now = directScene(pier, waiting, SCENE.DIALOGUE);
+        expect(now.scene).toBe(SCENE.COMBAT);
+        expect(now.override).toBe(SCENE.COMBAT);
+        expect(directScene(waiting, waiting, now.override).scene).toBe(SCENE.COMBAT);
+    });
+
+    test('abrir la partida (del gremio a una campaña) con la pelea esperando: el tablero', () => {
+        const strahd = { ...waiting, chatId: 'strahd', locationName: 'Aldea de Barovia', boardName: 'Taberna' };
+        const opened = directScene(town, strahd, SCENE.EXPLORATION);
+        expect(opened.event).toBe('game_opened');
+        expect(opened.scene).toBe(SCENE.COMBAT);
+    });
+
+    test('lo que se acaba de contar se lee antes: la novela, con «Continuar» al tablero', () => {
+        // Con las ventanas de historia apagadas, la escena se cuenta en la novela.
+        const told = directScene(waiting, { ...waiting, story: '4:La barca del correo' }, SCENE.COMBAT);
+        expect(told.event).toBe('story_told');
+        expect(told.scene).toBe(SCENE.DIALOGUE);
+        // Y mientras no se haya leído, la novela se queda.
+        expect(directScene(waiting, { ...waiting, novelNews: true }, SCENE.DIALOGUE).scene).toBe(SCENE.DIALOGUE);
+        expect(continueScene({ ...waiting, novelNews: true })).toBe(SCENE.COMBAT);
+    });
+
+    test('el final de una pelea se lee (tras huir, la pelea ya se abrió: no espera otra vez)', () => {
+        const fled = directScene({ ...pier, combatActive: true }, pier, SCENE.COMBAT);
+        expect(fled.event).toBe('combat_ended');
+        expect(fled.scene).toBe(SCENE.DIALOGUE);
+        expect(directScene(pier, pier, SCENE.DIALOGUE).scene).toBe(SCENE.DIALOGUE);
+    });
+
+    test('un tablero sin pelea que espere, con conexión o con la pelea en marcha: lo de siempre', () => {
+        expect(fightComesFirst(pier)).toBe(false);
+        expect(directScene(pier, pier, SCENE.DIALOGUE).scene).toBe(SCENE.DIALOGUE);
+        expect(fightComesFirst({ ...waiting, offline: false })).toBe(false);
+        expect(fightComesFirst({ ...waiting, combatActive: true })).toBe(false);
+        expect(fightComesFirst({ ...waiting, boardName: '' })).toBe(false);
+        expect(fightComesFirst({ ...waiting, hasChat: false })).toBe(false);
+        expect(fightComesFirst(null)).toBe(false);
+        // Elegir otra escena a mano sigue valiendo (el mapa, si se puede).
+        expect(directScene(waiting, { ...waiting, hasWorldMap: true }, SCENE.EXPLORATION).scene).toBe(SCENE.EXPLORATION);
     });
 });

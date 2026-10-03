@@ -88,7 +88,7 @@ export const DEFAULT_DC = 12;
  * @param {string} className
  * @returns {string} La clave de la clase, o vacío.
  */
-function classKey(className) {
+export function classKey(className) {
     const name = String(className ?? '').trim().toLowerCase();
     for (const [key, names] of Object.entries(CLASS_NAMES)) {
         if (names.some(n => name === n || name.startsWith(`${n} `))) return key;

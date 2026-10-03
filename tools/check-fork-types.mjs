@@ -84,6 +84,7 @@ const FORK_FILES = [
     'public/scripts/game-engine/rules/injuries.js',
     'public/scripts/game-engine/rules/remedies.js',
     'public/scripts/game-engine/rules/checks.js',
+    'public/scripts/game-engine/rules/attack-bonus.js',
     'public/scripts/game-engine/campaign/patronage.js',
     'public/scripts/game-engine/campaign/world-memory.js',
     'public/scripts/game-engine/campaign/plot.js',
@@ -112,6 +113,7 @@ const FORK_FILES = [
     // J5.9: el taller de campañas (el conversor de guiones en el motor, la simulación rápida y la ventana).
     'public/scripts/game-engine/campaign/guion-pack.js',
     'public/scripts/game-engine/campaign/guion-workshop.js',
+    'public/scripts/game-engine/campaign/guion-round.js',
     'public/scripts/game-engine/combat/quick-sim.js',
     'public/scripts/game-engine/ui/campaign-workshop.js',
     'public/scripts/game-engine/ui/shell/notices.js',
@@ -270,6 +272,9 @@ const FORK_FILES = [
     // Tanda 17: que el combate se sienta: la secuencia de cada golpe y el d20 que rueda.
     'public/scripts/game-engine/ui/combat-vtt/fx.js',
     'public/scripts/game-engine/ui/combat-vtt/dice.js',
+    // J12.18 y J12.19: quién se lleva el golpe (rojo y azul) y cómo se ve el golpe.
+    'public/scripts/game-engine/ui/combat-vtt/aim-glow.js',
+    'public/scripts/game-engine/ui/combat-vtt/impact.js',
     // J12.7: las peleas de taberna y los duelos, sin muertes, y su cartel.
     'public/scripts/game-engine/combat/brawl.js',
     'public/scripts/game-engine/campaign/tavern-brawl.js',
@@ -400,6 +405,8 @@ const FORK_FILES = [
     'public/scripts/game-engine/ui/shown-names.js',
     // J14.10: el romance, opcional (las reglas y la opción).
     'public/scripts/game-engine/campaign/romance.js',
+    // D-J63: pulsar a alguien es su invitación (el saludo, la pista, quedar o no).
+    'public/scripts/game-engine/campaign/invitations.js',
     // Los Gems al día: los romances y las misiones de cada campaña, y cómo se escribe hoy.
     'public/scripts/game-engine/campaign/companion-stories.js',
     'public/scripts/game-engine/campaign/gem-guide.js',

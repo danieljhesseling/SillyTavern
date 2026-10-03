@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import {
     AVOID_KINDS, mindOf, leaderOf, foesLine, defaultDc, defaultPrice, readAvoid, defaultAvoid, avoidFor,
     avoidChips, resolveAvoid, describeExitEffect, checkAvoid, readExitEffect, rollFormula, kindOf, fightsWithoutWay,
-    avoidIntro, exitPlan,
+    avoidIntro, avoidNotices, exitPlan,
 } from '../public/scripts/game-engine/combat/avoid-fight.js';
 import {
     PARLEY_WAYS, readParley, moraleOf, bribePrice, parleyChips, resolveParley, checkParley, wayOf, standingFoes,
@@ -398,6 +398,14 @@ describe('lo que hace el juego con cada salida', () => {
         expect(avoidIntro(wolves)).toBe('Os han olido: Lobo famélico ×2, Lobo alfa.');
         expect(avoidIntro(dead)).toBe('Algo se mueve delante: Zombi de Strahd ×2.');
         expect(avoidIntro([])).toBe('');
+    });
+
+    test('el aviso de encima de la elección: uno como mucho (2026-10-03), quién espera', () => {
+        expect(avoidNotices([{ name: 'Ratero del muelle', cr: 0.125 }], { auto: true })).toEqual(['El ratero del muelle os cierra el paso.']);
+        expect(avoidNotices(guards, { auto: true })).toEqual(['Alguacil Torres y dos más os cierran el paso.']);
+        // «Se puede pelear, o buscar otra salida» ya lo dicen las opciones: solo sin saber quién espera.
+        expect(avoidNotices([], { auto: true })).toEqual(['Os han visto. Se puede pelear, o buscar otra salida.']);
+        expect(avoidNotices([])).toEqual(['Se puede pelear, o buscar otra salida.']);
     });
 
     test('antes de pelear: pasar, salir o pelear (y quién empieza)', () => {

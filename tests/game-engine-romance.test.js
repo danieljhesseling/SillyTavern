@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-    ROMANCE_RANK, DATES, SIGNAL_REST, HEART, heroIdentity, readRomanceCard, readRomanceCards, romanceCardOf, allowsHero,
+    ROMANCE_RANK, DATES, SIGNAL_REST, HEART, TURNING_WARNING, heroIdentity, readRomanceCard, readRomanceCards, romanceCardOf, allowsHero,
     readRomanceRows, hasWrittenRomance, canRomance, createRomanceState, readRomanceState, romanceOf, stageOf, isCouple, couplesOf,
     mergeRomance, romanceScene, romanceChoice, advanceRomance, romanceLabel, romanceWants, coupleNote, withCoupleNote,
     coupleEpilogue, coupleHallEntry,
@@ -26,9 +26,9 @@ const bruno = { name: 'Bruno', gender: 'Hombre' };
 /** Una frase dicha entre comillas dentro de otra (D-J54: eso es narrar). El nombre de una barca, «Gaviota», no lo es. */
 const QUOTED_SPEECH = /«[^»]*[.,!?…]»/;
 
-/** Jugar una escena eligiendo, en cada paso, la respuesta con corazón (o la primera). */
+/** Jugar una escena eligiendo, en cada paso, la respuesta romántica (con corazón en las citas; D-J63: sin él en el punto de inflexión), o la primera. */
 const playHeart = (/** @type {any} */ scene) => scene.beats.map((/** @type {any} */ beat, /** @type {number} */ i) => {
-    const heart = beat.replies.findIndex((/** @type {any} */ r) => r.text.startsWith(HEART));
+    const heart = beat.replies.findIndex((/** @type {any} */ r) => r.text.startsWith(HEART) || r.romance === 'avanza');
     return { beat: i, reply: heart >= 0 ? heart : 0 };
 });
 /** Lo mismo, sin la del corazón nunca. */
@@ -141,16 +141,20 @@ describe('J14.10: los dos romances escritos', () => {
 describe('J14.10: la señal, las citas y la noche', () => {
     const base = { data, card: nella, name: 'Nella Tresflechas', hero: tessa, rank: ROMANCE_RANK, slot: 'afternoon' };
 
-    test('la señal: a partir del vínculo 4, en un rato, con la respuesta del corazón', () => {
+    test('D-J63: el punto de inflexión es el rango 9, en un rato, sin corazones y con su aviso', () => {
+        expect(ROMANCE_RANK).toBe(9);
         expect(romanceScene({ ...base, state: null, rank: ROMANCE_RANK - 1 })).toBeNull();
         expect(romanceScene({ ...base, state: null, free: false })).toBeNull();
         const signal = /** @type {any} */ (romanceScene({ ...base, state: null }));
         expect(signal.stage).toBe('senal');
         expect(signal.allowed).toBe(true);
         expect(signal.scene.title).toBe('La última flecha');
-        const hearts = signal.scene.beats.flatMap((/** @type {any} */ b) => b.replies).filter((/** @type {any} */ r) => r.text.startsWith(HEART));
-        expect(hearts).toHaveLength(1);
-        expect(hearts[0].romance).toBe('avanza');
+        const replies = signal.scene.beats.flatMap((/** @type {any} */ b) => b.replies);
+        expect(replies.filter((/** @type {any} */ r) => r.text.startsWith(HEART))).toHaveLength(0);
+        expect(replies.filter((/** @type {any} */ r) => r.romance === 'avanza')).toHaveLength(1);
+        // El aviso, en el paso donde se decide (y solo ahí).
+        expect(signal.scene.beats.map((/** @type {any} */ b) => b.warn ?? '')).toEqual(['', TURNING_WARNING]);
+        expect(TURNING_WARNING).toBe('Deberías elegir tus palabras con cuidado…');
     });
 
     test('apagado en las opciones, nada: ni la señal, ni las citas, ni «quiere quedar contigo»', () => {
@@ -164,8 +168,8 @@ describe('J14.10: la señal, las citas y la noche', () => {
     test('quien no lo permite contesta lo suyo, con cariño, y no vuelve a salir', () => {
         const signal = /** @type {any} */ (romanceScene({ ...base, card: gerd, name: 'Gerd el Mellado', state: null }));
         expect(signal.allowed).toBe(false);
-        const heart = signal.scene.beats.flatMap((/** @type {any} */ b) => b.replies).find((/** @type {any} */ r) => r.text.startsWith(HEART));
-        expect(heart.then).toBe(gerd.no);
+        const intimate = signal.scene.beats.flatMap((/** @type {any} */ b) => b.replies).find((/** @type {any} */ r) => r.romance === 'avanza');
+        expect(intimate.then).toBe(gerd.no);
         const after = advanceRomance(null, { name: 'Gerd el Mellado', stage: 'senal', choice: 'avanza', allowed: false });
         expect(romanceOf(after.state, 'Gerd el Mellado')?.status).toBe('no');
         expect(after.news[0]).toMatch(/no, con cariño/);
@@ -199,8 +203,10 @@ describe('J14.10: la señal, las citas y la noche', () => {
         expect(romanceOf(yes.state, 'Nella Tresflechas')?.status).toBe('citas');
     });
 
-    test('«como amigos» lo cierra para siempre', () => {
-        const state = advanceRomance(null, { name: 'Osric Mediapaga', stage: 'senal', choice: 'amigos' }).state;
+    test('«como amigos» lo cierra para siempre: la ruta de amigos inseparables (D-J63)', () => {
+        const after = advanceRomance(null, { name: 'Osric Mediapaga', stage: 'senal', choice: 'amigos' });
+        expect(after.news[0]).toMatch(/inseparables/);
+        const state = after.state;
         expect(stageOf(romanceOf(state, 'Osric Mediapaga'), 99)).toBe('cerrado');
         expect(romanceScene({ ...base, card: osric, name: 'Osric Mediapaga', state })).toBeNull();
         expect(romanceLabel(romanceOf(state, 'Osric Mediapaga'))).toBe('');

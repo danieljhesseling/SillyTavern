@@ -6,8 +6,8 @@
  * cubierto es una decision, no una corazonada. Y saber a quien va a pegar el jefe es lo
  * que da sentido a esquivar, ayudar o empujar: se reacciona a algo que se ve.
  *
- * Puro: calcula con las mismas reglas que la tirada de verdad (un 20 siempre acierta, y
- * no hay pifia automatica con el 1, igual que en `handlePlayerCombatAttack`).
+ * Puro: calcula con las mismas reglas que la tirada de verdad (un 20 siempre acierta y un
+ * 1 siempre falla, igual que en `strikeEnemy` de `party/player-actions.js`).
  */
 
 /**
@@ -20,7 +20,8 @@
  */
 export function hitChance(attackMod, armorClass, mode = 'normal') {
     let hits = 0;
-    for (let natural = 1; natural <= 20; natural++) {
+    // Un 20 siempre acierta y un 1 siempre falla, saque lo que saque con lo que suma.
+    for (let natural = 2; natural <= 20; natural++) {
         if (natural === 20 || natural + Number(attackMod || 0) >= Number(armorClass || 10)) hits++;
     }
     const once = hits / 20;

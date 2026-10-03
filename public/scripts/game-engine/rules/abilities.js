@@ -349,7 +349,8 @@ export function planAbilityUse({
         const total = (Number(attack.total) || 0) + attackModifier;
         attackTotal = total;
         crit = attack.natural === 20;
-        hit = crit || total >= targetAc;
+        // Un 1 en el dado siempre falla, como en el golpe con arma (y en lo que se pronostica).
+        hit = crit || (Number(attack.natural ?? attack.total) !== 1 && total >= targetAc);
         lines.push(`🎲 Ataque: d20(${attack.total}) ${attackModifier >= 0 ? '+' : ''}${attackModifier} = ${total} vs CA ${targetAc}`);
         if (!hit) {
             lines.push('❌ Falla.');

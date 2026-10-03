@@ -3185,3 +3185,498 @@ body.game-colorblind .vtt-board .wm-token-enemy img.wm-token-avatar {
 }
 
 /* ============================ fin de 6. LA SECUENCIA DEL COMBATE ============================ */
+
+/* ================================================================================
+   7. LOS OBJETIVOS EN EL MENÚ Y LOS GOLPES QUE SE NOTAN (J12.18 y J12.19)
+   - `action-bar.js`: los objetivos de una tarjeta, debajo de ella (`.gs-card-unfold`), con su vida
+     en una barra (`.gs-card-hp`), lo que pilla un área (`.gs-card-caught`) y, con el dedo, el
+     primer toque que lo enciende (`.gs-card-armed`, «Toca otra vez para hacerlo»).
+   - `aim-glow.js`: en el tablero, en rojo quien se lleva el golpe (`.gs-aim-harm`) y en azul los
+     tuyos que se llevan la ayuda (`.gs-aim-help`), en su ficha y en su fila de la iniciativa; las
+     casillas de un área (`.gs-aim-layer`).
+   - `fx.js` e `impact.js`: el golpe según lo que lo hace (`.vfx-impact-*`), el número grande,
+     «¡Crítico!» en oro, «¡Falla!», la cura en verde y quien cae (`.wm-token-down`, que pone también
+     el tablero al dibujarse, con su marca: `.wm-token-down-mark`).
+   ================================================================================ */
+
+/* ---- El menú: los objetivos debajo de su tarjeta ---- */
+.gs-grimoire button.gs-card.gs-card-open {
+    border-color: rgba(226, 194, 122, 0.55);
+    background: rgba(226, 194, 122, 0.08);
+}
+
+.gs-grimoire .gs-card-unfold {
+    display: flex;
+    flex-shrink: 0;
+    flex-direction: column;
+    gap: 2px;
+    margin: -2px 0 4px 18px;
+    padding-left: 8px;
+    border-left: 2px solid rgba(226, 194, 122, 0.35);
+}
+
+.gs-grimoire .gs-card-unfold .gs-grimoire-empty {
+    padding: 6px 4px;
+}
+
+/* Lo que tienes de acertar: la cifra que más se mira. */
+.gs-grimoire .gs-badge-chance {
+    border-color: rgba(226, 194, 122, 0.55);
+    color: #ffe3a0;
+    font-weight: 700;
+}
+
+.gs-grimoire .gs-card-hp {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 2px 0 1px;
+}
+
+.gs-grimoire .gs-card-hp-bar {
+    position: relative;
+    flex: 0 1 90px;
+    min-width: 48px;
+    height: 5px;
+    overflow: hidden;
+    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.12);
+}
+
+.gs-grimoire .gs-card-hp-fill {
+    position: absolute;
+    inset: 0 auto 0 0;
+    border-radius: 3px;
+    background: #4ade80;
+}
+
+.gs-grimoire .gs-card-hp-low .gs-card-hp-fill {
+    background: #f59e0b;
+}
+
+.gs-grimoire .gs-card-hp-text {
+    color: #cfc8bb;
+    font-size: 0.68rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.gs-grimoire .gs-card-caught {
+    display: block;
+    margin-top: 2px;
+    color: #f5b7b1;
+    font-size: 0.72rem;
+}
+
+/* Con el dedo: tocado una vez, encendido; otro toque lo hace. */
+.gs-grimoire button.gs-card.gs-card-armed {
+    border-color: #ffd36a;
+    background: rgba(255, 211, 106, 0.12);
+    box-shadow: 0 0 0 1px rgba(255, 211, 106, 0.6), 0 0 14px rgba(255, 190, 70, 0.35);
+}
+
+.gs-grimoire .gs-card-confirm {
+    display: block;
+    margin-top: 2px;
+    color: #ffd36a;
+    font-size: 0.74rem;
+    font-weight: 700;
+}
+
+/* ---- El tablero: rojo a quien le cae, azul a quien le ayuda ---- */
+.wm-token.gs-aim-harm,
+.wm-token.gs-aim-help {
+    z-index: 22;
+}
+
+.wm-token.gs-aim-harm .wm-token-avatar,
+.wm-token.gs-aim-harm .wm-token-unknown {
+    box-shadow: 0 0 0 3px #ff4d3d, 0 0 18px 6px rgba(255, 60, 40, 0.75);
+    animation: gs-aim-pulse-harm 1.1s ease-in-out infinite;
+}
+
+.wm-token.gs-aim-help .wm-token-avatar,
+.wm-token.gs-aim-help .wm-token-unknown {
+    box-shadow: 0 0 0 3px #4da3ff, 0 0 18px 6px rgba(70, 150, 255, 0.75);
+    animation: gs-aim-pulse-help 1.1s ease-in-out infinite;
+}
+
+@keyframes gs-aim-pulse-harm {
+    50% { box-shadow: 0 0 0 3px #ff7a6b, 0 0 26px 10px rgba(255, 60, 40, 0.55); }
+}
+
+@keyframes gs-aim-pulse-help {
+    50% { box-shadow: 0 0 0 3px #86c2ff, 0 0 26px 10px rgba(70, 150, 255, 0.55); }
+}
+
+.wm-init-row.gs-aim-harm {
+    outline: 2px solid #ff4d3d;
+    outline-offset: -2px;
+    background: rgba(255, 60, 40, 0.2);
+}
+
+.wm-init-row.gs-aim-help {
+    outline: 2px solid #4da3ff;
+    outline-offset: -2px;
+    background: rgba(70, 150, 255, 0.2);
+}
+
+/* Las casillas de un área: la zona entera, con el borde por fuera. */
+/* Debajo de las fichas (8) y encima de las casillas encendidas del tablero (7, va detrás). */
+.gs-aim-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 7;
+    pointer-events: none;
+    --gs-aim-edge: #ff6a5a;
+}
+
+.gs-aim-layer:not(.on) {
+    display: none;
+}
+
+.gs-aim-layer[data-tone="help"] {
+    --gs-aim-edge: #6cb4ff;
+}
+
+.gs-aim-cell {
+    position: absolute;
+    box-sizing: border-box;
+    background: rgba(255, 60, 40, 0.24);
+}
+
+.gs-aim-layer[data-tone="help"] .gs-aim-cell {
+    background: rgba(70, 150, 255, 0.24);
+}
+
+.gs-aim-cell[data-edge*="n"] { border-top: 2px solid var(--gs-aim-edge); }
+.gs-aim-cell[data-edge*="e"] { border-right: 2px solid var(--gs-aim-edge); }
+.gs-aim-cell[data-edge*="s"] { border-bottom: 2px solid var(--gs-aim-edge); }
+.gs-aim-cell[data-edge*="w"] { border-left: 2px solid var(--gs-aim-edge); }
+
+/* ---- El golpe, según lo que lo hace ---- */
+.vfx-impact {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    z-index: 30;
+    width: 56px;
+    height: 56px;
+    pointer-events: none;
+    transform: translate(-50%, -50%) rotate(var(--vfx-angle, 0rad));
+}
+
+.vfx-impact-crit {
+    width: 80px;
+    height: 80px;
+}
+
+.vfx-impact-bit {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    opacity: 0;
+    animation: vfx-bit var(--vfx-ms, 600ms) ease-out forwards;
+}
+
+.vfx-impact-bit-2 { animation-delay: calc(var(--vfx-ms, 600ms) * 0.08); }
+.vfx-impact-bit-3 { animation-delay: calc(var(--vfx-ms, 600ms) * 0.16); }
+
+@keyframes vfx-bit {
+    0% { opacity: 0; scale: 0.4; }
+    20% { opacity: 1; scale: 1.1; }
+    70% { opacity: 1; scale: 1; }
+    100% { opacity: 0; scale: 1; }
+}
+
+/* Un tajo: tres cortes en diagonal. */
+.vfx-impact-cut .vfx-impact-bit {
+    width: 72%;
+    height: 3px;
+    margin: -1.5px 0 0 -36%;
+    border-radius: 2px;
+    background: linear-gradient(90deg, rgba(255, 255, 255, 0), #fff 45%, #ffd6cf 100%);
+    box-shadow: 0 0 6px rgba(255, 120, 100, 0.9);
+    rotate: -40deg;
+}
+
+.vfx-impact-cut .vfx-impact-bit-1 { translate: -6px -8px; }
+.vfx-impact-cut .vfx-impact-bit-3 { translate: 6px 8px; }
+
+/* Una punzada: una línea que entra y un destello en la punta. */
+.vfx-impact-pierce .vfx-impact-bit {
+    width: 62%;
+    height: 2px;
+    margin: -1px 0 0 -31%;
+    background: linear-gradient(90deg, rgba(255, 255, 255, 0), #fffbe8);
+    box-shadow: 0 0 5px rgba(255, 240, 200, 0.9);
+}
+
+.vfx-impact-pierce .vfx-impact-bit-2 {
+    width: 16px;
+    height: 16px;
+    margin: -8px 0 0 -8px;
+    border-radius: 50%;
+    background: radial-gradient(circle, #fff 0%, rgba(255, 230, 180, 0) 70%);
+    box-shadow: none;
+}
+
+.vfx-impact-pierce .vfx-impact-bit-3 { display: none; }
+
+/* Un porrazo, un trueno, la fuerza, lo psíquico: ondas que se abren. */
+.vfx-impact-blunt .vfx-impact-bit,
+.vfx-impact-thunder .vfx-impact-bit,
+.vfx-impact-force .vfx-impact-bit,
+.vfx-impact-psychic .vfx-impact-bit {
+    width: 100%;
+    height: 100%;
+    margin: -50% 0 0 -50%;
+    box-sizing: border-box;
+    border: 3px solid #f5e6c8;
+    border-radius: 50%;
+    animation-name: vfx-ring;
+}
+
+.vfx-impact-thunder .vfx-impact-bit { border-color: #c7d2fe; }
+.vfx-impact-force .vfx-impact-bit { border-color: #c4b5fd; box-shadow: 0 0 10px rgba(160, 120, 255, 0.7); }
+.vfx-impact-psychic .vfx-impact-bit { border-color: #f0abfc; border-style: dashed; }
+
+@keyframes vfx-ring {
+    0% { opacity: 0.95; scale: 0.2; }
+    100% { opacity: 0; scale: 1.25; }
+}
+
+/* Fuego, frío, rayo, ácido, veneno, necrótico, radiante: un estallido de su color. */
+.vfx-impact-fire .vfx-impact-bit,
+.vfx-impact-cold .vfx-impact-bit,
+.vfx-impact-lightning .vfx-impact-bit,
+.vfx-impact-acid .vfx-impact-bit,
+.vfx-impact-poison .vfx-impact-bit,
+.vfx-impact-necrotic .vfx-impact-bit,
+.vfx-impact-radiant .vfx-impact-bit {
+    width: 72%;
+    height: 72%;
+    margin: -36% 0 0 -36%;
+    border-radius: 50%;
+}
+
+.vfx-impact-fire .vfx-impact-bit { background: radial-gradient(circle, #fff7d6 0%, #ffb02e 35%, #ff4d1f 60%, rgba(255, 60, 0, 0) 75%); }
+.vfx-impact-fire .vfx-impact-bit-2 { translate: -9px 4px; }
+.vfx-impact-fire .vfx-impact-bit-3 { translate: 8px -6px; }
+.vfx-impact-cold .vfx-impact-bit { background: radial-gradient(circle, #fff 0%, #b8f1ff 40%, rgba(120, 220, 255, 0) 72%); }
+.vfx-impact-cold .vfx-impact-bit-2 { translate: -8px -6px; }
+.vfx-impact-cold .vfx-impact-bit-3 { translate: 9px 6px; }
+.vfx-impact-lightning .vfx-impact-bit { background: radial-gradient(circle, #fff 0%, #fff27a 30%, rgba(255, 240, 80, 0) 70%); }
+
+.vfx-impact-lightning .vfx-impact-bit-2 {
+    width: 4px;
+    height: 90%;
+    margin: -45% 0 0 -2px;
+    border-radius: 2px;
+    background: #fffbd0;
+    box-shadow: 0 0 8px #fff27a;
+    rotate: 20deg;
+}
+
+.vfx-impact-acid .vfx-impact-bit { background: radial-gradient(circle, #f4ffd0 0%, #a3e635 40%, rgba(120, 200, 40, 0) 72%); }
+.vfx-impact-poison .vfx-impact-bit { background: radial-gradient(circle, #e9d5ff 0%, #86efac 35%, rgba(60, 160, 80, 0) 72%); }
+.vfx-impact-necrotic .vfx-impact-bit { background: radial-gradient(circle, #c4b5fd 0%, #4c1d95 45%, rgba(30, 10, 60, 0) 75%); }
+.vfx-impact-radiant .vfx-impact-bit { background: radial-gradient(circle, #fff 0%, #fff3b0 35%, rgba(255, 230, 120, 0) 72%); box-shadow: 0 0 18px rgba(255, 240, 160, 0.8); }
+
+/* La cura: chispas verdes que suben. */
+.vfx-impact-heal .vfx-impact-bit {
+    width: 12px;
+    height: 12px;
+    margin: -6px 0 0 -6px;
+    border-radius: 50%;
+    background: radial-gradient(circle, #eafff0 0%, #4ade80 55%, rgba(74, 222, 128, 0) 75%);
+    animation-name: vfx-heal-rise;
+}
+
+.vfx-impact-heal .vfx-impact-bit-1 { translate: -12px 6px; }
+.vfx-impact-heal .vfx-impact-bit-3 { translate: 12px 4px; }
+
+@keyframes vfx-heal-rise {
+    0% { opacity: 0; transform: translateY(8px); }
+    25% { opacity: 1; }
+    100% { opacity: 0; transform: translateY(-24px); }
+}
+
+/* Un crítico: más grande y con un halo de oro. */
+.vfx-impact-crit .vfx-impact-bit {
+    filter: drop-shadow(0 0 6px rgba(255, 200, 70, 0.95));
+}
+
+/* El número, grande; el del crítico, más; la cura, en verde. */
+.wm-float.vfx-float.vfx-float-big {
+    font-size: 30px;
+}
+
+.wm-float.vfx-float.vfx-float-big.wm-float-crit {
+    font-size: 38px;
+}
+
+.wm-float.vfx-float.vfx-float-big.wm-float-heal {
+    color: #6ef08c;
+    font-size: 28px;
+}
+
+.wm-float.vfx-float.vfx-crit-word {
+    top: -40px;
+    color: #ffd24a;
+    font-size: 16px;
+    font-weight: 900;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    text-shadow: 0 0 2px #000, 0 2px 0 #000, 0 0 10px rgba(255, 170, 40, 0.9);
+}
+
+/* «¡Falla!»: claro, y un silbido que pasa al lado. */
+.wm-float.vfx-float.vfx-float-miss {
+    color: #f3efe6;
+    font-size: 24px;
+    font-weight: 900;
+    font-style: normal;
+    text-shadow: 0 0 2px #000, 0 2px 0 #000, 0 0 8px rgba(0, 0, 0, 0.9);
+}
+
+.vfx-miss-whoosh {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    z-index: 29;
+    width: 54px;
+    height: 2px;
+    border-radius: 2px;
+    background: linear-gradient(90deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.9));
+    pointer-events: none;
+    transform: translate(-50%, 14px) rotate(var(--vfx-angle, 0rad));
+    animation: vfx-whoosh 0.45s ease-out forwards;
+}
+
+@keyframes vfx-whoosh {
+    0% { opacity: 0; translate: -24px 0; }
+    30% { opacity: 1; }
+    100% { opacity: 0; translate: 26px 0; }
+}
+
+/* ---- Quien cae: su dibujo, tumbado y apagado, con su marca encima. Se queda así al redibujarse
+   el tablero (lo pone world-map-renderer.js); lo escrito no se tumba. ---- */
+.wm-token.wm-token-down {
+    z-index: 14;
+    opacity: 1;
+    filter: none;
+    rotate: none;
+    cursor: default;
+}
+
+.wm-token.wm-token-down img.wm-token-avatar,
+.wm-token.wm-token-down .wm-token-unknown {
+    opacity: 0.6;
+    filter: grayscale(0.95) brightness(0.75);
+    rotate: -80deg;
+}
+
+.wm-token.wm-token-down.vfx-fall img.wm-token-avatar,
+.wm-token.wm-token-down.vfx-fall .wm-token-unknown {
+    transition: opacity 0.5s, filter 0.5s, rotate 0.5s cubic-bezier(0.5, 0, 0.7, 1.4);
+}
+
+/* Mientras cae (en la secuencia), por encima de las de al lado: lo que se dice se lee entero. */
+.wm-token.wm-token-down.vfx-fall {
+    z-index: 26;
+}
+
+.wm-token-down-mark {
+    position: absolute;
+    top: 58%;
+    left: 64%;
+    z-index: 3;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border: 1px solid rgba(0, 0, 0, 0.7);
+    border-radius: 50%;
+    background: rgba(24, 14, 14, 0.94);
+    color: #f1e6d6;
+    font-size: 11px;
+    pointer-events: none;
+    transform: translate(-50%, -50%);
+}
+
+.wm-token-down-mark.wm-token-down-party {
+    color: #ff8f8f;
+}
+
+.wm-token.wm-token-down .wm-token-turn-ring {
+    display: none;
+}
+
+/* Debajo de la ficha (encima va el número que sube). */
+.vfx-down-caption {
+    position: absolute;
+    top: calc(100% + 14px);
+    left: 50%;
+    z-index: 33;
+    padding: 3px 10px;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    border-radius: 6px;
+    background: rgba(20, 10, 10, 0.92);
+    color: #fbe9e7;
+    font-size: 13px;
+    font-weight: 800;
+    white-space: nowrap;
+    pointer-events: none;
+    transform: translateX(-50%);
+    animation: vfx-caption-in 0.3s ease-out;
+}
+
+.vfx-down-caption.vfx-down-party {
+    border-color: rgba(255, 140, 140, 0.55);
+}
+
+@keyframes vfx-caption-in {
+    0% { opacity: 0; translate: 0 6px; }
+    100% { opacity: 1; translate: 0 0; }
+}
+
+/* La fila de la iniciativa de quien ha caído, con su calavera. */
+.vtt-init .wm-init-row.defeated .wm-init-name::after {
+    content: " \2620";
+    color: #e8dccb;
+}
+
+/* ---- Sin movimiento («Animaciones: ninguna»): el golpe aparece quieto y se va ---- */
+.vfx-impact.vfx-still .vfx-impact-bit,
+.vfx-miss-whoosh.vfx-still {
+    animation: vfx-still-blink var(--vfx-ms, 450ms) steps(1, end) forwards;
+}
+
+@keyframes vfx-still-blink {
+    0% { opacity: 1; }
+    100% { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .wm-token.gs-aim-harm .wm-token-avatar,
+    .wm-token.gs-aim-harm .wm-token-unknown,
+    .wm-token.gs-aim-help .wm-token-avatar,
+    .wm-token.gs-aim-help .wm-token-unknown,
+    .vfx-down-caption {
+        animation: none;
+    }
+
+    .vfx-impact-bit,
+    .vfx-miss-whoosh {
+        animation: vfx-still-blink 0.45s steps(1, end) forwards;
+    }
+
+    .wm-token.wm-token-down.vfx-fall img.wm-token-avatar,
+    .wm-token.wm-token-down.vfx-fall .wm-token-unknown {
+        transition: none;
+    }
+}
+
+/* ============================ fin de 7. LOS OBJETIVOS Y LOS GOLPES ============================ */

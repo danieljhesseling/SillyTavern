@@ -22,7 +22,7 @@
 import { chat_metadata, saveMetadata } from '../../script.js';
 import { getCurrentWorldEnemies } from '../world-info.js';
 import {
-    avoidFor, avoidChips, resolveAvoid, avoidIntro, exitPlan, leaderOf, describeExitEffect, AVOID_KINDS,
+    avoidFor, avoidChips, resolveAvoid, avoidNotices, exitPlan, leaderOf, describeExitEffect, AVOID_KINDS,
 } from '../game-engine/combat/avoid-fight.js';
 import { parleyChips, resolveParley, parleyPlan, readParley, standingFoes, PARLEY_WAYS } from '../game-engine/combat/parley.js';
 import { useAction } from '../game-engine/combat/turn-machine.js';
@@ -233,7 +233,9 @@ export async function openAvoidChoice({ auto = false, onFight = null } = {}) {
     const { picked } = await openExitScene({
         title: text(board.name),
         speaker: leader,
-        intro: [avoidIntro(foes), auto ? 'Os han visto. Se puede pelear, o buscar otra salida.' : 'Se puede pelear, o buscar otra salida.'],
+        // Un aviso como mucho (2026-10-03): quién espera; lo de pelear o buscar otra salida ya lo
+        // dicen las opciones.
+        intro: avoidNotices(foes, { auto }),
         closable: !auto,
         choices: [
             { id: 'pelear', label: 'Pelear', icon: 'fa-hand-fist', text: 'Empezar la pelea', win: 'Si ganáis, os lleváis lo que lleven' },

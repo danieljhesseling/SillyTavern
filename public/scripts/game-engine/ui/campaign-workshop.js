@@ -19,7 +19,9 @@
  * 6. **El guion en Word** (J5.7 y J5.8): «Exportar el guion» da el .docx de la campaña que se
  *    prepara (`campaign/script-doc.js` y `script-docx.js`, lo mismo que `tools/guion-word.mjs`);
  *    «Importar el guion» trae el Word corregido y cambia solo las líneas tocadas. Un .docx subido
- *    en el paso 1 junto con las rondas se aplica igual, al convertirlas.
+ *    en el paso 1 junto con las rondas se aplica igual, al convertirlas. Si la campaña viene de
+ *    rondas, lo corregido sale también como una ronda más (J5.10, `campaign/guion-round.js`):
+ *    «Descargar la ronda de correcciones (.md)», para guardarla con las del Gem guionista.
  * 7. **Añadir al tablón**, con el nombre que quieras: otro nombre es otra campaña, al lado de
  *    la que ya hay.
  *
@@ -31,6 +33,7 @@ import { convertGuion, locateNote } from '../campaign/guion-pack.js';
 import {
     workshopUpload, workshopBands, workshopGemText, renamedPack, withMapPatch, simSummary, workshopWord, importWordInto, MAX_UPLOAD_BYTES,
 } from '../campaign/guion-workshop.js';
+import { correctionsRound, mergeCorrections } from '../campaign/guion-round.js';
 import { simulateBoards, SIM_VERDICTS, SIM_RUNS } from '../combat/quick-sim.js';
 import { readCampaignFile } from '../campaign/campaign-import.js';
 import { checkWorldDensity } from '../campaign/world-density.js';
@@ -226,6 +229,8 @@ export async function openCampaignWorkshop({ Popup, POPUP_TYPE, onAdd }) {
         wordSaid: [],
         /** @type {string[]} */
         wordNotes: [],
+        /** J5.10: todo lo corregido en los Word de esta vez, con su sitio en el paquete. @type {import('../campaign/guion-round.js').Correction[]} */
+        corrections: [],
         busy: false,
         added: false,
     };
@@ -504,9 +509,10 @@ export async function openCampaignWorkshop({ Popup, POPUP_TYPE, onAdd }) {
         const done = importWordInto(state.base, await documentXmlOf(file));
         state.base = done.pack;
         state.wordNotes = done.notes;
+        state.corrections = mergeCorrections(state.corrections, done.changes);
         state.wordSaid = [`«${name}»: ${done.said}`, ...done.applied.map(line => `Cambiada: ${line}`), ...done.refused.map(line => `Sin cambiar: ${line}`)];
         if (done.notes.length > 0) state.wordSaid.push('Las líneas nuevas (sin marca) no tienen sitio en la campaña: van en «Copiar la lista para tu Gem», en el paso 2.');
-        if (state.source === 'guion' && done.applied.length > 0) state.wordSaid.push('Los cambios van a la campaña de este taller, no a tus rondas: si vuelves a subir las rondas sin el Word, se pierden.');
+        if (state.source === 'guion' && done.applied.length > 0) state.wordSaid.push('Los cambios van a la campaña de este taller, no a tus rondas: descarga la ronda de correcciones y guárdala con las demás, o se pierden al volver a subir las rondas sin el Word.');
         await recheck();
     };
 
@@ -548,7 +554,23 @@ export async function openCampaignWorkshop({ Popup, POPUP_TYPE, onAdd }) {
                 said.empty().text(`No se ha podido leer «${file.name}»: ${String(/** @type {any} */ (error)?.message || error)}.`);
             }
         });
-        step6.append(div('tc-row').append(out, back), said, picker);
+        // J5.10: lo corregido, como una ronda más del guion. Solo si la campaña viene de rondas.
+        const guion = state.guion;
+        const round = state.source === 'guion' && guion?.byKind && state.corrections.length > 0
+            ? $('<button type="button" class="menu_button tc-word-round"></button>')
+                .append('<i class="fa-solid fa-file-lines"></i>').append($('<span></span>').text('Descargar la ronda de correcciones (.md)'))
+                .on('click', async () => {
+                    const made = correctionsRound({
+                        changes: state.corrections, pack: guion.pack, byKind: guion.byKind, files: guion.files,
+                        title: text(guion.pack?.world?.name), date: new Date().toISOString().slice(0, 10),
+                    });
+                    const { download } = await import('../../utils.js');
+                    download(made.text, made.name, 'text/markdown');
+                    said.find('.tc-round-said').remove();
+                    said.append(div('tc-said tc-round-said').text(`${made.said} Guárdala en la carpeta de tus rondas, con las demás.`));
+                })
+            : $();
+        step6.append(div('tc-row').append(out, back, round), said, picker);
     };
 
     /** El paso 7: añadirla al tablón, con el nombre que se quiera. */
@@ -622,7 +644,7 @@ export async function openCampaignWorkshop({ Popup, POPUP_TYPE, onAdd }) {
         state.busy = true;
         choose.prop('disabled', true).find('span').text('Leyendo…');
         hideSteps();
-        Object.assign(state, { source: '', guion: null, base: null, read: null, density: null, sims: null, mapSaid: [], wordSaid: [], wordNotes: [] });
+        Object.assign(state, { source: '', guion: null, base: null, read: null, density: null, sims: null, mapSaid: [], wordSaid: [], wordNotes: [], corrections: [] });
         try {
             const { read, problems } = await readUploads(files);
             const sorted = workshopUpload(read);

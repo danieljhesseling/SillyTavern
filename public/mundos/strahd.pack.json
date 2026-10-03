@@ -802,7 +802,8 @@
           "place": "Castillo Ravenloft",
           "line": "Mi padre murió mirando estas torres por la ventana."
         }
-      ]
+      ],
+      "aspecto": "Hombre de unos veinticinco, con el pelo castaño oscuro alborotado y cara seria. Bufanda gruesa verde oscuro, jubón de cuero marrón con hombreras de acero y el puño de una espada a la espalda."
     },
     {
       "name": "Ireena Kolyana",
@@ -851,7 +852,8 @@
           "place": "Ciudad de Vallaki",
           "line": "Aquí nadie me conoce. Por primera vez, eso me gusta."
         }
-      ]
+      ],
+      "aspecto": "Mujer de unos veinte, de piel muy pálida, con el pelo castaño rojizo largo y suelto. Vestido granate de cuello alto bajo una capa gris; dos rasguños rojos en la mejilla."
     },
     {
       "name": "Madam Eva",
@@ -902,7 +904,8 @@
           "place": "Castillo Ravenloft",
           "line": "Estas losas las fregué yo. Hace mucho."
         }
-      ]
+      ],
+      "aspecto": "Anciana de unos ochenta, flaca, con el pelo blanco largo en trenzas bajo un pañuelo morado bordado en oro. Túnica morada, collares y aros de oro; una baraja de cartas en las manos."
     },
     {
       "name": "Rudolph van Richten",
@@ -956,7 +959,8 @@
           "place": "Castillo Ravenloft",
           "line": "Treinta años esperando esta puerta."
         }
-      ]
+      ],
+      "aspecto": "Hombre de unos sesenta y cinco, delgado, con el pelo blanco peinado hacia atrás y barba blanca puntiaguda. Abrigo negro de cuello alto y un colgante de plata; una lanza larga en la mano."
     },
     {
       "name": "Ezmerelda d'Avenir",
@@ -1006,7 +1010,8 @@
           "place": "Aldea de Krezk",
           "line": "En la abadía hay algo que no es un abad."
         }
-      ]
+      ],
+      "aspecto": "Mujer de unos veinticinco, con el pelo negro largo y rizado, una cinta morada en la frente, ojos violeta y aros de oro. Chaqueta granate de cuello alto con correas de cuero cruzadas y un collar de plata."
     }
   ],
   "bestiary": [
@@ -1018,6 +1023,7 @@
       "profile": "skirmisher",
       "attackRangeFeet": 30,
       "description": "El señor oscuro de Barovia, un vampiro inmortal y mago formidable que juega con sus víctimas antes de aniquilarlas.",
+      "aspecto": "Hombre que aparenta unos cuarenta, de piel blanca de muerto, con el pelo negro peinado hacia atrás, un mechón en la frente y los ojos rojos. Capa negra de cuello alto forrado de granate y una joya de ámbar en el pecho; sonrisa fría.",
       "boss": true,
       "abilities": [
         "hab-esfumarse",
@@ -1079,6 +1085,7 @@
       "profile": "skirmisher",
       "attackRangeFeet": 30,
       "description": "Mujeres famélicas con túnicas manchadas de hollín que han jurado servicio a Strahd a cambio de oscuros poderes arcanos.",
+      "aspecto": "Mujer flaca de unos sesenta, de piel gris lila, con el pelo gris lacio, ojos rojos y una sonrisa de dientes afilados. Túnica negra con capucha; manos huesudas como garras.",
       "abilities": [
         "rayo_de_fuego"
       ],
@@ -3413,7 +3420,8 @@
       "knows": "Que Ireena no es hija de sangre del burgomaestre: Kolyan la encontró de niña al borde del bosque, sin recuerdos.",
       "secret": "Su hijo Doru volvió del castillo convertido en vampiro, y lo tiene encerrado bajo el suelo de la iglesia sin darle de comer.",
       "voice": "Ronco de tanto rezar. Se queda callado a media frase cuando oye el grito de abajo.",
-      "service": "templo"
+      "service": "templo",
+      "aspecto": "Hombre de unos cincuenta, cansado y ojeroso, con entradas y una barba negra espesa. Sotana negra con capucha y una cruz dorada colgada al pecho."
     },
     {
       "id": "bildrath-cantemir",
@@ -3424,7 +3432,8 @@
       "knows": "Cuándo pasan las carretas de los vistani y qué traen.",
       "secret": "Le da miedo que su sobrino Parriwimple se vaya con los forasteros y le deje solo con la tienda.",
       "voice": "Seco y de números. Nunca regatea.",
-      "service": "tienda"
+      "service": "tienda",
+      "aspecto": "Hombre de unos sesenta, calvo, con un bigote gris retorcido, barba gris larga y puntiaguda y el ceño fruncido. Chaleco de cuero marrón con botones dorados sobre camisa clara."
     },
     {
       "id": "parriwimple",
@@ -3435,7 +3444,8 @@
       "knows": "Que Ireena es la chica más guapa del pueblo y que el conde también lo sabe.",
       "secret": "Es mucho más fuerte de lo que parece: levanta un barril lleno con una mano.",
       "voice": "Lento y amable. Repite la última palabra de lo que le dices.",
-      "service": ""
+      "service": "",
+      "aspecto": "Hombre de unos veinticinco, alto y fuerte, con el pelo rubio revuelto. Camisa beige remangada y mandil marrón oscuro; brazos cruzados y sonrisa tranquila."
     },
     {
       "id": "maria-la-loca",
@@ -3446,7 +3456,8 @@
       "knows": "Que Gertruda se escapó hace una semana mirando hacia el castillo.",
       "secret": "Tuvo a su hija encerrada en casa toda la vida para que el conde no la viera.",
       "voice": "Solloza. Solo habla si le hablas muy despacio y con cariño.",
-      "service": ""
+      "service": "",
+      "aspecto": "Mujer de unos cuarenta, con el pelo gris oscuro largo bajo un manto negro con capucha. Los ojos rojos de llorar y lágrimas de sangre por las mejillas; se aprieta el pecho con la mano."
     },
     {
       "id": "arik-lorensk",
@@ -3457,7 +3468,8 @@
       "knows": "Que las tres vistani de la mesa de la puerta son las dueñas de la taberna.",
       "secret": "No tiene alma: nunca ha llorado ni se ha reído.",
       "voice": "Hueca. Limpia vasos sin parar, aunque estén limpios.",
-      "service": "posada"
+      "service": "posada",
+      "aspecto": "Hombre de unos treinta y cinco, delgado, con el pelo negro hasta la barbilla y la cara sin expresión. Camisa negra y mandil gris; un trapo en una mano y una copa de cerveza en la otra."
     },
     {
       "id": "alenka",
@@ -3468,7 +3480,8 @@
       "knows": "Que Madam Eva sabía que ibais a venir y os espera en el campamento del estanque.",
       "secret": "Ella y sus dos hermanas le cuentan al conde quién entra en la aldea.",
       "voice": "Sonríe con todos los dientes. Os mira las bolsas antes que la cara.",
-      "service": ""
+      "service": "",
+      "aspecto": "Mujer de unos treinta, con el pelo negro largo bajo un pañuelo rojo bordado, grandes aros de oro y una sonrisa con todos los dientes. Corpiño verde oscuro con flores bordadas y un collar de monedas de oro."
     },
     {
       "id": "stanimir",
@@ -3479,7 +3492,8 @@
       "knows": "La historia de un príncipe herido al que los vistani curaron hace siglos, y en qué se convirtió.",
       "secret": "Sabe hacer que el fuego cambie de color y cuente historias con sombras.",
       "voice": "Cuenta todo como un cuento. Bebe vino entre frase y frase.",
-      "service": "tienda"
+      "service": "tienda",
+      "aspecto": "Hombre de unos setenta, de piel morena, con barba gris larga, bigote retorcido, pañuelo morado en la cabeza y un aro de oro en la oreja. Chaqueta verde con botones rojos sobre camisa amarilla; levanta una copa de vino tinto."
     },
     {
       "id": "luvash",
@@ -3490,7 +3504,8 @@
       "knows": "Que su hermano Arrigal trabaja para el conde y le lleva recados al castillo.",
       "secret": "Está tan borracho que no se acuerda de cuándo vio a su hija por última vez.",
       "voice": "Grita. Da golpes en la mesa. Llora cuando nombra a la niña.",
-      "service": ""
+      "service": "",
+      "aspecto": "Hombre de unos cincuenta, corpulento, con el pelo negro en coleta, barba negra larga y los ojos rojos de llorar. Chaleco granate bordado en oro sobre camisa beige y cadenas de oro al cuello; una botella de vino en la mano."
     },
     {
       "id": "baron-vargas-vallakovich",
@@ -3501,7 +3516,8 @@
       "knows": "Que dos criados de su casa han desaparecido esta semana.",
       "secret": "Tiene encadenado en un armario a Udo, el zapatero, por decir que habría que echarle a los lobos.",
       "voice": "Grita «¡Todo irá bien!» al final de cada frase. No aguanta que le lleven la contraria.",
-      "service": ""
+      "service": "",
+      "aspecto": "Hombre de unos cincuenta, con el pelo negro engominado, un bigote negro enorme y rizado y una sonrisa forzada. Casaca azul marino de cuello alto con botones dorados, chaleco rojo y chorrera blanca."
     },
     {
       "id": "izek-strazni",
@@ -3512,7 +3528,8 @@
       "knows": "Todo lo que pasa en las calles: él es quien arresta a los que no están contentos.",
       "secret": "Tiene un brazo de demonio que lanza fuego, y la chica de sus sueños es Ireena. Es su hermana y no lo sabe.",
       "voice": "Pocas palabras y muy cerca de la cara. Huele a vino.",
-      "service": ""
+      "service": "",
+      "aspecto": "Hombre de unos treinta y cinco, fornido, con el pelo negro rapado a los lados y barba de varios días. Abrigo largo negro sobre camisa morada; el brazo derecho es rojo, enorme y deforme, y le arde la mano."
     },
     {
       "id": "fiona-wachter",
@@ -3523,7 +3540,8 @@
       "knows": "Que su familia lleva siglos siendo leal al conde, y que el conde recuerda a quien le es leal.",
       "secret": "Dirige un culto al diablo en el sótano y duerme cada noche junto al cadáver de su marido.",
       "voice": "Educada y fría. Dice «prefiero servir al diablo que a un loco» como quien comenta el tiempo.",
-      "service": ""
+      "service": "",
+      "aspecto": "Mujer de unos cincuenta y cinco, delgada y pálida, con el pelo gris recogido hacia atrás y la mirada fría. Vestido negro de cuello alto y rígido y un colgante rojo de tres puntas."
     },
     {
       "id": "urwin-martikov",
@@ -3534,7 +3552,8 @@
       "knows": "Quién duerme en su posada y qué cuenta cada uno cuando bebe.",
       "secret": "Es un hombre cuervo de los Guardianes de la Pluma. Su padre es el dueño de la bodega y no se hablan.",
       "voice": "Cálido y cansado. Se ofende si le dices que el vino es malo.",
-      "service": "posada"
+      "service": "posada",
+      "aspecto": "Hombre de unos cuarenta y cinco, con el pelo negro largo y ondulado, barba negra espesa y cara cansada y amable. Camisa blanca, chaleco azul oscuro de punto y una correa de cuero cruzada."
     },
     {
       "id": "lucian-petrovich",
@@ -3545,7 +3564,8 @@
       "knows": "Que solo se lo contó a un monaguillo, y que el monaguillo se lo contó a alguien.",
       "secret": "Sospecha del sepulturero, Milivoj, pero le da miedo preguntarle.",
       "voice": "Suave y preocupado. Siempre ofrece algo de comer.",
-      "service": "templo"
+      "service": "templo",
+      "aspecto": "Hombre de unos treinta, delgado, con el pelo castaño revuelto y cara de preocupación. Túnica blanca con estola dorada y un sol pintado en el pecho; una hogaza de pan en la mano."
     },
     {
       "id": "milivoj",
@@ -3556,7 +3576,8 @@
       "knows": "Dónde están enterrados todos los del pueblo, y quién no está donde dice su lápida.",
       "secret": "Robó los huesos del santo y se los vendió al ataudero.",
       "voice": "Brusco. Siempre lleva la pala y la apoya en el suelo para hablar.",
-      "service": ""
+      "service": "",
+      "aspecto": "Chico de unos veinte, flaco, con el pelo negro despeinado y tierra en la cara. Camisa gris remangada con tirantes; una pala al hombro."
     },
     {
       "id": "henrik-van-der-voort",
@@ -3567,7 +3588,8 @@
       "knows": "Que un noble llamado Vasili von Holtz le prometió mucho trabajo a cambio de un favor.",
       "secret": "En el piso de arriba de su taller duermen seis engendros vampíricos, dentro de cajas llenas de tierra.",
       "voice": "Grita «¡Está cerrado!» desde detrás de la puerta. Si le pillan, suplica.",
-      "service": ""
+      "service": "",
+      "aspecto": "Hombre de unos sesenta y cinco, calvo con pelo blanco a los lados, gafas y cara de susto. Camisa clara y mandil de cuero oscuro; un mazo de madera en la mano."
     },
     {
       "id": "gadof-blinsky",
@@ -3578,7 +3600,8 @@
       "knows": "Que un gran juguetero hizo un hombre de engranajes que acabó en el castillo del conde.",
       "secret": "Izek le obliga a fabricarle muñecas con la cara de una chica de pelo castaño, una al mes.",
       "voice": "Acento cerrado. «¡Si no es divertido, no es Blinsky!»",
-      "service": ""
+      "service": "",
+      "aspecto": "Hombre de unos cincuenta, gordo y risueño, con nariz roja de payaso y un bigote negro enorme. Sombrero granate de ala ancha con cinta amarilla y chaleco a rayas rojas y naranjas; un muñeco de madera en la mano."
     },
     {
       "id": "victor-vallakovich",
@@ -3589,7 +3612,8 @@
       "knows": "Magia sacada de un libro viejo de la biblioteca de su padre.",
       "secret": "Probó su círculo para salir del valle con dos criados, y los dos acabaron hechos pedazos.",
       "voice": "Rara y sin mirar a los ojos. Habla con sus muñecos.",
-      "service": ""
+      "service": "",
+      "aspecto": "Chico de unos dieciséis, flaco y pálido, con el pelo negro revuelto y la mirada hacia otro lado. Bata morada con capucha sobre ropa negra; un muñeco de trapo en la mano."
     },
     {
       "id": "szoldar-szoldarovich",
@@ -3600,7 +3624,8 @@
       "knows": "Los caminos del valle y dónde caza cada manada.",
       "secret": "Tiene una muesca en el arco por cada lobo muerto, y ya no le caben más.",
       "voice": "Seco. Si no tiene nada que decir, no dice nada.",
-      "service": ""
+      "service": "",
+      "aspecto": "Hombre de unos cuarenta y cinco, curtido y con barba negra. Capucha negra con orejas de lobo, pieles grises en los hombros y una correa de cuero cruzada con hebilla redonda; flechas a la espalda."
     },
     {
       "id": "gunther-arasek",
@@ -3611,7 +3636,8 @@
       "knows": "Que el dueño del carro le da de comer a lo que hay dentro dos veces al día, por un agujero del techo.",
       "secret": "Le pagaron bien por no decir nada.",
       "voice": "Rápido y nervioso, de tendero. Cambia de tema en cuanto puede.",
-      "service": "tienda"
+      "service": "tienda",
+      "aspecto": "Hombre de unos treinta, con el pelo naranja de punta y una sonrisa nerviosa. Camisa gris remangada, chaleco de cuero marrón con llaves colgadas y cinturón de hebilla grande; las manos en la cintura."
     },
     {
       "id": "bogdan-rusu",
@@ -3622,7 +3648,8 @@
       "knows": "Quién le ha encargado estacas con punta de hierro este mes, aunque le pagaron para que no lo contara.",
       "secret": "Guarda un juego de herraduras de plata que nadie le ha pagado, por si algún día hacen falta contra lo que anda de noche.",
       "voice": "Habla poco y mira las manos de la gente, no la cara.",
-      "service": "herreria"
+      "service": "herreria",
+      "aspecto": "Hombre de unos cuarenta y cinco, corpulento, con el pelo negro peinado hacia atrás, barba negra con canas y el ceño fruncido. Camisa negra remangada y mandil de cuero marrón."
     },
     {
       "id": "morgantha",
@@ -3633,7 +3660,8 @@
       "knows": "Que el conde manda en el tiempo y que los vistani son sus espías.",
       "secret": "Es una saga nocturna, y con sus hijas hace los pasteles con huesos de niños molidos.",
       "voice": "Dulce de abuela. Llama a todo el mundo «cielito».",
-      "service": ""
+      "service": "",
+      "aspecto": "Anciana de unos setenta, regordeta, con el pelo blanco en un moño alto, mejillas sonrosadas y ojos amarillos. Capa marrón con capucha; una cesta de pasteles dorados en los brazos."
     },
     {
       "id": "vladimir-horngaard",
@@ -3644,7 +3672,8 @@
       "knows": "Que el cráneo del dragón Argynvost está en el castillo del conde, como un trofeo.",
       "secret": "Amaba a Sir Godfrey, y el odio le ha hecho olvidarlo.",
       "voice": "Frío y lento, desde su trono. No se levanta.",
-      "service": ""
+      "service": "",
+      "aspecto": "Hombre sin edad, de piel gris verdosa de muerto, con el pelo blanco largo y liso y los ojos azules brillantes. Armadura gris de cuello alto y capa de pieles negras."
     },
     {
       "id": "godfrey-gwilym",
@@ -3655,7 +3684,8 @@
       "knows": "Toda la historia de la Orden y de su fundador, el dragón que vivía disfrazado de noble.",
       "secret": "Si alguien le convence de que la Orden puede recuperar su honor, se irá con él a pelear contra el conde.",
       "voice": "Voz rasposa de muerto. Muy educado.",
-      "service": ""
+      "service": "",
+      "aspecto": "Caballero muerto, de piel gris plateada, calvo, con la cara hundida y los ojos pálidos. Armadura de placas plateada con sobreveste azul y un dragón dorado bordado; un yelmo bajo el brazo."
     },
     {
       "id": "davian-martikov",
@@ -3666,7 +3696,8 @@
       "knows": "Que la bruja de Berez tiene una gema y los druidas de la colina Yester otra.",
       "secret": "Culpa de la primera gema perdida a su hijo Urwin, y por eso no se hablan.",
       "voice": "Gruñón y orgulloso. Llama «cuervos» a sus hijos.",
-      "service": "tienda"
+      "service": "tienda",
+      "aspecto": "Hombre de unos setenta, calvo, con barba y bigote blancos largos y las cejas fruncidas. Camisa mostaza y mandil verde oscuro; un racimo de uvas moradas en la mano."
     },
     {
       "id": "dmitri-krezkov",
@@ -3677,7 +3708,8 @@
       "knows": "Que el Abad lleva más de cien años sin envejecer.",
       "secret": "Su último hijo, Ilya, murió hace una semana, y con él se acaba la familia.",
       "voice": "Serio, de señor. Te deja dormir en su casa si cortas leña.",
-      "service": "posada"
+      "service": "posada",
+      "aspecto": "Hombre de unos cincuenta, con el pelo negro corto, barba negra larga y lacia y cara seria. Ropa granate oscura con cuello ancho de piel negra; brazos cruzados."
     },
     {
       "id": "el-abad",
@@ -3688,7 +3720,8 @@
       "knows": "Cómo curar casi cualquier herida, y lo que se esconde en la casa de locos de la abadía.",
       "secret": "Es un ángel que se volvió loco. Convirtió a una familia entera en mestizos medio bestia y cose novias con trozos de muertas.",
       "voice": "Tranquilo y hermoso. Habla de sus locuras como de obras de caridad.",
-      "service": "templo"
+      "service": "templo",
+      "aspecto": "Hombre que parece joven y es muy hermoso, con el pelo largo color cobre y los ojos dorados. Túnica negra de cuello alto sobre camisa blanca y un emblema de oro con un sol en el pecho."
     },
     {
       "id": "clovin-belview",
@@ -3699,7 +3732,8 @@
       "knows": "Cuándo va a sonar la campana de la abadía y qué hay en cada celda.",
       "secret": "Tiene dos cabezas y odia a los otros mestizos a los que da de comer.",
       "voice": "Habla la cabeza grande; la pequeña solo sisea. Toca la viola de maravilla cuando está borracho.",
-      "service": ""
+      "service": "",
+      "aspecto": "Hombrecillo deforme de piel grisácea, nariz roja, orejas puntiagudas y dientes torcidos, con una segunda cabeza pequeña que le asoma junto al hombro. Camisa marrón oscura con botones."
     },
     {
       "id": "zuleika-toranescu",
@@ -3710,7 +3744,8 @@
       "knows": "Dónde duerme Kiril y cuántos de la manada le son leales de verdad.",
       "secret": "Si Kiril muere, soltará a los niños de las jaulas.",
       "voice": "Baja y furiosa. Reza a la Madre Noche delante de la estatua.",
-      "service": ""
+      "service": "",
+      "aspecto": "Mujer de unos treinta, con el pelo negro largo y salvaje, orejas de lobo, ojos amarillos y colmillos. Capa de piel gris sobre los hombros y corpiño marrón."
     },
     {
       "id": "muriel-vinshaw",
@@ -3721,7 +3756,8 @@
       "knows": "Que la bruja vuela en una calavera de gigante y manda en los espantapájaros del pantano.",
       "secret": "Es una mujer cuervo de Vallaki.",
       "voice": "Susurra desde detrás de una piedra. Hace señales con un farol.",
-      "service": ""
+      "service": "",
+      "aspecto": "Mujer de unos veinticinco, pálida, con el pelo negro largo bajo una capucha negra. Manto negro; pide silencio con un dedo en los labios y lleva un farol en la mano."
     },
     {
       "id": "lazlo-ulrich",
@@ -3732,7 +3768,8 @@
       "knows": "La historia de Marina, la chica de Berez que se parecía a la novia del conde.",
       "secret": "Mató a Marina para que el conde no la convirtiera. Solo descansará si ve con sus ojos que ella volvió a nacer.",
       "voice": "Un gigante destrozado que habla con miedo.",
-      "service": ""
+      "service": "",
+      "aspecto": "Fantasma de un hombre enorme y calvo, de piel verde pálida, con una barba verde larga y los ojos blancos. Abrigo oscuro con una cadena gruesa cruzada al pecho."
     },
     {
       "id": "rahadin",
@@ -3743,7 +3780,8 @@
       "knows": "Cada pasillo del castillo y dónde espera el amo esta noche.",
       "secret": "Quien se le acerca oye en la cabeza los gritos de los miles que ha matado.",
       "voice": "Tranquila y sin prisa. «El amo os espera.»",
-      "service": ""
+      "service": "",
+      "aspecto": "Elfo de piel gris violácea, con el pelo negro largo, orejas puntiagudas y ojos rojos. Traje morado oscuro de cuello alto con ribetes dorados; el puño de una espada asoma tras el hombro."
     },
     {
       "id": "cyrus-belview",
@@ -3754,7 +3792,8 @@
       "knows": "Dónde está la llave del cofre de la corona, que lleva al cuello.",
       "secret": "La habitación de la torre se alcanza por un ascensor que llena la cabina de gas de dormir.",
       "voice": "Se ríe solo. Cuenta chistes malos en el peor momento.",
-      "service": ""
+      "service": "",
+      "aspecto": "Hombre de unos cincuenta, flaco y encorvado, con el pelo negro engominado, orejas puntiagudas, una sonrisa enorme de dientes torcidos y un ojo verde de cristal. Chaqueta negra y una llave grande de hierro colgada al cuello."
     },
     {
       "id": "nikolai-barquero",
@@ -3765,7 +3804,8 @@
       "knows": "Que el viejo de la torre se marchó hace un mes en un carro de feria, y que desde entonces los lobos rondan el islote.",
       "secret": "Vio a una mujer vistani entrar en la torre por una ventana alta, sin tocar la puerta. No se lo ha contado a nadie.",
       "voice": "Masculla entre dientes y escupe al agua antes de cada frase.",
-      "service": ""
+      "service": "",
+      "aspecto": "Hombre de unos cuarenta y cinco, con una barba negra espesa y cejas pobladas. Gorra de visera parda y abrigo de lona marrón con cuello claro; un remo al hombro."
     },
     {
       "id": "gavril-druida",
@@ -3776,7 +3816,8 @@
       "knows": "Qué noche piensan despertar al muñeco de ramas, y que para eso necesitan meterle la gema verde en el pecho.",
       "secret": "Fue él quien sacó la gema de la bodega. Se la dio a los mayores y desde entonces no duerme.",
       "voice": "Habla en susurros y no deja de mirar las piedras negras.",
-      "service": ""
+      "service": "",
+      "aspecto": "Chico de unos veinte, delgado, con el pelo castaño revuelto, ojeras y cara asustada. Capucha verde oliva y un collar de cuentas de piedra gris."
     },
     {
       "id": "ermitano-cascada",
@@ -3787,7 +3828,8 @@
       "knows": "Cómo es el castillo por dentro: estuvo allí y peleó con el conde, aunque no recuerda cómo acabó.",
       "secret": "Recuerda mucho más de lo que dice. Se hace el loco para que los murciélagos del conde dejen de buscarle.",
       "voice": "Habla solo y a trozos, y de pronto suelta algo muy sensato.",
-      "service": ""
+      "service": "",
+      "aspecto": "Anciano de unos ochenta, con el pelo y la barba blancos, largos y alborotados. Túnica azul con capucha y faja marrón con una piedra azul; un bastón de madera torcido."
     },
     {
       "id": "dragomir-nido",
@@ -3798,7 +3840,8 @@
       "knows": "Qué caminos vigilan los murciélagos del conde y a qué horas.",
       "secret": "La primera gema de la bodega la perdió él: se la cambió a la vieja del molino por un pastel que le hizo soñar con su mujer muerta.",
       "voice": "Habla poco y con la cabeza ladeada, como un pájaro.",
-      "service": ""
+      "service": "",
+      "aspecto": "Hombre de unos sesenta, con el pelo gris corto y barba gris corta. Capa negra larga y ropa oscura; un cuervo negro posado en el hombro."
     }
   ],
   "contracts": [

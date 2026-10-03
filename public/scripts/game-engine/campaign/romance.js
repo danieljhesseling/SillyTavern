@@ -1,22 +1,29 @@
 /**
  * El romance, opcional (J14.10 de wiki/ROADMAP_SIN_CONEXION.md): con los compañeros que lo
- * permiten, una señal, tres citas, una noche que acaba en fundido a negro y, desde entonces,
- * una pareja que el juego recuerda (el vínculo, sus frases, el final de la campaña y el Salón
- * de la fama).
+ * permiten, un punto de inflexión, tres citas, una noche que acaba en fundido a negro y, desde
+ * entonces, una pareja que el juego recuerda (el vínculo, sus frases, el final de la campaña y
+ * el Salón de la fama).
+ *
+ * D-J63 (como en *Persona*): el romance no es un menú, sino lo que sale de pasar tiempo juntos.
  *
  * - **Quién lo permite** lo dice la ficha de cada compañero (`compendio/companeros.json`, su
  *   campo `romance`): `with` es con quién (`todos`, `hombres`, `mujeres`, `no-binario`, o una
  *   lista de esos) o `nadie`; `no` es lo que contesta si no puede ser. Sin campo, nada: ni
  *   siquiera sale la pregunta.
- * - **La señal**: a partir del vínculo 4 (`ROMANCE_RANK`), una quedada sin escena pendiente
- *   (un rato) puede ser su escena de señal, con una respuesta claramente romántica (lleva un
- *   corazón). Contesta según su ficha: si te acepta, empezáis; si no, te lo dice con cariño y
- *   no vuelve a salir. Si la dejas pasar, no vuelve hasta dentro de unos días (`SIGNAL_REST`).
+ * - **El punto de inflexión** (la «señal» de antes): en el **rango 9** (`ROMANCE_RANK`), la
+ *   quedada que llega a él (o la primera después) sin escena suya pendiente es su escena de
+ *   señal, con un aviso fuera de la caja: «Deberías elegir tus palabras con cuidado…»
+ *   (`TURNING_WARNING`). Sin corazón en ninguna respuesta. Una respuesta íntima abre la ruta de
+ *   pareja (las citas); una de apoyo, la de amigos inseparables, sin castigo: las dos siguen
+ *   hasta el rango 10 con todas sus ventajas. Si su ficha no lo permite, te dice que no con
+ *   cariño, y seguís igual. Si la dejas pasar, vuelve dentro de unos días (`SIGNAL_REST`).
+ *   Con quien aún no se ha presentado (J13.7), nunca.
  * - **Las citas** son quedadas (J14.3): tres escenas escritas, una por quedada. Solo se avanza
  *   al elegir la respuesta romántica; lo demás deja la cita para otro día, y «como amigos» lo
  *   cierra para siempre.
  * - **La noche**: la cuarta escena, solo de noche. Si te quedas, fundido a negro (`fade` en la
- *   respuesta): nada explícito. Desde ahí, sois pareja.
+ *   respuesta): nada explícito. Desde ahí, sois pareja, y en un rato juntos, en una fiesta o de
+ *   noche, lo que te dice es de pareja (`coupleNote`).
  *
  * Las escenas van en `compendio/romances.json` (`kind`: `senal`, `cita` con su `step`, `final`,
  * `pareja` con frases que te dice y `epilogo`), con la forma de las escenas de quedada: son
@@ -38,8 +45,11 @@ export const ROMANCE_KEY = 'romances';
 
 export const ROMANCE_VERSION = 1;
 
-/** El vínculo al que puede salir la señal. */
-export const ROMANCE_RANK = 4;
+/** El vínculo del punto de inflexión (D-J63: el 9 de 10, como en *Persona*). */
+export const ROMANCE_RANK = 9;
+
+/** D-J63: el aviso del punto de inflexión, fuera de la caja (no lo dice nadie). */
+export const TURNING_WARNING = 'Deberías elegir tus palabras con cuidado…';
 
 /** Las citas antes de la noche. */
 export const DATES = 3;
@@ -47,8 +57,18 @@ export const DATES = 3;
 /** Los días que pasan antes de que vuelva a salir la señal, si la dejaste pasar. */
 export const SIGNAL_REST = 3;
 
-/** La marca de la respuesta romántica: que se vea a la primera. */
+/**
+ * La marca de la respuesta romántica: que se vea a la primera. D-J63: solo ya en la ruta de
+ * pareja (las citas y la noche); en el punto de inflexión no hay corazones, hay un aviso.
+ */
 export const HEART = '♥ ';
+
+/**
+ * D-J63: lo que dice tu pareja en un rato juntos un día de fiesta o de noche, si su fila de
+ * `pareja` no trae lo suyo (`festival`, `night`). `{fiesta}` es el nombre de la fiesta.
+ */
+const COUPLE_FESTIVAL = 'Hoy es {fiesta}. Ven, que esta vez bailas conmigo, aunque sea mal.';
+const COUPLE_NIGHT = 'Ya ha anochecido. Quédate un rato más conmigo: esta noche es nuestra.';
 
 /** Con quién puede ser, según quién eres. `nadie`: con nadie. */
 export const ROMANCE_WITH = ['todos', 'hombres', 'mujeres', 'no-binario', 'nadie'];
@@ -91,6 +111,7 @@ const plain = (value) => text(value).normalize('NFD').replace(/[̀-ͯ]/g, '').to
  * @property {string} say
  * @property {string} mood
  * @property {RomanceReply[]} replies
+ * @property {string} [warn] D-J63: en el punto de inflexión, el aviso del paso donde se decide.
  */
 
 /**
@@ -113,6 +134,8 @@ const plain = (value) => text(value).normalize('NFD').replace(/[̀-ͯ]/g, '').to
  * @property {RomanceScene[]} scenes Las señales, las citas y las noches.
  * @property {Record<string, string[]>} notes Por persona, frases sueltas de pareja.
  * @property {Record<string, {home: string, away: string, hall: string}>} epilogues Por persona.
+ * @property {Record<string, string[]>} [festival] D-J63: por persona, sus frases de pareja un día de fiesta.
+ * @property {Record<string, string[]>} [night] D-J63: por persona, sus frases de pareja de noche.
  */
 
 /**
@@ -251,7 +274,7 @@ function readBeat(raw) {
 export function readRomanceRows(raw) {
     const rows = Array.isArray(raw) ? raw : Array.isArray(raw?.rows) ? raw.rows : [];
     /** @type {RomanceData} */
-    const data = { scenes: [], notes: {}, epilogues: {} };
+    const data = { scenes: [], notes: {}, epilogues: {}, festival: {}, night: {} };
     for (const row of rows) {
         const kind = text(row?.kind);
         const who = text(row?.who);
@@ -278,6 +301,12 @@ export function readRomanceRows(raw) {
         } else if (kind === 'pareja') {
             const lines = (Array.isArray(row?.lines) ? row.lines : []).map(text).filter(Boolean);
             if (lines.length > 0) data.notes[key] = [...(data.notes[key] ?? []), ...lines];
+            // D-J63: lo suyo un día de fiesta y de noche, si lo trae.
+            for (const when of /** @type {Array<'festival'|'night'>} */ (['festival', 'night'])) {
+                const own = (Array.isArray(row?.[when]) ? row[when] : []).map(text).filter(Boolean);
+                const into = /** @type {Record<string, string[]>} */ (data[when]);
+                if (own.length > 0) into[key] = [...(into[key] ?? []), ...own];
+            }
         } else if (kind === 'epilogo') {
             data.epilogues[key] = { home: text(row?.home), away: text(row?.away), hall: text(row?.hall) };
         }
@@ -427,11 +456,14 @@ export function mergeRomance(here, there) {
  * La escena, lista para jugarse: el corazón en la respuesta romántica y, si no puede ser, su
  * «no» como lo que contesta.
  *
+ * D-J63: en el punto de inflexión (`turning`), sin corazones: el paso donde se decide lleva el
+ * aviso «Deberías elegir tus palabras con cuidado…» (`warn`), y las palabras dicen lo demás.
+ *
  * @param {RomanceScene} scene
- * @param {{short: string, answer?: string}} input
+ * @param {{short: string, answer?: string, turning?: boolean}} input
  * @returns {RomanceScene}
  */
-function ready(scene, { short, answer = '' }) {
+function ready(scene, { short, answer = '', turning = false }) {
     const fill = (/** @type {string} */ value) => value.replaceAll('{nombre}', short);
     return {
         ...scene,
@@ -440,9 +472,10 @@ function ready(scene, { short, answer = '' }) {
             ...beat,
             note: fill(beat.note),
             say: fill(beat.say),
+            ...(turning && beat.replies.some(reply => reply.romance) ? { warn: TURNING_WARNING } : {}),
             replies: beat.replies.map(reply => ({
                 ...reply,
-                text: `${reply.romance === 'avanza' ? HEART : ''}${fill(reply.text)}`,
+                text: `${reply.romance === 'avanza' && !turning ? HEART : ''}${fill(reply.text)}`,
                 then: fill(reply.romance === 'avanza' && answer ? answer : reply.then),
             })),
         })),
@@ -452,10 +485,12 @@ function ready(scene, { short, answer = '' }) {
 /**
  * La escena de romance que toca en una quedada con alguien, o null si no toca ninguna.
  *
- * - Apagado en las opciones (`on: false`), sin ficha, o cerrado: nada.
- * - La señal: a partir del vínculo 4, en un rato (`free`: sin escena suya pendiente). La suya si
- *   está escrita; si no, la común. Si no puede ser, lo que contesta es su «no». Si la dejaste
- *   pasar hace poco (`espera`), todavía no.
+ * - Apagado en las opciones (`on: false`), sin ficha, cerrado, o con quien aún no se ha
+ *   presentado (`known: false`, J13.7): nada.
+ * - El punto de inflexión (D-J63): en el rango 9, o en la quedada que llega a él (`reaches`: el
+ *   rango al que lleva esta quedada por lo que suma), en un rato (`free`: sin escena suya
+ *   pendiente). La suya si está escrita; si no, la común. Sin corazones, con su aviso. Si no
+ *   puede ser, lo que contesta es su «no». Si la dejaste pasar hace poco (`espera`), todavía no.
  * - Una cita: la siguiente, aunque tenga una escena suya pendiente (esa, en la próxima).
  * - La noche: solo de noche.
  * - Pareja: nada que sustituir (el rato lleva una frase suya: `coupleNote`).
@@ -471,24 +506,26 @@ function ready(scene, { short, answer = '' }) {
  * @param {boolean} [input.free] Si la quedada iba a ser un rato (sin escena suya por jugar).
  * @param {boolean} [input.on] Si el romance está encendido en las opciones.
  * @param {number} [input.day] Hoy.
+ * @param {number} [input.reaches] D-J63: el rango al que llega esta quedada (sin él, `rank`).
+ * @param {boolean} [input.known] J13.7: si ya se ha presentado (sin decirlo, sí).
  * @returns {{scene: RomanceScene, stage: 'senal'|'cita'|'final', allowed: boolean}|null}
  */
-export function romanceScene({ data, card, state, name, rank, hero, slot = '', free = true, on = true, day = 0 }) {
-    if (!on || !card) return null;
+export function romanceScene({ data, card, state, name, rank, hero, slot = '', free = true, on = true, day = 0, reaches = 0, known = true }) {
+    if (!on || !card || known === false) return null;
     const entry = romanceOf(state, name);
     const stage = stageOf(entry, day);
     const short = card.short || text(name).split(' ')[0];
     if (stage === 'senal') {
-        // La señal no le quita el sitio a una escena suya por jugar; las citas y la noche, sí:
-        // las has pedido tú.
-        if (!free || (Number(rank) || 0) < ROMANCE_RANK) return null;
+        // El punto de inflexión no le quita el sitio a una escena suya por jugar; las citas y la
+        // noche, sí: las has pedido tú.
+        if (!free || Math.max(Number(rank) || 0, Number(reaches) || 0) < ROMANCE_RANK) return null;
         const allowed = canRomance(card, data, hero);
         const own = writtenScene(data, card.key, 'senal');
         const scene = own ?? writtenScene(data, '*', 'senal');
         if (!scene) return null;
         const answer = allowed ? (own ? '' : GENERIC_YES) : (card.no || GENERIC_NO);
         const who = { ...scene, who: card.who, key: card.key, id: own ? scene.id : `romance-${card.key}-senal` };
-        return { scene: ready(who, { short, answer }), stage: 'senal', allowed };
+        return { scene: ready(who, { short, answer, turning: true }), stage: 'senal', allowed };
     }
     if (stage === 'cita') {
         const scene = writtenScene(data, card.key, 'cita', (entry?.step ?? 0) + 1);
@@ -550,7 +587,8 @@ export function advanceRomance(state, { name, short = '', stage, choice, allowed
     }
     if (!choice) return same;
     if (choice === 'amigos') {
-        return { state: put({ status: 'amigos' }), news: [`${who} y tú lo dejáis en amistad. No volverá a salir.`], couple: false, changed: true };
+        // D-J63: la ruta de amigos inseparables, sin castigo: el vínculo sigue hasta el rango 10.
+        return { state: put({ status: 'amigos' }), news: [`Desde hoy, ${who} y tú sois inseparables: una amistad de las que duran.`], couple: false, changed: true };
     }
     if (stage === 'senal') {
         if (entry && entry.status !== 'pausa') return same;
@@ -622,14 +660,22 @@ export function romanceWants({ card, state, name, slot = '', on = true }) {
 /**
  * Una frase suya de pareja, para un rato juntos. Vacía si no tiene.
  *
+ * D-J63: un día de fiesta (`festival`, su nombre) o de noche (`night`), una de las suyas para ese
+ * momento si las tiene, o la común.
+ *
  * @param {RomanceData} data
  * @param {any} name
  * @param {number} [turn] Cuál (se da la vuelta).
+ * @param {{festival?: string, night?: boolean}} [when]
  * @returns {string}
  */
-export function coupleNote(data, name, turn = 0) {
-    const lines = data?.notes?.[keyOf(name)] ?? [];
-    return lines.length > 0 ? lines[Math.abs(Math.floor(Number(turn) || 0)) % lines.length] : '';
+export function coupleNote(data, name, turn = 0, { festival = '', night = false } = {}) {
+    const key = keyOf(name);
+    const pick = (/** @type {string[]} */ lines) => (lines.length > 0 ? lines[Math.abs(Math.floor(Number(turn) || 0)) % lines.length] : '');
+    const lines = data?.notes?.[key] ?? [];
+    if (text(festival)) return pick(data?.festival?.[key] ?? [COUPLE_FESTIVAL]).replaceAll('{fiesta}', text(festival));
+    if (night) return pick(data?.night?.[key] ?? [COUPLE_NIGHT]);
+    return pick(lines);
 }
 
 /**

@@ -49,7 +49,25 @@ export function afterFx(fn) {
  * @property {string} [dice] El daño: sus dados («1d8», «1d8 + 1d8» con crítico).
  * @property {number} [modifier] El daño: lo que se suma.
  * @property {boolean} [crit]
+ * @property {string} [damageType] J12.19: el tipo de daño o el arma, para dibujar cómo llega el
+ *   golpe; sin decir, el del arma que lleva quien ataca.
  */
+
+/**
+ * J12.19: con qué pega alguien, en palabras («cortante Espada corta»), para que el golpe se dibuje
+ * según lo que es: el tipo de daño y el nombre del arma que lleva puesta; un enemigo, lo que diga.
+ *
+ * @param {any} who
+ * @returns {string}
+ */
+export function blowTypeOf(who) {
+    if (!who) return '';
+    const items = Array.isArray(who.items) ? who.items : [];
+    const weaponId = who.equippedItems?.weapon;
+    const weapon = weaponId ? items.find((/** @type {any} */ i) => i?.id === weaponId) : null;
+    if (weapon) return `${weapon.damageType || ''} ${weapon.name || ''}`.trim();
+    return String(who.damageType ?? who.attackName ?? who.weapon ?? '').trim();
+}
 
 /**
  * Si la secuencia se ve: hay una en marcha, o hay pelea y su tablero está en el Modo Juego.
@@ -95,18 +113,20 @@ function tokenIdOfEntry(entry) {
  * Quién hay detrás de una ficha, con la vida que le queda ahora: su fila en la iniciativa
  * (`entryId`), su vida y su máximo.
  *
+ * J12.19: y su nombre y su lado, para decir quién cae.
+ *
  * @param {any} tokenId
- * @returns {{entryId: string, hp: number, max: number}|null}
+ * @returns {{entryId: string, hp: number, max: number, name: string, team: 'enemy'|'party'}|null}
  */
 export function whoIsToken(tokenId) {
     const n = Number(tokenId);
     if (Number.isFinite(n) && n < 0 && n > -1000) {
         const enemy = combatEncounter.enemies[-n - 1];
-        return enemy ? { entryId: String(enemy.instanceId), hp: Number(enemy.currentHp) || 0, max: Number(enemy.maxHp) || 0 } : null;
+        return enemy ? { entryId: String(enemy.instanceId), hp: Number(enemy.currentHp) || 0, max: Number(enemy.maxHp) || 0, name: String(enemy.name ?? ''), team: 'enemy' } : null;
     }
     const summons = Array.isArray(/** @type {any} */ (combatEncounter).summons) ? /** @type {any} */ (combatEncounter).summons : [];
     const member = partyMembers.find(m => String(m.id) === String(tokenId)) ?? summons.find((/** @type {any} */ s) => String(s.id) === String(tokenId));
-    return member ? { entryId: String(member.id), hp: Number(member.hp) || 0, max: Number(member.maxHp) || 0 } : null;
+    return member ? { entryId: String(member.id), hp: Number(member.hp) || 0, max: Number(member.maxHp) || 0, name: String(member.name ?? ''), team: 'party' } : null;
 }
 
 /**
@@ -166,10 +186,11 @@ export function stageCall(fn) {
  * @param {any} at
  * @param {'melee'|'ranged'|'spell'|'throw'} style
  * @param {number} [mark] De `fxMark`: el golpe va ahí, antes de lo que hizo al llegar.
+ * @param {string} [damageType] J12.19: el tipo de daño o el nombre del conjuro (cómo se dibuja).
  */
-export function stageAttack(by, at, style, mark) {
+export function stageAttack(by, at, style, mark, damageType = '') {
     if (!by || !at || by === at || !fxOn()) return;
-    pushFx({ kind: 'attack', from: tokenIdOf(by), to: tokenIdOf(at), style }, mark);
+    pushFx({ kind: 'attack', from: tokenIdOf(by), to: tokenIdOf(at), style, damageType: String(damageType || (style === 'spell' ? '' : blowTypeOf(by))) }, mark);
 }
 
 /**
@@ -195,7 +216,9 @@ export function stageRoll(payload, showWindow) {
     }
     const from = tokenIdOf(stage.by);
     const to = tokenIdOf(stage.at);
-    if (from !== null && to !== null && stage.by !== stage.at) pushFx({ kind: 'attack', from, to, style: stage.style ?? 'melee' });
+    if (from !== null && to !== null && stage.by !== stage.at) {
+        pushFx({ kind: 'attack', from, to, style: stage.style ?? 'melee', damageType: String(stage.damageType ?? blowTypeOf(stage.by)) });
+    }
     const natural = Number(payload.natural ?? stage.roll?.natural) || 0;
     const enemySide = stage.side ? stage.side === 'enemy' : combatEncounter.enemies.includes(stage.by);
     pushFx({
@@ -233,6 +256,10 @@ export function stageFloat(tokenId, text, kind) {
         return true;
     }
     const who = whoIsToken(tokenId);
-    pushFx({ kind: 'impact', tokenId, entryId: who?.entryId ?? '', text: String(text ?? ''), style: kind, hp: who?.hp ?? 0, max: who?.max ?? 0 });
+    pushFx({
+        kind: 'impact', tokenId, entryId: who?.entryId ?? '', text: String(text ?? ''), style: kind, hp: who?.hp ?? 0, max: who?.max ?? 0,
+        // J12.19: quién es, por si cae.
+        name: who?.name ?? '', team: who?.team ?? 'enemy',
+    });
     return true;
 }

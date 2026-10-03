@@ -664,6 +664,8 @@ export function buildGuionPack(g, catalogue) {
  * @property {Array<[string, string[]]>} ignoredByField Lo mismo, por campo.
  * @property {GuionIssue[]} issues Lo que dice el validador del paquete, con su sitio.
  * @property {Map<string, string>} index De id o nombre a `archivo:línea`.
+ * @property {Record<string, Map<string, any>>} byKind J5.10: los bloques del guion por tipo e id,
+ *   con las correcciones ya puestas. De ahí sale la ronda de lo corregido en el Word (`guion-round.js`).
  */
 
 /**
@@ -683,7 +685,7 @@ export function convertGuion(files, { parseYaml, abilityRows = [] }) {
     /** @type {GuionResult} */
     const base = {
         stage: 'leido', ok: false, files: ordered.map(f => f.name), counts, problems, worldId: '', pack: null,
-        notes: [], ignored: [], ignoredByField: [], issues: [], index,
+        notes: [], ignored: [], ignoredByField: [], issues: [], index, byKind,
     };
     if (problems.length > 0) return base;
     const world = byKind.mundo.get('mundo');

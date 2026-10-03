@@ -345,6 +345,22 @@ try {
     const imported = await until(async () => /«guion-corregido\.docx»: 1 línea cambiada/.test(await text('.tc-root .tc-word-said')), 60000);
     const importSaid = await text('.tc-root .tc-word-said');
     check('«Importar el guion»: cambia solo la línea tocada, y lo dice', imported && importSaid.includes(NEW_LINE), importSaid.slice(0, 400));
+    // 8c. J5.10: lo corregido sale también como una ronda del guion, la siguiente a la última.
+    const [roundDownload] = await Promise.all([
+        page.waitForEvent('download', { timeout: 20000 }).catch(() => null),
+        page.locator('.tc-root .tc-word-round').click({ timeout: 10000 }).catch(() => {}),
+    ]);
+    const roundPath = join(dataRoot, 'ronda-correcciones.md');
+    if (roundDownload) await roundDownload.saveAs(roundPath);
+    const roundText = roundDownload ? readFileSync(roundPath, 'utf8') : '';
+    const roundName = roundDownload?.suggestedFilename() ?? '';
+    const again = roundText ? convertGuion([...readdirSync(GUION).filter(isRoundFile).map(name => ({ name, text: readFileSync(join(GUION, name), 'utf8') })), { name: roundName, text: roundText }], { parseYaml: jsyaml.load, abilityRows: library.rows ?? [] }) : null;
+    const landed = (target?.src?.path ?? []).reduce((/** @type {any} */ at, /** @type {any} */ step) => at?.[step], again?.pack);
+    const roundSaid = await text('.tc-root .tc-round-said');
+    check('«Descargar la ronda de correcciones (.md)»: ronda-13-correcciones.md, y con ella las rondas dan la línea corregida',
+        roundName === 'ronda-13-correcciones.md' && roundText.includes(NEW_LINE) && again?.stage === 'hecho' && landed === NEW_LINE
+            && /^ronda-13-correcciones\.md: 1 corrección en 1 bloque\./.test(roundSaid),
+        `${roundName} · ${roundSaid} · ${roundText.split('\n').slice(0, 14).join(' / ')}`);
     await shotWorkshop('5b-word', '.tc-root [data-step="word"]');
 
     // 9. Añadir al tablón con otro nombre.

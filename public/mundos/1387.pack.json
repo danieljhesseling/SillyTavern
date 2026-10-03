@@ -620,6 +620,7 @@
   "confidants": [
     {
       "name": "Bran",
+      "aspecto": "Hombre de unos sesenta, ancho de hombros, con el pelo gris corto, una barba gris larga y el ceño fruncido. Capa granate oscura cerrada con cuero y dos remaches de latón; el puño de una espada le asoma por detrás del hombro.",
       "description": "Bran se sienta junto al fuego a afilar su espada. Te confiesa que la hoja era de su hijo, que murió en el sur por culpa de un general incompetente. Te cobra la ración, pero hoy no te cobra por hablar.",
       "className": "guerrero",
       "motive": "coin",
@@ -664,6 +665,7 @@
     },
     {
       "name": "Aldara",
+      "aspecto": "Mujer de unos treinta, delgada y fibrosa, con el pelo negro en dos trenzas largas y los ojos claros. Capucha de lana color crema, camisa verde y peto de cuero cruzado por una correa; un haz de flechas a la espalda.",
       "description": "Aldara te enseña a despellejar un conejo congelado. Es seca y habla poco. Te explica que el valle no es cruel, solo indiferente, y que espera que no seas {otro noble estúpido|otra noble estúpida} que se cree inmortal.",
       "className": "explorador",
       "motive": "bond",
@@ -708,6 +710,7 @@
     },
     {
       "name": "Arthur «Doc»",
+      "aspecto": "Hombre de unos cincuenta, calvo por arriba y con el pelo negro alborotado a los lados, barba negra, gafas redondas y la nariz roja de beber. Levita negra sobre camisa amarillenta; una aguja de coser heridas entre los dedos.",
       "description": "Arthur te está cosiendo una herida del brazo, pero le tiemblan las manos y huele a licor barato. Te confiesa que lo echaron del gremio de cirujanos de la capital por cortarle a un conde la pierna equivocada.",
       "className": "clerigo",
       "motive": "coin",
@@ -752,6 +755,7 @@
     },
     {
       "name": "Isolda",
+      "aspecto": "Chica de unos dieciocho, menuda, con el pelo negro azulado corto a la altura de la barbilla bajo una boina marrón. Jersey de lana cruda de cuello alto bajo un sayo marrón de mozo de cuadra.",
       "description": "Isolda, vestida de mozo de cuadra, se limpia la sangre de los nudillos. Es la hija bastarda de Lord Vane. Dice que va contigo porque eres {el único|la única} que no la trata como si fuera de cristal, pero que no te fíes de ella.",
       "className": "picaro",
       "motive": "bond",
@@ -796,6 +800,7 @@
     },
     {
       "name": "Grimm",
+      "aspecto": "Hombre de unos cuarenta y cinco, enorme y macizo, con la cabeza rapada, barba gris de varios días y cara de pocos amigos. Armadura de placas negra que le cubre hasta el cuello.",
       "description": "Grimm es una montaña de músculo que solo habla con gruñidos. En la posada ves cómo le da a un mensajero todo el sueldo de la semana. Te mira, señala un dibujo arrugado de una mujer y tres niños, y asiente.",
       "className": "soldado",
       "motive": "coin",
@@ -843,6 +848,7 @@
     {
       "id": "el-tabernero-giles",
       "name": "Giles",
+      "aspecto": "Hombre de unos cincuenta y cinco, ancho, calvo y con barba gris corta. Camisa gris oscura remangada y mandil de cuero color mostaza con cinturón de hebilla dorada; una moneda entre los dedos.",
       "trade": "Tabernero",
       "where": "El Pueblo de Barro",
       "wants": "Que alguien le pague la cuenta del soldado muerto antes del viernes.",
@@ -854,6 +860,7 @@
     {
       "id": "alguacil-torres",
       "name": "Torres",
+      "aspecto": "Hombre de unos cuarenta, fornido, con una barba pelirroja espesa y el ceño fruncido bajo un casco de hierro redondo con ala. Peto de hierro con una placa de latón en el pecho.",
       "trade": "Alguacil",
       "where": "El Pueblo de Barro",
       "wants": "Cargarle el asesinato a alguien cuanto antes y que Vane le deje en paz.",
@@ -865,6 +872,7 @@
     {
       "id": "el-herrero-dunstan",
       "name": "Dunstan",
+      "aspecto": "Hombre de unos sesenta, flaco pero de brazos fibrosos, con el pelo gris peinado hacia atrás y barba gris corta. Mandil de cuero sin camisa y muñequera de cuero; sujeta una barra de hierro con la punta al rojo.",
       "trade": "Herrero",
       "where": "El Pueblo de Barro",
       "wants": "Acero de verdad; está harto de fundir herraduras para hacer espadas.",
@@ -876,6 +884,7 @@
     {
       "id": "el-enterrador-yorick",
       "name": "Yorick",
+      "aspecto": "Hombre de unos sesenta, enjuto y de ojos hundidos, con el pelo gris largo y lacio y barba gris corta. Jubón de cuero sobre camisa verde; lleva una camilla de madera a la espalda.",
       "trade": "Enterrador",
       "where": "El Pueblo de Barro",
       "wants": "Botas de buena piel. A veces los muertos las traen puestas, y él se las queda.",
@@ -887,6 +896,7 @@
     {
       "id": "la-madame-vera",
       "name": "Vera",
+      "aspecto": "Mujer de unos cincuenta, rellenita, con el pelo castaño recogido en un moño y los labios pintados de rojo. Vestido granate de cuello alto, estola de piel dorada sobre los hombros y un collar largo de perlas.",
       "trade": "Dueña del burdel (clausurado)",
       "where": "El Pueblo de Barro",
       "wants": "Un salvoconducto para sacar a sus chicas del valle.",
@@ -898,6 +908,7 @@
     {
       "id": "lord-vane",
       "name": "Lord Edmund Vane",
+      "aspecto": "Hombre de unos sesenta, delgado y pálido, con el pelo gris largo y lacio y barba gris. Ropa azul oscuro con cuello de piel gris y ribete dorado; se tapa la boca con un pañuelo de seda granate.",
       "trade": "Señor del Valle",
       "famous": true,
       "where": "Castillo de Vane",
@@ -910,6 +921,7 @@
     {
       "id": "el-pagador-fantasma",
       "name": "Oswald el Senescal",
+      "aspecto": "Hombre de unos setenta, flaco, con el pelo blanco de punta, la nariz larga y ganchuda y las cejas fruncidas. Túnica negra con capucha sobre camisa amarilla; un rollo de pergamino bajo el brazo.",
       "trade": "Senescal y Pagador",
       "where": "Castillo de Vane",
       "wants": "Recuperar el libro de cuentas del recaudador muerto.",
@@ -921,6 +933,7 @@
     {
       "id": "el-guardia-corrupto",
       "name": "Garret",
+      "aspecto": "Chico de unos veinte, delgado, con el pelo castaño corto bajo un casco de hierro redondo. Casaca azul oscuro con botones de latón y correas de cuero; mira de reojo, nervioso.",
       "trade": "Guardia de la puerta",
       "where": "Castillo de Vane",
       "wants": "Plata suficiente para desertar esta misma noche.",
@@ -932,6 +945,7 @@
     {
       "id": "el-vigia-tuerto",
       "name": "El Tuerto",
+      "aspecto": "Hombre de unos cuarenta, con una barba castaña larga y un parche negro en el ojo derecho. Capucha gris oscura y capa de pieles de lobo sobre los hombros.",
       "trade": "Vigía",
       "where": "El Peaje Norte",
       "wants": "Una botella de licor fuerte para aguantar el frío de la torre.",
@@ -943,6 +957,7 @@
     {
       "id": "el-monje-cirujano",
       "name": "Hermano Silas",
+      "aspecto": "Hombre de unos sesenta, flaco, calvo y con arrugas profundas, de cara seria. Hábito de monje marrón oscuro con la capucha echada atrás; un bastón de madera con pomo en la mano.",
       "trade": "Cirujano y clérigo",
       "where": "La Ermita Derruida",
       "wants": "Agujas limpias, hilo de seda y alcohol de quemar.",
@@ -954,6 +969,7 @@
     {
       "id": "la-viuda-hambrienta",
       "name": "Marta",
+      "aspecto": "Mujer de unos cuarenta, flaca y demacrada, con ojeras y la boca apretada. Manto negro con capucha que le tapa el pelo y los hombros.",
       "trade": "Campesina",
       "where": "La Granja Quemada",
       "wants": "Vengarse de los hombres de Vane que quemaron su silo.",
@@ -965,6 +981,7 @@
     {
       "id": "el-pescador-loco",
       "name": "Finn",
+      "aspecto": "Viejo de unos setenta, con una barba blanca larga, cejas blancas pobladas, los ojos rojos desorbitados y la boca abierta con dientes sueltos. Gorro de piel con orejeras y abrigo de piel de cuello lanudo.",
       "trade": "Pescador de hielo",
       "where": "El Lago Helado",
       "wants": "Que le devuelvan su arpón de la suerte.",
@@ -976,6 +993,7 @@
     {
       "id": "karl-el-sordo",
       "name": "Karl",
+      "aspecto": "Hombre de unos cincuenta, de cara curtida y roja, con una barba y un bigote pelirrojos enormes. Capucha y capa de cuero marrón; se lleva la mano a la oreja, como si no oyera.",
       "trade": "Líder de los furtivos",
       "where": "Campamento Furtivo",
       "wants": "Armar a los campesinos para asaltar el castillo de Vane.",
@@ -987,6 +1005,7 @@
     {
       "id": "la-cazadora-nils",
       "name": "Nils",
+      "aspecto": "Mujer de unos veinticinco, delgada, con el pelo rubio liso bajo una capucha verde. Túnica verde oliva, cuello de piel negra y una correa de cuero cruzada; una lanza de caza con gancho a la espalda.",
       "trade": "Lugarteniente y cazadora",
       "stranger": "una cazadora",
       "where": "Campamento Furtivo",
@@ -999,6 +1018,7 @@
     {
       "id": "capitana-keller",
       "name": "Elara Keller",
+      "aspecto": "Mujer de unos treinta, con el pelo rubio largo en una trenza sobre el hombro y los ojos color ámbar. Armadura negra pulida con hombreras redondas, ribetes dorados, un emblema dorado en el pecho y cuello de piel blanca.",
       "trade": "Comandante de la Vanguardia",
       "where": "Campamento Keller",
       "wants": "Una victoria rápida para impresionar a su padre, el Duque.",
@@ -1010,6 +1030,7 @@
     {
       "id": "el-intendente-norteño",
       "name": "Ulric",
+      "aspecto": "Hombre de unos cincuenta, corpulento, calvo y con una barba castaña larga. Casaca azul oscuro con ribetes granate y dorados y cuello de piel; lee un libro de cuentas abierto.",
       "trade": "Intendente",
       "where": "Campamento Keller",
       "wants": "Suministros frescos, carne o grano; le da igual de dónde salgan.",
@@ -1021,6 +1042,7 @@
     {
       "id": "la-forjadora-hilda",
       "name": "Hilda",
+      "aspecto": "Mujer de unos treinta y cinco, fornida y de brazos fuertes, con el pelo rojo recogido en un moño. Camisa gris de manga corta, mandil de cuero negro y guantes largos de cuero; un martillo en la mano.",
       "trade": "Herrera de guerra",
       "where": "Campamento Keller",
       "wants": "Buen carbón para sus fraguas.",
@@ -1032,6 +1054,7 @@
     {
       "id": "el-boticario",
       "name": "Maese Ambrosio",
+      "aspecto": "Hombre de unos cuarenta, con barba negra puntiaguda y gafas redondas bajo una capucha negra. Correas de cuero cruzadas con un medallón de bronce y un frasco de líquido verde colgado al pecho.",
       "trade": "Contrabandista de hierbas",
       "where": "La Mina Abandonada",
       "wants": "Un escolta que le saque del valle con su oro.",
@@ -1043,6 +1066,7 @@
     {
       "id": "el-espia-de-keller",
       "name": "Sombra",
+      "aspecto": "Hombre joven, de cara pálida y afilada, bajo una capucha negra cerrada que no deja ver el pelo. Ropa negra ceñida; un ojo inyectado en sangre y un hilo de sangre por la mejilla.",
       "trade": "Infiltrador",
       "where": "La Mina Abandonada",
       "wants": "Que, si él muere, entregues un mensaje cifrado a la Capitana.",
@@ -1054,6 +1078,7 @@
     {
       "id": "el-nino-soplillo",
       "name": "Pip",
+      "aspecto": "Niño de unos diez años, flaco, con el pelo negro bajo una gorra gris de visera, pecas y los ojos muy abiertos. Abrigo marrón con capucha, demasiado grande para él.",
       "trade": "Huérfano y mensajero",
       "where": "El Cruce de Caminos",
       "wants": "Medio pan duro y que nadie le pegue hoy.",
@@ -1065,6 +1090,7 @@
     {
       "id": "el-desertor-ahorcado",
       "name": "Darek",
+      "aspecto": "Hombre de unos treinta y cinco, con el pelo castaño hasta el cuello y barba castaña. Jubón de cuero marrón con mangas de malla gris; se agarra el cuello, y le cuelga un trozo de soga.",
       "trade": "Ex-soldado",
       "where": "El Camino Viejo",
       "wants": "Que alguien corte la soga que aún lleva atada al cuello.",
@@ -1076,6 +1102,7 @@
     {
       "id": "el-mercader-atrapado",
       "name": "Valerius",
+      "aspecto": "Hombre de unos cuarenta y cinco, grueso, con el pelo negro engominado hacia atrás y un bigote negro retorcido. Abrigo verde con cuello de piel marrón, chaleco dorado y botones de latón; siempre frotándose las manos.",
       "trade": "Comerciante",
       "where": "El Pueblo de Barro",
       "wants": "Contratar guardaespaldas para cuando se abra el paso.",
@@ -1087,6 +1114,7 @@
     {
       "id": "mirlo",
       "name": "Mirlo",
+      "aspecto": "Chaval de unos catorce, flaco, con el pelo negro revuelto bajo un sombrero de fieltro marrón. Esclavina marrón con broche sobre chaqueta oscura; aprieta un sobre de papel contra el pecho.",
       "trade": "Chaval de los recados",
       "where": "El Roble de los Recados",
       "wants": "Unas botas que no dejen pasar la nieve.",
@@ -1098,6 +1126,7 @@
     {
       "id": "brigida",
       "name": "Brígida",
+      "aspecto": "Mujer de unos cuarenta y cinco, con el pelo gris largo bajo un pañuelo blanco y los ojos azules. Camisa blanca remangada y sayo marrón; lleva en brazos un manojo de hierbas verdes.",
       "trade": "Partera y curandera",
       "where": "La Choza de Brígida",
       "wants": "Sal gorda y mantas: este invierno le suben más heridos que partos.",
@@ -1109,6 +1138,7 @@
     {
       "id": "otilia",
       "name": "Otilia",
+      "aspecto": "Mujer de unos veinticinco, delgada, con el pelo negro recogido en una coleta baja y mechones sueltos. Chal gris oscuro sobre camisa blanca; brazos cruzados y mirada desconfiada.",
       "trade": "Refugiada",
       "where": "Los Baños Viejos",
       "wants": "Que nadie más sepa que ella y sus dos hijos duermen aquí, al calor del agua.",
@@ -1135,6 +1165,7 @@
     },
     {
       "name": "Furtivo de los Lobos",
+      "aspecto": "Hombre de unos treinta, flaco y curtido, con barba de varios días y la cara manchada de tierra. Pieles de lobo sobre un peto de cuero endurecido y capucha de piel; un arco corto en la mano.",
       "hp": 16,
       "armorClass": 13,
       "cr": 0.5,

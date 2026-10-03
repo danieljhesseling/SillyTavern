@@ -36,6 +36,11 @@ export const BOND_EVENTS = {
     gift_disliked: { points: -2, label: 'Regalo desafortunado' },
     confidant_scene: { points: 3, label: 'Escena de confidente' },
     shared_downtime: { points: 2, label: 'Tiempo libre compartido' },
+    // D-J63: quedar con alguien, como en *Persona*: lo que más acerca. Su escena (la de su rango)
+    // o un rato juntos. Con estos puntos, el rango 9 llega en unas 12 a 15 quedadas con alguien
+    // que no va contigo, o en una o dos campañas con quien sí (ver `tests/game-engine-vinculos-persona`).
+    meetup_scene: { points: 8, label: 'Quedada: su escena' },
+    meetup_rato: { points: 6, label: 'Quedada: un rato juntos' },
     // J14.11: venir contigo a un trabajo o a un rato (servir mesas, las cartas, pescar). Poco.
     pastime_together: { points: 1, label: 'Un rato juntos, trabajando o jugando' },
     saved_their_life: { points: 6, label: 'Le salvaste la vida' },

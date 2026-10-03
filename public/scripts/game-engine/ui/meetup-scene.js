@@ -14,7 +14,7 @@
  * quien la abrió. Teclas: 1, 2 y 3 eligen; Intro o espacio siguen.
  */
 
-import { sceneStep, sceneView, startScene } from '../campaign/meetups.js';
+import { RANK_UP_LINE, sceneStep, sceneView, startScene } from '../campaign/meetups.js';
 import { firstArt, loadPixelManifest, pixelManifest } from './pixel-art.js';
 import { hearLine, knowsName, meetPerson, shownName, shownText } from './shown-names.js';
 import { asideBox, fillAside, splitLines } from './vn-aside.js';
@@ -193,7 +193,9 @@ export async function openMeetupScene({
      */
     const speakerOf = (name) => {
         const found = people.find(p => text(p.name) === text(name) || text(p.short) === text(name));
-        return found ? { ...found, name: text(found.name) } : { ...person, name: who };
+        if (found) return { ...found, name: text(found.name) };
+        // J13.9: en una quedada, un paso que dice otro que está allí (el tabernero): con su nombre.
+        return text(name) && text(name) !== who && text(name) !== text(scene?.who) ? { name: text(name) } : { ...person, name: who };
     };
     const dialog = openDialog(people.length > 1 ? text(scene?.title) || `Con ${who}` : `Quedada con ${who}`, mount);
     const root = el('div', `qd-root qd-${text(scene?.kind) || 'escena'}`);
@@ -261,8 +263,17 @@ export async function openMeetupScene({
                 plate.hidden = true;
                 step.textContent = '';
                 drawPortrait(portrait, portraitFor({ ...person, name: who, pack, mood: 'alegre' }), who);
+                // D-J63: si sube el rango, el momento, en grande y claro: «Rango 3 con Gerd».
+                const rankUp = (summary ?? []).find(line => RANK_UP_LINE.test(line));
+                if (rankUp && !root.querySelector('.qd-rankup')) {
+                    const banner = el('div', 'qd-rankup');
+                    banner.setAttribute('role', 'status');
+                    banner.appendChild(el('i', 'fa-solid fa-link'));
+                    banner.appendChild(el('span', 'qd-rankup-text', shownText(rankUp, { mask: true })));
+                    root.insertBefore(banner, box);
+                }
                 // D-J60: no es nadie quien lo cuenta: en el aviso, y la caja solo con «Cerrar».
-                fillAside(aside, (summary ?? []).map(line => ({ kind: 'summary', text: line })));
+                fillAside(aside, (summary ?? []).filter(line => line !== rankUp).map(line => ({ kind: 'summary', text: line })));
                 chip('Cerrar', '↵', 'finish', () => close(true)).focus();
                 return;
             }
@@ -272,7 +283,7 @@ export async function openMeetupScene({
             plate.hidden = false;
             step.textContent = view.steps > 1 ? `${view.step} / ${view.steps}` : '';
             // Con varios, la placa y el retrato son de quien habla en este paso.
-            const speaking = people.length > 0 ? speakerOf(text(view.speaker) || who) : /** @type {{name: string, short?: string}} */ ({ ...person, name: who });
+            const speaking = /** @type {{name: string, short?: string}} */ (speakerOf(text(view.speaker) || who));
             // J13.7: lo que dice enseña su nombre (si lo dice); la placa, después.
             for (const line of beatLines(view)) if (line.kind === 'say') hearLine({ who: speaking.name, text: line.text });
             plate.textContent = knowsName(speaking.name) ? text(speaking.short) || speaking.name : shownName(speaking.name);
@@ -286,7 +297,10 @@ export async function openMeetupScene({
                 p.appendChild(document.createTextNode(shownText(line.text, { mask: line.kind === 'then' })));
                 lines.appendChild(p);
             }
-            fillAside(aside, split.aside);
+            // D-J63: en el punto de inflexión, el aviso del paso donde se decide, mientras se elige.
+            const warn = view.next === 'reply' ? text(/** @type {any} */ (scene?.beats?.[state.beat])?.warn) : '';
+            fillAside(aside, warn ? [...split.aside, { kind: 'warn', text: warn }] : split.aside);
+            root.classList.toggle('qd-turning', Boolean(warn));
             let first = /** @type {HTMLButtonElement|null} */ (null);
             for (const one of beatChips(view)) {
                 const button = one.kind === 'reply'
@@ -329,6 +343,124 @@ export async function openMeetupScene({
             } else if (view.next !== 'reply' && (event.key === 'Enter' || event.key === ' ') && !(event.target instanceof HTMLButtonElement)) {
                 event.preventDefault();
                 act({ next: true });
+            }
+        });
+        draw();
+    });
+}
+
+/**
+ * D-J63: la invitación, al pulsar a alguien de tu gente (como en *Persona*). Su retrato, el sitio
+ * detrás y lo que dice al verte (`invitationFor` de `campaign/invitations.js`): si no os
+ * conocíais, primero se presenta. Si tiene una charla corta (J14.1, `talk`), va dentro del saludo,
+ * con sus respuestas. Luego la pregunta y dos respuestas: «Pasar el rato con X» y «Hablamos en
+ * otro momento». La pista de que el vínculo subirá hoy (`hint`) va fuera de la caja (D-J60).
+ *
+ * @param {Object} input
+ * @param {{name: string, className?: string, gender?: string, race?: string}} input.person
+ * @param {string[]} input.lines Lo que dice al verte.
+ * @param {string} input.ask La pregunta.
+ * @param {Array<{id: string, label: string}>} input.options
+ * @param {string} [input.hint]
+ * @param {{say: string, replies: Array<{text: string, then?: string}>}|null} [input.talk] Una charla corta suya.
+ * @param {string} [input.pack]
+ * @param {string} [input.place]
+ * @param {string} [input.town]
+ * @param {boolean} [input.night]
+ * @param {string} [input.placeLabel]
+ * @param {HTMLElement|null} [input.mount]
+ * @returns {Promise<{choice: string, talkReply: number|null}>}
+ */
+export async function openInvitation({
+    person, lines, ask, options, hint = '', talk = null, pack = '', place = '', town = '', night = false, placeLabel = '', mount = null,
+}) {
+    await loadPixelManifest();
+    const who = text(person?.name);
+    const dialog = openDialog(`${shownName(who)} te saluda`, mount);
+    const root = el('div', 'qd-root qd-invite');
+    root.dataset.person = who;
+    const backdrop = el('div', 'qd-backdrop');
+    const art = backdropFor({ place, town, pack, night });
+    if (art) backdrop.style.setProperty('--qd-backdrop', `url("${new URL(art, document.baseURI).href}")`);
+    backdrop.hidden = !art;
+    const portrait = el('div', 'qd-portrait');
+    const box = el('div', 'qd-box');
+    const plate = el('div', 'qd-nameplate');
+    const head = el('div', 'qd-head');
+    head.appendChild(el('span', 'qd-title', text(placeLabel)));
+    const said = el('div', 'qd-text');
+    said.setAttribute('aria-live', 'polite');
+    const chips = el('div', 'qd-chips');
+    box.append(plate, head, said, chips);
+    const aside = asideBox();
+    root.append(backdrop, portrait, aside, box);
+    dialog.appendChild(root);
+    drawPortrait(portrait, portraitFor({ ...person, name: who, pack }), who);
+    fillAside(aside, text(hint) ? [{ kind: 'hint', text: text(hint) }] : []);
+
+    /** @type {Array<{kind: string, text: string}>} */
+    const shown = (Array.isArray(lines) ? lines : []).filter(line => text(line)).map(line => ({ kind: 'say', text: text(line) }));
+    const replies = Array.isArray(talk?.replies) ? talk.replies.filter(r => text(r?.text)).slice(0, 3) : [];
+    if (talk && text(talk.say)) shown.push({ kind: 'say', text: text(talk.say) });
+    let phase = replies.length > 0 ? 'talk' : 'ask';
+    if (phase === 'ask') shown.push({ kind: 'say', text: text(ask) });
+    /** @type {number|null} */
+    let talkReply = null;
+
+    return new Promise(resolve => {
+        const close = (/** @type {string} */ choice) => {
+            dialog.close();
+            dialog.remove();
+            resolve({ choice, talkReply });
+        };
+        /** @type {Array<{label: string, run: () => void}>} */
+        let current = [];
+        const draw = () => {
+            said.textContent = '';
+            chips.textContent = '';
+            // J13.7: lo que dice enseña su nombre (al presentarse); la placa, después.
+            for (const line of shown) if (line.kind === 'say') hearLine({ who, text: line.text });
+            plate.textContent = knowsName(who) ? who.split(' ')[0] : shownName(who);
+            for (const line of shown) {
+                const p = el('p', `qd-line qd-${line.kind}`);
+                if (line.kind === 'you') p.appendChild(el('span', 'qd-who', 'Tú'));
+                p.appendChild(document.createTextNode(shownText(line.text, { mask: line.kind !== 'you' })));
+                said.appendChild(p);
+            }
+            current = phase === 'talk'
+                ? replies.map((reply, index) => ({
+                    label: text(reply.text),
+                    run: () => {
+                        talkReply = index;
+                        shown.push({ kind: 'you', text: text(reply.text) });
+                        if (text(reply.then)) shown.push({ kind: 'then', text: text(reply.then) });
+                        shown.push({ kind: 'say', text: text(ask) });
+                        phase = 'ask';
+                        draw();
+                    },
+                }))
+                : options.map(option => ({ label: text(option.label), run: () => close(option.id) }));
+            current.forEach((one, i) => {
+                const button = /** @type {HTMLButtonElement} */ (el('button', `qd-chip qd-chip-reply${phase === 'ask' ? ' qd-chip-invite' : ''}`));
+                button.type = 'button';
+                if (phase === 'ask') button.dataset.choice = options[i]?.id ?? '';
+                button.appendChild(el('span', 'qd-key', String(i + 1)));
+                button.appendChild(el('span', 'qd-label', shownText(one.label, { mask: true })));
+                button.addEventListener('click', one.run);
+                chips.appendChild(button);
+            });
+            /** @type {HTMLElement|null} */ (chips.querySelector('button'))?.focus();
+        };
+        // Escape es «Hablamos en otro momento»: no se gasta nada.
+        dialog.addEventListener('cancel', (event) => {
+            event.preventDefault();
+            close(options.find(o => o.id !== options[0]?.id)?.id ?? '');
+        });
+        dialog.addEventListener('keydown', (event) => {
+            event.stopPropagation();
+            if (/^[1-3]$/.test(event.key) && current[Number(event.key) - 1]) {
+                event.preventDefault();
+                current[Number(event.key) - 1].run();
             }
         });
         draw();

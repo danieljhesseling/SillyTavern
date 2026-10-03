@@ -679,9 +679,10 @@ try {
     });
     check('cambiar de arma: gratis (la acción sigue), el menú de Atacar sigue abierto, y una vez por turno',
         swapped.now === 'Daga' && swapped.action && swapped.keepOpen === 'atacar' && swapped.again === false && /Ya has cambiado/.test(String(swapped.why)), JSON.stringify(swapped));
-    check('la otra mano (2024): apagada hasta atacar con la espada corta; luego la daga (su tirada, con tu modificador), y con Mellar no gasta la adicional, una vez por turno',
+    // La tirada de la otra mano suma la Fuerza (+3) y la competencia (+2); lo que no suma es el daño.
+    check('la otra mano (2024): apagada hasta atacar con la espada corta; luego la daga (su tirada, con tu modificador y tu competencia), y con Mellar no gasta la adicional, una vez por turno',
         twoHands.before === false && twoHands.ready === true && /daga/i.test(String(twoHands.name)) && twoHands.badges.includes('Gratis (Mellar)')
-        && twoHands.bonus && twoHands.again === false && /otra mano/.test(twoHands.said) && twoHands.offMod === '+3', JSON.stringify(twoHands));
+        && twoHands.bonus && twoHands.again === false && /otra mano/.test(twoHands.said) && twoHands.offMod === '+5', JSON.stringify(twoHands));
 
     // 10c. J19.3: lanzar a más nivel, por la barra. Nerea, maga de nivel 3 un momento (espacios
     // de 1.º y de 2.º): en Magia, Proyectil mágico deja elegir el espacio; con el de 2.º, un dardo más.
