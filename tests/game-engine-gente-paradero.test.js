@@ -2,7 +2,7 @@
  * J14.4 y J14.6: quién está dónde (`whereabouts.js`), y lo que la pantalla de la quedada decide
  * sin dibujar (`ui/meetup-scene.js`).
  */
-import { describe, test, expect } from '@jest/globals';
+import { describe, test, expect, beforeAll, afterAll } from '@jest/globals';
 import { readFileSync } from 'node:fs';
 import {
     PLACES, SCHEDULE_BY_WANTS, placesOf, placeLabel, placeOpen, companionPlace, townsfolkPlace, homeOf, whoIsWhere, meetPlaces, socialChips,
@@ -10,7 +10,7 @@ import {
 import { readMeetupRows, personOf } from '../public/scripts/game-engine/campaign/meetups.js';
 import { townPlaces, PLACE_KINDS } from '../public/scripts/game-engine/campaign/town.js';
 import { HIRELINGS } from '../public/scripts/game-engine/campaign/guests.js';
-import { readManifest } from '../public/scripts/game-engine/ui/pixel-art.js';
+import { readManifest, PORTRAIT_MOODS } from '../public/scripts/game-engine/ui/pixel-art.js';
 import { portraitFor, backdropFor, beatLines, beatChips, pickerCards } from '../public/scripts/game-engine/ui/meetup-scene.js';
 import { readScene, startScene, sceneStep, sceneView } from '../public/scripts/game-engine/campaign/meetups.js';
 
@@ -163,6 +163,10 @@ describe('dónde quedar, y las fichas', () => {
 });
 
 describe('la pantalla de la quedada, sin dibujar', () => {
+    // Los gestos están apagados en el juego (2026-10-03); aquí se mira que siguen funcionando.
+    beforeAll(() => { PORTRAIT_MOODS.on = true; });
+    afterAll(() => { PORTRAIT_MOODS.on = false; });
+
     const manifest = readManifest({
         files: [
             'retratos/mercenarios/gerd-el-mellado.png', 'retratos/mercenarios/gerd-el-mellado--alegre.png',

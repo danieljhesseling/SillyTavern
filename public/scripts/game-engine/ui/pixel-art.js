@@ -421,6 +421,13 @@ function masculine(slug) {
 }
 
 /**
+ * Los gestos de los retratos (alegre, enfadado, triste). Apagados por ahora: Daniel quiere a todos
+ * neutros hasta que los gestos estén más cuidados (2026-10-03). Se pide el gesto igual que siempre,
+ * pero mientras esto esté en `false` sale el retrato neutro. Para volver a encenderlos: `on: true`.
+ */
+export const PORTRAIT_MOODS = { on: false };
+
+/**
  * Los archivos que le tocan a algo, en orden, y solo los que existen.
  *
  * - `class`: el icono de la clase (`clases/`).
@@ -506,7 +513,7 @@ export function artFor(kind, query = {}, manifest = loaded) {
         }
         case 'mercenary': {
             // Con su gesto (`gerd-el-mellado--alegre`), si lo tiene dibujado (J14).
-            const mood = slugify(query.mood);
+            const mood = PORTRAIT_MOODS.on ? slugify(query.mood) : '';
             if (mood) add('retratos/mercenarios', slug && `${slug}--${mood}`);
             add('retratos/mercenarios', slug);
             break;
@@ -514,7 +521,7 @@ export function artFor(kind, query = {}, manifest = loaded) {
         case 'portrait': {
             const pack = slugify(query.pack);
             // Con su gesto, si lo tiene dibujado (`brunilda--enfadado`), y si no, el de siempre.
-            const mood = slugify(query.mood);
+            const mood = PORTRAIT_MOODS.on ? slugify(query.mood) : '';
             for (const one of pack ? [pack] : packs) {
                 const folder = `retratos/${one}`;
                 for (const base of [id, alias(folder, slug), slug]) {

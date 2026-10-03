@@ -1,4 +1,4 @@
-import { describe, test, expect, afterEach } from '@jest/globals';
+import { describe, test, expect, afterEach, beforeAll, afterAll } from '@jest/globals';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -6,6 +6,7 @@ import {
     slugify, classIdOf, genderFileOf, readManifest, artFor, firstArt, isPlainFace, buildPixelManifest, packOfWorld,
     setPixelManifest, loadPixelManifest, pixelManifest, PIXEL_BASE, boardBiome, terrainTile, hazardTile, enemyArt,
     pastimePlace, bridgeTiles, cliffFace, CLIFF_FACE,
+    PORTRAIT_MOODS,
 } from '../public/scripts/game-engine/ui/pixel-art.js';
 import { terrainFromAsciiMap } from '../public/scripts/game-engine/board/terrain.js';
 import { pixelManifestText } from '../tools/pixel-manifest.mjs';
@@ -102,6 +103,24 @@ function gamePacks(manifest) {
 }
 
 afterEach(() => setPixelManifest(null));
+
+// Los gestos están apagados en el juego (2026-10-03: todos neutros por ahora). Estas pruebas
+// miran que el arte de los gestos sigue ahí y se encuentra, así que los encienden.
+beforeAll(() => { PORTRAIT_MOODS.on = true; });
+afterAll(() => { PORTRAIT_MOODS.on = false; });
+
+describe('los gestos, apagados por ahora', () => {
+    test('con el interruptor apagado, pedir un gesto da el retrato neutro', () => {
+        const manifest = readManifest({ version: 1, files: ['retratos/gremio/brunilda.png', 'retratos/gremio/brunilda--enfadado.png'] });
+        PORTRAIT_MOODS.on = false;
+        try {
+            expect(firstArt('portrait', { name: 'Brunilda', pack: 'gremio', mood: 'enfadado' }, manifest)).toMatch(/brunilda\.png$/);
+        } finally {
+            PORTRAIT_MOODS.on = true;
+        }
+        expect(firstArt('portrait', { name: 'Brunilda', pack: 'gremio', mood: 'enfadado' }, manifest)).toMatch(/brunilda--enfadado\.png$/);
+    });
+});
 
 describe('el nombre de un archivo', () => {
     test('minúsculas ASCII, sin tildes, la ñ es n, y guiones entre palabras', () => {
