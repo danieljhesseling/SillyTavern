@@ -21,20 +21,30 @@ created: 2026-10-02
 - 🟡 existe a medias o sin contenido que lo use;
 - ⬜ no existe.
 
-## 📍 Cómo va (2026-10-03, 23:20)
+## 📍 Cómo va (2026-10-03, 23:45)
 
-**Avance: ~72 %** (22 de 32 ideas ya se juegan; casi todo lo demás, en sus últimas pruebas). Nada de esto está aún en un commit de código: entra con el commit de cierre del modo guiado.
+**Avance: ~97 %.** Las 32 ideas están escritas y cada una se ha probado en el navegador por su agente. Falta lo de todos a la vez: pasar la batería entera con todo junto (hay fallos sueltos que salen al cruzarse los cambios, ver abajo) y el commit del código. Siguen trabajando el agente de E4 (cerrando) y el de los ajustes de E2 (ganzúas y antorchas).
 
-| Bloque | Hecho | % aprox. | Estado |
-| :--- | :--- | :---: | :--- |
-| E1 · El tablero que se usa | E1.1, E1.2, E1.3 | 65 % | E1.4 (derrumbes) y E1.5 (puzles): un agente a medias. Hay escritos `board/mechanisms.js`, `party/board-mechanisms.js` y casillas nuevas en `terrain.js`; faltan el dibujo, la leyenda del paquete y del Gem, los ejemplos en 1387 y Strahd y las pruebas. **Se pausa si se acaba la cuota** |
-| E2 · La mazmorra que pesa | Todo | 100 % | Ajustes de tus decisiones (ganzúas y 5 antorchas) escritos; faltan sus pruebas |
-| E3 · El grupo y sus combos | Todo (E3.3 con Arma elemental: 11 de 11 en el navegador) | 100 % | — |
-| E4 · Compañeros con roce | — | ~70 % | Escrito; en la prueba del navegador |
-| E5 · El gremio que paga | — | ~75 % | Escrito y con pruebas; falta el navegador |
-| E6 · El camino entre campañas | — | ~75 % | Escrito y con pruebas; falta el navegador |
-| E7 · Sin fricción aburrida | Todo, también el cuadro de preparar del héroe ya marcado | 100 % | — |
-| E8 · La larga vida | Todo: E8.1-E8.7 (E8.4, los mercenarios de paso, 8 de 8 en el navegador) | 100 % | — |
+| Bloque | Hecho | Prueba en el navegador |
+| :--- | :--- | :--- |
+| E1 · El tablero que se usa | Todo: E1.4 la columna que se derriba (Comedor del Conde, mina), E1.5 estatua con gema, runas en orden y palancas dobles (Argynvostholt, ermita, salón de Vane) | ✅ |
+| E2 · La mazmorra que pesa | Todo; los ajustes de tus decisiones, en sus pruebas | ✅ |
+| E3 · El grupo y sus combos | Todo; E3.2 combos para cualquier pareja con vínculo 3 (13 de 13), E3.3 Arma elemental (11 de 11) | ✅ |
+| E4 · Compañeros con roce | Todo marcado; el agente está cerrando | ✅ |
+| E5 · El gremio que paga | Todo: temple y raciones para la salida, libros de bichos, «Quién está para salir», cansancio del camino, mandar a alguien a un encargo con su informe (12 de 12) | ✅ |
+| E6 · El camino entre campañas | Todo: tarjetas de viaje (puente caído, ventisca, mercader), se come por el camino, papeles de noche al acampar (12 de 12) | ✅ |
+| E7 · Sin fricción aburrida | Todo, también el cuadro de preparar del héroe ya marcado | ✅ |
+| E8 · La larga vida | Todo | ✅ |
+
+**Fallos que han salido al cruzarse los cambios** (los mira la batería final; también en la tabla de bugs de [[ROADMAP_SIN_CONEXION]]):
+- En `e2e-magia`: la tarjeta de subir de nivel, el «+2 por la Luz» al examinar de noche, la pregunta de curar al llegar y las iniciales en el tablero.
+- Al pasar una semana viajando o acampando, el oro del grupo se queda en 0 (seguramente la paga semanal de los mercenarios).
+- El rótulo «Vínculo 3 · …» se corta cuando la ficha está pegada al borde del tablero.
+
+**Decisiones abiertas para Daniel (de E1, E5 y E6):**
+- **E1:** las reglas de la columna son mías (Atletismo CD 10 para derribarla, 1d10 contundente, Destreza CD 12 para la mitad, deja escombros) y el chispazo de 1d4 de la runa equivocada también. ¿Valen? El camino automático pisa las runas que cruza: ¿que las rodee solo? ¿Hacemos la «palanca con plazo» (abrir el mecanismo antes de la ronda N) con las palancas dobles? El dibujo de columna, estatua, gema, runa y palanca doble está en `PIXELLAB_PENDIENTE.md`.
+- **E5 (cosecha propia):** temple 40 de oro; caldo 15 y guiso 20 (5 menos por nivel de cocina); libro de bichos 60 (15 menos por nivel de biblioteca); el cansancio llega desde dos salidas seguidas y una semana en casa lo borra; se puede mandar a un herido (baja la probabilidad). ¿Valen? Falta «mezclar materiales» en la forja, y la ficha aún no enseña el temple ni la ración.
+- **E6:** se come una ración por cabeza y día de viaje. Copiar conjuros es gratis (en 2024 cuesta 50 po por nivel y 2 horas): ¿se cobra? ¿Más tarjetas de viaje (vado crecido, viajero herido)? La cena que repone sale de la dote Chef: ¿añadimos su 1d8 en los descansos cortos?
 
 **Decisiones abiertas para Daniel (de E8, la larga vida):**
 - Solo mueren de verdad los confidentes (D-J64). Tu héroe y los demás de los tuyos, si caen, quedan malheridos. ¿Quieres que el héroe también pueda morir y volver en el templo?
@@ -67,8 +77,8 @@ Que el entorno cuente en la pelea, no solo los golpes.
 | E1.1 | **Más que «matar a todos».** El motor ya sabe llegar a un sitio, aguantar, proteger a alguien y jugar por rondas, pero ninguno de los 44 tableros escritos lo usa. Ideas para usarlo:<br>• **escapar:** llegar a las casillas de salida antes de la ronda 5;<br>• **interrumpir un ritual:** romper los dos cristales antes de que el nigromante acabe;<br>• **defender:** aguantar 4 turnos en la puerta de la cripta;<br>• escapar o accionar una palanca antes de la ronda 6;<br>• proteger a alguien frente a oleadas de refuerzos;<br>• robar el cofre y llegar a la salida sin despertar a los guardias.<br>**Hecho (2026-10-03):** escapar con plazo (la posada de 1387 antes de la ronda 5, la choza de Baba Lysaga antes de la 8), llegar antes de una ronda (la carreta), romper los tótems antes de la ronda 5 (Yester), proteger a alguien frente a oleadas (Giles, el hermano Silas, Ireena), defender las puertas (la granja, el islote) y robar sin despertar a los dormidos (el campamento de los furtivos, el taller del ataudero). Falta la palanca con plazo. | ✅ | Normal en aventuras | M |
 | E1.2 | **Empujar donde duele:** fosos, precipicios, agua honda y trampas en el borde, para que empujar o derribar valga la pena. Empujar ya existe (maestría Empujar y golpe sin armas), y las alturas y el agua honda también; faltan tableros pensados para eso.<br>**Hecho (2026-10-03):** empujar desde lo alto hace 1d6 por cada 10 pies y derriba; al agua honda, cae, sale derribado y anda 10 pies menos; al vacío, se acaba la pelea para él. Tableros con canal, lago, agujeros en el hielo, cornisas y precipicio en las dos campañas. | ✅ | Sí: daño de caída 1d6 por cada 10 pies | M |
 | E1.3 | **Superficies que reaccionan:** fuego que prende las coberturas de madera (`living-terrain.js`), aceite que arde, hielo y barro que piden una salvación de Destreza o te dejan derribado o frenado. También barriles de pólvora que estallan con fuego y agua que lleva el rayo a quien la pisa.<br>**Hecho (2026-10-03):** el hielo es terreno difícil y pide Acrobacias CD 10 o al suelo; el barro (`m`) cuesta el doble; el barril revienta con fuego (3d6, salvación de Destreza CD 12 para la mitad); el rayo salta por el agua a quien la pisa. El barro no pide salvación: en 5e solo es terreno difícil. | ✅ | Sí: Grasa, aceite ardiendo, terreno difícil | M |
-| E1.4 | **Cosas que se derrumban:** derribar una columna o una estantería sobre dos casillas, con daño contundente y quizá derribados. | ⬜ | Cosecha propia, como regla de máster | M |
-| E1.5 | **Puzles y mecanismos en el tablero:** estatuas donde poner gemas encontradas, baldosas con runas que se pisan en orden, palancas emparejadas en los dos extremos del mapa. | ⬜ | Normal en mazmorras | M |
+| E1.4 | **Cosas que se derrumban:** derribar una columna o una estantería sobre dos casillas, con daño contundente y quizá derribados.<br>**Hecho (2026-10-03):** la columna, puntal o estantería (`H` en el mapa) corta el paso y cubre; estando al lado, con la acción y una prueba de Atletismo CD 10, cae hacia el lado contrario sobre las dos casillas de detrás: quien está debajo, salvación de Destreza CD 12 o 1d10 contundente y derribado (con éxito, la mitad y de pie). Donde cae quedan escombros. En el puntal de los túneles de la mina (1387) y las dos columnas del comedor del conde (Strahd). | ✅ | Cosecha propia, como regla de máster | M |
+| E1.5 | **Puzles y mecanismos en el tablero:** estatuas donde poner gemas encontradas, baldosas con runas que se pisan en orden, palancas emparejadas en los dos extremos del mapa.<br>**Hecho (2026-10-03):** las tres, y cada una abre las puertas con llave del tablero:<br>• **estatuas y gemas** (`S` y `g`): las gemas se cogen de su pedestal y se ponen en las manos de las estatuas (Patio de Argynvostholt, Strahd);<br>• **runas en orden** (`1` a `5`): se pisan de la 1 en adelante; la que no toca las apaga todas y da un chispazo de 1d4 (El patio de la ermita, 1387);<br>• **palancas dobles** (`p`): en combate, las dos en la misma ronda; fuera, con alguien junto a cada una (El gran salón de Vane, 1387).<br>Lo dice quien lo hace («Sola no baja. Que alguien se ponga en la otra…»). El paquete avisa si un mecanismo no se puede resolver. Falta su dibujo (wiki/PIXELLAB_PENDIENTE.md). | ✅ | Normal en mazmorras | M |
 
 ## E2 · La mazmorra que pesa (riesgo y desgaste)
 

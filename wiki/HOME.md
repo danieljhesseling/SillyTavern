@@ -124,6 +124,7 @@ El juego de rol añadido en la rama `my-silly`: **255 módulos en `game-engine/`
   Parte de un repaso del código. Desde el 2026-09-29, también **la cara del juego** (J18): elegir personaje, crearlo en su pantalla y la historia contada como una novela visual.
 
   Trae diez decisiones (D-J1 a D-J10; quedan el nombre del juego y jugar con amigos, aparcado), diecinueve fases (J0–J18), seis hitos jugables (M1–M6) y un marcador.
+- **[[ROADMAP_APK_ANDROID]]** 📱 **DnD Coin como APK de Android (2026-10-03).** El juego dentro de una app que juegas en el móvil sin PC, sin servidor y sin internet: un «servidor de bolsillo» guarda en el teléfono, con copias de seguridad en un archivo. Fases A0–A9, al 0 %; empieza cuando acabe [[ROADMAP_ENTRETENIDO]].
 - Los planes anteriores (el acta de las fases A–H, el maestro, el pegamento, la profundidad, sin tokens y el compendio) están cerrados y en el archivo (sección 6).
 
 ### 5. ✍️ Escribir mundos

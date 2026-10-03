@@ -200,6 +200,9 @@ Al acabar el modo guiado este roadmap queda **al 100 %** de lo que no está apar
 | A veces no sale la escena del principio de Strahd (H15), la puerta de la taberna aparece antes de «Empezar» (H17) y «Volver al gremio» falla a veces (H13) | ✅ Arreglado |
 | Al volver al gremio no pasa el tiempo y se arrastra el cansancio de Barovia (H16) | ✅ Arreglado |
 | En la campaña del Gem, la trampa del sótano se pisa sin verla: el sótano sale «A oscuras» por la luz de la mazmorra nueva (E2.1) | Abierto: lo mira el agente del modo guiado |
+| En `e2e-magia` fallan la tarjeta de subir de nivel, el «+2 por la Luz» al examinar de noche, la pregunta de curar al llegar y las iniciales en el tablero (salió al cruzarse los cambios de entretenido) | Abierto: lo mira la batería final |
+| Al pasar una semana viajando o acampando, el oro del grupo se queda en 0 (seguramente la paga semanal de los mercenarios) | Abierto |
+| El rótulo «Vínculo 3 · …» se corta cuando la ficha está pegada al borde del tablero | Abierto |
 
 **Después de este roadmap, en este orden** (lo dijiste el 2026-10-02):
 1. **Escribir bien las tres campañas experimentales**, con la calidad de 1387 y Strahd: *El mundo tras la pantalla* (isekai), *Las tierras del ocaso* (fantasía épica) y *La costa que no duerme* (terror). Cada una tendrá:
@@ -221,6 +224,7 @@ Al acabar el modo guiado este roadmap queda **al 100 %** de lo que no está apar
    - Se empaqueta con Capacitor.
    - Exportar e importar la partida (J15.6) sirve de copia de seguridad.
    - Parte del plan está en [[ROADMAP_PWA_SIN_SERVIDOR]]; de ese plan sobran GitHub Pages y la parte de iPhone.
+   - **El plan entero: [[ROADMAP_APK_ANDROID]]** (fases A0–A9, al 0 %). Empieza cuando acabe [[ROADMAP_ENTRETENIDO]].
 4. **La ampliación definitiva de Strahd:**
    - el Castillo Ravenloft con todas sus salas, hechas con mapas en imagen;
    - el Templo de Ámbar, el paso de Tsolenka y la Casa de la Muerte;
