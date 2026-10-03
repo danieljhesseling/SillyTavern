@@ -44,10 +44,10 @@ author: DanielJHesseling / Claude Opus 5.5
 ## 📍 Cómo va (2026-10-02)
 
 **Avance, sobre 158 filas activas** (sin lo aparcado ni las decisiones):
-- **93 % jugable** (143 filas).
-- **97 % construido** (148 filas).
+- **95 % jugable** (150 filas).
+- **97 % construido** (153 filas).
 
-Todo lo contado está en commits (el último, a9c72fe9f).
+Todo lo contado está en commits (el último, 135fa19f7).
 
 | Hito | Jugable | Construido |
 | :--- | :---: | :---: |
@@ -88,18 +88,25 @@ Todo lo contado está en commits (el último, a9c72fe9f).
 - el arte de puentes y acantilados;
 - las notas del juego dichas por la gente (J13.1, J18.10, D-J54).
 
-**En marcha ahora (2026-10-02, 18:10): ocho agentes.**
+**Lo último que ha entrado (commits cf818e7ce y 135fa19f7):**
+- el teclado (J15.5);
+- 1387 de punta a punta (J9.1);
+- el combate con su animación y el dado 1d20;
+- el tablero que se desliza y avisa de quién es el turno;
+- el prólogo como conversación y sin narrador en todo el juego (D-J60);
+- el guion en Word (J5.7, J5.8) y el taller de campañas (J5.9);
+- las caras neutras (D-J61).
+
+**En marcha ahora (2026-10-03, 05:30): cinco agentes**, retomados tras el corte del límite de uso.
 
 | Tarea | % aprox. |
 | :--- | :---: |
-| Que el combate se sienta: el ataque, el dado 1d20 animado y el daño, en orden | 0 % (nuevo) |
-| El tablero se mueve y se lee: las fichas se deslizan, de quién es el turno, el cursor amarillo, los nombres cortados | 0 % (nuevo) |
-| El prólogo sin resumen del narrador, como conversación (y los arranques de 1387, Strahd y las experimentales) | 0 % (nuevo) |
-| Arreglos del combate (V5, «Estabilizar», fin de pelea, trampas, inglés, aviso de nivel D-J59) | ~80 % |
-| Arreglos del tablero (avisos del borde, la Luz, la tienda de mando) | ~40 % |
-| Teclado y accesibilidad (J15.5) | ~60 % |
-| Vueltas automáticas, con el bot para cualquier campaña (J16) | ~50 % |
-| 1387 de punta a punta (J9.1) | ~40 % |
+| Vueltas automáticas, con el bot para cualquier campaña (J16) | ~90 % |
+| El bonificador de competencia en los ataques; falta repasar el equilibrio con la simulación | ~80 % |
+| Objetivos en el menú, rojo y azul al pasar el ratón (J12.18), y efectos de golpe y muerte (J12.19) | ~25 % |
+| Lo que se cuenta, dicho por la gente (J13.9) | ~10 % |
+| Correcciones como ronda del guion (J5.10) y el aspecto de la gente (J5.11) | ~10 % |
+| La app del bot, `ProbarCampañas.exe` (J16.6) | En cola, tras las vueltas |
 
 **Bugs y retoques abiertos** (lo que has visto jugando y lo que han encontrado los agentes). Todos tienen a alguien trabajando:
 
@@ -371,6 +378,7 @@ Tus respuestas a D-J11…D-J38. «⏳» significa que está por hacer.
 | **D-J58** | Las facciones | Se queda lo que es historia: la reputación con cada grupo, y las puertas, los peajes y los finales que dependen de ella. La simulación de un mundo vivo (relojes que avanzan solos, quién controla cada sitio, precios y sucesos por facción) se apaga con un interruptor hasta el modo mundo semiabierto. Ahora, el foco es un D&D puro: el grupo, su gestión y las relaciones | ⏳ |
 | **D-J59** | ¿Cómo se llega al nivel de los finales? | No se sube de nivel por pasar hitos: un personaje de nivel alto que viene de otra campaña se dispararía. El nivel sale de pelear, de los encargos y de las misiones secundarias. Los finales se quedan duros: la cripta de Strahd, para nivel 6-7; las puertas del castillo de 1387, como están. Antes de entrar en un tablero final, el aviso dice para qué nivel es y en cuál está tu grupo | ⏳ |
 | **D-J60** | ¿Queda algo del narrador en el juego sin conexión? | **Nada.** Lo dijiste así: «la figura del narrador en un juego sin conexión no la quiero». Todo lo dice alguien que está allí: la gente del sitio, tus compañeros o tú, en tus respuestas. Ni saludo del narrador, ni resúmenes, ni líneas de ambiente en la caja de la novela. Lo que es ambiente o paso del tiempo se ve en pantalla (el fondo, la hora, la vida) o va en un aviso pequeño fuera de la caja. Corrige D-J54, que aún dejaba una línea corta. Las tarjetas de suceso se quedan como tarjeta (es pantalla, no la caja de la novela), pero sus opciones y resultados los dice alguien. Lo que ves al mirar, las salidas habladas y las notas de las quedadas, también dichas por alguien | ⏳ |
+| **D-J61** | Las caras de los retratos (alegre, enfadado, triste) | **Neutras por ahora**: aún no quedan bien. El arte y los datos de los gestos se quedan, y se vuelven a encender (`PORTRAIT_MOODS` en `ui/pixel-art.js`) cuando estén más cuidadas, con su propio trabajo | ✅ |
 
 ---
 
