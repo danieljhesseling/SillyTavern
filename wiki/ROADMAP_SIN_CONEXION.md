@@ -203,6 +203,7 @@ Al acabar el modo guiado este roadmap queda **al 100 %** de lo que no está apar
 | En `e2e-magia` fallan la tarjeta de subir de nivel, el «+2 por la Luz» al examinar de noche, la pregunta de curar al llegar y las iniciales en el tablero (salió al cruzarse los cambios de entretenido) | Abierto: lo mira la batería final |
 | Al pasar una semana viajando o acampando, el oro del grupo se queda en 0 (seguramente la paga semanal de los mercenarios) | Abierto |
 | El rótulo «Vínculo 3 · …» se corta cuando la ficha está pegada al borde del tablero | Abierto |
+| Las clases en femenino («pícara») no encuentran su retrato genérico («pícaro») y salen con silueta | Abierto |
 
 **Después de este roadmap, en este orden** (lo dijiste el 2026-10-02):
 1. **Escribir bien las tres campañas experimentales**, con la calidad de 1387 y Strahd: *El mundo tras la pantalla* (isekai), *Las tierras del ocaso* (fantasía épica) y *La costa que no duerme* (terror). Cada una tendrá:

@@ -23,14 +23,14 @@ created: 2026-10-02
 
 ## 📍 Cómo va (2026-10-03, 23:45)
 
-**Avance: ~97 %.** Las 32 ideas están escritas y cada una se ha probado en el navegador por su agente. Falta lo de todos a la vez: pasar la batería entera con todo junto (hay fallos sueltos que salen al cruzarse los cambios, ver abajo) y el commit del código. Siguen trabajando el agente de E4 (cerrando) y el de los ajustes de E2 (ganzúas y antorchas).
+**Avance: ~97 %.** Las 32 ideas están escritas y cada una se ha probado en el navegador por su agente. Falta lo de todos a la vez: pasar la batería entera con todo junto (hay fallos sueltos que salen al cruzarse los cambios, ver abajo) y el commit del código. Sigue trabajando el agente de los ajustes de E2 (ganzúas y antorchas).
 
 | Bloque | Hecho | Prueba en el navegador |
 | :--- | :--- | :--- |
 | E1 · El tablero que se usa | Todo: E1.4 la columna que se derriba (Comedor del Conde, mina), E1.5 estatua con gema, runas en orden y palancas dobles (Argynvostholt, ermita, salón de Vane) | ✅ |
 | E2 · La mazmorra que pesa | Todo; los ajustes de tus decisiones, en sus pruebas | ✅ |
 | E3 · El grupo y sus combos | Todo; E3.2 combos para cualquier pareja con vínculo 3 (13 de 13), E3.3 Arma elemental (11 de 11) | ✅ |
-| E4 · Compañeros con roce | Todo marcado; el agente está cerrando | ✅ |
+| E4 · Compañeros con roce | Todo: el mercenario molesto no ataca en pareja y pide más paga (o se va), discusiones junto al fuego en las que das la razón, misiones de 2-3 pasos para cualquier mercenario con vínculo 3 (13 de 13). Sus decisiones, en «Por decidir (E4)» | ✅ |
 | E5 · El gremio que paga | Todo: temple y raciones para la salida, libros de bichos, «Quién está para salir», cansancio del camino, mandar a alguien a un encargo con su informe (12 de 12) | ✅ |
 | E6 · El camino entre campañas | Todo: tarjetas de viaje (puente caído, ventisca, mercader), se come por el camino, papeles de noche al acampar (12 de 12) | ✅ |
 | E7 · Sin fricción aburrida | Todo, también el cuadro de preparar del héroe ya marcado | ✅ |
@@ -40,6 +40,7 @@ created: 2026-10-02
 - En `e2e-magia`: la tarjeta de subir de nivel, el «+2 por la Luz» al examinar de noche, la pregunta de curar al llegar y las iniciales en el tablero.
 - Al pasar una semana viajando o acampando, el oro del grupo se queda en 0 (seguramente la paga semanal de los mercenarios).
 - El rótulo «Vínculo 3 · …» se corta cuando la ficha está pegada al borde del tablero.
+- Las clases en femenino («pícara») no encuentran su retrato genérico («pícaro») y salen con silueta.
 
 **Decisiones abiertas para Daniel (de E1, E5 y E6):**
 - **E1:** las reglas de la columna son mías (Atletismo CD 10 para derribarla, 1d10 contundente, Destreza CD 12 para la mitad, deja escombros) y el chispazo de 1d4 de la runa equivocada también. ¿Valen? El camino automático pisa las runas que cruza: ¿que las rodee solo? ¿Hacemos la «palanca con plazo» (abrir el mecanismo antes de la ronda N) con las palancas dobles? El dibujo de columna, estatua, gema, runa y palanca doble está en `PIXELLAB_PENDIENTE.md`.
