@@ -113,10 +113,14 @@ function feet(ax, ay, bx, by) {
 /**
  * El turno de un compañero.
  *
+ * E3.1: entre los que tiene a tiro, va antes a por quien le da ventaja: el que está en el suelo
+ * (de cerca), al que le han abierto la guardia y, si es pícaro (`actor.sneak`), al que tiene un
+ * aliado pegado (su furtivo). Sin nada de eso, como siempre.
+ *
  * @param {Object} input
- * @param {{id: string, gridX: number, gridY: number, currentHp?: number, maxHp?: number, speedFeet?: number, attackRangeFeet?: number, name?: string}} input.actor
+ * @param {{id: string, gridX: number, gridY: number, currentHp?: number, maxHp?: number, speedFeet?: number, attackRangeFeet?: number, name?: string, sneak?: boolean}} input.actor
  * @param {{gridX: number, gridY: number}|null} [input.leader] El tuyo, al que se arrima «a mi lado».
- * @param {Array<{id: string, gridX: number, gridY: number, currentHp?: number, maxHp?: number, reachFeet?: number}>} input.enemies
+ * @param {Array<{id: string, gridX: number, gridY: number, currentHp?: number, maxHp?: number, reachFeet?: number, prone?: boolean, helped?: boolean}>} input.enemies
  * @param {Array<{id: string, gridX: number, gridY: number}>} [input.allies]
  * @param {string} [input.stance]
  * @param {string} [input.prefer] A quién va primero (idea 35).
@@ -137,6 +141,22 @@ export function planAllyTurn({ actor, leader = null, enemies, allies = [], stanc
 
     const chosen = stance in STANCES ? stance : DEFAULT_STANCE;
 
+    /**
+     * E3.1: cuánto mejor blanco es un enemigo desde una casilla: en el suelo y de cerca (de lejos,
+     * peor), con la guardia abierta y, para un pícaro, con ventaja o un aliado pegado (su furtivo).
+     *
+     * @param {any} e
+     * @param {boolean} close Si le pegaría de cerca (a 5 pies).
+     * @returns {number}
+     */
+    const edgeScore = (e, close) => {
+        let score = 0;
+        if (e.prone) score += close ? 2 : -2;
+        if (e.helped) score += 2;
+        if (actor.sneak && score >= 0 && (score > 0 || (allies || []).some(a => a && feet(a.gridX, a.gridY, e.gridX, e.gridY) <= 5))) score += 1;
+        return score;
+    };
+
     // A la carga es el comportamiento de siempre: la máquina de los enemigos, sin más.
     // Pero solo mientras aguanta; malherido se retira como todos.
     const wounded = healthFraction(actor) < FLEE_HP_FRACTION;
@@ -146,7 +166,11 @@ export function planAllyTurn({ actor, leader = null, enemies, allies = [], stanc
     if ((chosen === 'carga' || (chosen === 'cerca' && !leader)) && !wounded) {
         // A la carga, pero hacia quien prefiere: si hay alguno de esos, va a por el.
         const first = byPreference(living, prefer, here)[0];
-        const preferred = prefer === DEFAULT_PREFERENCE || !first ? living : [first];
+        // E3.1: y antes, a quien le da ventaja y le pilla de camino (en el suelo, la guardia abierta).
+        const favored = living.filter(e => feet(here.x, here.y, e.gridX, e.gridY) <= speed + range
+            && edgeScore(e, range <= 5) > 0);
+        const preferred = favored.length > 0 ? [byPreference(favored, prefer, here)[0]]
+            : prefer === DEFAULT_PREFERENCE || !first ? living : [first];
         const plan = planEnemyTurn({
             actor: { ...actor, profile: 'aggressive' },
             targets: preferred,
@@ -183,7 +207,14 @@ export function planAllyTurn({ actor, leader = null, enemies, allies = [], stanc
     const nearestEnemy = (cell) => Math.min(...living.map(e => feet(cell.x, cell.y, e.gridX, e.gridY)));
 
     /** @param {{x: number, y: number}} cell */
-    const targetFrom = (cell) => byPreference(living.filter(e => feet(cell.x, cell.y, e.gridX, e.gridY) <= range), prefer, cell)[0] ?? null;
+    const targetFrom = (cell) => {
+        const ordered = byPreference(living.filter(e => feet(cell.x, cell.y, e.gridX, e.gridY) <= range), prefer, cell);
+        if (ordered.length === 0) return null;
+        // E3.1: el de más ventaja; a igualdad, el de su preferencia.
+        const score = (/** @type {any} */ e) => edgeScore(e, feet(cell.x, cell.y, e.gridX, e.gridY) <= 5);
+        const best = Math.max(...ordered.map(score));
+        return ordered.find(e => score(e) === best) ?? ordered[0];
+    };
 
     /** @param {{x: number, y: number}} to */
     const route = (to) => (to.x === here.x && to.y === here.y)

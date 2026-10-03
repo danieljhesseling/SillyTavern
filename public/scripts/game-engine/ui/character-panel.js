@@ -62,6 +62,8 @@ function box(label, value, hint = '') {
  * @param {any[]} [input.abilities]
  * @param {any} [input.xpTable]
  * @param {number} [input.bondRank]
+ * @param {import('../combat/bond-moves.js').BondSheetRow[]} [input.bondPerks] E3.4: lo que da su
+ *   vínculo contigo en combate (`bondSheetRows`): lo abierto y lo siguiente.
  * @param {(() => void)|null} [input.onEdit] Abrir el editor de siempre.
  * @param {string[]} [input.languages] Idea 59: lo que habla.
  * @param {Array<{name: string}>} [input.sets] Idea 62: sus juegos de equipo.
@@ -80,15 +82,16 @@ function box(label, value, hint = '') {
  * @param {((itemId: string, on: boolean) => boolean)|null} [input.onAttune] J19.9: sintonizarse o dejarlo.
  * @param {string} [input.attuneNote] J19.9: cuántos lleva en sintonía, de cuántos.
  * @param {(() => void)|null} [input.onFace] D-J52: cambiar su cara sin arte (iniciales, icono o emoji).
+ * @param {(() => boolean)|null} [input.onEquipBest] E7.3: ponerse lo mejor de lo que tiene a mano.
  * @param {any} input.Popup
  * @param {any} input.POPUP_TYPE
  * @returns {Promise<string>} `changed` si se ha tocado algo, para volver a abrirla al día.
  */
 export async function openCharacterPanel({
-    member, slotInfo = {}, abilities = [], xpTable = null, bondRank = 0,
+    member, slotInfo = {}, abilities = [], xpTable = null, bondRank = 0, bondPerks = [],
     onEdit = null, languages = [], sets = [], mates = [], campaigns = null, onGive = null, onSaveSet = null, onApplySet = null,
     known = null, magic = null, onGrimoire = null, onFieldMagic = null, onLevelUp = null, onAttune = null, attuneNote = '',
-    onFace = null, Popup, POPUP_TYPE,
+    onFace = null, onEquipBest = null, Popup, POPUP_TYPE,
 }) {
     // Los iconos en pixel necesitan el índice; sin él, cada fila sale con su icono de siempre.
     await loadPixelManifest();
@@ -123,7 +126,7 @@ export async function openCharacterPanel({
     title.append($('<span></span>').text(sheet.title));
     who.append(title);
     if (sheet.bondRank > 0) {
-        who.append($('<div class="ch-bond"></div>').text(`Rango ${sheet.bondRank}`));
+        who.append($('<div class="ch-bond"></div>').text(`Vínculo ${sheet.bondRank}`));
     }
     // D-J52: cambiar cómo se ve tu cara sin arte.
     if (onFace) {
@@ -141,6 +144,22 @@ export async function openCharacterPanel({
     root.append(head);
     // Idea 59: lo que habla, que ahora importa.
     if (languages.length > 0) root.append($('<div class="ch-langs"></div>').text(`Habla: ${languages.join(', ')}`));
+
+    // E3.4: lo que da vuestro vínculo en combate: lo abierto («Con vínculo 5: Relevo») y lo siguiente.
+    const shownPerks = (Array.isArray(bondPerks) ? bondPerks : []).filter(row => row.unlocked || row.next);
+    if (shownPerks.length > 0) {
+        const perks = $('<div class="ch-bond-perks"></div>');
+        perks.append($('<div class="ch-bond-perks-title"></div>').text('Vuestro vínculo, en combate'));
+        for (const row of shownPerks) {
+            const line = $('<div class="ch-bond-perk"></div>')
+                .toggleClass('ch-bond-perk-next', row.next)
+                .attr('data-rank', String(row.rank));
+            line.append($('<span class="ch-bond-perk-name"></span>').text(`Con vínculo ${row.rank}: ${row.label}${row.next ? ' (lo siguiente)' : ''}`));
+            line.append($('<span class="ch-bond-perk-what"></span>').text(row.describe));
+            perks.append(line);
+        }
+        root.append(perks);
+    }
 
     // La vida, primero y grande: es lo que se viene a mirar.
     const health = $('<div class="ch-health"></div>')
@@ -208,6 +227,15 @@ export async function openCharacterPanel({
         worn.append(row);
     }
     root.append(worn);
+    // E7.3: ponerse lo mejor de lo que hay a mano, con un toque (y dice por qué).
+    if (onEquipBest) {
+        const best = $('<button class="menu_button ch-equip-best" type="button"></button>')
+            .append('<i class="fa-solid fa-shirt"></i>')
+            .append($('<span></span>').text(' Equipar lo mejor'))
+            .attr('title', 'El mejor arma y la mejor armadura que tiene a mano, según su clase y lo que domina.');
+        best.on('click', () => after(Boolean(onEquipBest())));
+        root.append(best);
+    }
 
     // ---- Idea 62: los juegos de equipo guardados ---------------------------
     if (onSaveSet || onApplySet) {

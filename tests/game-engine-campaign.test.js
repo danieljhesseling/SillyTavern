@@ -183,7 +183,8 @@ describe('bonds', () => {
     });
 
     test('every perk changes something in combat', () => {
-        expect(BOND_PERKS).toHaveLength(4);
+        // E3.4: con la jugada propia del rango 7.
+        expect(BOND_PERKS).toHaveLength(5);
         expect(BOND_PERKS.every(p => p.description.length > 0)).toBe(true);
     });
 

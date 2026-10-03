@@ -86,7 +86,22 @@ export const OBJECTIVE_FIELDS = {
         writes: 'treasures', engineField: 'treasureIds', kind: 'names',
         help: 'Nombres de los tesoros que hay que recoger.',
     }],
+    // E1.1 de ROADMAP_ENTRETENIDO: escapar por las salidas (`x`), defender unas casillas y
+    // pasar sin despertar a los que duermen (`asleep` en el enemigo del tablero).
+    escape: [],
+    hold: [
+        { writes: 'cells', engineField: 'cells', kind: 'cells', help: 'Las casillas que ningún enemigo debe pisar (la puerta, lo que hay detrás), contando desde 0.' },
+        { writes: 'rounds', engineField: 'rounds', kind: 'number', help: 'Hasta qué ronda hay que aguantar.' },
+    ],
+    unseen: [],
 };
+
+/**
+ * E1.1: lo que vale para cualquier objetivo además de lo suyo: el plazo. Con `beforeRound: 5`,
+ * si al empezar la ronda 5 no está hecho, se pierde (salir antes de que lleguen, romper los
+ * cristales antes de que acabe el ritual).
+ */
+export const OBJECTIVE_DEADLINE_HELP = 'Opcional, en cualquier objetivo menos sobrevivir, defender, proteger y sin despertar: la ronda en la que se pierde si aún no está hecho (5 = hay que hacerlo en las rondas 1 a 4).';
 
 /**
  * Qué clase de sitio es una localización.
@@ -110,7 +125,9 @@ export function getMapLegend() {
         water: 'agua poco honda (cuesta el doble; el frío la hiela)',
         // Tanda 10: el mar del muelle, un río profundo.
         deep_water: 'agua honda (no se cruza andando; se ve a través): el mar, un río profundo',
-        ice: 'hielo (el trueno lo quiebra, el fuego lo funde)',
+        ice: 'hielo (cuesta el doble y resbala: Acrobacias CD 10 o al suelo; el trueno lo quiebra, el fuego lo funde)',
+        // E1.3 de ROADMAP_ENTRETENIDO.
+        mud: 'barro (cuesta el doble)',
         brush: 'maleza (cuesta el doble, y arde)',
         barrel: 'barril (cubre; con fuego, revienta)',
         chest: 'cofre (se abre estando al lado)',
@@ -327,11 +344,19 @@ function buildObjectiveSchema() {
                     required: ['x', 'y'],
                     description: field.help,
                 };
+            } else if (field.kind === 'cells') {
+                properties[field.writes] = {
+                    type: 'array',
+                    items: { type: 'object', properties: { x: { type: 'integer' }, y: { type: 'integer' } }, required: ['x', 'y'] },
+                    description: field.help,
+                };
             } else {
                 properties[field.writes] = { type: 'string', description: field.help };
             }
         }
     }
+    // E1.1: el plazo, en cualquiera.
+    properties.beforeRound = { type: 'integer', description: OBJECTIVE_DEADLINE_HELP };
 
     const perType = Object.entries(OBJECTIVE_FIELDS)
         .map(([type, fields]) => `${type} → ${fields.map(f => f.writes).join(', ') || 'nada'}`)
@@ -450,7 +475,44 @@ function buildSectionSchemas() {
                             name: { type: 'string' },
                             x: { type: 'integer' },
                             y: { type: 'integer' },
+                            asleep: { type: 'boolean', description: 'Si duerme: no empieza la pelea al veros. Quien pasa a 10 pies tira Sigilo contra su Percepción pasiva (10 + su perception del bestiario, −5 dormido); si falla, despiertan todos.' },
                         },
+                    },
+                },
+                // E1.1 de ROADMAP_ENTRETENIDO: refuerzos y alguien a quien proteger.
+                waves: {
+                    type: 'array',
+                    description: 'Refuerzos que llegan en su ronda junto a una casilla (una puerta, el borde del bosque). '
+                        + 'La ronda antes se oye su aviso (tell), dicho llano.',
+                    items: {
+                        type: 'object',
+                        required: ['round', 'names'],
+                        properties: {
+                            round: { type: 'integer', description: 'La ronda en la que entran.' },
+                            names: { type: 'array', items: { type: 'string' }, description: 'Quiénes, por su nombre del bestiario, uno por bicho.' },
+                            x: { type: 'integer' },
+                            y: { type: 'integer' },
+                            tell: { type: 'string', description: 'Lo que se oye la ronda antes: «Golpes en la puerta del este: vienen más».' },
+                        },
+                    },
+                },
+                light: {
+                    type: 'string',
+                    enum: ['luz', 'penumbra', 'oscuro'],
+                    description: 'Opcional (E2.1): la luz de la sala. Sin decirlo, una cueva, una cripta, un sótano o una mina están a oscuras y lo demás con luz. '
+                        + 'En penumbra cuesta ver trampas; a oscuras no se ve sin antorcha, farol o la Luz, y quien ve en la oscuridad (un muerto, un trasgo) pega con ventaja.',
+                },
+                ward: {
+                    type: 'object',
+                    description: 'Alguien indefenso que está en el tablero y pelea de vuestro lado sin pelear: se cubre. '
+                        + 'Para un objetivo protect (ally: su nombre). Si cae, se pierde.',
+                    required: ['name', 'x', 'y'],
+                    properties: {
+                        name: { type: 'string' },
+                        x: { type: 'integer' },
+                        y: { type: 'integer' },
+                        hp: { type: 'integer', description: 'Su vida. Sin ella, la de alguien que no pelea.' },
+                        gender: { type: 'string', enum: ['Hombre', 'Mujer'] },
                     },
                 },
                 // J12.8 a J12.12: el tablero hecho de un mapa dibujado. Lo escribe
@@ -687,9 +749,10 @@ function buildSectionSchemas() {
                 profile: {
                     type: 'string',
                     enum: profiles,
-                    description: 'Comportamiento táctico. Solo estos cuatro.',
+                    description: 'Comportamiento táctico. Solo estos. object: lo que se rompe y no actúa (un cristal, un ídolo).',
                 },
                 attackRangeFeet: { type: 'integer', description: '5 en cuerpo a cuerpo, 30 a 120 a distancia.' },
+                perception: { type: 'integer', description: 'Opcional: lo que suma a Percepción (el +3 de su ficha de 5e). Cuenta si duerme en un tablero (asleep).' },
                 seasons: { type: 'array', items: { type: 'string' }, description: 'Si migra: las estaciones en que anda (primavera, verano, otono, invierno). Fuera de ellas no sale. Sin nada, todo el año.' },
                 domable: {
                     type: 'string',

@@ -381,7 +381,9 @@ describe('a cada tablero se llega con el modo guiado', () => {
     ];
 
     test('cada tablero con pelea lo pide un hito, una conversación o un encargo, en todos los paquetes', () => {
-        expect(PACKS.map(([name, pack]) => [name, unreachableBoards(pack).fights])).toEqual(PACKS.map(([name]) => [name, []]));
+        // E1.1: «El fuego del campamento» (1387) ya tiene a los furtivos dormidos, pero nada manda
+        // allí todavía: lo decide Daniel (LO_OCULTO).
+        expect(PACKS.map(([name, pack]) => [name, unreachableBoards(pack).fights])).toEqual(PACKS.map(([name]) => [name, name === '1387' ? ['El fuego del campamento'] : []]));
     });
 
     test('lo que lleva a un tablero lleva a uno que existe', () => {
@@ -392,8 +394,8 @@ describe('a cada tablero se llega con el modo guiado', () => {
         expect(missing).toEqual([]);
     });
 
-    test('en 1387, los únicos sin nada que lleve a ellos son los tres mapas sin nadie (decide Daniel, en LO_OCULTO)', () => {
-        expect(unreachableBoards(P1387).empty.sort()).toEqual(['El fuego del campamento', 'El gran salón de Vane', 'El patio de la ermita']);
+    test('en 1387, los únicos sin nada que lleve a ellos son los dos mapas sin nadie (decide Daniel, en LO_OCULTO)', () => {
+        expect(unreachableBoards(P1387).empty.sort()).toEqual(['El gran salón de Vane', 'El patio de la ermita']);
         const links = boardLinks(P1387);
         expect(links.find(l => l.board === 'El callejón inundado')?.by).toEqual(['encargo:e-las-deudas-de-garth']);
         expect(links.find(l => l.board === 'Lobos en el pueblo')?.by).toEqual(['encargo:e-lobos-en-el-callejon']);

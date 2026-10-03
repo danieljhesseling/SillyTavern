@@ -11,6 +11,7 @@
 
 import { cycleMotion, motionOptionRow } from './motion.js';
 import { toggleRomance, withRomanceRow } from './romance-option.js';
+import { toggleHardMode, withHardModeRow } from './hard-mode-option.js';
 
 export const TEXT_SIZE_KEY = 'sillytavern_gameTextSize';
 export const TEXT_SPEED_KEY = 'sillytavern_gameTextSpeed';
@@ -156,7 +157,8 @@ export async function openGameOptions({ Popup, POPUP_TYPE, rows, onPick, onAdvan
     const draw = () => {
         list.empty();
         // J14.10: «Romance» va detrás de los sucesos; es de este navegador y se guarda aquí.
-        for (const row of withRomanceRow(withMotionRow(rows()))) {
+        // E8.7: «Modo duro» detrás del romance; también es de este navegador.
+        for (const row of withHardModeRow(withRomanceRow(withMotionRow(rows())))) {
             const button = $('<button type="button" class="go-row"></button>').attr('data-option', row.id);
             button.append($('<i></i>').addClass(`fa-solid fa-fw ${row.icon || 'fa-sliders'}`));
             const body = $('<span class="go-body"></span>');
@@ -175,6 +177,7 @@ export async function openGameOptions({ Popup, POPUP_TYPE, rows, onPick, onAdvan
         try {
             if (id === 'motion') cycleMotion();
             else if (id === 'romance') toggleRomance();
+            else if (id === 'hard') toggleHardMode();
             else await onPick(id);
         } finally {
             busy = false;

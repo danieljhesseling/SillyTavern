@@ -44,6 +44,7 @@ import { borrow, repay, LOAN } from '../game-engine/campaign/patronage.js';
 import { gravesAt } from '../game-engine/campaign/legacy.js';
 import { addFame, fameAt, fameNote } from '../game-engine/campaign/fame.js';
 import { templeWork, identify, liftCurse, TEMPLE_PRICES } from '../game-engine/campaign/item-lore.js';
+import { templeRaiseActions, raiseAtTemple } from './long-life.js';
 import { rollCheck, skillModifier } from '../game-engine/rules/checks.js';
 import { shiftFortune, fortuneLine } from '../game-engine/world/fortune.js';
 import { handFrom, duelOutcome } from '../game-engine/campaign/word-duel.js';
@@ -54,6 +55,9 @@ import { servicesOf, serviceActions, SERVICE_INFO } from '../game-engine/campaig
 import { dealWith, BOUNTY } from '../game-engine/campaign/prisoners.js';
 import { findShortcut, applyShortcut } from '../game-engine/world/road.js';
 import { basePrice, weeklyStock, priceToday, sellPrice, canSell, junkOf, SPELL_SUPPLIES } from '../game-engine/campaign/shop.js';
+
+/** E2 de ROADMAP_ENTRETENIDO: lo que pesa en la mazmorra, siempre en la tienda (antorchas, raciones y el kit). */
+const DUNGEON_SUPPLIES = ['Antorcha', 'Raciones de viaje', 'Kit de curandero'];
 import { closeShopCards } from '../game-engine/campaign/hours.js';
 import { festivalsOf, festivalToday } from '../game-engine/world/festivals.js';
 import { readLetters, newLetters } from '../game-engine/campaign/letters.js';
@@ -356,7 +360,7 @@ function shopHere() {
         reputation: Number(ruler?.reputation) || 0,
         // Idea 122: el aceite y la red, siempre. R4: y lo que gastan los conjuros que sabéis.
         // D-J25: y lo que piden los conjuros de 5e, con la bolsa y el laúd.
-        always: [...Object.values(THROWABLES).map(t => t.name), ...neededComponents(), ...SPELL_SUPPLIES],
+        always: [...Object.values(THROWABLES).map(t => t.name), ...neededComponents(), ...SPELL_SUPPLIES, ...DUNGEON_SUPPLIES],
     });
     // Idea 84: con una guerra en marcha, el acero se paga caro.
     const war = warPressure({ here: currentLocationName, factions: getCurrentWorldFactions() });
@@ -659,6 +663,8 @@ export function buildServiceCards() {
     // Idea 58: en el templo se rehace quien quiera volver a elegir sus mejoras. Se paga al
     // confirmar: elegir puede acabar en no hacer nada.
     const temple = cardOf('templo');
+    // E8.7 (D-J64): devolver la vida a los vuestros que cayeron, con su diamante y su secuela.
+    if (temple) temple.actions.unshift(...templeRaiseActions());
     for (const member of temple ? partyMembers.filter(m => !m.dead) : []) {
         const cost = respecCost(member);
         if (cost <= 0) continue;
@@ -981,6 +987,7 @@ export async function runService(actionId) {
     } else if (actionId === 'inn-dice') await playTavernDice();
     else if (actionId.startsWith('brawl-')) await runBrawlAction(actionId);
     else if (actionId.startsWith('temple-respec:')) await respecMember(String(action.target));
+    else if (actionId.startsWith('temple-raise:')) await raiseAtTemple(String(action.target));
     else if (actionId.startsWith('craft:')) craftAtSmith(actionId);
     else if (actionId.startsWith('learn:')) {
         const [, memberId, abilityId] = actionId.split(':');

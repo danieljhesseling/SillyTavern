@@ -61,7 +61,8 @@ const list = (value) => (Array.isArray(value) ? value : []);
  * desde una campaña. Lo demás es «hacer lo que quieras» y se esconde.
  */
 const KEPT_PREFIXES = ['reply-', 'door:', 'trap-', 'prisoner:', 'offer:', 'check-request:', 'story:'];
-const KEPT_IDS = new Set(['stairs', 'leave', 'field-heal', 'field-magic', 'hub-home', 'hub-ending']);
+// E7.1: «Explorar hacia delante» (`ahead`) también es del tablero.
+const KEPT_IDS = new Set(['ahead', 'stairs', 'leave', 'field-heal', 'field-magic', 'hub-home', 'hub-ending']);
 
 /** Cuántas fichas caben en la fila guiada: son pocas, y sin «+N más». */
 export const GUIDED_ROW_MAX = 6;

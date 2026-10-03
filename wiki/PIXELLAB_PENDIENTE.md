@@ -344,3 +344,14 @@ Prompt: `Pixel art item icon, 64x64, transparent background, single object cente
 | Cesta de percebes | Percebes de la Boca del Bajo, los mejores de la costa. | `objetos/costa/cesta-de-percebes.png` |
 
 Después de dibujarlos: `node tools/pixel-manifest.mjs`.
+
+## El tablero que se usa (E1 de ROADMAP_ENTRETENIDO)
+
+Lo que piden los tableros nuevos de 1387 y Strahd. Quien se protege en un tablero (un invitado que no pelea) sale con la silueta. El tótem lleva de momento un apaño: `bestias/totem-de-ramas.png` es la maleza seca del tablero (`tablero/dificil-exterior.png`) ampliada a 96×96; el dibujo de verdad lo sustituye.
+
+| Quién o qué | Campaña | Prompt | Tamaño | Dónde va |
+| :--- | :--- | :--- | :--- | :--- |
+| Tótem de ramas | Strahd · La cima de la colina Yester | `Pixel art creature sprite, 96x96, transparent background, full body, gothic horror, cold desaturated palette, no text, no frame. A tall post of bundled dead branches tied with gut and smeared with dark blood, a crude face carved at the top, standing on a hilltop.` | 96×96 | `bestias/totem-de-ramas.png` |
+| Guardia dormido (marca) | Cualquiera · los que duermen en un tablero (`asleep`) | `Pixel art icon, 64x64, transparent background, dark fantasy, muted palette with gold accents, no text, no frame. Three small floating "z" letters drawn as wisps of pale blue smoke.` | 64×64 | `estados/dormido.png` |
+
+Después de dibujarlos: `node tools/pixel-manifest.mjs`.

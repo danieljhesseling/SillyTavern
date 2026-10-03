@@ -1255,6 +1255,30 @@
       "tamable": ""
     },
     {
+      "name": "Tótem de ramas",
+      "hp": 15,
+      "armorClass": 13,
+      "cr": 0,
+      "profile": "object",
+      "attackRangeFeet": 5,
+      "abilities": [],
+      "boss": false,
+      "description": "Un poste de ramas atadas con tripas y untado de sangre. Mientras siga en pie, el canto de los druidas llega al muñeco de ramas. No se mueve ni ataca: hay que romperlo."
+    },
+    {
+      "name": "Engendro hambriento",
+      "perception": 3,
+      "hp": 28,
+      "armorClass": 12,
+      "cr": 1,
+      "profile": "aggressive",
+      "attackRangeFeet": 5,
+      "abilities": [
+        "hab-embate"
+      ],
+      "description": "El hijo del padre Donavich, convertido en vampiro y encerrado bajo la iglesia. Tiene hambre."
+    },
+    {
       "name": "Lobo gris",
       "hp": 11,
       "armorClass": 13,
@@ -1265,18 +1289,6 @@
         "hab-rastrear"
       ],
       "description": "Un lobo flaco de los bosques de Barovia. Caza en manada y huye si se queda solo."
-    },
-    {
-      "name": "Engendro hambriento",
-      "hp": 28,
-      "armorClass": 12,
-      "cr": 1,
-      "profile": "aggressive",
-      "attackRangeFeet": 5,
-      "abilities": [
-        "hab-embate"
-      ],
-      "description": "El hijo del padre Donavich, convertido en vampiro y encerrado bajo la iglesia. Tiene hambre."
     }
   ],
   "items": [
@@ -1723,6 +1735,34 @@
           "name": "Zombi de Strahd",
           "x": 17,
           "y": 7
+        }
+      ],
+      "ward": {
+        "name": "Ireena Kolyana",
+        "x": 10,
+        "y": 2,
+        "gender": "Mujer"
+      },
+      "waves": [
+        {
+          "round": 2,
+          "names": [
+            "Zombi de Strahd",
+            "Zombi de Strahd"
+          ],
+          "x": 10,
+          "y": 9,
+          "tell": "Golpes en la verja del jardín: llegan más muertos."
+        },
+        {
+          "round": 4,
+          "names": [
+            "Zombi de Strahd",
+            "Zombi de Strahd"
+          ],
+          "x": 2,
+          "y": 9,
+          "tell": "Arañazos en el muro del oeste: otros dos van a saltarlo."
         }
       ],
       "avoid": [
@@ -2323,7 +2363,7 @@
         "######.........#",
         "#.....cc.......#",
         "#..T...........#",
-        "#.......c......#",
+        "#.......c.....x#",
         "################"
       ],
       "partyStart": [
@@ -2348,12 +2388,14 @@
         {
           "name": "Engendro hambriento",
           "x": 12,
-          "y": 1
+          "y": 1,
+          "asleep": true
         },
         {
           "name": "Engendro hambriento",
           "x": 13,
-          "y": 6
+          "y": 6,
+          "asleep": true
         }
       ],
       "avoid": [
@@ -2379,15 +2421,15 @@
       "locationName": "Ruinas de Berez",
       "map": [
         "####################",
-        "#ww~~.....b....~~ww#",
-        "#w~......#####...~w#",
-        "#~.......#.k.#....~#",
+        "#WWmm.....b....mmWW#",
+        "#Wm......#####...mW#",
+        "#m.......#.k.#....m#",
         "#........#...#.....#",
         "#..b.....##D##..b..#",
-        "#..................#",
-        "#~....c.......c...~#",
-        "#w~.............~~w#",
-        "#ww~...b....b...~ww#",
+        "#.................x#",
+        "#m....c.......c...m#",
+        "#wm.............mmw#",
+        "#wwm...b....b...mww#",
         "####################"
       ],
       "partyStart": [
@@ -2531,6 +2573,16 @@
           "name": "Plaga de agujas",
           "x": 8,
           "y": 8
+        },
+        {
+          "name": "Tótem de ramas",
+          "x": 13,
+          "y": 3
+        },
+        {
+          "name": "Tótem de ramas",
+          "x": 13,
+          "y": 7
         }
       ],
       "avoid": [
@@ -2597,34 +2649,34 @@
       "locationName": "Torre de Van Richten",
       "map": [
         "####################",
-        "#wwwwwwwwwwwwwwwwww#",
-        "#ww..............ww#",
-        "#w....#######.....w#",
-        "#w....#.....#.....w#",
-        "#.....o.....#.....w#",
-        "#w....#.....#.....w#",
-        "#w....###D###.....w#",
-        "#ww..............ww#",
-        "#wwwwwwww..wwwwwwww#",
-        "#wwwwwwww..wwwwwwww#",
+        "#WWWWWWWWWWWWWWWWWW#",
+        "#Ww..............wW#",
+        "#W....#######.....W#",
+        "#W....#.....#.....W#",
+        "#.....o.....#.....W#",
+        "#W....#.....#.....W#",
+        "#W....###o###.....W#",
+        "#Ww..............wW#",
+        "#WWWWWWWW..WWWWWWWW#",
+        "#WWWWWWWW..WWWWWWWW#",
         "####################"
       ],
       "partyStart": [
+        {
+          "x": 6,
+          "y": 5
+        },
+        {
+          "x": 9,
+          "y": 7
+        },
         {
           "x": 8,
           "y": 5
         },
         {
           "x": 9,
-          "y": 5
-        },
-        {
-          "x": 10,
-          "y": 5
-        },
-        {
-          "x": 9,
-          "y": 4
+          "y": 6
         }
       ],
       "enemies": [
@@ -2647,6 +2699,18 @@
           "name": "Enjambre de murciélagos",
           "x": 16,
           "y": 2
+        }
+      ],
+      "waves": [
+        {
+          "round": 3,
+          "names": [
+            "Lobo gris",
+            "Lobo gris"
+          ],
+          "x": 9,
+          "y": 9,
+          "tell": "Más aullidos en el camino de tierra: vienen más lobos."
         }
       ],
       "avoid": [
@@ -2716,9 +2780,9 @@
       "locationName": "Guarida de los Hombres Lobo",
       "map": [
         "####################",
-        "#.....#......#.....#",
-        "#.CC..#......#..CC.#",
-        "#.....#......#.....#",
+        "#.....#^^^^^^#.....#",
+        "#.CC..#^^^^^^#..CC.#",
+        "#.....#^^^^^^#.....#",
         "##.####......####.##",
         "#..................#",
         "#....~~......~~....#",
@@ -3360,17 +3424,23 @@
       "id": "q_asedio_mansion",
       "name": "Asedio en la Mansión",
       "act": 1,
-      "description": "Los no-muertos de Strahd asedian la mansión del burgomaestre. Debéis repeler el ataque y mantener a Ireena a salvo.",
+      "description": "Los no-muertos de Strahd asedian la mansión del burgomaestre y llegan más por el jardín. Hay que aguantar cinco rondas con Ireena viva: ella no sabe pelear.",
       "boardId": "mansion_burgomaestre",
       "objectives": [
         {
-          "type": "eliminate_all",
-          "label": "Derrotar a los zombis asediadores"
+          "type": "survive_rounds",
+          "label": "Aguantar el asalto cinco rondas",
+          "rounds": 5
         },
         {
           "type": "protect",
           "label": "Que Ireena sobreviva al asalto",
           "ally": "Ireena Kolyana"
+        },
+        {
+          "type": "eliminate_all",
+          "label": "Acabar con todos los asediadores",
+          "optional": true
         }
       ]
     },
@@ -3486,7 +3556,7 @@
       "name": "El taller del ataudero",
       "act": 2,
       "boardId": "taller_ataudero",
-      "description": "Arriba del taller hay cajas llenas de tierra, y dentro duerme lo que el conde mandó a Vallaki. Los huesos del santo están en el cuarto del fondo.",
+      "description": "Arriba del taller hay cajas llenas de tierra, y dentro duerme lo que el conde mandó a Vallaki. Los huesos del santo están en el cuarto del fondo. Si se pasa sin hacer ruido, no se despiertan.",
       "objectives": [
         {
           "type": "loot",
@@ -3496,8 +3566,16 @@
           ]
         },
         {
-          "type": "eliminate_all",
-          "label": "Acabar con los que duermen en las cajas",
+          "type": "reach_cell",
+          "label": "Salir con los huesos por la puerta del callejón",
+          "cell": {
+            "x": 14,
+            "y": 7
+          }
+        },
+        {
+          "type": "unseen",
+          "label": "Sin despertar a los que duermen en las cajas",
           "optional": true
         }
       ]
@@ -3507,7 +3585,7 @@
       "name": "La choza de Baba Lysaga",
       "act": 3,
       "boardId": "choza_baba_lysaga",
-      "description": "La bruja guarda la gema de la bodega en su choza, en medio del pantano. Sus espantapájaros vigilan el barro.",
+      "description": "La bruja guarda la gema de la bodega en su choza, en medio del pantano. Hay que sacarla y salir todos por el camino del este antes de que la choza se levante sobre sus patas, en la ronda 8.",
       "objectives": [
         {
           "type": "loot",
@@ -3515,6 +3593,11 @@
           "treasures": [
             "Gema verde de Baba Lysaga"
           ]
+        },
+        {
+          "type": "escape",
+          "label": "Salir todos por el camino del este",
+          "beforeRound": 8
         },
         {
           "type": "eliminate",
@@ -3529,12 +3612,13 @@
       "name": "La cima de la colina Yester",
       "act": 3,
       "boardId": "cima_yester",
-      "description": "Los druidas cantan junto al muñeco de ramas para despertarlo. La gema está a sus pies.",
+      "description": "Los druidas cantan junto al muñeco de ramas para despertarlo, y dos tótems llevan el canto hasta él. Si siguen en pie al empezar la ronda 5, el muñeco despierta. La gema está a sus pies.",
       "objectives": [
         {
           "type": "eliminate",
-          "label": "Parar el canto de los druidas",
-          "target": "Druida de Yester"
+          "label": "Romper los dos tótems antes de que despierte el muñeco",
+          "target": "Tótem de ramas",
+          "beforeRound": 5
         },
         {
           "type": "loot",
@@ -3542,6 +3626,12 @@
           "treasures": [
             "Gema verde de la colina Yester"
           ]
+        },
+        {
+          "type": "eliminate",
+          "label": "Parar el canto de los druidas",
+          "target": "Druida de Yester",
+          "optional": true
         }
       ]
     },
@@ -3550,11 +3640,21 @@
       "name": "El islote de la torre",
       "act": 3,
       "boardId": "islote_torre",
-      "description": "La manada cruza el camino de tierra y rodea la torre. Solo hay que aguantar hasta que se canse.",
+      "description": "La manada cruza el camino de tierra y rodea la torre. Hay que guardar las dos puertas cinco rondas, hasta que se canse; si un lobo entra, se acabó. El lago es hondo: a quien caiga, le cuesta salir.",
       "objectives": [
         {
-          "type": "survive_rounds",
-          "label": "Aguantar en la torre cinco rondas",
+          "type": "hold",
+          "label": "Que no entren en la torre: guardar las dos puertas cinco rondas",
+          "cells": [
+            {
+              "x": 6,
+              "y": 5
+            },
+            {
+              "x": 9,
+              "y": 7
+            }
+          ],
           "rounds": 5
         }
       ]
@@ -5491,8 +5591,8 @@
         "id": "asedio-en-la-mansion",
         "act": 1,
         "title": "Asedio en la Mansión",
-        "hint": "Derrotar a los zombis asediadores. Está en Mansión del Burgomaestre (Aldea de Barovia).",
-        "scene": "Los no-muertos de Strahd asedian la mansión del burgomaestre. Debéis repeler el ataque y mantener a Ireena a salvo.",
+        "hint": "Aguantar el asalto cinco rondas. Está en Mansión del Burgomaestre (Aldea de Barovia).",
+        "scene": "Los no-muertos de Strahd asedian la mansión del burgomaestre y llegan más por el jardín. Hay que aguantar cinco rondas con Ireena viva: ella no sabe pelear.",
         "backdrop": "Aldea de Barovia",
         "beats": [
           {

@@ -125,6 +125,7 @@ import { buildCombatBarView, runCombatBarPick } from './combat-bar.js';
 import { shownName } from '../game-engine/ui/shown-names.js';
 import { guidedNow, peopleHereNow, runStoryStep, storyStepsNow } from './guided.js';
 import { looseLookChips } from './talk.js';
+import { canExploreAhead, exploreAheadNow } from './friction.js';
 
 /** Los avisos del juego, guardados para la bandeja (idea 159). */
 /** @type {import('../game-engine/ui/shell/notices.js').Notice[]} */
@@ -401,6 +402,8 @@ export function buildShellChips(limit = undefined) {
         heal: fieldHealNow()?.choice.name ?? '',
         // J12.3: buscar trampas y desarmar la que se tiene al lado.
         traps: boardTrapChips(),
+        // E7.1: avanzar en formación hasta lo siguiente que importe.
+        ahead: canExploreAhead(),
     });
 }
 
@@ -432,6 +435,13 @@ export function runShellChip(chip) {
     // Idea 169: las que no cabian en la fila.
     if (chip.id === 'more') {
         openAllChips();
+        return;
+    }
+    // E7.1: explorar hacia delante.
+    if (chip.id === 'ahead') {
+        void exploreAheadNow().finally(() => {
+            if (isShellOpen()) refreshGameShell();
+        });
         return;
     }
     // J12.3: buscar trampas, o desarmar la de al lado.

@@ -61,7 +61,34 @@ export const OBJECTIVE_TYPES = {
         description: 'Recoge los tesoros marcados.',
         fields: ['treasureIds'],
     },
+    // E1.1 de wiki/ROADMAP_ENTRETENIDO.md: otras formas de ganar un tablero.
+    escape: {
+        label: 'Escapar',
+        description: 'Que salgan por las salidas del tablero todos los que siguen en pie.',
+        fields: [],
+    },
+    hold: {
+        label: 'Defender',
+        description: 'Que ningún enemigo pise las casillas marcadas durante unas rondas.',
+        fields: ['cells', 'rounds'],
+    },
+    unseen: {
+        label: 'Sin despertar a nadie',
+        description: 'Que los que duermen en el tablero sigan dormidos. Es una condición, como proteger.',
+        fields: [],
+    },
 };
+
+/**
+ * E1.1: los objetivos que son una condición y no una meta: mientras se cumplen no fallan, pero
+ * no ganan solos. Se gana cuando está hecho lo demás.
+ */
+export const CONDITION_TYPES = new Set(['protect', 'unseen']);
+
+/**
+ * E1.1: los que no tienen sentido con un plazo: ya son de rondas, o son una condición.
+ */
+const NO_DEADLINE = new Set(['survive_rounds', 'hold', 'protect', 'unseen']);
 
 /**
  * @typedef {Object} Objective
@@ -73,15 +100,20 @@ export const OBJECTIVE_TYPES = {
  * @property {number} [rounds]
  * @property {{x: number, y: number}} [cell]
  * @property {string} [allyId]
+ * @property {string} [allyName] E1.1: quien se protege o se escolta, por su nombre (un invitado del tablero).
  * @property {string[]} [treasureIds]
+ * @property {Array<{x: number, y: number}>} [cells] E1.1: las casillas que se defienden (`hold`).
+ * @property {number} [beforeRound] E1.1: el plazo: si al empezar esa ronda no está hecho, se pierde.
  */
 
 /**
  * @typedef {Object} BoardState
  * @property {number} round
  * @property {Array<{id: string, templateId?: string, currentHp: number, gridX: number, gridY: number}>} enemies
- * @property {Array<{id: string, currentHp: number, gridX: number, gridY: number}>} allies
+ * @property {Array<{id: string, currentHp: number, gridX: number, gridY: number, name?: string, uid?: string}>} allies
  * @property {string[]} [collectedTreasures]
+ * @property {string[]} [left] E1.1: quién ha salido ya por una salida del tablero.
+ * @property {boolean} [awakened] E1.1: si se ha despertado alguien de los que dormían.
  */
 
 /**
@@ -101,7 +133,57 @@ export function normalizeObjectives(raw) {
             cell: o.cell && Number.isFinite(Number(o.cell.x)) ? { x: Number(o.cell.x), y: Number(o.cell.y) } : undefined,
             allyId: o.allyId != null ? String(o.allyId) : undefined,
             treasureIds: Array.isArray(o.treasureIds) ? o.treasureIds.map(String) : undefined,
+            // E1.1: el nombre de a quién se protege, las casillas que se defienden y el plazo.
+            ...(o.allyName ? { allyName: String(o.allyName) } : {}),
+            ...heldCells(o),
+            ...(Number(o.beforeRound) >= 2 && !NO_DEADLINE.has(String(o.type)) ? { beforeRound: Math.floor(Number(o.beforeRound)) } : {}),
         }));
+}
+
+/**
+ * E1.1: las casillas de un objetivo: `cells`, o la `cell` de uno de defender.
+ *
+ * @param {any} o
+ * @returns {{cells?: Array<{x: number, y: number}>}}
+ */
+function heldCells(o) {
+    const cells = readCells(o.cells ?? (o.type === 'hold' && o.cell ? [o.cell] : null));
+    return cells.length > 0 ? { cells } : {};
+}
+
+/**
+ * @param {any} raw
+ * @returns {Array<{x: number, y: number}>}
+ */
+function readCells(raw) {
+    return (Array.isArray(raw) ? raw : [])
+        .filter(c => c && Number.isFinite(Number(c.x)) && Number.isFinite(Number(c.y)))
+        .map(c => ({ x: Math.trunc(Number(c.x)), y: Math.trunc(Number(c.y)) }));
+}
+
+/**
+ * E1.1: a quién se refiere un objetivo de proteger o escoltar: por su id, por su entrada del
+ * mundo o por su nombre. Antes solo por id, y la id de la entrada del mundo (Ireena) no es la
+ * de su ficha en el grupo: «que Ireena sobreviva» no fallaba nunca.
+ *
+ * @param {Objective} objective
+ * @param {BoardState['allies']} allies
+ */
+function wardOf(objective, allies) {
+    const id = objective.allyId;
+    const name = String(objective.allyName ?? '').trim().toLowerCase();
+    return allies.find(a => id !== undefined && (a.id === id || (a.uid !== undefined && a.uid === id)))
+        ?? (name ? allies.find(a => String(a.name ?? '').trim().toLowerCase() === name) : undefined);
+}
+
+/**
+ * E1.1: el texto del plazo de un objetivo, para la cabecera y el resumen.
+ *
+ * @param {Objective} objective
+ * @returns {string} « (antes de la ronda 5)», o vacío.
+ */
+export function deadlineText(objective) {
+    return objective?.beforeRound ? ` (antes de la ronda ${objective.beforeRound})` : '';
 }
 
 /** @param {{currentHp?: number}} c */
@@ -121,6 +203,21 @@ const standingOn = (who, cell) => who.gridX === cell.x && who.gridY === cell.y;
  * @returns {ObjectiveStatus}
  */
 export function evaluateObjective(objective, board) {
+    const status = judgeObjective(objective, board);
+    // E1.1: con plazo, lo que al empezar esa ronda sigue sin hacerse se ha perdido (salir antes
+    // de la ronda 5, romper los cristales antes de que el nigromante acabe).
+    if (status === 'pending' && objective.beforeRound && (Number(board?.round) || 0) >= objective.beforeRound) return 'failed';
+    return status;
+}
+
+/**
+ * Lo que dice un objetivo del tablero, sin mirar su plazo.
+ *
+ * @param {Objective} objective
+ * @param {BoardState} board
+ * @returns {ObjectiveStatus}
+ */
+function judgeObjective(objective, board) {
     const enemies = Array.isArray(board?.enemies) ? board.enemies : [];
     const allies = Array.isArray(board?.allies) ? board.allies : [];
 
@@ -153,18 +250,40 @@ export function evaluateObjective(objective, board) {
         }
 
         case 'escort': {
-            if (!objective.cell || !objective.allyId) return 'pending';
-            const ward = allies.find(a => a.id === objective.allyId);
+            if (!objective.cell || (!objective.allyId && !objective.allyName)) return 'pending';
+            const ward = wardOf(objective, allies);
             if (!ward) return 'pending';
             if (!alive(ward)) return 'failed';
             return standingOn(ward, objective.cell) ? 'complete' : 'pending';
         }
 
         case 'protect': {
-            const ward = allies.find(a => a.id === objective.allyId);
+            const ward = wardOf(objective, allies);
             if (!ward) return 'pending';
             return alive(ward) ? 'pending' : 'failed';
         }
+
+        case 'escape': {
+            // E1.1: salen los que siguen en pie. Con todos dentro y en el suelo, se ha perdido;
+            // sin nadie de quien huir, ya no hace falta correr.
+            const out = new Set((Array.isArray(board?.left) ? board.left : []).map(String));
+            const standing = allies.filter(a => alive(a) && !out.has(String(a.id)));
+            if (standing.length === 0) return out.size > 0 ? 'complete' : 'failed';
+            if (!enemies.some(alive)) return 'complete';
+            return 'pending';
+        }
+
+        case 'hold': {
+            // E1.1: si un enemigo pisa lo que se defiende, se ha perdido; si se aguanta hasta la
+            // ronda que dice, se ha ganado. Sin nadie del grupo en pie, también se pierde.
+            const cells = objective.cells ?? [];
+            if (enemies.some(e => alive(e) && cells.some(c => standingOn(e, c)))) return 'failed';
+            if (!allies.some(alive)) return 'failed';
+            return (Number(board?.round) || 0) >= (objective.rounds ?? 0) ? 'complete' : 'pending';
+        }
+
+        case 'unseen':
+            return board?.awakened ? 'failed' : 'pending';
 
         case 'loot': {
             const ids = objective.treasureIds ?? [];
@@ -207,7 +326,8 @@ export function evaluateScenario(objectives, board) {
     // se «cumple» nunca por sí solo. Se gana cuando está hecho **lo demás**. Antes contaba
     // como meta pendiente para siempre y una misión con «que Ireena sobreviva» no se podía
     // ganar.
-    const goals = required.filter(r => r.type !== 'protect');
+    // E1.1: y lo mismo con «sin despertar a nadie».
+    const goals = required.filter(r => !CONDITION_TYPES.has(r.type));
     if (goals.length > 0 && goals.every(r => r.status === 'complete')) {
         return { status: 'complete', results, bonusEarned };
     }
@@ -249,7 +369,7 @@ export function describeObjectives(objectives, board) {
 
     const icon = { complete: '✅', failed: '❌', pending: '⬜' };
     return list
-        .map(o => `${icon[evaluateObjective(o, board)]} ${o.label}${o.optional ? ' (opcional)' : ''}`)
+        .map(o => `${icon[evaluateObjective(o, board)]} ${o.label}${deadlineText(o)}${o.optional ? ' (opcional)' : ''}`)
         .join(' · ');
 }
 

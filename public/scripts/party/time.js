@@ -71,6 +71,7 @@ import {
 } from './companions.js';
 import { currentMarket, writeLetters, worldFestivals, tellFestival } from './town.js';
 import { playNight } from './travel.js';
+import { dungeonRestGate } from './dungeon.js';
 
 /**
  * El estado de campana -reloj, vinculos, descansos y mapa- vive en su propio modulo.
@@ -806,6 +807,11 @@ let restingUnder = '';
  * @returns {Promise<string>}
  */
 export async function takeRest(kind, { under = '' } = {}) {
+    // E2.3: dormir dentro de la mazmorra pide raciones y arriesga una emboscada (que lo corta).
+    if (!(await dungeonRestGate(kind, under))) {
+        if (isShellOpen()) refreshGameShell();
+        return '';
+    }
     // J14.7: antes de dormir, lo que pase esta noche (en la posada, alguien que llega o una
     // ronda; con dos de los tuyos, a veces una charla entre ellos). Una por noche como mucho.
     if (kind === 'largo' && !combatEncounter.active) await playNight();

@@ -98,6 +98,23 @@
     font-size: 0.88em;
 }
 
+/* E3.1: el furtivo del pícaro que llevaría este golpe, y por qué. */
+.tc-sneak {
+    margin-top: 4px;
+    padding: 4px 8px;
+    border-radius: 6px;
+    background: rgba(139, 92, 246, 0.18);
+    color: #ddd6fe;
+    font-size: 0.85em;
+    font-weight: 600;
+}
+
+/* E3.4: la jugada propia del rango 7, con su nombre. */
+.tc-btn.tc-bond-move {
+    border-color: rgba(244, 114, 182, 0.6);
+    color: #fbcfe8;
+}
+
 /* De dónde sale el número del ataque: la característica y la competencia. */
 .tc-bonus {
     margin-top: 3px;

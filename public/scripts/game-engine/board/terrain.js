@@ -127,12 +127,24 @@ export const TERRAIN_TYPES = {
         movementCost: Infinity,
         coverBonus: 0,
     },
-    /** Hielo: se anda por él, pero el trueno lo quiebra bajo los pies. El fuego lo funde. */
+    /**
+     * Hielo: el trueno lo quiebra bajo los pies y el fuego lo funde. E1.3: resbala, como el
+     * hielo de la Guía del máster de 5e: es terreno difícil, y quien lo pisa en su turno hace una
+     * prueba de Acrobacias CD 10 o cae derribado (`falls.js`).
+     */
     ice: {
         label: 'Ice',
         blocksMovement: false,
         blocksSight: false,
-        movementCost: 1,
+        movementCost: 2,
+        coverBonus: 0,
+    },
+    /** E1.3: barro. Terreno difícil: cada casilla cuesta el doble. No arde. */
+    mud: {
+        label: 'Mud',
+        blocksMovement: false,
+        blocksSight: false,
+        movementCost: 2,
         coverBonus: 0,
     },
     /** Maleza: cuesta el doble, y arde, dentro y fuera. */
@@ -486,6 +498,8 @@ export const ASCII_TERRAIN = {
     'W': { type: 'deep_water' },
     'i': { type: 'ice' },
     'b': { type: 'brush' },
+    // E1.3: el barro.
+    'm': { type: 'mud' },
     // R6: los barriles y los cofres.
     'T': { type: 'barrel' },
     'k': { type: 'chest' },
@@ -541,7 +555,8 @@ const CELL_WORDS = {
     stairs: 'Escalera: baja al nivel siguiente',
     water: 'Agua poco honda: cada casilla cuesta el doble, y quien está dentro se moja (el frío la hiela)',
     deep_water: 'Agua honda: no se cruza andando',
-    ice: 'Hielo: se anda, pero el trueno lo quiebra y el fuego lo funde',
+    ice: 'Hielo: cada casilla cuesta el doble, y quien lo pisa en combate puede resbalar y caer (Acrobacias CD 10)',
+    mud: 'Barro: cada casilla cuesta el doble',
     brush: 'Maleza: cada casilla cuesta el doble, y arde',
     barrel: 'Barril: cubre, y si le llega el fuego, revienta',
     chest: 'Cofre: estando al lado, se abre pulsándolo',

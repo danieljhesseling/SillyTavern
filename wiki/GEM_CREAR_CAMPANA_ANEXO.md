@@ -795,7 +795,7 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
             "items": {
               "type": "string"
             },
-            "description": "Filas de la misma longitud, entre 8 y 40 columnas y entre 6 y 30 filas. Borde exterior siempre de muro. Solo estos caracteres: '.' suelo transitable, '#' muro, 'D' puerta cerrada, 'L' puerta cerrada con llave (se abre con una llave, con maña o a golpes; el jefe del tablero suelta la llave), 'o' puerta abierta, '~' terreno difícil, 'c' cobertura media, 'C' cobertura de tres cuartos, 'v' precipicio (no se anda; a quien empujan dentro, cae), '>' escalera al nivel siguiente, 'w' agua poco honda (cuesta el doble; el frío la hiela), 'W' agua honda (no se cruza andando; se ve a través): el mar, un río profundo, 'i' hielo (el trueno lo quiebra, el fuego lo funde), 'b' maleza (cuesta el doble, y arde), 'T' barril (cubre; con fuego, revienta), 'k' cofre (se abre estando al lado), '^' en alto (subir cuesta el doble; desde arriba se ataca con ventaja): torres, escalones, la empalizada, 'x' salida (quien la pisa puede irse de la pelea; con un objetivo «alcanzar» encima, salir es ganar): la ventana, la trampilla, 'P' palanca (no se pisa; estando al lado, abre todas las puertas con llave del tablero): la reja del fondo, '=' barricada (corta el paso, no la vista; cubre a quien está detrás y a golpes se rompe: 15 de vida). Sin map, el juego lo lee del dibujo si hay image, o dibuja uno con la semilla."
+            "description": "Filas de la misma longitud, entre 8 y 40 columnas y entre 6 y 30 filas. Borde exterior siempre de muro. Solo estos caracteres: '.' suelo transitable, '#' muro, 'D' puerta cerrada, 'L' puerta cerrada con llave (se abre con una llave, con maña o a golpes; el jefe del tablero suelta la llave), 'o' puerta abierta, '~' terreno difícil, 'c' cobertura media, 'C' cobertura de tres cuartos, 'v' precipicio (no se anda; a quien empujan dentro, cae), '>' escalera al nivel siguiente, 'w' agua poco honda (cuesta el doble; el frío la hiela), 'W' agua honda (no se cruza andando; se ve a través): el mar, un río profundo, 'i' hielo (cuesta el doble y resbala: Acrobacias CD 10 o al suelo; el trueno lo quiebra, el fuego lo funde), 'b' maleza (cuesta el doble, y arde), 'm' barro (cuesta el doble), 'T' barril (cubre; con fuego, revienta), 'k' cofre (se abre estando al lado), '^' en alto (subir cuesta el doble; desde arriba se ataca con ventaja): torres, escalones, la empalizada, 'x' salida (quien la pisa puede irse de la pelea; con un objetivo «alcanzar» encima, salir es ganar): la ventana, la trampilla, 'P' palanca (no se pisa; estando al lado, abre todas las puertas con llave del tablero): la reja del fondo, '=' barricada (corta el paso, no la vista; cubre a quien está detrás y a golpes se rompe: 15 de vida). Sin map, el juego lo lee del dibujo si hay image, o dibuja uno con la semilla."
           },
           "partyStart": {
             "type": "array",
@@ -833,7 +833,85 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
                 },
                 "y": {
                   "type": "integer"
+                },
+                "asleep": {
+                  "type": "boolean",
+                  "description": "Si duerme: no empieza la pelea al veros. Quien pasa a 10 pies tira Sigilo contra su Percepción pasiva (10 + su perception del bestiario, −5 dormido); si falla, despiertan todos."
                 }
+              }
+            }
+          },
+          "waves": {
+            "type": "array",
+            "description": "Refuerzos que llegan en su ronda junto a una casilla (una puerta, el borde del bosque). La ronda antes se oye su aviso (tell), dicho llano.",
+            "items": {
+              "type": "object",
+              "required": [
+                "round",
+                "names"
+              ],
+              "properties": {
+                "round": {
+                  "type": "integer",
+                  "description": "La ronda en la que entran."
+                },
+                "names": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "Quiénes, por su nombre del bestiario, uno por bicho."
+                },
+                "x": {
+                  "type": "integer"
+                },
+                "y": {
+                  "type": "integer"
+                },
+                "tell": {
+                  "type": "string",
+                  "description": "Lo que se oye la ronda antes: «Golpes en la puerta del este: vienen más»."
+                }
+              }
+            }
+          },
+          "light": {
+            "type": "string",
+            "enum": [
+              "luz",
+              "penumbra",
+              "oscuro"
+            ],
+            "description": "Opcional (E2.1): la luz de la sala. Sin decirlo, una cueva, una cripta, un sótano o una mina están a oscuras y lo demás con luz. En penumbra cuesta ver trampas; a oscuras no se ve sin antorcha, farol o la Luz, y quien ve en la oscuridad (un muerto, un trasgo) pega con ventaja."
+          },
+          "ward": {
+            "type": "object",
+            "description": "Alguien indefenso que está en el tablero y pelea de vuestro lado sin pelear: se cubre. Para un objetivo protect (ally: su nombre). Si cae, se pierde.",
+            "required": [
+              "name",
+              "x",
+              "y"
+            ],
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "x": {
+                "type": "integer"
+              },
+              "y": {
+                "type": "integer"
+              },
+              "hp": {
+                "type": "integer",
+                "description": "Su vida. Sin ella, la de alguien que no pelea."
+              },
+              "gender": {
+                "type": "string",
+                "enum": [
+                  "Hombre",
+                  "Mujer"
+                ]
               }
             }
           },
@@ -1541,13 +1619,18 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
               "aggressive",
               "skirmisher",
               "guardian",
-              "coward"
+              "coward",
+              "object"
             ],
-            "description": "Comportamiento táctico. Solo estos cuatro."
+            "description": "Comportamiento táctico. Solo estos. object: lo que se rompe y no actúa (un cristal, un ídolo)."
           },
           "attackRangeFeet": {
             "type": "integer",
             "description": "5 en cuerpo a cuerpo, 30 a 120 a distancia."
+          },
+          "perception": {
+            "type": "integer",
+            "description": "Opcional: lo que suma a Percepción (el +3 de su ficha de 5e). Cuenta si duerme en un tablero (asleep)."
           },
           "seasons": {
             "type": "array",
@@ -1654,9 +1737,12 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
                     "reach_cell",
                     "escort",
                     "protect",
-                    "loot"
+                    "loot",
+                    "escape",
+                    "hold",
+                    "unseen"
                   ],
-                  "description": "eliminate: Derrota a los objetivos indicados. | eliminate_all: Derrota a todos los enemigos. | survive_rounds: Aguanta un número de rondas. | reach_cell: Lleva a alguien del grupo a una casilla. | escort: Lleva a un aliado concreto a una casilla, vivo. | protect: Que un aliado siga en pie al terminar. Es una condición: si cae, se pierde; si no, se gana con lo demás. | loot: Recoge los tesoros marcados."
+                  "description": "eliminate: Derrota a los objetivos indicados. | eliminate_all: Derrota a todos los enemigos. | survive_rounds: Aguanta un número de rondas. | reach_cell: Lleva a alguien del grupo a una casilla. | escort: Lleva a un aliado concreto a una casilla, vivo. | protect: Que un aliado siga en pie al terminar. Es una condición: si cae, se pierde; si no, se gana con lo demás. | loot: Recoge los tesoros marcados. | escape: Que salgan por las salidas del tablero todos los que siguen en pie. | hold: Que ningún enemigo pise las casillas marcadas durante unas rondas. | unseen: Que los que duermen en el tablero sigan dormidos. Es una condición, como proteger."
                 },
                 "label": {
                   "type": "string",
@@ -1700,9 +1786,32 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
                     "type": "string"
                   },
                   "description": "Nombres de los tesoros que hay que recoger."
+                },
+                "cells": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "x": {
+                        "type": "integer"
+                      },
+                      "y": {
+                        "type": "integer"
+                      }
+                    },
+                    "required": [
+                      "x",
+                      "y"
+                    ]
+                  },
+                  "description": "Las casillas que ningún enemigo debe pisar (la puerta, lo que hay detrás), contando desde 0."
+                },
+                "beforeRound": {
+                  "type": "integer",
+                  "description": "Opcional, en cualquier objetivo menos sobrevivir, defender, proteger y sin despertar: la ronda en la que se pierde si aún no está hecho (5 = hay que hacerlo en las rondas 1 a 4)."
                 }
               },
-              "description": "Un objetivo. Cada tipo pide sus campos: eliminate → target · eliminate_all → nada · survive_rounds → rounds · reach_cell → cell · escort → ally, cell · protect → ally · loot → treasures"
+              "description": "Un objetivo. Cada tipo pide sus campos: eliminate → target · eliminate_all → nada · survive_rounds → rounds · reach_cell → cell · escort → ally, cell · protect → ally · loot → treasures · escape → nada · hold → cells, rounds · unseen → nada"
             }
           }
         }
@@ -3459,8 +3568,9 @@ crear cobertura y rutas, y no dibujes una sala vacía.
 - `>` escalera al nivel siguiente
 - `w` agua poco honda (cuesta el doble; el frío la hiela)
 - `W` agua honda (no se cruza andando; se ve a través): el mar, un río profundo
-- `i` hielo (el trueno lo quiebra, el fuego lo funde)
+- `i` hielo (cuesta el doble y resbala: Acrobacias CD 10 o al suelo; el trueno lo quiebra, el fuego lo funde)
 - `b` maleza (cuesta el doble, y arde)
+- `m` barro (cuesta el doble)
 - `T` barril (cubre; con fuego, revienta)
 - `k` cofre (se abre estando al lado)
 - `^` en alto (subir cuesta el doble; desde arriba se ataca con ventaja): torres, escalones, la empalizada

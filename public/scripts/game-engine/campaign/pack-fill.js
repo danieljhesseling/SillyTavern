@@ -1009,12 +1009,14 @@ export function fillPackGaps(raw, { compendium = null, seed = '' } = {}) {
         note('tablero', board.name, `para la misión «${text(quest?.name) || key}»`);
     });
 
-    // Quien una misión pide escoltar o proteger, entre los compañeros.
+    // Quien una misión pide escoltar o proteger, entre los compañeros. E1.1: salvo quien está en
+    // su tablero para que se le proteja (`ward`): entra en la pelea como invitado, no como compañero.
     const allies = new Set(confidants.map(c => low(c?.name)).filter(Boolean));
+    const wards = new Set(boards.map(b => low(b?.ward?.name)).filter(Boolean));
     for (const quest of quests) {
         for (const o of list(quest?.objectives)) {
             const ally = text(o?.ally);
-            if (!['escort', 'protect'].includes(text(o?.type)) || !ally || allies.has(low(ally))) continue;
+            if (!['escort', 'protect'].includes(text(o?.type)) || !ally || allies.has(low(ally)) || wards.has(low(ally))) continue;
             confidants.push({ name: ally, description: `Va con vosotros en «${text(quest?.name)}».`, initialBondPoints: 0 });
             allies.add(low(ally));
             note('aliado', ally, `la misión «${text(quest?.name)}» pide que salga entero`);

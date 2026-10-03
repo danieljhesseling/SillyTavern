@@ -189,6 +189,58 @@ export function comboFor({ element, standingOn = 'floor', conditions = [] }) {
     return null;
 }
 
+/** E1.3: los daños que son rayo de verdad (no trueno): el agua los lleva. */
+const LIGHTNING = ['lightning', 'rayo', 'electricidad', 'relampago'];
+
+/** E1.3: hasta dónde lleva el agua el rayo desde quien lo recibe: 15 pies. */
+export const WATER_ARC_CELLS = 3;
+
+/**
+ * E1.3 (cosecha propia, a la manera de los videojuegos tácticos): si el daño de una habilidad es
+ * de rayo.
+ *
+ * @param {any} ability
+ * @returns {boolean}
+ */
+export function isLightning(ability) {
+    return LIGHTNING.includes(plain(ability?.damageType)) || plain(ability?.element) === 'rayo';
+}
+
+/**
+ * E1.3 (cosecha propia): el agua lleva el rayo. Quien está en la misma agua que quien lo ha
+ * recibido (casillas de agua unidas, a 15 pies como mucho de él) se lleva **la mitad del daño**.
+ * Solo el agua poco honda (`water`): se pisa, y quien está dentro está mojado.
+ *
+ * @template {{x: number, y: number}} T
+ * @param {Object} input
+ * @param {any} input.terrain
+ * @param {{x: number, y: number}} input.from Donde está quien recibió el rayo.
+ * @param {T[]} input.others Los demás, con su casilla.
+ * @param {number} [input.reach]
+ * @returns {T[]} Los que se lo llevan también.
+ */
+export function waterArc({ terrain, from, others, reach = WATER_ARC_CELLS }) {
+    const wet = (/** @type {number} */ x, /** @type {number} */ y) => getCell(terrain, x, y)?.type === 'water';
+    if (!from || !wet(from.x, from.y)) return [];
+    // Las casillas de agua unidas a la suya (también en diagonal), sin pasar de `reach`.
+    const seen = new Set([`${from.x},${from.y}`]);
+    const queue = [{ x: from.x, y: from.y }];
+    while (queue.length > 0) {
+        const at = /** @type {{x: number, y: number}} */ (queue.shift());
+        for (let dy = -1; dy <= 1; dy++) {
+            for (let dx = -1; dx <= 1; dx++) {
+                const x = at.x + dx;
+                const y = at.y + dy;
+                const key = `${x},${y}`;
+                if (seen.has(key) || !wet(x, y) || Math.max(Math.abs(x - from.x), Math.abs(y - from.y)) > reach) continue;
+                seen.add(key);
+                queue.push({ x, y });
+            }
+        }
+    }
+    return (Array.isArray(others) ? others : []).filter(o => seen.has(`${o.x},${o.y}`) && !(o.x === from.x && o.y === from.y));
+}
+
 /**
  * La etiqueta en pocas palabras, para la ficha y el botón: «fuego».
  *

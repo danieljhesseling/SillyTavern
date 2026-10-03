@@ -20,6 +20,7 @@ import { showTip } from './narration.js';
 import { focusLost, holdFocus } from '../game-engine/ui/keyboard-nav.js';
 import { motionMs } from '../game-engine/ui/motion.js';
 import { holdRedraw, stageFloat, stageRoll } from './combat-fx.js';
+import { quietFight } from './quiet-fight.js';
 
 /** @type {HTMLElement|null} */
 let combatDiceOverlayElement = null;
@@ -278,6 +279,11 @@ function flushCombatDiceQueue() {
  * @param {{title: string, subtitle: string, dc: string, total: string, formula: string, classification: 'critical-success'|'success'|'failure'|'critical-failure', detail: string, glyph: string, rows?: InitiativeRow[], onDone?: (() => void)|null}} payload
  */
 function queueCombatDiceRoll(payload) {
+    // E7.2: resolviendo rápido, las tiradas van al registro y no salen en su ventana.
+    if (quietFight()) {
+        payload.onDone?.();
+        return;
+    }
     combatDiceQueue.push(payload);
     flushCombatDiceQueue();
 }
@@ -340,6 +346,11 @@ export function showInitiativeRolls(rows, { onDone = null, title = '¡Iniciativa
             null,
             row.enemy ? 'Iniciativa de enemigo' : 'Iniciativa de aliado',
         ));
+    }
+    // E7.2: resolviendo rápido, la iniciativa no espera a que nadie la cierre.
+    if (quietFight()) {
+        onDone?.();
+        return;
     }
     initiativePending += 1;
     queueCombatDiceRoll({

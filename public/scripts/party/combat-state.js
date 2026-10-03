@@ -26,6 +26,8 @@ import { combatEncounter, currentBoardName, currentLocationName, partyMembers, s
 import { controlOf, livingSummons, pruneSummonTurns, shieldBonus, summonById, summonsNow } from './spell-turn.js';
 import { restoreChatPlaceholder } from './combat-flow.js';
 import { getActiveBoardTerrain, getActiveBoardContext, isBoardWon } from './board.js';
+import { armourLoss } from './dungeon.js';
+import { quietFight } from './quiet-fight.js';
 
 /** @typedef {import('./types.js').PartyMember} PartyMember */
 
@@ -178,6 +180,8 @@ export function occupiedCellsFor(member) {
         // J19.5: las invocaciones también ocupan su casilla.
         ...[...partyMembers, ...(combatEncounter.active ? livingSummons() : [])]
             .filter(m => String(m.id) !== String(member?.id) && (Number(m.hp) || 0) > 0 && !m.dead)
+            // E1.1: quien ya salió por una salida no la tapa: por la ventana se sale de uno en uno.
+            .filter(m => !(combatEncounter.active && readLeft(combatEncounter.left).includes(String(m.id))))
             .map(m => `${m.mapPosition?.gridX || 0},${m.mapPosition?.gridY || 0}`),
     ]);
 }
@@ -243,7 +247,9 @@ export function getTargetArmorClass(target, attacker = null) {
     const base = armorWithSpell((wornArmorClass(target) || Number(target?.armorClass) || 10) + perkBonus(target, 'armorClass'), target)
         // J19.7: el Escudo levantado, hasta su turno; y Acelerado, +2.
         + shieldBonus(target)
-        + ((Array.isArray(target?.activeConditions) ? target.activeConditions : []).includes('Acelerado') ? 2 : 0);
+        + ((Array.isArray(target?.activeConditions) ? target.activeConditions : []).includes('Acelerado') ? 2 : 0)
+        // E2.1 y E2.3: el escudo que no se usa por llevar la antorcha, y la armadura que se quitó para dormir.
+        - armourLoss(target).penalty;
     const x = Number(target?.gridX ?? target?.mapPosition?.gridX);
     const y = Number(target?.gridY ?? target?.mapPosition?.gridY);
 
@@ -320,6 +326,8 @@ export function actsOnItsOwn(entry) {
     // que va sola (J19.5) deciden por su cuenta.
     const member = getPartyMemberByTurnEntry(entry);
     if (!member) return false;
+    // E7.2: resolviendo rápido, todos los del grupo van solos (también el héroe).
+    if (quietFight()) return true;
     return controlOf(member) === 'engine';
 }
 

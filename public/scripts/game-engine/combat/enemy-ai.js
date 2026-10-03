@@ -31,7 +31,7 @@ export const DEFAULT_SPEED_FEET = 30;
 export const DEFAULT_ATTACK_RANGE_FEET = 5;
 
 /**
- * @typedef {'aggressive'|'skirmisher'|'guardian'|'coward'} TacticalProfile
+ * @typedef {'aggressive'|'skirmisher'|'guardian'|'coward'|'object'} TacticalProfile
  */
 
 /** @type {Record<string, {label: string, description: string}>} */
@@ -52,9 +52,28 @@ export const TACTICAL_PROFILES = {
         label: 'Cobarde',
         description: 'Pelea mientras está entero; malherido, huye.',
     },
+    // E1.1 de wiki/ROADMAP_ENTRETENIDO.md: lo que hay que romper (los cristales del ritual, un
+    // ídolo). Tiene CA y vida, como los objetos de 5e, y no tiene turno.
+    object: {
+        label: 'Objeto',
+        description: 'No se mueve ni ataca: está ahí para romperlo (un cristal, un ídolo, un altar).',
+    },
 };
 
 export const DEFAULT_PROFILE = 'aggressive';
+
+/** E1.1: el perfil de lo que no es una criatura. */
+export const OBJECT_PROFILE = 'object';
+
+/**
+ * E1.1: si un enemigo del tablero es un objeto que romper.
+ *
+ * @param {{profile?: string}|null|undefined} enemy
+ * @returns {boolean}
+ */
+export function isObjectFoe(enemy) {
+    return String(enemy?.profile ?? '').trim() === OBJECT_PROFILE;
+}
 
 /**
  * @typedef {Object} Combatant
@@ -319,6 +338,8 @@ export function planEnemyTurn({ actor, targets, allies = [], terrain, gridWidth,
     if (!actor) return standStill({ gridX: 0, gridY: 0 }, 'No hay nadie a quien mover.');
 
     const profile = TACTICAL_PROFILES[actor.profile] ? actor.profile : DEFAULT_PROFILE;
+    // E1.1: un objeto (el cristal del ritual) no se mueve ni ataca: está ahí para romperlo.
+    if (profile === OBJECT_PROFILE) return standStill(actor, 'Es un objeto: no hace nada.');
     const occupied = buildOccupiedSet([...(targets || []), ...(allies || [])], actor.id);
     const living = (targets || []).filter(t => t && (Number(t.currentHp) || 0) > 0);
 

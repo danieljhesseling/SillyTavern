@@ -79,6 +79,8 @@ export const MANEUVERS = {
  *   suelo alguien del grupo esta ronda: el siguiente de los tuyos que le pegue, suma (idea 17).
  * @property {Array<{id: string, fresh: boolean}>} [hidden] Quién está escondido (idea 11).
  *   `fresh` es que se escondió en su turno de ahora: aguanta hasta el final del siguiente.
+ * @property {Array<{id: string, by: string}>} [guarded] E3.4: a quién cubre un compañero (la jugada
+ *   de guardia del vínculo 7): le pegan con desventaja hasta su próximo turno.
  */
 
 /**
@@ -102,6 +104,11 @@ export function readManeuvers(raw) {
             ? raw.hidden
                 .filter((/** @type {any} */ h) => h && h.id != null)
                 .map((/** @type {any} */ h) => ({ id: String(h.id), fresh: Boolean(h.fresh) }))
+            : [],
+        guarded: Array.isArray(raw?.guarded)
+            ? raw.guarded
+                .filter((/** @type {any} */ g) => g && g.id != null)
+                .map((/** @type {any} */ g) => ({ id: String(g.id), by: String(g.by ?? '') }))
             : [],
     };
 }
@@ -129,6 +136,8 @@ export function startTurn(raw, actorId) {
         hidden: (state.hidden ?? [])
             .filter(h => h.id !== id || h.fresh)
             .map(h => (h.id === id ? { id, fresh: false } : h)),
+        // E3.4: la guardia dura hasta el próximo turno de quien está cubierto.
+        guarded: (state.guarded ?? []).filter(g => g.id !== id),
     };
 }
 
@@ -136,7 +145,7 @@ export function startTurn(raw, actorId) {
  * Apuntar una maniobra hecha.
  *
  * @param {any} raw
- * @param {'esquivar'|'destrabarse'|'ayudar'|'esconderse'} kind
+ * @param {'esquivar'|'destrabarse'|'ayudar'|'esconderse'|'cubrir'} kind
  * @param {string} actorId
  * @param {string} [targetId]
  * @returns {ManeuverState}
@@ -151,6 +160,8 @@ export function recordManeuver(raw, kind, actorId, targetId = '') {
         state.helped.push({ targetId: String(targetId), by: id });
     }
     if (kind === 'esconderse') state.hidden = [...(state.hidden ?? []).filter(h => h.id !== id), { id, fresh: true }];
+    // E3.4: cubrir a alguien (la guardia del vínculo 7): `targetId` es a quién se cubre.
+    if (kind === 'cubrir' && targetId) state.guarded = [...(state.guarded ?? []).filter(g => g.id !== String(targetId)), { id: String(targetId), by: id }];
     return state;
 }
 
@@ -279,13 +290,16 @@ export const PROTECTED_FROM = /no ?muert|nomuerto|zombi|esqueleto|vampir|engendr
  * @param {boolean} [input.flanked] Si hay un aliado del atacante al otro lado (idea 3).
  * @param {string} [input.attackerId] Quién ataca: si estaba escondido, ataca con ventaja (idea 11).
  * @param {string[]} [input.hindered] Lo que estorba desde fuera: la niebla, la noche, el viento
- *   (ideas 73 y 90, `visibilityPenalties`). Cada cosa es una razón de desventaja.
+ *   (ideas 73 y 90, `visibilityPenalties`). Cada cosa es una razón de desventaja; la que empieza
+ *   por `EDGE_UP` es de ventaja (E2.1: a oscuras, el blanco no ve a quien le ataca).
  * @param {'above'|'below'|'level'|string} [input.height] B1: desde arriba se ataca con ventaja (`heights.js`).
  * @param {string} [input.attackerKind] Qué es quien ataca, en palabras (su nombre, su arquetipo,
  *   sus etiquetas): a quien está Protegido le pegan peor los muertos, los demonios y los espíritus.
+ * @param {string} [input.grappledBy] E3.1: quién tiene agarrado a quien ataca, si lo está. Agarrado
+ *   (2024), pega con desventaja a cualquiera que no sea quien le agarra.
  * @returns {{mode: 'advantage'|'disadvantage'|'normal', reasons: string[], usesHelp: boolean, usesHidden: boolean}}
  */
-export function attackEdge({ targetId, targetConditions = [], attackerConditions = [], distanceFeet, maneuvers = null, byParty = false, flanked = false, attackerId = '', hindered = [], height = '', attackerKind = '' }) {
+export function attackEdge({ targetId, targetConditions = [], attackerConditions = [], distanceFeet, maneuvers = null, byParty = false, flanked = false, attackerId = '', hindered = [], height = '', attackerKind = '', grappledBy = '' }) {
     const state = readManeuvers(maneuvers);
     const id = String(targetId);
     const has = (/** @type {string[]} */ list, /** @type {string} */ name) =>
@@ -297,6 +311,8 @@ export function attackEdge({ targetId, targetConditions = [], attackerConditions
     const down = [];
 
     if (state.dodging.includes(id)) down.push('se está cubriendo');
+    // E3.4: un compañero le cubre (la guardia del vínculo 7).
+    if ((state.guarded ?? []).some(g => g.id === id)) down.push('un compañero le cubre');
     if (has(targetConditions, 'Prone')) {
         if (Number(distanceFeet) <= MELEE_FEET) up.push('está en el suelo');
         else down.push('está en el suelo, y de lejos cuesta');
@@ -305,6 +321,9 @@ export function attackEdge({ targetId, targetConditions = [], attackerConditions
     // Sujeto (una red, un golpe que le clava): no esquiva, y pega mal (5e).
     if (has(targetConditions, 'Restrained')) up.push('está sujeto');
     if (has(attackerConditions, 'Restrained')) down.push('ataca sujeto');
+    // E3.1: agarrado (2024): a quien no le agarra, le pega con desventaja.
+    const holder = String(grappledBy ?? '').trim();
+    if (holder && holder !== id && has(attackerConditions, 'Grappled')) down.push('le tienen agarrado');
     // R3 del roadmap de profundidad: los estados que eran solo una etiqueta, pesando (5e).
     if (has(targetConditions, 'Blinded')) up.push('no ve venir el golpe');
     if (has(attackerConditions, 'Blinded')) down.push('ataca a ciegas');
@@ -332,7 +351,12 @@ export function attackEdge({ targetId, targetConditions = [], attackerConditions
     if (usesHidden) up.push('no le ven venir');
     if ((state.hidden ?? []).some(h => h.id === id)) down.push('no se le ve bien');
     // Ideas 73 y 90: la niebla, la noche o el viento.
-    for (const reason of Array.isArray(hindered) ? hindered : []) if (reason) down.push(String(reason));
+    for (const reason of Array.isArray(hindered) ? hindered : []) {
+        if (!reason) continue;
+        const said = String(reason);
+        if (said.startsWith(EDGE_UP)) up.push(said.slice(EDGE_UP.length));
+        else down.push(said);
+    }
     // B1: quien pega desde arriba, pega mejor. Para los dos bandos y cualquier arma.
     const fromAbove = heightReason(height);
     if (fromAbove) up.push(fromAbove);
@@ -342,6 +366,12 @@ export function attackEdge({ targetId, targetConditions = [], attackerConditions
             : 'normal';
     return { mode, reasons: [...up, ...down], usesHelp, usesHidden };
 }
+
+/**
+ * E2.1: la marca de una razón de fuera que da ventaja en vez de desventaja (`hindered` de
+ * `attackEdge`): la oscuridad, cuando el blanco no ve a quien le ataca.
+ */
+export const EDGE_UP = '⇧';
 
 /**
  * Gastar la ayuda que se acaba de aprovechar.

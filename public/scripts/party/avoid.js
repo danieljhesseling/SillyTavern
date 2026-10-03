@@ -209,10 +209,14 @@ function passBoard(how, { contract = true } = {}) {
  * Tanda 10: `auto`, abierta sola porque os han visto: sin «Todavía no» (Escape no la cierra), y
  * lo que pasa al pelear lo decide `onFight` (colocarse antes de la iniciativa).
  *
- * @param {{auto?: boolean, onFight?: ((placements: Array<{name: string, x: number, y: number}>, how: {enemiesFirst?: boolean}) => void)|null}} [options]
- * @returns {Promise<string>} Lo que pasó: `pelear`, `pasado`, `fuera`, `pelea` o vacío (sin decidir).
+ * E7.2: `quick`, si la pelea es claramente vuestra: la ficha «Resolver rápido», con lo que costará
+ * más o menos (`said`), y lo que la resuelve (`onQuick`).
+ *
+ * @param {{auto?: boolean, onFight?: ((placements: Array<{name: string, x: number, y: number}>, how: {enemiesFirst?: boolean}) => void)|null,
+ *   quick?: {said: string, onQuick: (placements: Array<{name: string, x: number, y: number}>) => void}|null}} [options]
+ * @returns {Promise<string>} Lo que pasó: `pelear`, `rapido`, `pasado`, `fuera`, `pelea` o vacío (sin decidir).
  */
-export async function openAvoidChoice({ auto = false, onFight = null } = {}) {
+export async function openAvoidChoice({ auto = false, onFight = null, quick = null } = {}) {
     if (!canAvoidHere()) return '';
     const board = getActiveBoardContext().board;
     if (!board) return '';
@@ -239,6 +243,8 @@ export async function openAvoidChoice({ auto = false, onFight = null } = {}) {
         closable: !auto,
         choices: [
             { id: 'pelear', label: 'Pelear', icon: 'fa-hand-fist', text: 'Empezar la pelea', win: 'Si ganáis, os lleváis lo que lleven' },
+            // E7.2: la pelea fácil, resuelta de una vez con las reglas de siempre.
+            ...(quick ? [{ id: 'rapido', label: 'Resolver rápido', icon: 'fa-forward-fast', text: 'Sois muy superiores: se pelea al instante, con las reglas de siempre', win: text(quick.said) }] : []),
             ...chips.map(chip => ({ id: chip.id, label: chip.label, icon: chip.icon, text: chip.text, check: chip.check, who: chip.who, cost: chip.cost, win: chip.win, locked: chip.locked })),
         ],
         pack: lastPack,
@@ -246,7 +252,7 @@ export async function openAvoidChoice({ auto = false, onFight = null } = {}) {
         night: storyNight(),
         kind: 'avoid',
         onPick: async (id) => {
-            if (id === 'pelear') return null;
+            if (id === 'pelear' || id === 'rapido') return null;
             const option = options.find(o => o.id === id);
             const chip = chips.find(c => c.id === id);
             if (!option || !chip || chip.locked) return null;
@@ -276,6 +282,10 @@ export async function openAvoidChoice({ auto = false, onFight = null } = {}) {
     if (picked === 'pelear') {
         fight(placements, {});
         return 'pelear';
+    }
+    if (picked === 'rapido' && quick) {
+        quick.onQuick(placements);
+        return 'rapido';
     }
     const done = /** @type {ReturnType<typeof exitPlan>|null} */ (plan);
     if (!done) return '';

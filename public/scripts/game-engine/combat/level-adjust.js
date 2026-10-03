@@ -307,7 +307,8 @@ export function adjustPlacements({
     const isBoss = (/** @type {string} */ name) => {
         const row = rows.get(lower(name));
         const tags = (Array.isArray(row?.tags) ? row.tags : []).map(lower);
-        return Boolean(row?.boss) || tags.some(t => /jefe|alfa|lider/.test(t));
+        // E1.1: a un objeto que romper (los cristales del ritual) tampoco se le copia ni se le quita.
+        return Boolean(row?.boss) || tags.some(t => /jefe|alfa|lider/.test(t)) || lower(row?.profile) === 'object';
     };
     const threat = (/** @type {string} */ name) => threatOf(rows.get(lower(name)) ?? {});
 
@@ -449,7 +450,8 @@ export function adjustForSize({
     const isBoss = (/** @type {string} */ name) => {
         const row = rows.get(lower(name));
         const tags = (Array.isArray(row?.tags) ? row.tags : []).map(lower);
-        return Boolean(row?.boss) || tags.some(t => /jefe|alfa|lider/.test(t));
+        // E1.1: a un objeto que romper (los cristales del ritual) tampoco se le copia ni se le quita.
+        return Boolean(row?.boss) || tags.some(t => /jefe|alfa|lider/.test(t)) || lower(row?.profile) === 'object';
     };
     const threat = (/** @type {string} */ name) => threatOf(rows.get(lower(name)) ?? {});
     const kinds = [...new Set(list.map(p => p.name))].filter(name => !isBoss(name))

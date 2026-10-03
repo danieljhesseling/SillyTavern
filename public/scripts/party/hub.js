@@ -49,6 +49,8 @@ export { describeMarks } from '../game-engine/campaign/world-marks.js';
 import { openMemoryPanel } from '../game-engine/ui/memory-panel.js';
 export { memoryPanelModel } from '../game-engine/ui/memory-panel.js';
 import { getCompendium } from '../game-engine/compendio/browser.js';
+import { sortByTier, tierBoardLine } from '../game-engine/campaign/level-tiers.js';
+import { canRetireNow, withHireReasons } from './long-life.js';
 import { BENCH_KEY, BOARD_KEY, GRAVES_KEY, GUILD_KEY, MODE_HISTORY_KEY, PLOT_STATE_KEY, STORAGE_KEY, TAKEN_KEY } from './keys.js';
 import {
     combatEncounter, currentBoardName, currentLocationName, partyMembers, setCurrentBoardName, setPartyMembers,
@@ -227,6 +229,8 @@ export function hubChips() {
             // prólogo, nada de esto (D-J28): solo «Saltar la prueba».
             ...(trial ? [] : [
                 ...HALL_CHIPS,
+                // E8.3: un héroe de nivel 5 o más puede quedarse de maestro.
+                ...(canRetireNow() ? [{ id: 'hub-retire', label: 'Retirarse al gremio', icon: 'fa-graduation-cap', command: '/retirarse' }] : []),
                 { id: 'hub-memory', label: 'Memoria del gremio', icon: 'fa-book-skull', command: '/memoria' },
                 // J3.3: dormir en las camas de la casa cura, amanece y guarda la partida (J15.2).
                 { id: 'hub-sleep', label: 'Dormir en el gremio', icon: 'fa-bed', command: '' },
@@ -375,9 +379,11 @@ export async function openHubCampaigns() {
     const { worlds, imported } = await readBoardRows(worldName);
     // J3.7: el renombre del gremio, con lo que da cada campaña terminada por su nivel.
     const { renown } = hubRenown({ guild: getGuild(), hub: data?.metadata?.hub, worlds: boardRows.rows });
+    // E8.1: el nivel de quien va decide qué tramo sale delante.
+    const leadLevel = Number(partyMembers.find(m => !m.guest)?.level) || 1;
     // J11.4: lo que el gremio recuerda decide qué se ofrece (y por qué, delante). J3.7: y las
-    // que el rango aún no abre salen cerradas, con lo que falta.
-    const cards = lockCampaignCards(offeredCampaigns({
+    // que el rango aún no abre salen cerradas, con lo que falta. E8.1: las de tu tramo, primero.
+    const cards = sortByTier(lockCampaignCards(offeredCampaigns({
         // J3.6: con el establo del gremio, «A siete días de camino» en vez de nueve.
         cards: hubCampaignCards({
             worlds: worlds.map(row => journeyWithStable(row, getGuild(), partyMembers.length)),
@@ -387,13 +393,14 @@ export async function openHubCampaigns() {
         }),
         memory: guildMemoryOf({ memory: data?.metadata?.[GUILD_MEMORY_KEY], hub: readHub(data?.metadata?.hub) }),
         worlds: [...worlds, ...imported],
-    }), { renown, worlds: boardRows.rows });
+    }), { renown, worlds: boardRows.rows }), leadLevel);
     // J1.6: arriba, quién va; tus personajes del gremio, para cambiarlo antes de salir.
     const heroes = hubHeroCards({ party: partyMembers, resting: data?.metadata?.[HUB_HEROES_KEY] });
     const { openHubBoard } = await import('../game-engine/ui/hub-panel.js');
     // J11.5: la crónica de cada campaña empezada, guardada al volver de ella.
     const picked = await openHubBoard({
         Popup, POPUP_TYPE, cards, heroes, chronicles: readChronicles(data?.metadata?.[HUB_CHRONICLES_KEY]),
+        tierNote: tierBoardLine(leadLevel),
         // J3.7: una añadida ahora mismo, con lo que pide su nivel de entrada.
         lock: (card) => lockCampaignCards([card], { renown, worlds: [{ id: card.id, levels: [card.minLevel, card.minLevel] }] })[0],
     });
@@ -426,7 +433,9 @@ export async function openHubHire() {
     }
     const { openHirePanel } = await import('../game-engine/ui/hub-panel.js');
     // J3.6: con camas en los dormitorios se quedan más espadas de alquiler (`guildHirelings`).
-    const offers = hireOffers({ hirelings: guildHirelings(getGuild(), HIRELINGS), party: partyMembers, fee: MERCENARY_FEE });
+    // E8.5: con por qué llevarles (riesgo, que siempre están, su oficio y lo que cuestan); E8.3,
+    // con la rebaja si un maestro los recomienda; E8.6, el apodo del veterano.
+    const offers = withHireReasons(hireOffers({ hirelings: guildHirelings(getGuild(), HIRELINGS), party: partyMembers, fee: MERCENARY_FEE }));
     const choice = await openHirePanel({ Popup, POPUP_TYPE, offers, purse: partyPurse() });
     if (!choice) return '';
     const offer = offers.find(o => o.name === choice.name);

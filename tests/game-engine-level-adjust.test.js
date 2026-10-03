@@ -326,7 +326,9 @@ describe('J12.6: el mismo tablero con uno y con cuatro', () => {
 
     test('con uno, a nadie se le deja sin los suyos; al jefe no se le quita ni se le copia', () => {
         const hill = forSize('cima_yester', 1);
-        expect(new Set(hill.placements.map(p => p.name))).toEqual(new Set(['Druida de Yester', 'Plaga de agujas']));
+        // E1.1: y los dos tótems que hay que romper siguen ahí (un objeto no se quita).
+        expect(new Set(hill.placements.map(p => p.name))).toEqual(new Set(['Druida de Yester', 'Plaga de agujas', 'Tótem de ramas']));
+        expect(hill.placements.filter(p => p.name === 'Tótem de ramas')).toHaveLength(2);
         expect(hill.removed.length).toBeLessThanOrEqual(-SIZE_LIMITS.min);
         const crypt = forSize('cripta_strahd', 1);
         expect(crypt.placements.map(p => p.name)).toEqual(['Strahd von Zarovich', 'Engendro Vampírico']);

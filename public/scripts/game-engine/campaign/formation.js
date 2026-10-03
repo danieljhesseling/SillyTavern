@@ -38,6 +38,8 @@ export const DUTIES = {
     guia: { label: ROLES.guia.label, does: `En el camino: ${ROLES.guia.gives}.` },
     vigia: { label: ROLES.vigia.label, does: `En el camino, ${ROLES.vigia.gives}; de noche, hace la primera guardia.` },
     cazador: { label: ROLES.cazador.label, does: `En el camino: ${ROLES.cazador.gives}.` },
+    // E2.1: la antorcha ocupa una mano (5e). Quien la lleva, sin escudo; sin elegir, quien tenga una libre.
+    antorcha: { label: 'Quién lleva la luz', does: 'En los sitios oscuros, lleva la antorcha o el farol. Ocupa una mano: con escudo, pelea sin él.' },
 };
 
 /** Las clases que van delante y las que van detrás; las demás, en medio. */

@@ -67,7 +67,8 @@ const CLASS_SKILLS = {
 
 /** Cómo se llama cada clase, en las dos lenguas que puede traer una ficha. */
 const CLASS_NAMES = {
-    rogue: ['rogue', 'picaro', 'pícaro', 'ladron', 'ladrón'],
+    // E3.1: «Pícara» también (si no, una pícara no tenía ni sus habilidades ni su furtivo).
+    rogue: ['rogue', 'picaro', 'pícaro', 'picara', 'pícara', 'ladron', 'ladrón', 'ladrona'],
     bard: ['bard', 'bardo'],
     paladin: ['paladin', 'paladín'],
     fighter: ['fighter', 'guerrero', 'guerrera'],

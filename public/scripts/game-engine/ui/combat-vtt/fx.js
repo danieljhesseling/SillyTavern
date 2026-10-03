@@ -51,9 +51,11 @@ import * as turnBanner from './turn-banner.js';
  *     dice cómo se dibuja; `name` y `team` (enemy o party), lo que se dice si cae.
  *   - `miss`: no llega (`tokenId`).
  *   - `bark`: alguien grita algo (`tokenId`, `text`).
+ *   - `bond`: E3.4, salta una ventaja del vínculo: la ficha del compañero (y la de su pareja,
+ *     `to`) brilla en rosa, dice su frase (`text`) y sale su rótulo (`title`: «Vínculo 7 · …»).
  *   - `call`: algo que tiene que pasar en su sitio de la secuencia (`fn`), como una ventana de
  *     dados de las de antes.
- * @property {'turn'|'move'|'attack'|'roll'|'damage'|'impact'|'miss'|'bark'|'call'} kind
+ * @property {'turn'|'move'|'attack'|'roll'|'damage'|'impact'|'miss'|'bark'|'bond'|'call'} kind
  * @property {any} [entryId]
  * @property {any} [tokenId]
  * @property {any} [from]
@@ -331,7 +333,7 @@ async function play() {
  * @returns {boolean}
  */
 export function blowGoesBefore(kind, rolled) {
-    if (kind === 'damage' || kind === 'bark') return false;
+    if (kind === 'damage' || kind === 'bark' || kind === 'bond') return false;
     if (kind === 'roll') return rolled;
     return true;
 }
@@ -410,6 +412,7 @@ async function runStep(step) {
         case 'impact': return runImpact(step);
         case 'miss': return runMiss(step);
         case 'bark': return runBark(step);
+        case 'bond': return runBond(step);
         case 'call':
             step.fn?.();
             return;
@@ -1034,4 +1037,45 @@ function runBark(step) {
     const node = el('div', 'wm-bark wm-bark-enemy', String(step.text ?? ''));
     token.appendChild(node);
     setTimeout(() => node.remove(), 2600);
+}
+
+/**
+ * E3.4: salta una ventaja del vínculo. La ficha del compañero (y la de su pareja) brilla en rosa,
+ * él dice su frase en un bocadillo y encima sale el rótulo («Vínculo 7 · Yunque y martillo»). Se
+ * deja leer un momento antes de seguir.
+ *
+ * @param {FxStep} step
+ * @returns {Promise<void>}
+ */
+async function runBond(step) {
+    showBond(step);
+    await wait(fxMs(FX_MS.read + 350, { read: true }));
+}
+
+/**
+ * E3.4: lo que se ve al saltar una ventaja del vínculo, ya, sin esperar (también sin secuencia).
+ *
+ * @param {{tokenId?: any, to?: any, text?: string, title?: string}} step
+ */
+export function showBond(step) {
+    const token = tokenEl(step.tokenId);
+    const partner = step.to !== undefined && step.to !== null ? tokenEl(step.to) : null;
+    for (const node of [token, partner]) {
+        if (!node) continue;
+        node.classList.remove('wm-token-bond');
+        void node.offsetWidth;
+        node.classList.add('wm-token-bond');
+        setTimeout(() => node.classList.remove('wm-token-bond'), 1800);
+    }
+    if (!token) return;
+    if (step.text) {
+        const bubble = el('div', 'wm-bark wm-bark-bond', String(step.text));
+        token.appendChild(bubble);
+        setTimeout(() => bubble.remove(), 2800);
+    }
+    if (step.title) {
+        const banner = el('div', 'wm-bond-banner', String(step.title));
+        token.appendChild(banner);
+        setTimeout(() => banner.remove(), 2400);
+    }
 }

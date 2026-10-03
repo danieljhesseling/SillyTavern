@@ -42,6 +42,7 @@ import {
     readFormation, describeFormation, orderOf, rowOf, moveInOrder, setDuty, dutyHolder, travelRolesOf, DUTIES, ROWS,
 } from '../game-engine/campaign/formation.js';
 export { orderOf, inMarchOrder, DUTIES, ROWS } from '../game-engine/campaign/formation.js';
+import { pickBearer, torchesOf, carriesLantern } from '../game-engine/board/light.js';
 import { POPUP_TYPE, Popup } from '../popup.js';
 import { skillModifier } from '../game-engine/rules/checks.js';
 import { readLineRows, roadLine, reactionLines } from '../game-engine/campaign/companion-lines.js';
@@ -1427,7 +1428,7 @@ export function unpackFormation(carried) {
 }
 
 /** Los papeles que se eligen en la ventana: los que el juego ya usa (quién habla, todavía no). */
-const FORMATION_DUTIES = ['cura', 'guia', 'vigia', 'cazador'];
+const FORMATION_DUTIES = ['cura', 'guia', 'vigia', 'cazador', 'antorcha'];
 
 /** Los del camino (`travel-roles.js`): uno por persona. */
 const ROAD_DUTIES = ['guia', 'vigia', 'cazador'];
@@ -1465,6 +1466,8 @@ export async function openFormationPanel() {
     const byGame = (/** @type {string} */ duty, /** @type {any[]} */ list) => {
         const free = setDuty(getPartyFormation(), duty, '');
         if (duty === 'cura') return dutyHolder(free, 'cura', list)?.name ?? '';
+        // E2.1: quien tenga una mano libre (`board/light.js`).
+        if (duty === 'antorcha') return pickBearer(list, '', m => torchesOf(m) > 0 || carriesLantern(m))?.member?.name ?? '';
         const roles = travelRolesOf({ formation: free, party: list.filter(m => (Number(m.hp) || 0) > 0), modifierOf: (m, skill) => skillModifier(m, skill).modifier });
         return roles.find(r => r.role === duty)?.name ?? '';
     };

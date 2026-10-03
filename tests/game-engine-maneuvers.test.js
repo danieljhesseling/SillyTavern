@@ -6,7 +6,7 @@ import {
 
 describe('el estado', () => {
     test('lo que no existe se lee vacío', () => {
-        expect(readManeuvers(undefined)).toEqual({ dodging: [], disengaged: [], helped: [], combo: null, hidden: [] });
+        expect(readManeuvers(undefined)).toEqual({ dodging: [], disengaged: [], helped: [], combo: null, hidden: [], guarded: [] });
     });
 
     test('esquivar y destrabarse se apuntan una vez', () => {

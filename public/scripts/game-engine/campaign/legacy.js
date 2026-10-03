@@ -126,11 +126,12 @@ export function gravesAt(raw, place) {
 
 /**
  * @typedef {{name: string, world: string, day: number, epitaph: string, when: string, mode?: string, iron?: boolean,
- *   kind?: 'campaign'|'couple', ending?: string, party?: string[], fallen?: string[]}} HallEntry
+ *   kind?: 'campaign'|'couple'|'retired', ending?: string, party?: string[], fallen?: string[]}} HallEntry
  *   J3.9: una campaña terminada también entra (`kind: 'campaign'`): `name` es la campaña,
  *   `ending` el final, `party` quién fue y `fallen` quién no volvió. `day`, cuánto duró.
  *   J14.10: y una pareja (`kind: 'couple'`): `name` son los dos, `epitaph` su línea y `day`
- *   el día en que lo fueron.
+ *   el día en que lo fueron. E8.3: y un héroe que se retiró al gremio de maestro (`kind:
+ *   'retired'`): `epitaph` es su línea.
  */
 
 /** @param {any} value @returns {string[]} */
@@ -155,6 +156,8 @@ export function readHall(raw) {
             ...(e.kind === 'campaign' ? { kind: /** @type {'campaign'} */ ('campaign'), ending: text(e.ending), party: names(e.party), fallen: names(e.fallen) } : {}),
             // J14.10: una pareja.
             ...(e.kind === 'couple' ? { kind: /** @type {'couple'} */ ('couple') } : {}),
+            // E8.3: un maestro del gremio.
+            ...(e.kind === 'retired' ? { kind: /** @type {'retired'} */ ('retired') } : {}),
         }))
         .slice(0, HALL_MAX);
 }
@@ -185,6 +188,12 @@ export function addToHall(raw, entry) {
             ? hall
             : [clean, ...hall].slice(0, HALL_MAX);
     }
+    // E8.3: quien se retira está una vez por partida.
+    if (clean.kind === 'retired') {
+        return hall.some(e => e.kind === 'retired' && e.name === clean.name && e.world === clean.world)
+            ? hall
+            : [clean, ...hall].slice(0, HALL_MAX);
+    }
     const same = (/** @type {HallEntry} */ e) => !e.kind && e.name === clean.name && e.world === clean.world && e.day === clean.day;
     return [clean, ...hall.filter(e => !same(e))].slice(0, HALL_MAX);
 }
@@ -212,6 +221,8 @@ export function describeHallEntry(entry) {
     const where = [entry.world, entry.when ? entry.when.slice(0, 10) : '', entry.iron ? 'de hierro' : ''].filter(Boolean).join(' · ');
     // J14.10: «♥ Iria y Nella Tresflechas, juntas desde el día 9…».
     if (entry.kind === 'couple') return `♥ ${entry.epitaph || entry.name}${where ? ` (${where})` : ''}`;
+    // E8.3: «Tessa, guerrera de nivel 9, se retiró al gremio de Puerto Alba…».
+    if (entry.kind === 'retired') return `🎓 ${entry.epitaph || entry.name}${where ? ` (${where})` : ''}`;
     return `${entry.epitaph || entry.name}${where ? ` (${where})` : ''}`;
 }
 
@@ -225,11 +236,27 @@ export function describeHallCount(raw) {
     const hall = readHall(raw);
     const done = hall.filter(e => e.kind === 'campaign').length;
     const couples = hall.filter(e => e.kind === 'couple').length;
-    const fallen = hall.length - done - couples;
+    const retired = hall.filter(e => e.kind === 'retired').length;
+    const fallen = hall.length - done - couples - retired;
     return [
         done > 0 ? `${done} ${done === 1 ? 'campaña terminada' : 'campañas terminadas'}` : '',
         fallen > 0 ? `${fallen} ${fallen === 1 ? 'caído' : 'caídos'}` : '',
         // J14.10: las parejas (si el romance está apagado, quien llama las quita antes).
         couples > 0 ? `${couples} ${couples === 1 ? 'pareja' : 'parejas'}` : '',
+        retired > 0 ? `${retired} ${retired === 1 ? 'maestro' : 'maestros'}` : '',
     ].filter(Boolean).join(' · ');
+}
+
+/**
+ * E8.7: quien vuelve a la vida en el templo sale de la lista de los caídos (de esa partida).
+ * Las campañas, las parejas y los maestros no se tocan.
+ *
+ * @param {any} raw
+ * @param {{name: string, world: string}} who
+ * @returns {HallEntry[]}
+ */
+export function withoutFallen(raw, { name, world }) {
+    const hall = readHall(raw);
+    const index = hall.findIndex(e => !e.kind && e.name === text(name) && e.world === text(world));
+    return index < 0 ? hall : [...hall.slice(0, index), ...hall.slice(index + 1)];
 }

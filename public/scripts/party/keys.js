@@ -34,6 +34,10 @@ export const FIELD_GAINS_KEY = 'fieldGains';
  * del día en que se encendió, y quién. Dura lo que queda de esa parte del día.
  */
 export const FIELD_LIGHT_KEY = 'fieldLight';
+/** E2.1: la antorcha que arde, quién la lleva y desde qué parte del día (`board/light.js`). */
+export const TORCH_KEY = 'torchLit';
+/** E2.3: el descanso largo que una emboscada dejó a medias en la mazmorra, para reanudarlo. */
+export const BROKEN_REST_KEY = 'restInterrupted';
 
 /**
  * D-J50: el día en que se le preguntó a cada muerto con Hablar con los muertos (por su caso y su

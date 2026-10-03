@@ -41,6 +41,12 @@ import { traitBonus } from '../game-engine/campaign/feats.js';
 import { buildTargetCard, describeTargetCard } from '../game-engine/combat/target-card.js';
 import { awakePlacements, revealThroughOpenDoors } from '../game-engine/campaign/campaign-map.js';
 import { planUltimate } from '../game-engine/combat/bond-perks.js';
+import { ultimateOf } from '../game-engine/combat/bond-moves.js';
+import { combineEdge, hasVex } from '../game-engine/rules/weapon-mastery.js';
+import { sneakBadge } from '../game-engine/rules/sneak-attack.js';
+import { weaponOf } from '../game-engine/rules/equipment.js';
+import { sneakFor } from './combo-rules.js';
+import { bondChoices, resolveBondMove } from './bond-play.js';
 import { getBondProgress } from '../game-engine/campaign/bonds.js';
 import { createCombatLogPanel, setRound, renderLogFilters, logFilterOf } from '../game-engine/ui/combat-log.js';
 import { usesLeft, canUseAbility, describeAbility } from '../game-engine/rules/abilities.js';
@@ -79,6 +85,7 @@ import {
     archetypeOf, activeSummons, knownTrapsHere, roomOf,
 } from './board.js';
 import { saveCurrentLocation, saveCurrentBoard, getLocationBoards } from './world.js';
+import { keepTorchLit, lightCardLine, lightForBoard } from './dungeon.js';
 import { getCampaignBonds } from './time.js';
 import {
     noticeBoardFight, placementHighlight, placementCellClick, placementTokenClick, placementDrop, placingNow,
@@ -373,7 +380,13 @@ function openTargetCard(member, enemy) {
         flanked: partyFlanks(member, enemy),
         attackerId: String(member.id),
         hindered: attackHindrance(partyCell(member), { x: Number(enemy.gridX) || 0, y: Number(enemy.gridY) || 0 }, distanceFeet),
+        grappledBy: String(/** @type {any} */ (member).grappledBy ?? ''),
     });
+    // E3.1: Molestar (la maestría) también cuenta aquí, como en el golpe de verdad.
+    const vexedNow = hasVex(combatEncounter.tactics, { by: String(member.id), target: String(enemy.instanceId), round: Number(combatEncounter.round) || 1 });
+    const shownEdge = combineEdge(forecastEdge, vexedNow ? ['le tienes molestado'] : []);
+    // E3.1: y el furtivo del pícaro, si este golpe lo lleva.
+    const sneakNow = sneakFor(member, weaponOf(member), enemy, shownEdge);
     // El número que suma al d20, por partes: la característica, la competencia y lo demás.
     const attackParts = getPlayerAttackParts(member, forecastRange, [
         { label: 'del arma', value: weaponBonus(member) },
@@ -383,8 +396,8 @@ function openTargetCard(member, enemy) {
     const forecast = describeForecast({
         attackMod: attackParts.total,
         armorClass: ac,
-        mode: forecastEdge.mode,
-        reasons: forecastEdge.reasons,
+        mode: shownEdge.mode,
+        reasons: shownEdge.reasons,
         formula: getPlayerDamageFormula(member, forecastRange),
         damageBonus: Math.max(0, getPlayerAttackModifier(member, forecastRange)),
         targetHp: Number(enemy.currentHp) || 0,
@@ -440,6 +453,11 @@ function openTargetCard(member, enemy) {
     root.append(nameRow.append($('<span></span>').text(card.name)));
     root.append($('<div class="tc-stats"></div>').text(describeTargetCard(card)));
     if (card.inRange) root.append($('<div class="tc-forecast"></div>').text(forecast.text));
+    // E2.1: la luz, dicha claro: quién ve a quién.
+    const lightLine = lightCardLine(partyCell(member), { x: Number(enemy.gridX) || 0, y: Number(enemy.gridY) || 0 });
+    if (lightLine) root.append($('<div class="tc-light"></div>').text(lightLine));
+    // E3.1: «Furtivo +2d6: está en el suelo».
+    if (card.inRange && sneakNow.ok) root.append($('<div class="tc-sneak"></div>').text(`${sneakBadge(sneakNow)}: ${sneakNow.why}`));
     // De dónde sale el número del ataque: «+5 al ataque: +3 de Fuerza y +2 de competencia».
     if (card.inRange) root.append($('<div class="tc-bonus"></div>').text(describeAttackBonus(attackParts)));
     if (intentTarget) root.append($('<div class="tc-intent"></div>').text(`Va a por ${intentTarget.name}.`));
@@ -459,7 +477,9 @@ function openTargetCard(member, enemy) {
 
     const actions = $('<div class="tc-actions"></div>');
     for (const action of card.actions) {
-        const button = $('<button class="menu_button tc-btn" type="button"></button>').text(action.label);
+        // E3.4: el golpe definitivo, con su nombre («La carga del Mellado»).
+        const label = action.id === 'ultimate' && action.enabled ? ultimateOf(member).name : action.label;
+        const button = $('<button class="menu_button tc-btn" type="button"></button>').text(label);
         button.prop('disabled', !action.enabled);
         if (!action.enabled) button.attr('title', action.reason);
         button.on('click', () => {
@@ -493,6 +513,18 @@ function openTargetCard(member, enemy) {
         button.on('click', () => {
             closeTargetCard();
             resolvePairStrike(member, pair.partnerId, enemy);
+        });
+        actions.append(button);
+    }
+    // E3.4: la jugada propia del rango 7, con su nombre.
+    for (const move of bondChoices(member, enemy).filter(c => c.kind === 'pair_move')) {
+        const button = $('<button class="menu_button tc-btn tc-pair tc-bond-move" type="button"></button>')
+            .attr('data-bond-move', move.companionId).text(move.name);
+        button.attr('title', move.desc);
+        button.on('click', () => {
+            closeTargetCard();
+            resolveBondMove(member, move.companionId, move.enemyId);
+            renderLocationMapsPreview();
         });
         actions.append(button);
     }
@@ -1312,6 +1344,9 @@ function drawLocationMapsPreview() {
         const fogOn = fogOnFor(selectedBoard, boardGridW, boardGridH);
         const boardFog = normalizeFog(selectedBoard.fog);
         const sightNow = fogOn ? boardVisibility() : null;
+        // E2.1: a oscuras, quien lleva la luz enciende la antorcha (si queda); y la luz, para dibujarla.
+        if (!activeTerrainBrush) keepTorchLit();
+        const lightNow = activeTerrainBrush ? null : lightForBoard();
         const partySight = allBoardTokens
             .filter(t => !t.isEnemy)
             .map(t => ({ gridX: t.gridX, gridY: t.gridY, sightFeet: sightNow ? sightFeetFor(sightNow, t.sightFeet ?? 60) : t.sightFeet }));
@@ -1337,10 +1372,12 @@ function drawLocationMapsPreview() {
                 persistBoardTerrain(selectedBoard);
             }
         }
-        const waiting = combatEncounter.active || isBoardWon(currentLocationName, selectedBoard.name) ? [] : awakePlacements(selectedBoard.rooms, selectedBoard.enemyPlacements ?? [])
+        const inSight = combatEncounter.active || isBoardWon(currentLocationName, selectedBoard.name) ? [] : awakePlacements(selectedBoard.rooms, selectedBoard.enemyPlacements ?? [])
             .filter((/** @type {any} */ p) => !fogOn
                 || fogState.visible.has(cellKey(Number(p.x) || 0, Number(p.y) || 0)));
-        allBoardTokens.push(...buildBoardIdleEnemyTokens(waiting));
+        // E1.1: los que duermen se ven, pero no empiezan la pelea: hay que pasar sin despertarlos.
+        const waiting = inSight.filter((/** @type {any} */ p) => !p.asleep);
+        allBoardTokens.push(...buildBoardIdleEnemyTokens([...waiting, ...inSight.filter((/** @type {any} */ p) => p.asleep)]));
         const waitingKey = (/** @type {typeof lastWaiting} */ w) => `${w.board}|${w.placements.map(p => `${p.name}@${p.x},${p.y}`).join(';')}`;
         const nowWaiting = { board: String(selectedBoard.name), placements: waiting };
         if (waitingKey(nowWaiting) !== waitingKey(lastWaiting)) {
@@ -1388,6 +1425,8 @@ function drawLocationMapsPreview() {
             hazards: visibleHazards(selectedBoard).map((/** @type {any} */ h) => ({ x: h.x, y: h.y, name: h.name, kind: h.kind, note: h.tell })),
             // J19.6: las zonas de conjuro del combate, a la vista, con lo que hacen.
             spellZones: zoneOverlay(activeSpellZones()),
+            // E2.1: la penumbra y la oscuridad, y quién lleva la luz.
+            light: lightNow,
             // J12.10 y J12.11: los acantilados se dibujan, y la casilla dice su sala y su altura.
             elevation: normalizeElevation(selectedBoard.elevation),
             zones: normalizeZones(selectedBoard.zones),

@@ -78,13 +78,14 @@ const MAX_CHIPS = 7;
  * @param {Array<{id: string, label: string, icon: string, urgent?: boolean}>} [input.traps] J12.3: las trampas del
  *   tablero. Desarmar la que alguien tiene al lado (`urgent`) va con las puertas; buscar, al final, para no echar
  *   de la fila lo demás.
+ * @param {boolean} [input.ahead] E7.1: si se puede «Explorar hacia delante» en el tablero abierto.
  * @returns {ActionChip[]}
  */
 export function buildActionChips({
     fighting = false, hasBoard = false, doors = [], companions = [], mentioned = [],
     places = [], boards = [], hurt = false, hitDice = 0, rumors = 0, explore = false, proposals = [], requests = [], forage = false,
     people = [], prisoners = [], limit = MAX_CHIPS, typed = [], replies = [], extras = [], camp = false, stairs = false, hub = [], thread = [],
-    board = '', social = [], magic = [], heal = '', traps = [],
+    board = '', social = [], magic = [], heal = '', traps = [], ahead = false,
 } = {}) {
     if (fighting) return [];
 
@@ -149,6 +150,9 @@ export function buildActionChips({
             command: `/tirada ${request.skill}`,
         });
     }
+
+    // E7.1: en un tablero, avanzar hasta lo siguiente que importe, de un toque.
+    if (ahead && hasBoard) chips.push({ id: 'ahead', label: 'Explorar hacia delante', icon: 'fa-shoe-prints', source: 'motor' });
 
     // Las puertas primero: son lo unico que cambia el mapa, y de lo que depende el
     // siguiente combate. La mas cercana antes que la de la otra punta.

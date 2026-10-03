@@ -87,6 +87,7 @@ const BIOME_WORDS = [
 const TILE_FILES = {
     difficult: 'dificil', cover_half: 'cobertura-media', cover_three_quarters: 'cobertura-tres-cuartos', chasm: 'abismo',
     stairs: 'escalera', water: 'agua', deep_water: 'agua-honda', ice: 'hielo', brush: 'maleza', barrel: 'barril', chest: 'cofre', exit: 'salida',
+    mud: 'barro',
     lever: 'palanca', barricade: 'barricada',
 };
 

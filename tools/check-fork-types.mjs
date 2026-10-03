@@ -334,6 +334,20 @@ const FORK_FILES = [
     'public/scripts/game-engine/ui/objective-editor.js',
     'public/scripts/game-engine/ui/contradiction-log.js',
     'public/scripts/game-engine/combat/bond-perks.js',
+    // E3 de ROADMAP_ENTRETENIDO: el furtivo y lo que da el vínculo, a la vista.
+    'public/scripts/game-engine/rules/sneak-attack.js',
+    'public/scripts/game-engine/combat/bond-moves.js',
+    // E2 de ROADMAP_ENTRETENIDO: la luz, las cerraduras, dormir en la mazmorra y seguir o volver.
+    'public/scripts/game-engine/board/light.js',
+    'public/scripts/game-engine/board/lock-picking.js',
+    'public/scripts/game-engine/campaign/dungeon-camp.js',
+    'public/scripts/game-engine/campaign/press-on.js',
+    'public/scripts/game-engine/rules/healer-kit.js',
+    // E7 de ROADMAP_ENTRETENIDO: explorar hacia delante, resolver rápido, equipar lo mejor y subir recomendado.
+    'public/scripts/game-engine/board/explore-ahead.js',
+    'public/scripts/game-engine/combat/quick-resolve.js',
+    'public/scripts/game-engine/rules/best-gear.js',
+    'public/scripts/game-engine/rules/level-advice.js',
     'public/scripts/game-engine/combat/scenario-board.js',
     'public/scripts/game-engine/ui/combat-log.js',
     'public/scripts/game-engine/ui/chat-channel.js',
@@ -419,6 +433,13 @@ const FORK_FILES = [
     'public/scripts/game-engine/campaign/companion-stories.js',
     'public/scripts/game-engine/campaign/gem-guide.js',
     'public/scripts/game-engine/ui/romance-option.js',
+    // E8: la larga vida (tramos, dones épicos, retirarse, mercenarios veteranos, el templo y el modo duro).
+    'public/scripts/game-engine/campaign/level-tiers.js',
+    'public/scripts/game-engine/rules/epic-boons.js',
+    'public/scripts/game-engine/campaign/retirement.js',
+    'public/scripts/game-engine/campaign/mercenary-life.js',
+    'public/scripts/game-engine/rules/resurrection.js',
+    'public/scripts/game-engine/ui/hard-mode-option.js',
     // J14.11: trabajos y ratos libres (servir mesas, la forja, las cartas, leer y pescar).
     'public/scripts/game-engine/campaign/card-game.js',
     'public/scripts/game-engine/campaign/pastimes.js',
@@ -439,6 +460,8 @@ const FORK_FILES = [
     // Tanda 8: el calabozo (D-J47) y lo que le queda a un tablero (D-J45 afinado).
     'public/scripts/game-engine/campaign/jail.js',
     'public/scripts/game-engine/board/leftovers.js',
+    'public/scripts/game-engine/board/falls.js',
+    'public/scripts/game-engine/board/sleepers.js',
     // J5.7 y J5.8: el guion de una campaña en Word, de ida y vuelta.
     'public/scripts/game-engine/campaign/script-doc.js',
     'public/scripts/game-engine/campaign/script-docx.js',

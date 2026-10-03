@@ -110,21 +110,38 @@ export function motiveOf(member) {
  * @param {any} [deps.rules]              La sección de supervivencia de la campaña.
  * @param {number} [deps.severity]        0..1. Caer por un crítico deja peor recuerdo.
  * @param {any[]} [deps.table]            Una tabla de heridas propia.
- * @returns {{outcome: 'dies'|'maimed', injury: any|null, reason: string}}
+ * @param {boolean} [deps.hard]           E8.7: el modo duro (o la letra «De hierro»): quien muere no vuelve.
+ * @returns {{outcome: 'dies'|'maimed', injury: any|null, reason: string, revivable: boolean}}
+ *   `revivable`: si en un templo se le puede devolver la vida (E8.7).
  */
-export function resolveFall(member, { roll, rules = null, severity = 0, table = undefined }) {
+export function resolveFall(member, { roll, rules = null, severity = 0, table = undefined, hard = false }) {
     const { mortality } = readSurvival(rules);
     const name = String(member?.name ?? 'Alguien');
+    const coin = motiveOf(member) === 'coin';
 
     if (mortality === MORTALITY.EVERYONE) {
-        return { outcome: 'dies', injury: null, reason: `${name} ha muerto.` };
+        return { outcome: 'dies', injury: null, reason: `${name} ha muerto.`, revivable: !hard && !coin };
     }
 
-    if (motiveOf(member) === 'coin') {
+    if (coin) {
         return {
             outcome: 'dies',
             injury: null,
             reason: `${name} ha muerto. Venía por la paga, y hasta aquí llegó.`,
+            revivable: false,
+        };
+    }
+
+    // D-J64 (E8.7): un confidente puede morir como cualquiera. Sin modo duro, en un templo se le
+    // devuelve la vida pagando, y vuelve con secuela (`resurrection.js`).
+    if (member?.confidant) {
+        return {
+            outcome: 'dies',
+            injury: null,
+            reason: hard
+                ? `${name} ha muerto. Modo duro: no vuelve.`
+                : `${name} ha muerto. En un templo se le puede devolver la vida, pagando.`,
+            revivable: !hard,
         };
     }
 
@@ -133,6 +150,7 @@ export function resolveFall(member, { roll, rules = null, severity = 0, table = 
         outcome: 'maimed',
         injury,
         reason: `${name} sobrevive, pero no entero: ${injury.label.toLowerCase()}.`,
+        revivable: false,
     };
 }
 

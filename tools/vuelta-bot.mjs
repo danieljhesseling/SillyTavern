@@ -1038,7 +1038,8 @@ export function createBot(page, { fast = true, log = console.log, prefer = [] } 
      * @returns {Promise<boolean>}
      */
     const hallAct = async (v, id, what) => {
-        if (v.scene !== 'exploration') return false;
+        // Desde un tablero ya jugado (la bodega del prólogo, ganada) se sale primero al pueblo.
+        if (v.scene !== 'exploration') return v.board && !v.fight ? toMap(v) : false;
         if (v.town.inside && v.town.inside !== 'gremio') return act(v, 'volver al pueblo', () => press(page.locator('#game-shell .gs-town-back')), { module: 'town-scene.js' });
         if (!v.town.inside) {
             if (!v.town.places.some((/** @type {any} */ p) => p.id === 'gremio')) return false;

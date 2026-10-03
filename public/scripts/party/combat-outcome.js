@@ -29,6 +29,7 @@ import { closeOutcomeScreen, showOutcomeScreen } from '../game-engine/ui/combat-
 import { readInjuries } from '../game-engine/rules/injuries.js';
 import { clearDeathSaves } from '../game-engine/rules/death-saves.js';
 import { hasLetter } from '../game-engine/rules/modes.js';
+import { hardDeath, hardModeOn } from '../game-engine/ui/hard-mode-option.js';
 import { boardLeftovers } from '../game-engine/board/leftovers.js';
 import { TROPHIES } from '../game-engine/campaign/trophies.js';
 import { readTally } from '../game-engine/combat/tally.js';
@@ -49,6 +50,9 @@ import { partyPurse, payFromParty, renderPartyMembers, savePartyState } from './
 import { restoreCheckpoint } from './checkpoints.js';
 import { survivalNow } from './modes.js';
 import { postCombatNarration } from './narration.js';
+import { afterDungeonVictory } from './dungeon.js';
+import { quietFight } from './quiet-fight.js';
+import { afterVictoryChores } from './friction.js';
 
 /**
  * @typedef {Object} LootSnapshot Lo de cada uno antes de repartir el botín.
@@ -66,6 +70,8 @@ import { postCombatNarration } from './narration.js';
  * @property {string} [failed] Derrota con el grupo en pie: lo que dice la misión.
  * @property {string[]} upgrades Idea 63: lo del botín que mejora lo que lleva alguien.
  * @property {any} owner La partida (`chat_metadata`): si se cambia, la pantalla no sale.
+ * @property {boolean} [quick] E7.2: se resolvió rápido.
+ * @property {string[]} [notes] E7.3 y E7.4: lo que hicieron solos los que lleva el juego.
  */
 
 /** Lo de antes del botín de la pelea que acaba ahora. @type {LootSnapshot|null} */
@@ -127,6 +133,8 @@ export function planOutcome({ kind, round, tally = null, failed = '', upgrades =
         failed: String(failed || ''),
         upgrades: Array.isArray(upgrades) ? upgrades.map(String) : [],
         owner: chat_metadata,
+        // E7.2: resuelta rápido (la pantalla lo dice).
+        quick: quietFight(),
     };
     pendingSnapshot = null;
     holdPlace();
@@ -139,6 +147,11 @@ export function planOutcome({ kind, round, tally = null, failed = '', upgrades =
             // esperando detrás; con ella, «Seguir con la historia». Unos segundos como mucho.
             if (plan.kind === 'victory') await Promise.race([plotScenesQueued(), new Promise(resolve => setTimeout(resolve, 4000))]);
             if (plan.owner !== chat_metadata) return;
+            // E7.3 y E7.4: los compañeros que lleva el juego se ponen lo mejor y suben de nivel solos.
+            if (plan.kind === 'victory') plan.notes = await afterVictoryChores().catch((error) => {
+                console.error('[E7] tras ganar', error);
+                return [];
+            });
             showPlan(plan);
         } catch (error) {
             console.error('[combat-outcome] la pantalla de victoria o derrota', error);
@@ -186,13 +199,20 @@ function leftoversNow() {
     return { chests: left.chests, rooms: left.rooms, clues: left.clues };
 }
 
-/** @returns {boolean} D-J64: el modo de hierro (quien muere no vuelve, tampoco un confidente). */
+/**
+ * D-J64: si quien muere no vuelve, tampoco un confidente. E8.7: es la opción «Modo duro» del
+ * juego; la letra «De hierro» del modo de antes también lo es (compatibilidad).
+ *
+ * @returns {{hard: boolean, name: string}}
+ */
 function hardMode() {
+    let iron = false;
     try {
-        return hasLetter(survivalNow(), 'e');
+        iron = hasLetter(survivalNow(), 'e');
     } catch {
-        return false;
+        iron = false;
     }
+    return hardDeath({ option: hardModeOn(), iron });
 }
 
 /**
@@ -281,11 +301,12 @@ let shown = null;
 function showPlan(plan) {
     shown = plan;
     const members = membersOf(plan);
-    const hard = hardMode();
+    const { hard, name: hardName } = hardMode();
     if (plan.kind === 'victory') {
         const view = outcomeView({
             kind: 'victory', place: plan.place, round: plan.round, members, loot: lootOf(plan), time: timeNow(),
             step: afterFightNow(), here: currentLocationName, leftovers: leftoversNow(), canRest: true, hard, upgrades: plan.upgrades,
+            quick: Boolean(plan.quick), notes: plan.notes ?? [],
         });
         showOutcomeScreen(view, { onAction: (id, member) => onVictory(id, member) });
         return;
@@ -296,7 +317,7 @@ function showPlan(plan) {
     const standing = partyMembers.some(m => !m.dead && (Number(m.hp) || 0) > 0);
     const rescue = !allDead && !standing ? rescueFor({ inHub: Boolean(lastHub), place: currentLocationName, alive, purse: partyPurse() }) : null;
     const view = outcomeView({
-        kind: 'defeat', place: plan.place, round: plan.round, members, time: timeNow(), hard,
+        kind: 'defeat', place: plan.place, round: plan.round, members, time: timeNow(), hard, hardName,
         rescue, checkpoint: Boolean(checkpoint), saves: allDead && !hard, home: allDead && Boolean(lastHubHome),
         failed: standing ? (plan.failed || 'La misión se ha perdido') : '',
     });
@@ -321,16 +342,22 @@ function onVictory(id, memberId) {
         return;
     }
     shown = null;
-    if (id === 'continue') {
-        // D-J45: lo mismo que «Continuar» de la novela (la escena que espera, lo siguiente de la
-        // campaña, volver al sitio o al tablero), que sabe dónde está y qué toca.
-        const chip = /** @type {HTMLElement|null} */ (document.querySelector('#game-shell .gs-vn-box .gs-chip-continue'));
-        if (chip) setTimeout(() => chip.click(), 0);
-        return;
-    }
-    if (id === 'search') {
-        // Al tablero, sin pelea: a abrir cofres y puertas.
-        if (isShellOpen()) setScene(/** @type {any} */ ('combat'));
+    if (id === 'continue' || id === 'search') {
+        // E2.4: en la mazmorra, antes de nada, seguir o volver (y el descanso que cortó una emboscada).
+        // Con una escena del hilo o lo siguiente de la campaña en otro sitio, eso va primero: no se pregunta.
+        const step = afterFightNow();
+        void afterDungeonVictory({ ask: !step || step.kind === 'board' || step.kind === 'place' }).then(stay => {
+            if (!stay) return;
+            if (id === 'continue') {
+                // D-J45: lo mismo que «Continuar» de la novela (la escena que espera, lo siguiente de la
+                // campaña, volver al sitio o al tablero), que sabe dónde está y qué toca.
+                const chip = /** @type {HTMLElement|null} */ (document.querySelector('#game-shell .gs-vn-box .gs-chip-continue'));
+                if (chip) setTimeout(() => chip.click(), 0);
+                return;
+            }
+            // Al tablero, sin pelea: a abrir cofres y puertas.
+            if (isShellOpen()) setScene(/** @type {any} */ ('combat'));
+        });
         return;
     }
     if (id === 'rest') {

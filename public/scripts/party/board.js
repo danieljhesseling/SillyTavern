@@ -7,7 +7,6 @@
  * de lo guardado, en `keys.js`.
  */
 
-import { POPUP_TYPE, Popup } from '../popup.js';
 import { chat_metadata, saveMetadata } from '../../script.js';
 import {
     getCurrentWorldLocationMaps, getCurrentWorldBoards, getCurrentWorldEnemies, getCurrentWorldNPCs, loadWorldInfo,
@@ -17,7 +16,7 @@ import { rollWith } from '../game-engine/combat/seeded-random.js';
 import { rollDiceDetailed, getDistanceInFeet, getPlayerDamageFormula, nextRandom } from './combat-rules.js';
 import { weaponOf as heldWeapon } from '../game-engine/rules/equipment.js';
 import {
-    normalizeTerrain, setDoorOpen, parseCellKey, getCell, isLocked, unlockDoor, breakDoor, withOverlay, cellKey,
+    normalizeTerrain, setDoorOpen, parseCellKey, getCell, isLocked, withOverlay, cellKey,
 } from '../game-engine/board/terrain.js';
 import { normalizeElevation } from '../game-engine/board/heights.js';
 import { zoneAt, nameRoomsFromZones } from '../game-engine/board/zones.js';
@@ -29,6 +28,9 @@ import { lockBonus } from '../game-engine/rules/field-uses.js';
 import { hasLeft } from '../game-engine/board/exits.js';
 import { isWatching } from '../game-engine/combat/brawl.js';
 import { hitBarricade, pullLever } from '../game-engine/board/interactables.js';
+// E1.1 y E1.3 de ROADMAP_ENTRETENIDO: los que duermen y el hielo que resbala.
+import { sleepersOf } from '../game-engine/board/sleepers.js';
+import { firstIce, ICE_DC } from '../game-engine/board/falls.js';
 import { isIndoors, carriesLight, combatVisibility } from '../game-engine/world/visibility.js';
 import { stairsReached, nextLevel } from '../game-engine/board/dungeon-levels.js';
 import { planWalk, canWalk } from '../game-engine/board/walk.js';
@@ -56,7 +58,7 @@ import {
 import { revealClue } from './cases.js';
 import { getAliveEnemies, getCurrentTurnEntry, getPartyMemberByTurnEntry, saveCombatState } from './combat-state.js';
 import { damagePartyMember } from './enemy-turn.js';
-import { wakeRoomEnemies, checkObjectiveLeft, tendFallenOutOfFight } from './combat-flow.js';
+import { wakeRoomEnemies, checkObjectiveLeft, tendFallenOutOfFight, sneakPastSleepers } from './combat-flow.js';
 import { applyTimedCondition, fieldLightOn } from './magic.js';
 import { openChest } from './loot.js';
 import { partyTabSetter } from './main.js';
@@ -71,6 +73,7 @@ import { gruntFor } from '../game-engine/campaign/mute.js';
 import { savePartyState } from './roster.js';
 import { getPartyFormation } from './companions.js';
 import { inMarchOrder } from '../game-engine/campaign/formation.js';
+import { lightHindrance, lookingLight, tryLockedDoor } from './dungeon.js';
 
 /**
  * Writes terrain and fog back into the world info file that owns the board.
@@ -125,6 +128,11 @@ async function persistBoardTerrainNow(board) {
         if (Array.isArray(board.zonesSeen)) stored.zonesSeen = board.zonesSeen;
         // J12.3: dónde ya se han buscado trampas, para no buscar dos veces lo mismo.
         if (Array.isArray(board.searchedCells)) stored.searchedCells = board.searchedCells;
+        // E1.1: los que dormían y se han despertado (el robo que salió mal).
+        if (board.awakened) {
+            stored.awakened = true;
+            if (Array.isArray(board.enemyPlacements)) stored.enemyPlacements = board.enemyPlacements;
+        }
         await saveWorldInfo(worldName, data);
     } catch (e) {
         console.warn('[party] could not persist board terrain', e);
@@ -297,7 +305,8 @@ function overlayOf(terrain, board) {
  * @returns {string[]}
  */
 export function attackHindrance(from, to, distanceFeet) {
-    const out = visibilityPenalties(boardVisibility(), distanceFeet);
+    // E2.1: y la luz: a oscuras, quien no ve a su blanco pega peor, y a quien no ve venir el golpe le pegan mejor.
+    const out = [...visibilityPenalties(boardVisibility(), distanceFeet), ...lightHindrance(from, to)];
     const zones = activeSpellZones();
     if (zones.length === 0) return out;
     const line = [from, ...getRayCells(from.x, from.y, to.x, to.y), to];
@@ -421,7 +430,8 @@ function useBoardThing(board, gx, gy, kind) {
 }
 
 /**
- * R6: revientan barriles. Quien esté pegado a uno se lleva 2d6 de fuego.
+ * R6: revientan barriles. E1.3: como la bomba de la Guía del máster de 5e: 3d6 de fuego a quien
+ * esté a 5 pies, con una salvación de Destreza CD 12 para llevarse la mitad.
  *
  * @param {Array<{x: number, y: number}>} cells
  * @returns {string[]}
@@ -430,21 +440,31 @@ export function explodeBarrels(cells) {
     /** @type {string[]} */
     const lines = [];
     for (const cell of cells) {
-        const blast = rollWith('2d6', nextRandom).total;
+        const blast = rollWith(BARREL_BLAST.dice, nextRandom).total;
         const near = (/** @type {number} */ x, /** @type {number} */ y) => Math.max(Math.abs(x - cell.x), Math.abs(y - cell.y)) <= 1;
+        // La salvación de Destreza de cada uno: con éxito, la mitad.
+        const takes = (/** @type {number} */ dexterity) => {
+            const natural = rollWith('1d20', nextRandom).total;
+            return natural + getAbilityModifier(Number(dexterity) || 10) >= BARREL_BLAST.dc ? Math.floor(blast / 2) : blast;
+        };
         const hit = [];
         for (const enemy of getAliveEnemies().filter(e => near(Number(e.gridX) || 0, Number(e.gridY) || 0))) {
-            enemy.currentHp = Math.max(0, (Number(enemy.currentHp) || 0) - blast);
-            hit.push(`${enemy.name}${enemy.currentHp === 0 ? ' (cae)' : ''}`);
+            const damage = takes(enemy.dexterity);
+            enemy.currentHp = Math.max(0, (Number(enemy.currentHp) || 0) - damage);
+            hit.push(`${enemy.name} ${damage}${damage < blast ? ' (se aparta a medias)' : ''}${enemy.currentHp === 0 ? ', y cae' : ''}`);
         }
         for (const member of partyMembers.filter(m => !m.dead && (Number(m.hp) || 0) > 0 && near(Number(m.mapPosition?.gridX) || 0, Number(m.mapPosition?.gridY) || 0))) {
-            lines.push(...damagePartyMember(member, blast, false));
-            hit.push(String(member.name));
+            const damage = takes(member.dexterity);
+            lines.push(...damagePartyMember(member, damage, false));
+            hit.push(`${member.name} ${damage}${damage < blast ? ' (se aparta a medias)' : ''}`);
         }
-        lines.push(`💥 Revienta un barril en (${cell.x + 1}, ${cell.y + 1}): ${blast} de fuego${hit.length > 0 ? ` a ${hit.join(', ')}` : ', y no pilla a nadie'}.`);
+        lines.push(`💥 Revienta un barril en (${cell.x + 1}, ${cell.y + 1}): ${blast} de fuego${hit.length > 0 ? `. ${hit.join(', ')}` : ', y no pilla a nadie'}.`);
     }
     return lines;
 }
+
+/** E1.3: lo que hace un barril al reventar (la bomba de la Guía del máster de 5e). */
+export const BARREL_BLAST = { dice: '3d6', dc: 12 };
 
 /**
  * Abre o cierra una puerta del tablero.
@@ -581,6 +601,8 @@ export function buildBoardIdleEnemyTokens(waiting) {
             archetype: archetypeOf(template) || String(/** @type {any} */ (placement).archetype ?? '').trim(),
             // El jefe se ve antes de pelear: su corona.
             boss: Boolean(/** @type {any} */ (placement).boss || /** @type {any} */ (template)?.boss),
+            // E1.1: el que duerme, con su marca: pasar cerca pide Sigilo.
+            ...(/** @type {any} */ (placement).asleep ? { statuses: statusMarkers(['Dormido']) } : {}),
         };
     });
 }
@@ -640,45 +662,8 @@ export function buildSummonTokens() {
  * @returns {Promise<void>}
  */
 async function tryUnlock(board, gx, gy, gridW, gridH) {
-    const key = partyMembers.flatMap(m => (m.items ?? []).map((/** @type {any} */ item) => ({ member: m, item })))
-        .find(({ item }) => /llave|ganz[uú]a/i.test(String(item?.name ?? '')));
-    const body = $('<div class="tr-setback"></div>');
-    body.append($('<h3></h3>').text('Puerta cerrada con llave'));
-    body.append($('<p></p>').text(key ? `${key.member.name} lleva ${key.item.name}.` : 'Nadie lleva la llave. Se puede abrir con maña o echarla abajo.'));
-    const picked = await new Popup(body[0], POPUP_TYPE.TEXT, '', {
-        okButton: false,
-        cancelButton: 'Dejarla',
-        customButtons: [
-            ...(key ? [{ text: `Usar ${key.item.name}`, result: 31, classes: ['lk-key'] }] : []),
-            { text: 'Con maña (Juego de manos, CD 14)', result: 32, classes: ['lk-pick'] },
-            { text: 'A golpes (Atletismo, CD 16)', result: 33, classes: ['lk-force'] },
-        ],
-    }).show();
-    if (picked !== 31 && picked !== 32 && picked !== 33) return;
-    let opened = picked === 31;
-    if (!opened) {
-        const skill = picked === 32 ? 'sleight' : 'athletics';
-        const dc = picked === 32 ? 14 : 16;
-        const who = partyMembers.filter(m => (Number(m.hp) || 0) > 0)
-            .reduce((/** @type {any} */ top, m) => (!top || skillModifier(m, skill).modifier > skillModifier(top, skill).modifier ? m : top), null);
-        // R3: quien sabe usar la ganzúa lo tiene más fácil (+5, que se nota en la CD).
-        const trick = skill === 'sleight' && who ? lockBonus(who) : 0;
-        if (trick > 0) postCombatNarration(`🗝️ [BOARD] ${who.name} saca la ganzúa: la cerradura baja de CD ${dc} a ${dc - trick}.`);
-        const roll = who ? rollCheck({ member: who, skill, rollD20: () => rollDiceDetailed('1d20', 20).total, dc: dc - trick }) : null;
-        if (roll) postCombatNarration(roll.said);
-        opened = Boolean(roll?.success);
-        if (!opened) {
-            toastr.info('La cerradura aguanta.', 'Puerta cerrada');
-            return;
-        }
-    }
-    // Idea 23: a golpes, la puerta no se abre: se rompe, y ya no se cierra.
-    board.terrain = picked === 33
-        ? breakDoor(normalizeTerrain(board.terrain), gx, gy)
-        : unlockDoor(normalizeTerrain(board.terrain), gx, gy);
-    persistBoardTerrain(board);
-    if (picked === 33) postCombatNarration(`🪓 [BOARD] La puerta de (${gx + 1}, ${gy + 1}) salta a golpes: queda rota, y ya no se cierra.`);
-    toggleBoardDoor(board, gx, gy, true, gridW, gridH);
+    // E2.2: con riesgo (fallar se oye, y las ganzúas se rompen), en `dungeon.js`.
+    return tryLockedDoor(board, gx, gy, gridW, gridH);
 }
 
 /**
@@ -856,6 +841,8 @@ export function handleTokenMove(tokenId, gridX, gridY, locationName) {
     savePartyState();
     // J12.11: si ha entrado en una sala con nombre, lo que se ve en ella.
     if (currentBoardName) noteZoneEntry(member, from, { x: gridX, y: gridY });
+    // E1.1: pasar cerca de los que duermen, sin despertarlos (Sigilo).
+    if (currentBoardName && !combatEncounter.active && sneakPastSleepers([member])) return;
     // Tanda 16: lo que quedó de la misión al acabar la pelea (salir por la ventana), andando.
     if (currentBoardName && !combatEncounter.active) checkObjectiveLeft();
 }
@@ -867,8 +854,11 @@ export function handleTokenMove(tokenId, gridX, gridY, locationName) {
  * @returns {Array<{x: number, y: number}>}
  */
 function waitingFoes() {
-    if (combatEncounter.active || lastWaiting.board !== currentBoardName) return [];
-    return lastWaiting.placements.map(p => ({ x: Number(p.x) || 0, y: Number(p.y) || 0 }));
+    if (combatEncounter.active) return [];
+    // E1.1: los que duermen tampoco se pisan.
+    const sleeping = isBoardWon(currentLocationName, currentBoardName) ? [] : sleepersOf(getActiveBoardContext().board?.enemyPlacements);
+    const waiting = lastWaiting.board === currentBoardName ? lastWaiting.placements : [];
+    return [...waiting, ...sleeping].map(p => ({ x: Number(p.x) || 0, y: Number(p.y) || 0 }));
 }
 
 /**
@@ -970,6 +960,9 @@ export function groupMoveTo(gridX, gridY) {
     savePartyState();
     const desc = describeGroupMove(plan);
     if (desc) toastr.info(desc, 'Marcha del grupo');
+    // E1.1: pasar cerca de los que duermen, sin despertarlos: tira cada uno de los que han andado.
+    const marched = partyMembers.filter(m => plan.moves.some(move => String(move.id) === String(m.id)) || String(m.id) === String(leadMember?.id));
+    if (sneakPastSleepers(marched)) return plan;
     // Tanda 16: lo que quedó de la misión al acabar la pelea (salir por la ventana), andando.
     checkObjectiveLeft();
     renderLocationMapsPreview();
@@ -1171,7 +1164,10 @@ function applyHazardHit(member, hazard) {
  * @returns {number}
  */
 function passiveOf(member) {
-    return 10 + skillModifier(member, 'perception').modifier;
+    // E2.1: en penumbra, −5 (la desventaja en pasiva); a oscuras, no se ve lo que hay en el suelo.
+    const light = lookingLight(member);
+    if (light.blind) return 0;
+    return 10 + skillModifier(member, 'perception').modifier - light.passivePenalty;
 }
 
 /**
@@ -1195,7 +1191,9 @@ export function knownTrapsHere() {
  * @returns {number} El índice del camino donde se queda.
  */
 export function walkTraps(member, path) {
-    const steps = Array.isArray(path) ? path : [];
+    // E1.3: en combate, el hielo resbala: quien lo pisa en su turno y falla, se queda ahí, en el suelo.
+    const slipped = slipOnIce(member, Array.isArray(path) ? path : []);
+    const steps = (Array.isArray(path) ? path : []).slice(0, slipped >= 0 ? slipped + 1 : undefined);
     const last = Math.max(0, steps.length - 1);
     const board = getActiveBoardContext().board;
     if (!board || steps.length < 2 || !Array.isArray(board.hazards) || board.hazards.length === 0) return last;
@@ -1217,6 +1215,36 @@ export function walkTraps(member, path) {
         savePartyState();
     }
     return walk.stopAt;
+}
+
+/**
+ * E1.3: el hielo resbaladizo de la Guía del máster: quien lo pisa por primera vez en su turno
+ * hace una prueba de Destreza (Acrobacias) CD 10; si falla, cae derribado ahí mismo y deja de
+ * andar. Solo en combate: fuera de él se cruza con calma.
+ *
+ * @param {any} member
+ * @param {Array<{x: number, y: number}>} path Con la casilla de salida delante.
+ * @returns {number} El índice en `path` donde se ha caído, o -1.
+ */
+function slipOnIce(member, path) {
+    if (!combatEncounter.active || !member || path.length < 2) return -1;
+    const at = firstIce(getActiveBoardContext().terrain, path);
+    if (at < 0) return -1;
+    // Una vez por turno: quien ya ha pisado el hielo en este turno, ya sabe cómo.
+    const turn = `${Number(combatEncounter.round) || 1}:${String(member.id)}`;
+    const memory = /** @type {any} */ (combatEncounter);
+    if (memory.iceTurn === turn) return -1;
+    memory.iceTurn = turn;
+    const check = rollCheck({ member, skill: 'acrobatics', rollD20: () => rollDiceDetailed('1d20', 20).total, dc: ICE_DC });
+    if (!check) return -1;
+    if (check.success) {
+        postCombatNarration(`🧊 [COMBAT] ${check.said}. ${member.name} pisa el hielo sin resbalar.`);
+        return -1;
+    }
+    applyTimedCondition(member, String(member.id), 'Prone', 1);
+    postCombatNarration(`🧊 [COMBAT] ${check.said}. ${member.name} resbala en el hielo y cae en (${path[at].x + 1}, ${path[at].y + 1}).`);
+    soundCue('hit');
+    return at;
 }
 
 /**
@@ -1253,9 +1281,20 @@ export function searchForTraps() {
     const { board, gridWidth, gridHeight } = getActiveBoardContext();
     if (!board || !currentBoardName || combatEncounter.active) return null;
     const here = partyHere();
-    const searcher = bestAt(here.map(h => h.member), 'perception');
+    // E2.1: busca quien mejor mira de los que ven algo; a oscuras, sin luz, no se encuentra nada.
+    const seeing = here.filter(h => !lookingLight(h.member).blind);
+    if (seeing.length === 0) {
+        toastr.info('A oscuras no se ve nada: para buscar trampas hace falta luz (una antorcha, un farol o la Luz).', 'Buscar trampas', { timeOut: 9000 });
+        return { found: 0, fresh: false };
+    }
+    const searcher = bestAt(seeing.map(h => h.member), 'perception');
     if (!searcher) return null;
-    const total = rollDiceDetailed('1d20', 20).total + skillModifier(searcher, 'perception').modifier;
+    // En penumbra, con desventaja (5e: poco oscurecido).
+    const light = lookingLight(searcher);
+    const die = light.edge === 'disadvantage'
+        ? Math.min(rollDiceDetailed('1d20', 20).total, rollDiceDetailed('1d20', 20).total)
+        : rollDiceDetailed('1d20', 20).total;
+    const total = die + skillModifier(searcher, 'perception').modifier;
     /** @type {any} */
     let state = { hazards: board.hazards, searchedCells: board.searchedCells };
     /** @type {any[]} */
@@ -1279,7 +1318,7 @@ export function searchForTraps() {
     const said = found.length > 0
         ? `Encuentra ${found.map(where).join(' y ')}.`
         : missed > 0 ? 'Algo no encaja por aquí, pero no da con ello.' : 'No encuentra nada raro.';
-    postCombatNarration(`🔍 [TABLERO] ${searcher.name} busca trampas alrededor (Percepción: ${total}). ${said}`);
+    postCombatNarration(`🔍 [TABLERO] ${searcher.name} busca trampas alrededor (Percepción: ${total}${light.edge ? `, con desventaja: ${light.why}` : ''}). ${said}`);
     if (found.length > 0) {
         toastr.warning(found.map(h => `${h.name} (${h.x + 1}, ${h.y + 1}): ${h.tell || describeHazard(h)}`).join(' · '), `${searcher.name} encuentra ${found.length === 1 ? 'una trampa' : `${found.length} trampas`}`, { timeOut: 10000 });
     } else {

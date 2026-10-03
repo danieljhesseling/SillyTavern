@@ -26,6 +26,7 @@ Hay dos clases de casilla:
 | `deep_water` | `W` | `agua-honda.png` (sin ella, `agua.png`) | llena |
 | `ice` | `i` | `hielo.png` | llena |
 | `brush` | `b` | `maleza.png` | llena |
+| `mud` | `m` | `barro.png` | llena |
 | `barrel` | `T` | `barril.png` | encima |
 | `chest` | `k` | `cofre.png` | encima |
 | `high` | `^` | `alto.png`, y `alto-borde.png` en la fila de abajo de cada zona alta | llena |

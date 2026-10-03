@@ -1,0 +1,83 @@
+/* E2 de wiki/ROADMAP_ENTRETENIDO.md, «La mazmorra que pesa». */
+
+/* E2.1: la luz del tablero. Encima del suelo y de la cuadrícula, debajo de las casillas
+   encendidas y de las fichas (`world-map-renderer.js`, `renderLight`). */
+.wm-light-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 4;
+    pointer-events: none;
+    transform-origin: 0 0;
+}
+
+.wm-light-cell {
+    position: absolute;
+}
+
+/* A oscuras: casi negro. Se adivina el suelo, no lo que hay en él. */
+.wm-light-dark {
+    background: rgba(4, 4, 10, 0.84);
+}
+
+/* Penumbra: se ve, pero mal. */
+.wm-light-dim {
+    background: rgba(10, 10, 24, 0.42);
+}
+
+/* El enemigo que nadie del grupo ve: una sombra. */
+.wm-token.wm-token-in-dark {
+    filter: grayscale(0.85) brightness(0.45);
+    opacity: 0.7;
+}
+
+/* Quién lleva la luz, en la cabecera del tablero. */
+.wm-light-note {
+    margin-top: 3px;
+    padding: 2px 8px;
+    border-radius: 6px;
+    background: rgba(240, 170, 60, 0.16);
+    border: 1px solid rgba(240, 170, 60, 0.4);
+    color: #fde3b0;
+    font-size: 0.8rem;
+    line-height: 1.3;
+}
+
+.wm-light-note[data-light="dark"] {
+    background: rgba(40, 40, 70, 0.4);
+    border-color: rgba(140, 140, 200, 0.45);
+    color: #d6d6f5;
+}
+
+/* La luz en la tarjeta del blanco: quién ve a quién. */
+.tc-light {
+    margin-top: 4px;
+    padding: 4px 8px;
+    border-radius: 6px;
+    background: rgba(40, 40, 70, 0.45);
+    color: #dcdcf7;
+    font-size: 0.85em;
+    font-weight: 600;
+}
+
+/* E2.2: lo que arriesga una cerradura. */
+.lk-root .lk-risk {
+    font-size: 0.88em;
+    opacity: 0.85;
+}
+
+/* E2.4: seguir o volver, con el «volver» en otro tono. */
+.vq-seguir .vq-no {
+    border-color: rgba(240, 170, 60, 0.6);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .wm-light-note:not([data-light="dark"]) {
+        animation: mz-flicker 3.2s ease-in-out infinite;
+    }
+}
+
+@keyframes mz-flicker {
+    0%, 100% { box-shadow: 0 0 0 rgba(240, 170, 60, 0); }
+    50% { box-shadow: 0 0 6px rgba(240, 170, 60, 0.35); }
+}

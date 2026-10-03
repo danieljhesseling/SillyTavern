@@ -279,7 +279,7 @@ describe('D-J63: el romance es el punto de inflexión del rango 9', () => {
         // Ya no sale nada del romance: ratos y escenas de siempre.
         expect(love.filter(Boolean)).toEqual([]);
         expect(getRank(bonds, 'k')).toBe(MAX_RANK);
-        expect(getUnlockedPerks(bonds, 'k').map(p => p.id)).toEqual(['follow_up', 'baton_pass', 'endure', 'ultimate']);
+        expect(getUnlockedPerks(bonds, 'k').map(p => p.id)).toEqual(['follow_up', 'baton_pass', 'pair_move', 'endure', 'ultimate']);
     });
 
     test('la ruta de pareja (tres citas y la noche) también llega al rango 10 con todas las ventajas', () => {
@@ -289,7 +289,7 @@ describe('D-J63: el romance es el punto de inflexión del rango 9', () => {
         expect(love.filter(Boolean).map(l => l.stage)).toEqual(['cita', 'cita', 'cita', 'final']);
         expect(romanceOf(state, 'Nella Tresflechas')?.status).toBe('pareja');
         expect(getRank(bonds, 'k')).toBe(MAX_RANK);
-        expect(getUnlockedPerks(bonds, 'k').map(p => p.id)).toEqual(['follow_up', 'baton_pass', 'endure', 'ultimate']);
+        expect(getUnlockedPerks(bonds, 'k').map(p => p.id)).toEqual(['follow_up', 'baton_pass', 'pair_move', 'endure', 'ultimate']);
     });
 
     test('las parejas tienen sus variantes en las fiestas y en las noches libres', () => {

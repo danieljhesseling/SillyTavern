@@ -247,6 +247,9 @@ export function buildPackEntries(pack) {
                 // Sin `weapon`, el juego la saca de su descripción («empuña una horca»).
                 ...(text(enemy.weapon) ? { weapon: text(enemy.weapon) } : {}),
                 ...(Number(enemy.potions) > 0 ? { potions: Math.floor(Number(enemy.potions)) } : {}),
+                // E1.1: lo que oye (su Sabiduría y su Percepción): pasar junto a uno dormido.
+                ...(Number(enemy.wisdom) > 0 ? { wisdom: Math.floor(Number(enemy.wisdom)) } : {}),
+                ...(Number.isFinite(Number(enemy.perception)) && enemy.perception !== undefined && enemy.perception !== null ? { perception: Math.floor(Number(enemy.perception)) } : {}),
             },
         });
     }
@@ -285,9 +288,10 @@ export function buildPackEntries(pack) {
  * an innocent-looking empty array.
  *
  * @param {any} quest
+ * @param {string[]} [wards] E1.1: quienes se protegen en su tablero sin ser de la campaña (`ward`).
  * @returns {any[]}
  */
-function buildObjectives(quest) {
+function buildObjectives(quest, wards = []) {
     return quest.objectives.map((/** @type {any} */ objective, /** @type {number} */ index) => {
         const type = text(objective.type);
         /** @type {any} */
@@ -296,10 +300,18 @@ function buildObjectives(quest) {
             type,
             label: text(objective.label) || type,
             optional: Boolean(objective.optional),
+            // E1.1: el plazo («antes de la ronda 5»).
+            ...(Number(objective.beforeRound) >= 2 ? { beforeRound: Math.floor(Number(objective.beforeRound)) } : {}),
         };
 
         for (const field of OBJECTIVE_FIELDS[type] ?? []) {
             const value = objective[field.writes];
+            // E1.1: a quien se protege o se escolta se le busca también por su nombre (Ireena en
+            // el grupo, o el invitado del tablero). El invitado no está en el mundo: no se busca.
+            if (field.engineField === 'allyId' && text(value)) {
+                built.allyName = text(value);
+                if (wards.some(w => w.toLowerCase() === text(value).toLowerCase())) continue;
+            }
             if (field.kind === 'name') {
                 built.pendingName = built.pendingName ?? {};
                 built.pendingName[field.engineField] = text(value);
@@ -310,6 +322,42 @@ function buildObjectives(quest) {
 
         return built;
     });
+}
+
+/**
+ * E1.1: los refuerzos de un tablero, con la forma que lee la pelea (`arriveWaves`): en qué
+ * ronda llegan, quiénes, por dónde, y lo que se oye la ronda antes.
+ *
+ * @param {any[]} raw
+ * @returns {Array<{round: number, names: string[], x: number, y: number, tell: string}>}
+ */
+export function wavesFromPack(raw) {
+    return (Array.isArray(raw) ? raw : [])
+        .filter(w => w && Array.isArray(w.names) && w.names.length > 0 && Number(w.round) >= 1)
+        .map(w => ({
+            round: Math.floor(Number(w.round)),
+            names: w.names.map(text).filter(Boolean),
+            x: Math.floor(Number(w.x) || 0),
+            y: Math.floor(Number(w.y) || 0),
+            tell: text(w.tell),
+        }));
+}
+
+/**
+ * E1.1: quien hay que proteger en un tablero sin ser del grupo: entra en la pelea como invitado
+ * que no pelea (se cubre), donde dice el tablero.
+ *
+ * @param {any} raw
+ * @returns {{name: string, x: number, y: number, hp?: number, gender?: string}}
+ */
+export function wardFromPack(raw) {
+    return {
+        name: text(raw?.name),
+        x: Math.floor(Number(raw?.x) || 0),
+        y: Math.floor(Number(raw?.y) || 0),
+        ...(Number(raw?.hp) > 0 ? { hp: Math.floor(Number(raw.hp)) } : {}),
+        ...(text(raw?.gender) ? { gender: text(raw.gender) } : {}),
+    };
 }
 
 /**
@@ -438,7 +486,7 @@ export function buildImportPlan(raw, options = {}) {
             isCombat: board.enemies.length > 0,
             // One board holds the objectives of every quest played on it. A book that
             // splits a room into two missions is describing two goals in one place.
-            objectives: quests.flatMap(buildObjectives),
+            objectives: quests.flatMap(quest => buildObjectives(quest, board.ward?.name ? [text(board.ward.name)] : [])),
             terrain,
             // Las salas salen del propio mapa: el libro las dibuja, no las describe. Lo
             // que hay detras de una puerta cerrada no se sabe hasta abrirla, que es como
@@ -455,9 +503,17 @@ export function buildImportPlan(raw, options = {}) {
             // set them down where the book drew them.
             enemyPlacements: board.enemies.map((/** @type {any} */ e) => ({
                 name: text(e.name), x: Number(e.x) || 0, y: Number(e.y) || 0,
+                // E1.1: los que duermen (los guardias de un robo): no empiezan la pelea al veros.
+                ...(e.asleep === true ? { asleep: true } : {}),
             })),
             partyStart,
             packBoardId: board.id,
+            // E1.1: los refuerzos que llegan en su ronda (`arriveWaves`), y quien hay que proteger
+            // en este tablero sin ser del grupo (un invitado mientras dura la pelea).
+            ...(Array.isArray(board.waves) && board.waves.length > 0 ? { waves: wavesFromPack(board.waves) } : {}),
+            ...(board.ward && text(board.ward.name) ? { ward: wardFromPack(board.ward) } : {}),
+            // E2.1: la luz de la sala, si el paquete la dice (`luz`, `penumbra`, `oscuro`); la lee `party/dungeon.js`.
+            ...(['luz', 'penumbra', 'oscuro'].includes(text(board.light).toLowerCase()) ? { light: text(board.light).toLowerCase() } : {}),
             // J12.2 y J8.5: las otras salidas de su pelea, tal cual; las lee `combat/avoid-fight.js`.
             ...(Array.isArray(board.avoid) && board.avoid.length > 0 ? { avoid: board.avoid } : {}),
             ...(board.parley && typeof board.parley === 'object' ? { parley: board.parley } : {}),

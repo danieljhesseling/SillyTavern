@@ -1088,6 +1088,8 @@ export function openHallOfFame() {
     // J3.9: arriba, las campañas terminadas; J14.10, las parejas; debajo, los caídos.
     const done = hall.filter(entry => entry.kind === 'campaign');
     const couples = hall.filter(entry => entry.kind === 'couple');
+    // E8.3: los que se quedaron de maestros en el gremio.
+    const retired = hall.filter(entry => entry.kind === 'retired');
     const fallen = hall.filter(entry => !entry.kind);
     if (done.length > 0) {
         body.append($('<h4 class="hall-head"></h4>').text('Campañas terminadas'));
@@ -1097,7 +1099,11 @@ export function openHallOfFame() {
         body.append($('<h4 class="hall-head"></h4>').text('Parejas'));
         for (const entry of couples) body.append($('<div class="jr-item hall-entry hall-couple"></div>').text(describeHallEntry(entry)));
     }
-    if (done.length > 0 || couples.length > 0) body.append($('<h4 class="hall-head"></h4>').text('Los caídos'));
+    if (retired.length > 0) {
+        body.append($('<h4 class="hall-head"></h4>').text('Los maestros del gremio'));
+        for (const entry of retired) body.append($('<div class="jr-item hall-entry hall-retired"></div>').text(describeHallEntry(entry)));
+    }
+    if (done.length > 0 || couples.length > 0 || retired.length > 0) body.append($('<h4 class="hall-head"></h4>').text('Los caídos'));
     if (fallen.length === 0) body.append($('<div class="jr-item"></div>').text('Todavía no ha caído nadie.'));
     for (const entry of fallen) body.append($('<div class="jr-item hall-entry"></div>').text(describeHallEntry(entry)));
     void new Popup(body[0], POPUP_TYPE.TEXT, '', { okButton: 'Cerrar', allowVerticalScrolling: true, leftAlign: true }).show();

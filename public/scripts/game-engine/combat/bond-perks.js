@@ -17,6 +17,7 @@
  */
 
 import { isPerkAvailable } from '../campaign/bonds.js';
+import { personalWeaponOf, ultimateOf } from './bond-moves.js';
 
 /** How often the rank-3 perk grants its free attack. */
 export const FOLLOW_UP_CHANCE = 0.5;
@@ -101,15 +102,19 @@ export function planFollowUp({ bonds, party, attackerId, canReach, random = Math
  * @param {Array<{id: any, name: string, hp?: number}>} input.party
  * @param {string} input.actorId        Who just made the kill.
  * @param {number} input.remainingFeet
+ * @param {string[]|null} [input.waiting] E3.4: quiénes aún no han jugado esta ronda (`stillToAct`):
+ *   solo a ellos se les puede pasar el turno. Sin decir, a cualquiera (lo de antes).
  * @returns {Array<{id: string, name: string}>}
  */
-export function planBatonPass({ bonds, party, actorId, remainingFeet }) {
+export function planBatonPass({ bonds, party, actorId, remainingFeet, waiting = null }) {
     if ((Number(remainingFeet) || 0) <= 0) return [];
     if (!isPerkAvailable(bonds, String(actorId), 'baton_pass')) return [];
+    const open = Array.isArray(waiting) ? new Set(waiting.map(String)) : null;
 
     return (Array.isArray(party) ? party : [])
         .filter(member => String(member?.id ?? '') !== String(actorId))
         .filter(member => (Number(member?.hp) || 0) > 0)
+        .filter(member => !open || open.has(String(member?.id ?? '')))
         .map(member => ({ id: String(member.id), name: String(member.name ?? '') }));
 }
 
@@ -161,7 +166,8 @@ export function planUltimate({ bonds, party, actorId, targetId }) {
         actorName: String(actor.name ?? ''),
         perkId: 'ultimate',
         damage: count * faces + level,
-        reason: `${actor.name} descarga su golpe definitivo: impacta sin tirar.`,
+        // E3.4: con el nombre de su golpe («La carga del Mellado»).
+        reason: `${actor.name} descarga ${ultimateOf(actor).name === 'Golpe definitivo' ? 'su golpe definitivo' : `«${ultimateOf(actor).name}»`}: impacta sin tirar.`,
     };
 }
 
@@ -176,6 +182,9 @@ export function planUltimate({ bonds, party, actorId, targetId }) {
  */
 export function buildPersonalWeapon(member) {
     const name = String(member?.name ?? 'Compañero').trim() || 'Compañero';
+    // E3.4: la suya si la tiene escrita (el arco de Nella es un arco), o una de lejos para quien dispara.
+    const own = personalWeaponOf(member);
+    if (own) return own;
     return {
         name: `Arma personal de ${name}`,
         type: 'weapon',

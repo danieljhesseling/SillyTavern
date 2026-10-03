@@ -7,7 +7,8 @@ import { parseCellKey, describeCell } from './game-engine/board/terrain.js';
 import { cliffEdges, elevationAt, isCliff } from './game-engine/board/heights.js';
 import { centerOn, isInView, isLargeBoard, readableScale } from './game-engine/board/board-camera.js';
 import { zoneAt } from './game-engine/board/zones.js';
-import { cellRectsHtml, fogRects, inWindow, visibleWindow, windowCovers } from './game-engine/board/draw-light.js';
+import { cellRectsHtml, fogRects, inWindow, mergeCellRects, visibleWindow, windowCovers } from './game-engine/board/draw-light.js';
+import { lightLevelAt, seenAs, feetBetweenCells } from './game-engine/board/light.js';
 import { boardBiome, bridgeTiles, cliffFace, enemyArt, firstArt, hazardTile, isPlainFace, loadPixelManifest, openPack, pixelManifest, terrainTile } from './game-engine/ui/pixel-art.js';
 import { initialsFor } from './game-engine/ui/hero-face.js';
 import { attachBoardKeys } from './game-engine/ui/board-keys.js';
@@ -745,6 +746,9 @@ function watchBoardInput() {
  *   o a quien le toca). En un tablero grande, que no cabe entero con casillas que se lean, la vista se acerca y,
  *   cada vez que esa ficha cambia de sitio (`followKey`), si se acerca al borde, se centra en ella.
  * @param {string} [options.followKey] - Dónde está esa ficha ahora: cuando cambia, la cámara mira si seguirla.
+ * @param {{ambient: 'dim'|'dark', sources: Array<{x: number, y: number, bright: number, dim: number}>, note?: string,
+ *   seers?: Array<{x: number, y: number, darkvision: number}>}|null} [options.light] - E2.1: la luz del tablero (`party/dungeon.js`):
+ *   la penumbra y la oscuridad se sombrean, el enemigo que nadie ve a oscuras se apaga y la cabecera dice quién lleva la luz.
  * @param {VttOptions|null} [options.vtt] - Tanda 10: el tablero a toda la pantalla de juego, con su cámara
  *   (arrastrar, la rueda hacia el cursor, dos dedos; de 0,45× a 2,2×), el minimapa, los botones de la
  *   cámara y, en combate, los marcadores de borde. Sin esto, el tablero de siempre (el del cajón).
@@ -787,7 +791,24 @@ export function renderLocationView(target, options) {
         followTokenId = null,
         followKey = '',
         vtt = null,
+        light = null,
     } = options;
+    // E2.1: la luz de cada casilla (luz plena, penumbra u oscuridad), con las paredes de por medio.
+    /** @type {Map<string, 'bright'|'dim'|'dark'>} */
+    const lightMemo = new Map();
+    const lightAt = (/** @type {number} */ x, /** @type {number} */ y) => {
+        if (!light) return 'bright';
+        const key = `${x},${y}`;
+        let level = lightMemo.get(key);
+        if (!level) {
+            level = lightLevelAt({ x, y }, light.ambient, light.sources ?? [], terrain);
+            lightMemo.set(key, level);
+        }
+        return level;
+    };
+    // Lo que el grupo no ve: a oscuras y lejos de quien ve en la oscuridad.
+    const unseenAt = (/** @type {number} */ x, /** @type {number} */ y) => lightAt(x, y) === 'dark'
+        && !(light?.seers ?? []).some(s => seenAs('dark', Number(s.darkvision) || 0, feetBetweenCells(s, { x, y })) !== 'dark');
 
     target.empty();
     // Tanda 10: el tablero como una mesa virtual: la capa del HUD encima, en la que solo las
@@ -822,6 +843,11 @@ export function renderLocationView(target, options) {
         descEl.text(description);
     } else {
         descEl.remove();
+    }
+    // E2.1: quién lleva la luz (o que no la lleva nadie), a la vista en la cabecera.
+    if (light?.note) {
+        header.find('.wm-location-header-info').append($('<div class="wm-light-note"></div>')
+            .attr('data-light', light.ambient).text(light.note));
     }
     if (hasImage && !vttOn) {
         $('<img class="wm-location-header-icon">')
@@ -1176,6 +1202,10 @@ export function renderLocationView(target, options) {
         if (room?.name) parts.push(room.name);
         const feet = elevation ? elevationAt(elevation, gx, gy) : 0;
         if (feet) parts.push(`${feet > 0 ? '+' : ''}${feet} pies de alto`);
+        // E2.1: la luz de la casilla.
+        const lit = lightAt(gx, gy);
+        if (lit === 'dark') parts.push('a oscuras: sin luz no se ve');
+        else if (lit === 'dim') parts.push('en penumbra');
         // J20.2: el acantilado se dice también tocando, no solo con el ratón encima de su raya.
         if (elevation && [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => isCliff(elevation, { x: gx, y: gy }, { x: gx + dx, y: gy + dy })
             && gx + dx >= 0 && gy + dy >= 0 && gx + dx < gridWidth && gy + dy < gridHeight)) {
@@ -1204,6 +1234,10 @@ export function renderLocationView(target, options) {
     // Grid overlay (drawn via CSS background-image)
     const gridOverlay = $('<div class="wm-grid-overlay"></div>');
     content.append(gridOverlay);
+
+    // E2.1: la penumbra y la oscuridad, encima del suelo y debajo de las fichas.
+    const lightLayer = $('<div class="wm-light-layer" aria-hidden="true"></div>');
+    content.append(lightLayer);
 
     // Tokens layer
     const tokensLayer = $('<div class="wm-tokens-layer"></div>');
@@ -1450,6 +1484,25 @@ export function renderLocationView(target, options) {
      * Draws the fog. Unknown cells are opaque, explored-but-unseen ones are dimmed, and
      * anything currently in sight is left clear.
      */
+    /**
+     * E2.1: la luz. Las casillas en penumbra y a oscuras, juntas en rectángulos como la niebla.
+     */
+    function renderLight() {
+        const layer = lightLayer[0];
+        if (!imgW || !imgH || !light) {
+            layer.textContent = '';
+            return;
+        }
+        lightLayer.css({ width: imgW + 'px', height: imgH + 'px' });
+        const rects = mergeCellRects(gridWidth, gridHeight, (x, y) => {
+            const level = lightAt(x, y);
+            return level === 'bright' ? null : level;
+        });
+        layer.innerHTML = cellRectsHtml(rects, {
+            cellWidth: imgW / gridWidth, cellHeight: imgH / gridHeight, className: 'wm-light-cell', kindPrefix: 'wm-light-',
+        });
+    }
+
     function renderFog() {
         const layer = fogLayer[0];
         if (!imgW || !imgH || !fogEnabled) {
@@ -1636,7 +1689,7 @@ export function renderLocationView(target, options) {
             });
             const hpPct = (token.maxHp && token.maxHp > 0) ? Math.min(100, ((token.hp || 0) / token.maxHp) * 100) : 100;
 
-            const enemyClass = token.isEnemy ? ` wm-token-enemy${token.idle ? ' wm-token-idle' : ''}${token.boss ? ' wm-token-boss' : ''}` : (token.isSummon ? ' wm-token-summon' : token.isNPC ? ' wm-token-npc' : '');
+            const enemyClass = token.isEnemy ? ` wm-token-enemy${token.idle ? ' wm-token-idle' : ''}${token.boss ? ' wm-token-boss' : ''}${unseenAt(cellNow.x, cellNow.y) ? ' wm-token-in-dark' : ''}` : (token.isSummon ? ' wm-token-summon' : token.isNPC ? ' wm-token-npc' : '');
             const metaText = token.isEnemy
                 ? `${token.boss && !token.role ? 'Jefe · ' : ''}${token.idle ? 'Aquí, sin pelear todavía' : `${token.role ? `${token.role.label} · ` : ''}CA ${token.level || 10}`}`
                 : token.isSummon
@@ -2325,6 +2378,7 @@ export function renderLocationView(target, options) {
         renderTerrain();
         renderHighlights();
         placeTokens();
+        renderLight();
         renderFog();
         fullUpdate();
         gridOverlay.toggleClass('hidden', !gridVisible);

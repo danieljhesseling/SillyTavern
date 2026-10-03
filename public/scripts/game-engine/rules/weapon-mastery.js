@@ -364,6 +364,10 @@ export function combineEdge(edge, up = [], down = []) {
  * @property {Array<{by: string, target: string, round: number}>} vex Molestar: quién tiene ventaja contra quién.
  * @property {TurnFlags|null} turn
  * @property {Record<string, string[]>} studied Lo que ya se sabe de cada enemigo (Estudiar).
+ * @property {string[]} [sneak] E3.1: los furtivos ya metidos, por `sneakKey` (quién, en el turno de
+ *   quién y en qué ronda): uno por turno.
+ * @property {string[]} [bondMoves] E3.4: los compañeros que ya han hecho su jugada del vínculo 7 en
+ *   este combate (una por combate).
  */
 
 /**
@@ -393,7 +397,58 @@ export function readTactics(raw) {
             if (Array.isArray(facts)) studied[String(id)] = facts.map(String);
         }
     }
-    return { vex, turn, studied };
+    // E3.1: solo los de esta ronda y la anterior; lo demás ya no puede volver.
+    const sneak = Array.isArray(raw?.sneak) ? raw.sneak.map(String).filter(Boolean).slice(-24) : [];
+    const bondMoves = Array.isArray(raw?.bondMoves) ? raw.bondMoves.map(String).filter(Boolean) : [];
+    return { vex, turn, studied, sneak, bondMoves };
+}
+
+/**
+ * E3.4: apuntar que un compañero ya ha hecho su jugada del vínculo 7 en este combate.
+ *
+ * @param {any} raw
+ * @param {string} companionId
+ * @returns {Tactics}
+ */
+export function noteBondMove(raw, companionId) {
+    const state = readTactics(raw);
+    const list = state.bondMoves ?? [];
+    return { ...state, bondMoves: list.includes(String(companionId)) ? list : [...list, String(companionId)] };
+}
+
+/**
+ * E3.4: si un compañero ya ha hecho su jugada del vínculo 7 en este combate.
+ *
+ * @param {any} raw
+ * @param {string} companionId
+ * @returns {boolean}
+ */
+export function bondMoveUsed(raw, companionId) {
+    return (readTactics(raw).bondMoves ?? []).includes(String(companionId));
+}
+
+/**
+ * E3.1: apuntar que alguien ya ha metido su furtivo en este turno (`sneakKey` de `sneak-attack.js`).
+ *
+ * @param {any} raw
+ * @param {string} key
+ * @returns {Tactics}
+ */
+export function noteSneak(raw, key) {
+    const state = readTactics(raw);
+    const list = state.sneak ?? [];
+    return { ...state, sneak: list.includes(String(key)) ? list : [...list, String(key)] };
+}
+
+/**
+ * E3.1: si ya lo ha metido en este turno.
+ *
+ * @param {any} raw
+ * @param {string} key
+ * @returns {boolean}
+ */
+export function sneakSpent(raw, key) {
+    return (readTactics(raw).sneak ?? []).includes(String(key));
 }
 
 /**

@@ -189,6 +189,21 @@
   ],
   "bestiary": [
     {
+      "name": "Tótem de ramas",
+      "hp": 15,
+      "armorClass": 13,
+      "cr": 0,
+      "profile": "object",
+      "attackRangeFeet": 5,
+      "abilities": [],
+      "boss": false,
+      "description": "propio: Un poste de ramas atadas con tripas y untado de sangre. Mientras siga en pie, el canto de los druidas llega al muñeco de ramas. No se mueve ni ataca: hay que romperlo."
+    },
+    {
+      "name": "Engendro hambriento",
+      "perception": 3
+    },
+    {
       "name": "Strahd von Zarovich",
       "aspecto": "propio: Hombre que aparenta unos cuarenta, de piel blanca de muerto, con el pelo negro peinado hacia atrás, un mechón en la frente y los ojos rojos. Capa negra de cuello alto forrado de granate y una joya de ámbar en el pecho; sonrisa fría.",
       "hp": 120,
@@ -1006,6 +1021,11 @@
     },
     {
       "id": "mansion_burgomaestre",
+      "ward": { "name": "Ireena Kolyana", "x": 10, "y": 2, "gender": "Mujer" },
+      "waves": [
+        { "round": 2, "names": ["Zombi de Strahd", "Zombi de Strahd"], "x": 10, "y": 9, "tell": "propio: Golpes en la verja del jardín: llegan más muertos." },
+        { "round": 4, "names": ["Zombi de Strahd", "Zombi de Strahd"], "x": 2, "y": 9, "tell": "propio: Arañazos en el muro del oeste: otros dos van a saltarlo." }
+      ],
       "avoid": [
         {
           "kind": "esconderse",
@@ -1315,6 +1335,21 @@
     },
     {
       "id": "taller_ataudero",
+      "map": [
+        "################",
+        "#k..#.........c#",
+        "#...D..c.......#",
+        "#...#......c...#",
+        "######.........#",
+        "#.....cc.......#",
+        "#..T...........#",
+        "#.......c.....x#",
+        "################"
+      ],
+      "enemies": [
+        { "name": "Engendro hambriento", "x": 12, "y": 1, "asleep": true },
+        { "name": "Engendro hambriento", "x": 13, "y": 6, "asleep": true }
+      ],
       "avoid": [
         {
           "kind": "esconderse",
@@ -1334,6 +1369,19 @@
     },
     {
       "id": "choza_baba_lysaga",
+      "map": [
+        "####################",
+        "#WWmm.....b....mmWW#",
+        "#Wm......#####...mW#",
+        "#m.......#.k.#....m#",
+        "#........#...#.....#",
+        "#..b.....##D##..b..#",
+        "#.................x#",
+        "#m....c.......c...m#",
+        "#wm.............mmw#",
+        "#wwm...b....b...mww#",
+        "####################"
+      ],
       "avoid": [
         {
           "kind": "esconderse",
@@ -1377,6 +1425,15 @@
     },
     {
       "id": "cima_yester",
+      "enemies": [
+        { "name": "Druida de Yester", "x": 12, "y": 4 },
+        { "name": "Druida de Yester", "x": 12, "y": 6 },
+        { "name": "Plaga de agujas", "x": 15, "y": 2 },
+        { "name": "Plaga de agujas", "x": 16, "y": 8 },
+        { "name": "Plaga de agujas", "x": 8, "y": 8 },
+        { "name": "Tótem de ramas", "x": 13, "y": 3 },
+        { "name": "Tótem de ramas", "x": 13, "y": 7 }
+      ],
       "avoid": [
         {
           "kind": "hablar",
@@ -1437,6 +1494,29 @@
     },
     {
       "id": "islote_torre",
+      "map": [
+        "####################",
+        "#WWWWWWWWWWWWWWWWWW#",
+        "#Ww..............wW#",
+        "#W....#######.....W#",
+        "#W....#.....#.....W#",
+        "#.....o.....#.....W#",
+        "#W....#.....#.....W#",
+        "#W....###o###.....W#",
+        "#Ww..............wW#",
+        "#WWWWWWWW..WWWWWWWW#",
+        "#WWWWWWWW..WWWWWWWW#",
+        "####################"
+      ],
+      "partyStart": [
+        { "x": 6, "y": 5 },
+        { "x": 9, "y": 7 },
+        { "x": 8, "y": 5 },
+        { "x": 9, "y": 6 }
+      ],
+      "waves": [
+        { "round": 3, "names": ["Lobo gris", "Lobo gris"], "x": 9, "y": 9, "tell": "propio: Más aullidos en el camino de tierra: vienen más lobos." }
+      ],
       "avoid": [
         {
           "kind": "esconderse",
@@ -1500,6 +1580,20 @@
     },
     {
       "id": "cueva_madre_noche",
+      "map": [
+        "####################",
+        "#.....#^^^^^^#.....#",
+        "#.CC..#^^^^^^#..CC.#",
+        "#.....#^^^^^^#.....#",
+        "##.####......####.##",
+        "#..................#",
+        "#....~~......~~....#",
+        "#....~~..^^..~~....#",
+        "#.........^^.......#",
+        "#..................#",
+        "#..................#",
+        "####################"
+      ],
       "avoid": [
         {
           "kind": "esconderse",
@@ -1834,6 +1928,49 @@
     }
   ],
   "quests": [
+    {
+      "id": "q_asedio_mansion",
+      "description": "propio: Los no-muertos de Strahd asedian la mansión del burgomaestre y llegan más por el jardín. Hay que aguantar cinco rondas con Ireena viva: ella no sabe pelear.",
+      "objectives": [
+        { "type": "survive_rounds", "label": "propio: Aguantar el asalto cinco rondas", "rounds": 5 },
+        { "type": "protect", "label": "propio: Que Ireena sobreviva al asalto", "ally": "Ireena Kolyana" },
+        { "type": "eliminate_all", "label": "propio: Acabar con todos los asediadores", "optional": true }
+      ]
+    },
+    {
+      "id": "q-enc-taller-ataudero",
+      "description": "propio: Arriba del taller hay cajas llenas de tierra, y dentro duerme lo que el conde mandó a Vallaki. Los huesos del santo están en el cuarto del fondo. Si se pasa sin hacer ruido, no se despiertan.",
+      "objectives": [
+        { "type": "loot", "label": "propio: Recuperar los huesos de San Andral", "treasures": ["Huesos de San Andral"] },
+        { "type": "reach_cell", "label": "propio: Salir con los huesos por la puerta del callejón", "cell": { "x": 14, "y": 7 } },
+        { "type": "unseen", "label": "propio: Sin despertar a los que duermen en las cajas", "optional": true }
+      ]
+    },
+    {
+      "id": "q-enc-choza-baba-lysaga",
+      "description": "propio: La bruja guarda la gema de la bodega en su choza, en medio del pantano. Hay que sacarla y salir todos por el camino del este antes de que la choza se levante sobre sus patas, en la ronda 8.",
+      "objectives": [
+        { "type": "loot", "label": "propio: Sacar la gema de la choza", "treasures": ["Gema verde de Baba Lysaga"] },
+        { "type": "escape", "label": "propio: Salir todos por el camino del este", "beforeRound": 8 },
+        { "type": "eliminate", "label": "propio: Acabar con Baba Lysaga", "target": "Baba Lysaga", "optional": true }
+      ]
+    },
+    {
+      "id": "q-enc-cima-yester",
+      "description": "propio: Los druidas cantan junto al muñeco de ramas para despertarlo, y dos tótems llevan el canto hasta él. Si siguen en pie al empezar la ronda 5, el muñeco despierta. La gema está a sus pies.",
+      "objectives": [
+        { "type": "eliminate", "label": "propio: Romper los dos tótems antes de que despierte el muñeco", "target": "Tótem de ramas", "beforeRound": 5 },
+        { "type": "loot", "label": "propio: Sacar la gema del muñeco", "treasures": ["Gema verde de la colina Yester"] },
+        { "type": "eliminate", "label": "propio: Parar el canto de los druidas", "target": "Druida de Yester", "optional": true }
+      ]
+    },
+    {
+      "id": "q-enc-islote-torre",
+      "description": "propio: La manada cruza el camino de tierra y rodea la torre. Hay que guardar las dos puertas cinco rondas, hasta que se canse; si un lobo entra, se acabó. El lago es hondo: a quien caiga, le cuesta salir.",
+      "objectives": [
+        { "type": "hold", "label": "propio: Que no entren en la torre: guardar las dos puertas cinco rondas", "cells": [{ "x": 6, "y": 5 }, { "x": 9, "y": 7 }], "rounds": 5 }
+      ]
+    },
     {
       "id": "q_taberna",
       "description": "Una Bruja Baroviana está acechando a los clientes de la taberna Sangre de la Enredadera. Es hora de demostrar de qué estáis {hechos|hechas}."

@@ -88,6 +88,8 @@ export const STATE_KEYS = [
     { key: 'upkeepDueDay', kind: 'juego', owner: 'party.js', what: 'Cuándo vence la cuenta de la semana' },
     { key: 'debt', kind: 'juego', owner: 'party.js', what: 'La deuda con un patrón' },
     { key: 'guild', kind: 'juego', owner: 'party.js', what: 'El gremio: reputación, edificios y plantilla', scope: 'partida' },
+    // E8.3: los héroes que se quedaron de maestros; son del gremio, no de una campaña.
+    { key: 'mentors', kind: 'juego', owner: 'party/long-life.js', what: 'Los maestros del gremio: los héroes que se retiraron y lo que enseñan', scope: 'partida' },
     { key: 'guildStorage', kind: 'juego', owner: 'party.js', what: 'El almacén del gremio', scope: 'partida' },
     // J4.2: la guarda `party/game-state.js`. Es de juego para que un punto de retorno la devuelva
     // con lo demás: uno de antes del último viaje deja al chat por detrás del almacén, y el gremio
@@ -151,6 +153,8 @@ export const STATE_KEYS = [
     { key: 'fieldGains', kind: 'juego', owner: 'party.js', what: 'Lo que ya se sacó hoy con tiradas en cada sitio, y lo que ya se examinó' },
     // J19.10: la guarda `party/magic.js` al lanzar Luz fuera de combate.
     { key: 'fieldLight', kind: 'juego', owner: 'party/magic.js', what: 'La Luz encendida con magia: el día y la parte del día en que se lanzó, y quién' },
+    { key: 'torchLit', kind: 'juego', owner: 'party/dungeon.js', what: 'La antorcha que arde: quién la lleva y desde qué parte del día' },
+    { key: 'restInterrupted', kind: 'juego', owner: 'party/dungeon.js', what: 'El descanso largo que una emboscada dejó a medias en la mazmorra' },
     { key: 'spokenDead', kind: 'juego', owner: 'party/magic.js', what: 'El día en que se le preguntó a cada muerto con Hablar con los muertos' },
     { key: 'sucesos', kind: 'juego', owner: 'party.js', what: 'Los últimos sucesos con decisión que salieron, y los que volverán días después' },
     // --- Los compañeros por dentro

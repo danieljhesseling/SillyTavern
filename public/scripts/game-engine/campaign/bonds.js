@@ -67,13 +67,22 @@ export const BOND_PERKS = [
         rank: 5,
         id: 'baton_pass',
         label: 'Relevo',
-        description: 'Tras derrotar a un enemigo, puede ceder su movimiento restante a otro compañero.',
+        // E3.4: antes saltaba a su sitio de la iniciativa, y quien iba entre medias jugaba dos veces
+        // o se quedaba sin jugar. Ahora quien lo recibe juega justo después, sin romper la ronda.
+        description: 'Tras derrotar a un enemigo, le pasa el turno a alguien del grupo que aún no haya jugado esta ronda: juega justo después.',
+    },
+    {
+        // E3.4: la jugada propia de cada compañero, con su nombre (`combat/bond-moves.js`).
+        rank: 7,
+        id: 'pair_move',
+        label: 'Jugada en pareja',
+        description: 'Su jugada propia contigo, con su nombre: derribar, disparar primero o cubrirte. Una vez por combate.',
     },
     {
         rank: 8,
         id: 'endure',
         label: 'Aguantar',
-        description: 'Si el líder fuese a caer a 0 HP, se interpone y le deja a 1 HP. Una vez por día.',
+        description: 'Si alguien del grupo fuese a caer a 0 PG, se interpone y le deja con 1 PG. Una vez al día.',
     },
     {
         rank: 10,

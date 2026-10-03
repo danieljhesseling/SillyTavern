@@ -1,0 +1,94 @@
+/* E8 de wiki/ROADMAP_ENTRETENIDO.md, «La larga vida»: los tramos del tablón, por qué llevar
+   mercenarios, los veteranos, los dones épicos y los maestros del Salón de la fama. */
+
+/* E8.1: el tramo de nivel de cada campaña; el tuyo, en dorado. */
+.hb-tier {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 0.82rem;
+    opacity: 0.75;
+}
+
+.hb-tier.is-yours {
+    opacity: 1;
+    color: var(--gs-accent-gold, #e7c36a);
+    font-weight: bold;
+}
+
+.hb-tier-note {
+    margin: 0 0 8px;
+}
+
+/* E8.5: por qué llevar a cada mercenario, en cuatro líneas cortas. */
+.hb-reasons {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin: 6px 0 2px;
+    text-align: left;
+    font-size: 0.8rem;
+    line-height: 1.35;
+}
+
+.hb-reason {
+    display: block;
+}
+
+.hb-reason i {
+    margin-right: 4px;
+    opacity: 0.8;
+}
+
+.hb-reason[data-reason="riesgo"] i {
+    color: #e08a7a;
+}
+
+.hb-reason[data-reason="oficio"] i {
+    color: #8fc7e6;
+}
+
+.hb-reason[data-reason="coste"] i {
+    color: var(--gs-accent-gold, #e7c36a);
+}
+
+/* E8.6: un veterano, con su apodo. */
+.hb-veteran {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.85rem;
+    font-weight: bold;
+    color: var(--gs-accent-gold, #e7c36a);
+}
+
+/* E8.2: la tarjeta de los dones épicos. */
+.ll-boons .ll-note {
+    margin: 6px 0 10px;
+    font-size: 0.9rem;
+    opacity: 0.85;
+}
+
+.ll-boon-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.ll-boon {
+    display: block;
+    width: 100%;
+    text-align: left;
+    white-space: normal;
+    padding: 8px 10px;
+}
+
+.ll-boon.is-picked {
+    outline: 2px solid var(--gs-accent-gold, #e7c36a);
+}
+
+/* E8.3: los maestros del gremio, en el Salón de la fama. */
+.hall-retired {
+    border-left: 3px solid var(--gs-accent-gold, #e7c36a);
+    padding-left: 8px;
+}

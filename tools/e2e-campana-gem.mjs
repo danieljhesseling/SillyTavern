@@ -37,6 +37,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 // D-J62, el modo guiado: lo del gremio en la Casa del Gremio; se va y se entra por lo que pide la historia.
 import { alSitio, enElGremio, pasoDeLaHistoria, salirDelTablero, seguirElCamino, viajarAPasoNormal } from './e2e-guiado.mjs';
+import { entrarEnLaPelea } from './e2e-entrar-pelea.mjs';
 import { pathToFileURL } from 'node:url';
 
 const ROOT = new URL('..', import.meta.url).pathname.replace(/^[/]([A-Za-z]:)/, '$1');
@@ -346,8 +347,16 @@ try {
     await page.waitForTimeout(1500);
     await settle();
     // D-J62: «Saltar la prueba» está en la Casa del Gremio, fuera del tablero del muelle. La ventana
-    // del ratero (pelear o hablar) tapa el pueblo: no es de esta prueba, se cierra (como en e2e-actos).
-    await page.evaluate(() => document.querySelectorAll('dialog.ev-avoid[open]').forEach(d => /** @type {any} */ (d).close()));
+    // del ratero (pelear o hablar) no se puede cerrar sin elegir: se pelea y se gana, como quien
+    // juega. Cerrarla a mano dejaba la pelea «decidiéndose» para siempre (`fightEntryState`), y
+    // ninguna pelea de después se abría sola (los lobos del camino del monte).
+    const quitarLaDecision = async () => {
+        if (!(await page.evaluate(() => Boolean(document.querySelector('dialog.ev-avoid[open]'))))) return;
+        if (await entrarEnLaPelea(page, { ms: 10000 })) await winFight();
+        await page.waitForTimeout(800);
+        await settle();
+    };
+    await quitarLaDecision();
     await salirDelTablero(page);
     // Si la pelea del muelle ya se está decidiendo, lo mismo que hace el botón.
     if (!(await until(() => enElGremio(page, 'hub-skip'), 15000))) await page.evaluate(async () => { void (await import('/scripts/party/hub.js')).skipHubTrial(); });
@@ -356,7 +365,7 @@ try {
     await page.waitForTimeout(1500);
     await settle();
     const skipped = await until(async () => (await state()).done.includes('la-prueba'), 20000);
-    await page.evaluate(() => document.querySelectorAll('dialog.ev-avoid[open]').forEach(d => /** @type {any} */ (d).close()));
+    await quitarLaDecision();
     check('en el gremio con Iria, y la prueba saltada', inHub && skipped, JSON.stringify({ state: await state(), chips: await chips() }));
     read.length = 0;
     plates.length = 0;
@@ -456,9 +465,50 @@ try {
         }
         // Quien espera a la vista se ofrece con «Iniciar combate»; en una mazmorra, quien duerme
         // tras una puerta se despierta al abrirla: se abren una a una hasta dar con la pelea.
-        let fight = false;
-        for (let i = 0; i < 6 && !fight; i++) {
+        // Tanda 10: ya no hay «Iniciar combate»: con quien espera a la vista, la pelea se abre sola
+        // (la decisión y colocarse), como quien juega (`entrarEnLaPelea`).
+        let fight = await entrarEnLaPelea(page, { ms: 12000 }) && await until(async () => (await state()).fighting, 8000);
+        // Si los que esperan están lejos y aún no os ven, se anda hacia ellos, como quien pulsa una
+        // casilla del tablero (J12.4, `groupMoveTo`): al veros, la pelea se abre sola.
+        if (!fight && !(await state()).fighting) {
+            console.log('sin pelea aún:', JSON.stringify(await page.evaluate(async () => {
+                const view = await import('/scripts/party/board-view.js');
+                const ctx = window.SillyTavern.getContext();
+                return {
+                    waiting: view.lastWaiting,
+                    party: (ctx.chatMetadata?.partyMembers ?? []).map((/** @type {any} */ m) => m.mapPosition),
+                    dialogs: [...document.querySelectorAll('dialog[open], .popup[open]')].map(d => d.className),
+                    paused: document.body.classList.contains('game-shell-paused'),
+                    scene: document.querySelector('#game-shell')?.getAttribute('data-scene'),
+                    scenesPending: (await import('/scripts/party/plot.js')).scenesPending,
+                    fightWaitingHere: (await import('/scripts/party/fight-entry.js')).fightWaitingHere(),
+                    entry: (await import('/scripts/party/fight-entry.js')).fightEntryState(),
+                    switching: (await import('/scripts/game-engine/ui/shell/chat-switch.js')).isChatSwitching(),
+                    popups: [...document.querySelectorAll('.popup')].map(d => `${d.className}|${d.hasAttribute('open')}|${d.hasAttribute('closing')}`),
+                    members: (await import('/scripts/party/state.js').catch(() => ({})))?.partyMembers?.length ?? null,
+                };
+            })));
+            await page.evaluate(async () => {
+                const view = await import('/scripts/party/board-view.js');
+                const board = await import('/scripts/party/board.js');
+                const foe = view.lastWaiting.placements[0];
+                if (!foe) return;
+                for (let r = 1; r <= 4; r++) {
+                    for (const [dx, dy] of [[-r, 0], [0, -r], [-r, -r], [r, 0], [0, r], [-r, r], [r, -r], [r, r]]) {
+                        const plan = board.groupMoveTo(Number(foe.x) + dx, Number(foe.y) + dy);
+                        if (plan?.allowed) {
+                            (await import('/scripts/party.js')).refreshBoardView();
+                            return;
+                        }
+                    }
+                }
+            });
+            await page.evaluate(() => document.querySelectorAll('#toast-container .toast').forEach(t => t.remove()));
+            fight = await entrarEnLaPelea(page, { ms: 12000 }) && await until(async () => (await state()).fighting, 8000);
+        }
+        for (let i = 0; i < 10 && !fight; i++) {
             if ((await state()).fighting) { fight = true; break; }
+            if (await entrarEnLaPelea(page, { ms: 3000 })) { fight = await until(async () => (await state()).fighting, 8000); break; }
             if (await until(async () => (await chips()).some(c => new RegExp(`^Iniciar combate.*${foe}`).test(c)), i === 0 ? 8000 : 2000)) {
                 await clickChip(/^Iniciar combate/);
                 fight = await until(async () => (await state()).fighting, 8000);
@@ -467,7 +517,8 @@ try {
             if (!(await clickChip(/^Abrir la puerta/))) break;
             await page.waitForTimeout(1200);
             await settle();
-            fight = await until(async () => (await state()).fighting, 3000);
+            // Quien duerme tras la puerta se despierta: «¡Emboscada!», colocarse y «Empezar».
+            fight = await entrarEnLaPelea(page, { ms: 5000 }) && await until(async () => (await state()).fighting, 8000);
         }
         await winFight();
         await page.waitForTimeout(1200);

@@ -38,14 +38,18 @@ import { skillModifier } from '../game-engine/rules/checks.js';
 import { critEffect } from '../game-engine/combat/crits.js';
 import { traitBonus, knackBonus } from '../game-engine/campaign/feats.js';
 import { planFollowUp, planBatonPass, planUltimate } from '../game-engine/combat/bond-perks.js';
+import { sneakLine } from '../game-engine/rules/sneak-attack.js';
 import { spendPerk } from '../game-engine/campaign/bonds.js';
 import { lineToEntry } from '../game-engine/ui/combat-log.js';
 import { clearTimersFor } from '../game-engine/combat/condition-timers.js';
 import { brawlOf } from '../game-engine/combat/brawl.js';
 import {
     MASTERIES, masteryOf, isLightWeapon, isRangedWeapon, hasWeaponMastery, masteryDC, masteryFires, grazeDamage, toppled,
-    pushPath, cleaveTarget, combineEdge, turnFlags, markTurn, noteVex, takeVex, hasVex,
+    cleaveTarget, combineEdge, turnFlags, markTurn, noteVex, takeVex, hasVex,
 } from '../game-engine/rules/weapon-mastery.js';
+// E1.2 de ROADMAP_ENTRETENIDO: empujar donde duele (desniveles, agua honda), con la misma regla que ellos.
+import { pushTrail } from '../game-engine/combat/ai-2024.js';
+import { pushGround, landing } from '../game-engine/board/falls.js';
 import { saveLine } from '../game-engine/rules/unarmed.js';
 import { crawlCost } from '../game-engine/rules/actions-2024.js';
 import { conditionSaid } from '../game-engine/rules/abilities.js';
@@ -54,10 +58,10 @@ import { applyTimedCondition } from './magic.js';
 import {
     enemyTokenId, getAliveEnemies, getAttackableEnemiesForMember, getCurrentActingMember, getCurrentTurnEntry,
     getCurrentTurnState, getRemainingMovementFeet, getTargetArmorClass, heightFor, occupiedCellsFor, partyCell,
-    partyFlanks, resetCombatTurnState, saveCombatState, speedOf, actsOnItsOwn,
+    partyFlanks, saveCombatState, speedOf, actsOnItsOwn,
 } from './combat-state.js';
 import { floatOnToken, pushCombatLogEntry, showCombatDiceRoll } from './combat-log.js';
-import { stageCall, stageMove } from './combat-fx.js';
+import { stageAttack, stageCall, stageMove } from './combat-fx.js';
 import { chargeOpportunityAttacks, enemyBark, resolveEnemyAttackOn } from './enemy-turn.js';
 import { checkScenarioOutcome, endCombat, judgeCurrentScenario, offerExit, runCombatTurnLoop } from './combat-flow.js';
 import {
@@ -69,6 +73,9 @@ import { getCampaignBonds, saveCampaignState } from './time.js';
 import { postCombatNarration, soundCue, showTip } from './narration.js';
 import { savePartyState } from './roster.js';
 import { bark, recordFeat } from './companions.js';
+import { sneakFor, spendSneak } from './combo-rules.js';
+import { announceBond } from './bond-play.js';
+import { relayOrder, stillToAct, ultimateOf } from '../game-engine/combat/bond-moves.js';
 
 /** @typedef {import('./types.js').PartyMember} PartyMember */
 
@@ -132,7 +139,41 @@ export function resolveUltimateStrike(rawTargetName) {
         toastr.warning(`"${rawTargetName}" no esta a tu alcance.`);
         return '';
     }
+    return ultimateOn(member, target);
+}
 
+/**
+ * E3.4: el golpe definitivo contra un enemigo por su id (la barra de acciones, y el compañero que
+ * va solo).
+ *
+ * @param {string} targetId
+ * @returns {string}
+ */
+export function resolveUltimateById(targetId) {
+    const entry = getCurrentTurnEntry();
+    const member = getCurrentActingMember();
+    if (!combatEncounter.active || !entry || entry.isEnemy || !member) return '';
+    const target = getAttackableEnemiesForMember(member).find(enemy => String(enemy.instanceId) === String(targetId));
+    if (!target) {
+        toastr.warning('Ese enemigo no está a tu alcance.');
+        return '';
+    }
+    return ultimateOn(member, target);
+}
+
+/**
+ * El golpe definitivo, ya con quién y contra quién: gasta la acción y el del día, lo dice quien lo
+ * da (E3.4) y se ve llegar.
+ *
+ * @param {any} member
+ * @param {any} target
+ * @returns {string}
+ */
+function ultimateOn(member, target) {
+    if (!hasAction(combatEncounter, 'action')) {
+        toastr.warning('Tu accion de este turno ya fue usada.');
+        return '';
+    }
     const plan = planUltimate({
         bonds: getCampaignBonds(),
         party: partyMembers,
@@ -145,17 +186,26 @@ export function resolveUltimateStrike(rawTargetName) {
         return '';
     }
 
+    Object.assign(combatEncounter, useAction(combatEncounter, 'action'));
+    // E3.4: lo dice él, su ficha brilla, y el golpe se ve llegar.
+    announceBond(member, 'ultimate');
+    stageAttack(member, target, isRangedWeapon(heldWeapon(member)) ? 'ranged' : 'melee');
     target.currentHp = Math.max(0, (Number(target.currentHp) || 0) - plan.damage);
     combatEncounter.tally = noteDealt(combatEncounter.tally, plan.actorId, plan.damage, target.currentHp === 0);
+    floatOnToken(enemyTokenId(target), `-${plan.damage}`, 'crit');
     saveCampaignState(null, spendPerk(getCampaignBonds(), plan.actorId, 'ultimate'));
     saveCombatState();
 
-    pushCombatLogEntry(lineToEntry(`${plan.reason} ${plan.damage} de dano a ${target.name}.`));
-    postCombatNarration(`✨ [COMBAT] ${plan.actorName} usa su golpe definitivo contra ${target.name}: ${plan.damage} de dano.`);
+    pushCombatLogEntry(lineToEntry(`${plan.reason} ${plan.damage} de daño a ${target.name}.`));
+    postCombatNarration(`✨ [COMBAT] ${plan.actorName}: «${ultimateOf(member).name}» contra ${target.name}, sin tirar: ${plan.damage} de daño. ${target.name}: ${target.currentHp}/${target.maxHp}.`);
 
     if (target.currentHp <= 0) {
+        recordFeat(member, 'kill', String(target.name));
         postCombatNarration(`☠️ [COMBAT] ${target.name} cae.`);
-        checkScenarioOutcome();
+        if (!checkScenarioOutcome() && getAliveEnemies().length === 0 && !judgeCurrentScenario()) {
+            postCombatNarration('🏆 [COMBAT] Todos los enemigos han sido derrotados.');
+            endCombat('victory');
+        }
     }
 
     renderLocationMapsPreview();
@@ -187,6 +237,9 @@ export function resolvePairStrike(member, partnerId, enemy) {
     const partner = partyMembers.find(m => String(m.id) === String(partnerId));
     if (!partner || !combatEncounter.active) return;
     usedReactions.add(`party:${partner.id}`);
+    // E3.4: lo dice el compañero (el del vínculo), y se ve en el tablero.
+    const heroFirst = String(member.id) === String(partyMembers[0]?.id);
+    announceBond(heroFirst ? partner : member, 'pair', { partner: heroFirst ? member : partner });
     postCombatNarration(`[COMBAT] ${pairLine(String(member.name), String(partner.name), String(enemy.name))}`);
     combatEncounter.maneuvers = recordManeuver(combatEncounter.maneuvers, 'ayudar', String(partner.id), String(enemy.instanceId));
     handlePlayerCombatAttack(String(enemy.name));
@@ -195,15 +248,45 @@ export function resolvePairStrike(member, partnerId, enemy) {
     }
 }
 
+/**
+ * El golpe de quien no tiene el turno: el de seguimiento del vínculo 3, el de «a una» y los de las
+ * jugadas del vínculo 7 (`bond-play.js`). Un ataque de verdad, con las reglas de siempre.
+ *
+ * @param {string} actorId
+ * @param {any} target
+ * @param {string} [how] Cómo se dice («ataca de seguimiento a»).
+ * @param {'advantage'|'disadvantage'|'normal'} [mode] Lo que suma la jugada a las reglas de siempre.
+ * @returns {boolean} Si ha acertado.
+ */
 export function resolveFollowUpAttack(actorId, target, how = 'ataca de seguimiento a', mode = /** @type {'advantage'|'disadvantage'|'normal'} */ ('normal')) {
     const ally = partyMembers.find(m => String(m.id) === String(actorId));
-    if (!ally || (target.currentHp || 0) <= 0) return;
+    if (!ally || (target.currentHp || 0) <= 0) return false;
 
     const rangeFeet = getAttackRangeFeet(ally);
     // Al d20, la característica y la competencia; al daño, solo la característica.
     const attackMod = getPlayerAttackBonus(ally, rangeFeet);
+    // E3.1: también aquí cuentan las reglas de siempre (en el suelo, sujeto, la niebla…); la jugada
+    // en pareja (R3) suma su ventaja a esas.
+    const allyCell = partyCell(ally);
+    const targetCell = { x: Number(target.gridX) || 0, y: Number(target.gridY) || 0 };
+    const followFeet = getDistanceInFeet(allyCell.x, allyCell.y, targetCell.x, targetCell.y);
+    const followBase = attackEdge({
+        targetId: String(target.instanceId),
+        height: heightFor(allyCell, targetCell),
+        targetConditions: target.activeConditions ?? [],
+        attackerConditions: ally.activeConditions ?? [],
+        distanceFeet: followFeet,
+        maneuvers: combatEncounter.maneuvers,
+        byParty: true,
+        flanked: partyFlanks(ally, target),
+        attackerId: String(ally.id),
+        hindered: attackHindrance(allyCell, targetCell, followFeet),
+        grappledBy: String(/** @type {any} */ (ally).grappledBy ?? ''),
+    });
+    const followEdge = combineEdge(followBase, mode === 'advantage' ? ['vais a una'] : [], mode === 'disadvantage' ? ['va a destiempo'] : []);
     // R3: la jugada en pareja va con ventaja.
-    const edged = rollWithEdge(() => rollDiceDetailed('1d20', 20).total, mode);
+    const edged = rollWithEdge(() => rollDiceDetailed('1d20', 20).total, followEdge.mode);
+    if (followBase.usesHelp) combatEncounter.maneuvers = consumeHelp(combatEncounter.maneuvers, String(target.instanceId));
     const attackRoll = { total: edged.natural, natural: edged.natural };
     const attackTotal = attackRoll.total + attackMod;
     const { ac: targetAc, cover } = getTargetArmorClass(target, ally);
@@ -220,32 +303,41 @@ export function resolveFollowUpAttack(actorId, target, how = 'ataca de seguimien
         natural: attackRoll.natural,
         glyph: 'd20',
         // Tanda 17: en la secuencia del combate.
-        stage: { by: ally, at: target, hit: isHit, roll: edged, edge: mode, against: 'CA', style: rangeFeet > 5 ? 'ranged' : 'melee' },
+        stage: { by: ally, at: target, hit: isHit, roll: edged, edge: followEdge.mode, against: 'CA', style: rangeFeet > 5 ? 'ranged' : 'melee' },
     });
 
     const lines = [];
     lines.push(`🤝 ${ally.name} ${how} ${target.name}.`);
-    lines.push(attackLine({ who: ally.name, at: target.name, total: attackTotal, ac: targetAc, hit: isHit, natural: attackRoll.total, modifier: attackMod, cover }));
+    lines.push(attackLine({ who: ally.name, at: target.name, total: attackTotal, ac: targetAc, hit: isHit, natural: attackRoll.total, modifier: attackMod, cover, edge: describeEdge(edged, followEdge.mode, followEdge.reasons) }));
 
     if (!isHit) {
         lines.push('❌ Resultado: fallo.');
         saveCombatState();
         postCombatNarration(lines.join('\n'));
-        return;
+        return false;
     }
 
     const damageFormula = getPlayerDamageFormula(ally, rangeFeet);
     const damageRoll = rollDiceDetailed(damageFormula, 8);
     const critRoll = isCrit ? rollDiceDetailed(damageFormula, 8) : null;
     const damageMod = Math.max(0, getPlayerAttackModifier(ally, rangeFeet));
-    const totalDamage = Math.max(1, damageRoll.total + (critRoll?.total || 0) + damageMod);
+    // E3.1: un pícaro que va a una (o de seguimiento) también mete su furtivo: es el turno de
+    // otro, así que no gasta el suyo.
+    const sneak = sneakFor(ally, brawlOf(combatEncounter) ? null : heldWeapon(ally), target, followEdge);
+    const sneakTotal = sneak.ok ? rollDiceDetailed(sneak.dice, 6).total + (isCrit ? rollDiceDetailed(sneak.dice, 6).total : 0) : 0;
+    if (sneak.ok) spendSneak(ally);
+    const totalDamage = Math.max(1, damageRoll.total + (critRoll?.total || 0) + damageMod) + sneakTotal;
 
     target.currentHp = Math.max(0, (target.currentHp || 0) - totalDamage);
     combatEncounter.tally = noteDealt(combatEncounter.tally, ally.id, totalDamage, target.currentHp === 0);
     floatOnToken(enemyTokenId(target), `-${totalDamage}`, 'damage');
     if (target.currentHp === 0) recordFeat(ally, 'kill', String(target.name));
     lines.push(`✅ Resultado: impacto${isCrit ? ' critico' : ''}.`);
-    lines.push(damageLine({ total: totalDamage, formula: damageFormula, rolled: damageRoll.total, modifier: damageMod }));
+    lines.push(damageLine({
+        total: totalDamage, formula: damageFormula, rolled: damageRoll.total, modifier: damageMod, crit: isCrit ? (critRoll?.total || 0) : 0,
+        extra: sneak.ok ? `furtivo +${sneakTotal}` : '',
+    }));
+    if (sneak.ok) lines.push(sneakLine({ dice: sneak.dice, total: sneakTotal, why: sneak.why, crit: isCrit }));
     lines.push(`❤️ Estado de ${target.name}: ${target.currentHp}/${target.maxHp}`);
 
     if (target.currentHp === 0) lines.push(`☠️ ${target.name} cae derrotado.`);
@@ -257,6 +349,7 @@ export function resolveFollowUpAttack(actorId, target, how = 'ataca de seguimien
         postCombatNarration('🏆 [COMBAT] Todos los enemigos han sido derrotados.');
         endCombat('victory');
     }
+    return true;
 }
 
 /**
@@ -268,19 +361,24 @@ export function resolveFollowUpAttack(actorId, target, how = 'ataca de seguimien
  * @param {PartyMember} actor
  */
 function offerBatonPass(actor) {
+    // E3.4: solo si lo llevas tú: el turno de un compañero que va solo no espera a un botón.
+    const entry = getCurrentTurnEntry();
+    if (!entry || entry.isEnemy || String(entry.id) !== String(actor.id) || actsOnItsOwn(entry)) return;
     const remainingFeet = getRemainingMovementFeet(actor);
     const candidates = planBatonPass({
         bonds: getCampaignBonds(),
         party: partyMembers,
         actorId: String(actor.id),
         remainingFeet,
+        // E3.4: solo a quien aún no ha jugado esta ronda: así nadie juega dos veces.
+        waiting: stillToAct(combatEncounter.turnOrder, combatEncounter.currentTurnIndex),
     });
 
     if (candidates.length === 0) return;
 
     const names = candidates.map(c => c.name).join(', ');
     postCombatNarration(
-        `🔄 [COMBAT] ${actor.name} puede ceder ${remainingFeet} pies de movimiento a: ${names}.`,
+        `🔄 [COMBAT] ${actor.name} puede pasarle el turno a: ${names}.`,
     );
 
     // Y con un boton, porque decirle a alguien que escriba un comando en mitad de un
@@ -310,10 +408,11 @@ export function handleBatonPass(wantedName) {
         party: partyMembers,
         actorId: String(actor.id),
         remainingFeet,
+        waiting: stillToAct(combatEncounter.turnOrder, combatEncounter.currentTurnIndex),
     });
 
     if (candidates.length === 0) {
-        toastr.warning('No puedes ceder movimiento ahora mismo.');
+        toastr.warning('Ahora no puedes pasar el turno: hace falta vínculo 5, haber tumbado a alguien y que quede alguien del grupo por jugar.');
         return '';
     }
 
@@ -324,18 +423,22 @@ export function handleBatonPass(wantedName) {
         return '';
     }
 
-    // Spent for the day, and the turn moves to whoever received it: that is what
-    // makes the relay a tactical choice and not free movement for everyone.
-    saveCampaignState(null, spendPerk(getCampaignBonds(), String(actor.id), 'baton_pass'));
-
-    const index = combatEncounter.turnOrder.findIndex(e => !e.isEnemy && String(e.id) === chosen.id);
-    if (index >= 0) {
-        combatEncounter.currentTurnIndex = index;
-        resetCombatTurnState(combatEncounter.turnOrder[index]);
+    // E3.4: quien lo recibe juega justo después; la ronda sigue como estaba (antes saltaba a su
+    // sitio de la iniciativa, y quien iba entre medias jugaba dos veces o se quedaba sin jugar).
+    const order = relayOrder(combatEncounter.turnOrder, combatEncounter.currentTurnIndex, chosen.id);
+    if (!order) {
+        toastr.warning(`${chosen.name} ya ha jugado esta ronda.`);
+        return '';
     }
+    // Spent for the day: that is what makes the relay a tactical choice.
+    saveCampaignState(null, spendPerk(getCampaignBonds(), String(actor.id), 'baton_pass'));
+    combatEncounter.turnOrder = order;
+    saveCombatState();
 
-    postCombatNarration(`🔄 [COMBAT] ${actor.name} cede el relevo a ${chosen.name}.`);
-    renderLocationMapsPreview();
+    postCombatNarration(`🔄 [COMBAT] ${actor.name} le pasa el turno a ${chosen.name}: juega ya.`);
+    announceBond(actor, 'baton_pass', { partner: partyMembers.find(m => String(m.id) === chosen.id) ?? null });
+    // Su turno acaba aquí y empieza el de quien lo recibe.
+    endPlayerCombatTurn();
     return chosen.name;
 }
 
@@ -353,8 +456,10 @@ function showBatonPassOffer(actor, candidates, remainingFeet) {
     $('.bp-offer').remove();
 
     const root = $('<div class="bp-offer"></div>');
+    // E3.4: el Relevo pasa el turno, no solo los pies (`relayOrder`).
     root.append($('<div class="bp-title"></div>').text(
-        `${actor.name} puede ceder ${remainingFeet} pies`));
+        `Relevo: ${actor.name} puede pasarle el turno a…`));
+    root.attr('title', `Le quedan ${remainingFeet} pies: quien lo recibe juega justo ahora.`);
 
     for (const candidate of candidates) {
         const button = $('<button class="menu_button bp-btn" type="button"></button>');
@@ -567,22 +672,59 @@ export function shoveGround() {
  * @returns {string[]}
  */
 export function pushEnemyAway(member, target, cells) {
-    const ground = shoveGround();
-    const from = { x: Number(member.mapPosition?.gridX) || 0, y: Number(member.mapPosition?.gridY) || 0 };
-    const path = pushPath({ from, target: { x: Number(target.gridX) || 0, y: Number(target.gridY) || 0 }, cells, ...ground });
-    if (path.falls) {
-        target.gridX = path.to.x;
-        target.gridY = path.to.y;
+    // E1.2: lo que hay en el camino: el vacío, un desnivel (1d6 por cada 10 pies, y al suelo),
+    // el agua honda (cae y sale como puede) o lo que quema.
+    const trail = enemyPushTrail(member, target, cells);
+    const id = String(target.instanceId);
+    const fell = landing({ name: String(target.name), trail, roll: (formula) => rollWith(formula, nextRandom).total });
+    if (fell.out) {
+        target.gridX = trail.to.x;
+        target.gridY = trail.to.y;
         target.currentHp = 0;
-        combatEncounter.conditionTimers = clearTimersFor(combatEncounter.conditionTimers, String(target.instanceId));
+        combatEncounter.conditionTimers = clearTimersFor(combatEncounter.conditionTimers, id);
         const fallingId = enemyTokenId(target);
         stageCall(() => $(`.wm-token[data-token-id="${fallingId}"]`).addClass('wm-token-falling'));
-        return [`🕳️ ${target.name} pierde pie y cae al vacío.`];
+        return fell.lines;
     }
-    if (path.moved === 0) return [`🧱 ${target.name} no tiene a dónde ir: se queda donde está.`];
-    target.gridX = path.to.x;
-    target.gridY = path.to.y;
-    return [`💨 ${target.name} sale despedido ${path.moved * 5} pies, hasta (${path.to.x + 1}, ${path.to.y + 1}).`, ...shovedInto(target, path.to)];
+    if (trail.moved > 0) {
+        target.gridX = trail.to.x;
+        target.gridY = trail.to.y;
+    }
+    const lines = [...fell.lines];
+    if (fell.damage > 0) {
+        target.currentHp = Math.max(0, (Number(target.currentHp) || 0) - fell.damage);
+        floatOnToken(enemyTokenId(target), `-${fell.damage}`, 'damage');
+        if (target.currentHp === 0) lines.push(`☠️ ${target.name} no se levanta.`);
+    }
+    if ((Number(target.currentHp) || 0) > 0) {
+        if (fell.prone) applyTimedCondition(target, id, 'Prone', 1);
+        if (fell.slowed) applyTimedCondition(target, id, 'Ralentizado', 1);
+    }
+    return trail.moved > 0 && trail.why !== 'water' ? [...lines, ...shovedInto(target, trail.to)] : lines;
+}
+
+/**
+ * E1.2: por dónde va a parar un enemigo al que se aparta `cells` casillas desde quien empuja,
+ * con lo que hay en el tablero (`pushTrail` de `ai-2024.js`, el mismo con el que empujan ellos).
+ *
+ * @param {any} member
+ * @param {any} target
+ * @param {number} cells
+ * @returns {{to: {x: number, y: number}, moved: number, why: string, dropFeet: number}}
+ */
+export function enemyPushTrail(member, target, cells) {
+    const { terrain, gridWidth, gridHeight, board } = getActiveBoardContext();
+    const taken = new Set([
+        ...getAliveEnemies().map((/** @type {any} */ e) => cellKey(Number(e.gridX) || 0, Number(e.gridY) || 0)),
+        ...partyMembers.filter(m => (Number(m.hp) || 0) > 0)
+            .map(m => cellKey(Number(m.mapPosition?.gridX) || 0, Number(m.mapPosition?.gridY) || 0)),
+    ]);
+    const ground = pushGround({
+        terrain, width: gridWidth, height: gridHeight, taken, elevation: board?.elevation ?? null,
+        isHazard: (x, y) => Boolean(board) && hazardsAt(board, x, y).some((/** @type {any} */ h) => h.armed),
+    });
+    const from = { x: Number(member.mapPosition?.gridX) || 0, y: Number(member.mapPosition?.gridY) || 0 };
+    return pushTrail({ from, target: { x: Number(target.gridX) || 0, y: Number(target.gridY) || 0 }, cells, ground });
 }
 
 /**
@@ -984,6 +1126,8 @@ export function performManeuver(kind, targetId = '') {
         lines.push(rollLine({ what: 'Agarrar', who: member.name, at: target.name, total: attackRoll + mine, against: defenseRoll + theirs, label: '', success: attackRoll + mine > defenseRoll + theirs, natural: attackRoll, modifier: mine }));
         if (attackRoll + mine > defenseRoll + theirs) {
             applyTimedCondition(target, String(target.instanceId), 'Grappled', 1);
+            // E3.1: quién le agarra: a los demás les pega con desventaja (2024).
+            target.grappledBy = String(member.id);
             lines.push(`✅ ${target.name} queda agarrado: no se mueve hasta el próximo turno de ${member.name}.`);
         } else {
             lines.push(`❌ ${target.name} se suelta.`);
@@ -1037,12 +1181,10 @@ export function performManeuver(kind, targetId = '') {
             const fallingId = enemyTokenId(target);
             stageCall(() => $(`.wm-token[data-token-id="${fallingId}"]`).addClass('wm-token-falling'));
             fellThisTurn = true;
-        } else if (shove.pushedTo) {
-            target.gridX = shove.pushedTo.x;
-            target.gridY = shove.pushedTo.y;
-            lines.push(`✅ ${target.name} retrocede a (${shove.pushedTo.x + 1}, ${shove.pushedTo.y + 1}).`);
-            // Idea 9: si detras habia algo puesto (una trampa, fuego), lo pisa el.
-            lines.push(...shovedInto(target, shove.pushedTo));
+        } else if (shove.pushedTo || enemyPushTrail(member, target, 1).why === 'water') {
+            // E1.2: como Empujar: lo que hay detrás cuenta (un desnivel, el agua honda, una trampa,
+            // el fuego).
+            lines.push(...pushEnemyAway(member, target, 1));
         } else {
             // Sin sitio detras, cae: el empujon no se pierde, cambia de forma.
             applyTimedCondition(target, String(target.instanceId), 'Prone', 1);
@@ -1188,6 +1330,8 @@ function strikeEnemy(member, target, opts = {}) {
         flanked: partyFlanks(member, target),
         attackerId: String(member.id),
         hindered: attackHindrance(partyCell(member), { x: Number(target.gridX) || 0, y: Number(target.gridY) || 0 }, distanceFeet),
+        // E3.1: agarrado, pega con desventaja a quien no le agarra (2024).
+        grappledBy: String(member.grappledBy ?? ''),
     });
     const edge = { ...baseEdge, ...combineEdge(baseEdge, vexed ? ['le tienes molestado'] : []) };
     const edged = rollWithEdge(() => rollDiceDetailed('1d20', 20).total, edge.mode);
@@ -1271,25 +1415,35 @@ function strikeEnemy(member, target, opts = {}) {
     const weaponName = String(weapon?.name ?? '');
     // Tanda 10: con la otra mano no se suma el modificador al daño, salvo que reste (2024).
     const damageMod = (opts.offHand ? Math.min(0, abilityMod) : Math.max(0, abilityMod)) + knackBonus(member, weaponName) + weaponBonus(wielder);
-    const totalDamage = Math.max(1, damageRoll.total + (critRoll?.total || 0) + damageMod);
+    // E3.1: el furtivo del pícaro (2024), una vez por turno: con ventaja, o con un aliado pegado al
+    // objetivo y sin desventaja. Con crítico, sus dados también se doblan.
+    const sneak = sneakFor(member, brawlOf(combatEncounter) ? null : weapon, target, edge);
+    const sneakTotal = sneak.ok ? rollDiceDetailed(sneak.dice, 6).total + (isCrit ? rollDiceDetailed(sneak.dice, 6).total : 0) : 0;
+    if (sneak.ok) spendSneak(member);
+    const sneakDice = sneak.ok ? ` + ${sneak.dice}${isCrit ? ` + ${sneak.dice}` : ''}` : '';
+    const totalDamage = Math.max(1, damageRoll.total + (critRoll?.total || 0) + damageMod) + sneakTotal;
     if (weaponName) recordFeat(member, 'hit', weaponName);
 
     showCombatDiceRoll({
         title: `${member.name} tira daño`,
         subtitle: `Contra ${target.name}`,
-        formula: `${damageFormula}${isCrit ? ` + ${damageFormula}` : ''}`,
-        detail: isCrit
+        formula: `${damageFormula}${isCrit ? ` + ${damageFormula}` : ''}${sneakDice}`,
+        detail: (isCrit
             ? `${damageRoll.rolls.join(', ')} + crítico(${critRoll?.rolls.join(', ') || ''}) + mod(${damageMod})`
-            : `${damageRoll.rolls.join(', ')} + mod(${damageMod})`,
+            : `${damageRoll.rolls.join(', ')} + mod(${damageMod})`) + (sneak.ok ? ` + furtivo(${sneakTotal})` : ''),
         total: totalDamage,
         glyph: 'dmg',
-        stage: { dice: `${damageFormula}${isCrit ? ` + ${damageFormula}` : ''}`, modifier: damageMod, crit: isCrit },
+        stage: { dice: `${damageFormula}${isCrit ? ` + ${damageFormula}` : ''}${sneakDice}`, modifier: damageMod, crit: isCrit },
     });
 
     target.currentHp = Math.max(0, (target.currentHp || 0) - totalDamage);
     combatEncounter.tally = noteDealt(combatEncounter.tally, member.id, totalDamage, target.currentHp === 0);
     lines.push(`✅ Resultado: impacto${isCrit ? ' critico' : ''}.`);
-    lines.push(damageLine({ total: totalDamage, formula: damageFormula, rolled: damageRoll.total, modifier: damageMod, crit: isCrit ? (critRoll?.total || 0) : 0 }));
+    lines.push(damageLine({
+        total: totalDamage, formula: damageFormula, rolled: damageRoll.total, modifier: damageMod, crit: isCrit ? (critRoll?.total || 0) : 0,
+        extra: sneak.ok ? `furtivo +${sneakTotal}` : '',
+    }));
+    if (sneak.ok) lines.push(sneakLine({ dice: sneak.dice, total: sneakTotal, why: sneak.why, crit: isCrit }));
     floatOnToken(enemyTokenId(target), `-${totalDamage}`, isCrit ? 'crit' : 'damage');
     if (isCrit) recordFeat(member, 'crit');
     // Idea 17: rematar la jugada de un compañero suma.
@@ -1368,6 +1522,8 @@ function strikeEnemy(member, target, opts = {}) {
             lines.push(`🤝 ${followUp.actorName} aprovecha el hueco y ataca también.`);
             saveCombatState();
             postCombatNarration(lines.join('\n'));
+            // E3.4: el compañero lo dice, y su ficha brilla con la tuya.
+            announceBond(partyMembers.find(m => String(m.id) === followUp.actorId), 'follow_up', { partner: member });
             // Resolved as a real attack, so it rolls, it can miss and it is logged like
             // any other: a free hit that always lands is not a perk, it is a cheat.
             resolveFollowUpAttack(followUp.actorId, target);

@@ -26,6 +26,7 @@
 
 import { ARC_PERKS } from '../campaign/companion-arcs.js';
 import { TREE_NODES, nextTreeSteps } from './class-trees.js';
+import { boonBonus } from './epic-boons.js';
 
 /** @type {Perk[]} */
 export const PERKS = [
@@ -121,7 +122,9 @@ export function perkBonus(member, kind, skill = '') {
     return perksOf(member).reduce((sum, perk) => {
         if (kind === 'skill') return sum + (perk.effect.skill === skill ? Number(perk.effect.amount) || 0 : 0);
         return sum + (Number(perk.effect[kind]) || 0);
-    }, 0);
+    }, 0)
+        // E8.2: los dones épicos, después del nivel 20, suman donde suman las mejoras.
+        + boonBonus(member, kind, skill);
 }
 
 /**

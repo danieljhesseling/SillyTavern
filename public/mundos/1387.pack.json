@@ -1171,6 +1171,7 @@
       "armorClass": 13,
       "cr": 0.5,
       "profile": "skirmisher",
+      "perception": 3,
       "attackRangeFeet": 30,
       "abilities": [
         "hab-esfumarse",
@@ -1389,6 +1390,12 @@
         "kind": "milestone",
         "id": "el-caliz-ensangrentado"
       }
+    },
+    {
+      "name": "Mapa de las trochas de los Lobos",
+      "type": "gear",
+      "rarity": "Uncommon",
+      "description": "Un trozo de piel curtida con las trochas del bosque pintadas a carbón, y unas cruces donde los Lobos esconden lo que roban en el camino."
     },
     {
       "name": "Libro de cuentas negro",
@@ -2384,11 +2391,11 @@
       "locationName": "El Pueblo de Barro",
       "map": [
         "#################",
-        "#~c~~....~C...~.#",
-        "#~~......~~~~...#",
-        "#.......c...~~..#",
-        "#...C......~c~..#",
-        "#.......~~......#",
+        "#wcww....wC...w.#",
+        "#ww......wwww...#",
+        "#.......c...ww..#",
+        "#...C......wcw..#",
+        "#WWWWWWW..WWWWWW#",
         "#################"
       ],
       "partyStart": [
@@ -2522,7 +2529,7 @@
         "#.~~C~~......~~C~~.#",
         "#.~~~..........~~~.#",
         "#......c....c......#",
-        "#......#D##D#......#",
+        "#......#o##o#......#",
         "#......#....#......#",
         "#......######......#",
         "####################"
@@ -2530,7 +2537,11 @@
       "partyStart": [
         {
           "x": 8,
-          "y": 7
+          "y": 6
+        },
+        {
+          "x": 11,
+          "y": 6
         },
         {
           "x": 9,
@@ -2539,10 +2550,18 @@
         {
           "x": 10,
           "y": 7
-        },
+        }
+      ],
+      "waves": [
         {
-          "x": 11,
-          "y": 7
+          "round": 3,
+          "names": [
+            "Infantería de Keller",
+            "Infantería de Keller"
+          ],
+          "x": 10,
+          "y": 1,
+          "tell": "Gritos en el camino: llegan otros dos de Keller con antorchas."
         }
       ],
       "enemies": [
@@ -2610,14 +2629,14 @@
       "locationName": "El Lago Helado",
       "map": [
         "####################",
-        "#......~~~~~~......#",
-        "#..~~~........~~~..#",
-        "#.~~..c......c..~~.#",
-        "#~~..............~~#",
-        "#~....C..~~..C....~#",
-        "#~~.....~~~~.....~~#",
-        "#.~~~..~~~~~~..~~~.#",
-        "#.....~~~~~~~~.....#",
+        "#......iiiiii......#",
+        "#..iii........iii..#",
+        "#.ii..c......c..ii.#",
+        "#ii......WW......ii#",
+        "#i....C..WW..C....i#",
+        "#ii.....iiii.....ii#",
+        "#.iii..iiWWii..iii.#",
+        "#.....iiiiiiii.....#",
         "####################"
       ],
       "partyStart": [
@@ -2632,6 +2651,24 @@
         {
           "x": 3,
           "y": 5
+        }
+      ],
+      "ward": {
+        "name": "Hermano Silas",
+        "x": 5,
+        "y": 5,
+        "gender": "Hombre"
+      },
+      "waves": [
+        {
+          "round": 3,
+          "names": [
+            "Lobo famélico",
+            "Lobo famélico"
+          ],
+          "x": 18,
+          "y": 4,
+          "tell": "Aúllan más lobos en la otra orilla: vienen a por el monje."
         }
       ],
       "enemies": [
@@ -2653,11 +2690,6 @@
         {
           "name": "Lobo famélico",
           "x": 16,
-          "y": 1
-        },
-        {
-          "name": "Lobo famélico",
-          "x": 10,
           "y": 1
         }
       ]
@@ -2905,14 +2937,14 @@
       "locationName": "El Lago Helado",
       "map": [
         "####################",
-        "#......~~~~~~......#",
-        "#..~~~........~~~..#",
-        "#.~~..c......c..~~.#",
-        "#~~..............~~#",
-        "#~....C..~~..C....~#",
-        "#~~.....~~~~.....~~#",
-        "#.~~~..~~~~~~..~~~.#",
-        "#.....~~~~~~~~.....#",
+        "#......iiiiii......#",
+        "#..iii........iii..#",
+        "#.ii..c......c..ii.#",
+        "#ii.....W.W......ii#",
+        "#i....C.W..W.C....i#",
+        "#ii.....iWWi.....ii#",
+        "#.iii..iiiiii..iii.#",
+        "#.....iiiiiiii.....#",
         "####################"
       ],
       "partyStart": [
@@ -2938,7 +2970,7 @@
         {
           "name": "Perro del Cuervo",
           "x": 10,
-          "y": 4
+          "y": 3
         },
         {
           "name": "Perro del Cuervo",
@@ -3323,14 +3355,14 @@
       "locationName": "El Cruce de Caminos",
       "map": [
         "###################",
-        "#~~~~~....c..~~~~~#",
-        "#~~~........c.~~~~#",
-        "#~~...C..~......~~#",
-        "#.....~~.~~.......#",
-        "#......~~~C.......#",
-        "#~~....c~~......~~#",
-        "#~~~~........C.~~~#",
-        "#~~~~~....c..~~~~~#",
+        "#mmmmm....c..mmmmm#",
+        "#mmm........c.mmmm#",
+        "#mm...C..w......mm#",
+        "#.....ww.ww.......#",
+        "#......wwwC.......#",
+        "#mm....cww......mm#",
+        "#mmmm........C.mmm#",
+        "#mmmmm....c..mmmmm#",
         "###################"
       ],
       "partyStart": [
@@ -3658,11 +3690,11 @@
       "locationName": "El Pueblo de Barro",
       "map": [
         "#################",
-        "#~c~~....~C...~.#",
-        "#~~......~~~~...#",
-        "#.......c...~~..#",
-        "#...C......~c~..#",
-        "#.......~~......#",
+        "#wcww....wC...w.#",
+        "#ww......wwww...#",
+        "#.......c...ww..#",
+        "#...C......wcw..#",
+        "#WWWWWWW..WWWWWW#",
         "#################"
       ],
       "partyStart": [
@@ -3677,6 +3709,24 @@
         {
           "x": 1,
           "y": 4
+        }
+      ],
+      "ward": {
+        "name": "Giles",
+        "x": 2,
+        "y": 4,
+        "gender": "Hombre"
+      },
+      "waves": [
+        {
+          "round": 2,
+          "names": [
+            "Lobo famélico",
+            "Lobo famélico"
+          ],
+          "x": 15,
+          "y": 3,
+          "tell": "Más aullidos al fondo del callejón: vienen otros dos lobos."
         }
       ],
       "enemies": [
@@ -3787,7 +3837,7 @@
         "#^^^^#......#^^^^#",
         "###.##......##.###",
         "#......~~~~.....v#",
-        "#...c..~~~~..c..v#",
+        "#...T..~~~~..T..v#",
         "#...............v#",
         "#.......C.......v#",
         "##################"
@@ -3896,10 +3946,10 @@
         "#~~c....~~....c~~#",
         "#~..............~#",
         "#..C...c..c...C..#",
-        "#......~~~~......#",
+        "#x.....~~~~......#",
         "#......~~~~......#",
         "#..C...c..c...C..#",
-        "#~..............~#",
+        "#~.............k~#",
         "#~~c....~~....c~~#",
         "##################"
       ],
@@ -3911,26 +3961,160 @@
         {
           "x": 9,
           "y": 2
+        },
+        {
+          "x": 7,
+          "y": 2
+        },
+        {
+          "x": 10,
+          "y": 2
         }
       ],
-      "enemies": []
+      "enemies": [
+        {
+          "name": "Furtivo de los Lobos",
+          "x": 6,
+          "y": 4,
+          "asleep": true
+        },
+        {
+          "name": "Furtivo de los Lobos",
+          "x": 11,
+          "y": 5,
+          "asleep": true
+        },
+        {
+          "name": "Furtivo de los Lobos",
+          "x": 12,
+          "y": 7,
+          "asleep": true
+        }
+      ],
+      "avoid": [
+        {
+          "kind": "hablar",
+          "text": "Decirles que solo buscas a quien metió el cáliz en tu petate, no sus trochas",
+          "skill": "persuasion",
+          "dc": 14,
+          "success": {
+            "who": "Furtivo de los Lobos",
+            "text": "Nos has despertado para eso. Lárgate por donde has venido, y no vuelvas a nuestro fuego."
+          },
+          "failure": {
+            "who": "Furtivo de los Lobos",
+            "text": "Nadie entra de noche en un campamento a preguntar. ¡Arriba todos!"
+          }
+        },
+        {
+          "kind": "esconderse",
+          "text": "Echarte al suelo detrás de los troncos hasta que se vuelvan a dormir",
+          "dc": 14,
+          "success": {
+            "who": "{companero}",
+            "text": "Ya roncan otra vez. Vámonos de aquí antes de que alguno se levante a mear."
+          }
+        }
+      ],
+      "parley": {
+        "leader": "Furtivo de los Lobos",
+        "entregarse": {
+          "text": "Soltar el arma junto al fuego",
+          "resolves": false,
+          "success": {
+            "who": "Furtivo de los Lobos",
+            "text": "Atadle al árbol. Que el frío le enseñe a no rondar nuestro fuego.",
+            "effects": [
+              { "gold": -6 },
+              "time",
+              { "fame": -1 }
+            ]
+          }
+        },
+        "sobornar": {
+          "text": "Dejar unas monedas junto al fuego, para que vuelvan a dormir",
+          "gold": 8,
+          "success": {
+            "who": "Furtivo de los Lobos",
+            "text": "Con esto hay vino para una semana. No te hemos visto. Fuera."
+          },
+          "failure": {
+            "who": "Furtivo de los Lobos",
+            "text": "Lo tuyo también será nuestro cuando caigas."
+          }
+        },
+        "convencer": {
+          "text": "Decirles que no vienes a por los Lobos, sino a por quien metió el cáliz en tu petate",
+          "dc": 14,
+          "success": {
+            "who": "Furtivo de los Lobos",
+            "text": "Lo del cáliz no es cosa nuestra. Vete por la trocha y no mires atrás."
+          },
+          "partial": {
+            "who": "Furtivo de los Lobos",
+            "text": "Quieto ahí. Habla, pero con las manos donde las vea."
+          },
+          "failure": {
+            "who": "Furtivo de los Lobos",
+            "text": "Eso lo dice cualquiera con un cuchillo en la mano. ¡A por {él|ella}!"
+          }
+        },
+        "engañar": {
+          "text": "Gritar que vienen los hombres de Vane por el camino",
+          "dc": 13,
+          "success": {
+            "who": "Furtivo de los Lobos",
+            "text": "¿Los de Vane, de noche? ¡Al bosque, todos!"
+          },
+          "failure": {
+            "who": "Furtivo de los Lobos",
+            "text": "Vane no saca a nadie del castillo con esta nieve. Mientes."
+          }
+        }
+      }
     }
   ],
   "quests": [
     {
+      "id": "q-el-fuego-del-campamento",
+      "name": "El fuego del campamento",
+      "act": 1,
+      "description": "Los furtivos duermen junto al fuego. El mapa de sus trochas está en el cofre del fondo: cógelo y sal por la trocha del oeste. Quien pase a 10 pies de uno que duerme tira Sigilo; si falla, se despiertan todos.",
+      "boardId": "el-fuego-del-campamento",
+      "objectives": [
+        {
+          "type": "loot",
+          "label": "Coger el mapa de las trochas del cofre",
+          "treasures": [
+            "Mapa de las trochas de los Lobos"
+          ]
+        },
+        {
+          "type": "reach_cell",
+          "label": "Salir por la trocha del oeste",
+          "cell": {
+            "x": 1,
+            "y": 4
+          }
+        },
+        {
+          "type": "unseen",
+          "label": "Sin despertar a los que duermen junto al fuego",
+          "optional": true
+        }
+      ]
+    },
+    {
       "id": "q-enc-huida-posada",
       "name": "El cuarto de la posada",
       "act": 1,
-      "description": "Llega a la ventana y huye de Torres. Ya tienes el cáliz; hoy no toca matarlo.",
+      "description": "Llega a la ventana y huye de Torres. Ya tienes el cáliz; hoy no toca matarlo. Salid todos por la ventana antes de que suba la guardia del pueblo, en la ronda 5.",
       "boardId": "enc-huida-posada",
       "objectives": [
         {
-          "type": "reach_cell",
-          "label": "Salir por la ventana",
-          "cell": {
-            "x": 7,
-            "y": 9
-          }
+          "type": "escape",
+          "label": "Salir todos por la ventana antes de que suba la guardia",
+          "beforeRound": 5
         }
       ]
     },
@@ -3981,7 +4165,7 @@
       "id": "q-enc-pelea-callejon",
       "name": "El callejón inundado",
       "act": 2,
-      "description": "Acaba con Garth. Te ha acorralado para cobrar deudas viejas.",
+      "description": "Acaba con Garth. Te ha acorralado para cobrar deudas viejas. Al fondo corre el canal, y es hondo: a quien empujas dentro, le cuesta salir.",
       "boardId": "enc-pelea-callejon",
       "objectives": [
         {
@@ -3995,12 +4179,22 @@
       "id": "q-enc-asedio-a-la-granja",
       "name": "El asedio de la granja",
       "act": 2,
-      "description": "Aguanta cinco rondas dentro de la granja, abajo. Para entonces se habrán quedado sin antorchas y huirán.",
+      "description": "Guarda las dos puertas de la granja cinco rondas: si uno de Keller pisa una, entran y se acabó. Para entonces se habrán quedado sin antorchas y huirán. A la tercera ronda llegan otros dos.",
       "boardId": "enc-asedio-a-la-granja",
       "objectives": [
         {
-          "type": "survive_rounds",
-          "label": "Aguanta cinco rondas dentro de la granja, abajo",
+          "type": "hold",
+          "label": "Que no entren en la granja: guardar las dos puertas cinco rondas",
+          "cells": [
+            {
+              "x": 8,
+              "y": 6
+            },
+            {
+              "x": 11,
+              "y": 6
+            }
+          ],
           "rounds": 5
         }
       ]
@@ -4009,13 +4203,18 @@
       "id": "q-enc-escolta-quebradiza",
       "name": "El monje sobre el hielo",
       "act": 2,
-      "description": "Aguanta cuatro rondas mientras el monje cruza. El hielo cruje y los lobos lo rodean.",
+      "description": "Aguanta cuatro rondas junto al hermano Silas: no sabe pelear, y los lobos van a por él. Vienen más por la otra orilla. El hielo resbala y tiene agujeros: a quien empujan dentro, le cuesta salir.",
       "boardId": "enc-escolta-quebradiza",
       "objectives": [
         {
           "type": "survive_rounds",
           "label": "Cubrir al monje mientras cruza",
           "rounds": 4
+        },
+        {
+          "type": "protect",
+          "label": "Que el hermano Silas no caiga",
+          "ally": "Hermano Silas"
         }
       ]
     },
@@ -4036,16 +4235,17 @@
       "id": "q-enc-carreta-en-el-hielo",
       "name": "La carreta hundida",
       "act": 2,
-      "description": "Coge las hierbas congeladas del lago. Están en el centro; date prisa, antes de que los mercenarios te tiren al agua helada.",
+      "description": "Coge las hierbas congeladas del lago. Están en el centro, y la carreta se hunde: en la ronda 6 ya estará bajo el agua. Date prisa, antes de que los mercenarios te tiren al agua helada.",
       "boardId": "enc-carreta-en-el-hielo",
       "objectives": [
         {
           "type": "reach_cell",
-          "label": "Llegar a la carreta de las hierbas",
+          "label": "Llegar a la carreta de las hierbas antes de que se hunda",
           "cell": {
             "x": 10,
             "y": 5
-          }
+          },
+          "beforeRound": 6
         }
       ]
     },
@@ -4122,13 +4322,18 @@
       "id": "q-enc-emboscada-lobos-alfa",
       "name": "Lobos en el pueblo",
       "act": 3,
-      "description": "Aguanta cuatro rondas en el callejón. Giles está detrás de ti. El hambre ha metido a los lobos en el pueblo.",
+      "description": "Aguanta cuatro rondas en el callejón. Giles está detrás de ti y no sabe pelear: que no caiga. El hambre ha metido a los lobos en el pueblo, y vienen más. El canal es hondo: un lobo que cae dentro tarda en salir.",
       "boardId": "enc-emboscada-lobos-alfa",
       "objectives": [
         {
           "type": "survive_rounds",
           "label": "Aguantar hasta que llegue la guardia",
           "rounds": 4
+        },
+        {
+          "type": "protect",
+          "label": "Que Giles no caiga",
+          "ally": "Giles"
         }
       ]
     },
@@ -4136,7 +4341,7 @@
       "id": "q-enc-vanguardia-peaje",
       "name": "La vanguardia en el peaje",
       "act": 2,
-      "description": "Derrota a la vanguardia de Keller. Ha tomado las torres; son profesionales y te superan en número.",
+      "description": "Derrota a la vanguardia de Keller. Ha tomado las torres; son profesionales y te superan en número. Desde lo alto de una torre, un empujón es una caída de 10 pies; por el barranco del este no se vuelve. Y los barriles de brea revientan con fuego.",
       "boardId": "enc-vanguardia-peaje",
       "objectives": [
         {

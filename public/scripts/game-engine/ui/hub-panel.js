@@ -194,6 +194,13 @@ function campaignTile(one, onClick, onRemove = null, who = {}, onChronicle = nul
         tile.append(div('hb-levels').toggleClass('is-hard', Boolean(one.hard))
             .append(`<i class="fa-solid ${one.hard ? 'fa-triangle-exclamation' : 'fa-signal'}"></i>`).append($('<span></span>').text(one.levels)));
     }
+    // E8.1: el tramo de nivel de la campaña; el tuyo, resaltado.
+    const tierLabel = String(/** @type {any} */ (one).tierLabel ?? '').trim();
+    if (tierLabel) {
+        tile.append(div('hb-tier').toggleClass('is-yours', Boolean(/** @type {any} */ (one).yourTier))
+            .attr('data-tier', String(/** @type {any} */ (one).tier ?? ''))
+            .append('<i class="fa-solid fa-layer-group"></i>').append($('<span></span>').text(tierLabel)));
+    }
     // El aviso, justo debajo del nivel: es de lo que habla, y así no se pierde tras la sinopsis.
     if (one.warn) tile.append(div('hb-warn').text(one.warn));
     if (locked) tile.append(div('hb-lock').append('<i class="fa-solid fa-lock"></i>').append($('<span></span>').text(lock)));
@@ -420,9 +427,10 @@ const asHtml = (value) => $('<div></div>').text(value).html();
  *   «La crónica», que la abre como un libro encima del tablón.
  * @param {((card: CampaignCard) => CampaignCard)|null} [input.lock] J3.7: cómo queda una recién añadida
  *   con el rango del gremio (cerrada si pide más). Sin él, abierta.
+ * @param {string} [input.tierNote] E8.1: de qué tramo de nivel es tu grupo (`tierBoardLine`).
  * @returns {Promise<string|{hero: string}|{create: true}|null>}
  */
-export async function openHubBoard({ Popup, POPUP_TYPE, cards, heroes = [], onImport = importCampaignFile, onRemove = removeCampaign, chronicles = {}, lock = null }) {
+export async function openHubBoard({ Popup, POPUP_TYPE, cards, heroes = [], onImport = importCampaignFile, onRemove = removeCampaign, chronicles = {}, lock = null, tierNote = '' }) {
     await loadPixelManifest();
     const body = div('vt-root hb-root');
     body.append(div('vt-head')
@@ -454,6 +462,8 @@ export async function openHubBoard({ Popup, POPUP_TYPE, cards, heroes = [], onIm
         body.append(team);
         body.append(div('vt-section hb-section').text('Las campañas'));
     }
+    // E8.1: de qué tramo es tu grupo; las de tu tramo van delante.
+    if (String(tierNote ?? '').trim()) body.append($('<p class="vt-note hb-tier-note"></p>').text(String(tierNote).trim()));
     const grid = div('vt-grid hb-grid');
     /** @param {CampaignCard} one */
     const pick = (one) => () => {
@@ -634,7 +644,7 @@ export async function openHirePanel({ Popup, POPUP_TYPE, offers, purse }) {
     const body = div('vt-root hb-root');
     body.append(div('vt-head')
         .append($('<h3 class="vt-title"></h3>').text('Espadas de alquiler'))
-        .append($('<p class="vt-sub"></p>').text(`Se paga una vez y van contigo, de campaña en campaña, hasta que los despidas o caigan. Lleváis ${purse} de oro.`)));
+        .append($('<p class="vt-sub"></p>').text(`Se paga al contratarles y van contigo, de campaña en campaña, hasta que los despidas o caigan. Lleváis ${purse} de oro.`)));
 
     /** @type {any} */
     let popup = null;
@@ -657,6 +667,21 @@ export async function openHirePanel({ Popup, POPUP_TYPE, offers, purse }) {
         }).attr('data-hireling', offer.name).toggleClass('is-hired', offer.hired);
         tile.append(div('vt-name').text(offer.name));
         tile.append(div('vt-what').text(`${offer.className} · Fuerza ${offer.strength} · Destreza ${offer.dexterity}`));
+        // E8.6: un veterano, con su apodo.
+        const nick = String(/** @type {any} */ (offer).nickname ?? '').trim();
+        if (nick) tile.append(div('hb-veteran').append('<i class="fa-solid fa-medal"></i>').append($('<span></span>').text(`Veterano: «${nick}»`)));
+        // E8.5: por qué llevarle: el riesgo, que siempre está, su oficio y lo que cuesta.
+        const reasons = /** @type {any[]} */ (/** @type {any} */ (offer).reasons ?? []);
+        if (reasons.length > 0) {
+            const why = $('<span class="hb-reasons"></span>');
+            for (const reason of reasons) {
+                why.append($('<span class="hb-reason"></span>').attr('data-reason', String(reason.kind))
+                    .append($('<i></i>').addClass(`fa-solid fa-fw ${String(reason.icon)}`))
+                    .append($('<b></b>').text(`${reason.title}: `))
+                    .append($('<span></span>').text(String(reason.text))));
+            }
+            tile.append(why);
+        }
         tile.append(div(`hb-state ${offer.hired ? 'hb-en-curso' : 'hb-nueva'}`).text(offer.hired ? 'Va contigo' : `${offer.fee} de oro`));
         if (short) tile.append(div('hb-warn').text(`No llega el oro: cuesta ${offer.fee}.`));
         tile.append(div('vt-go').append(`<i class="fa-solid ${offer.hired ? 'fa-hand' : 'fa-coins'}"></i>`)

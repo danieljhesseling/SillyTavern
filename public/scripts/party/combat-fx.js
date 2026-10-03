@@ -12,6 +12,7 @@
 
 import { combatEncounter, partyMembers } from './state.js';
 import { afterFx as afterSequence, fxBusy, fxLength, holdRedraw as holdForSequence, pushFx } from '../game-engine/ui/combat-vtt/fx.js';
+import { quietFight } from './quiet-fight.js';
 
 /**
  * Lo que quiere redibujar el tablero o la pantalla: con una secuencia enseñándose, se hace al
@@ -76,6 +77,8 @@ export function blowTypeOf(who) {
  */
 export function fxOn() {
     if (typeof document === 'undefined') return false;
+    // E7.2: la pelea que se resuelve rápido no se enseña golpe a golpe.
+    if (quietFight()) return false;
     if (fxBusy()) return true;
     return Boolean(combatEncounter.active && document.querySelector('#game-shell .wm-token'));
 }

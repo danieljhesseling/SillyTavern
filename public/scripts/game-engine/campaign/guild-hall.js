@@ -39,7 +39,7 @@ export const HALL_CHIPS = [
 /** Las partes de la sala, en orden, con las fichas que van en cada una. */
 export const HALL_SECTIONS = [
     { id: 'tablon', title: 'El tablón', chips: ['hub-skip', 'hub-board', 'hub-errands'] },
-    { id: 'gente', title: 'Tu gente', chips: ['hub-heroes', 'hub-hire', 'hub-formation'] },
+    { id: 'gente', title: 'Tu gente', chips: ['hub-heroes', 'hub-hire', 'hub-formation', 'hub-retire'] },
     { id: 'casa', title: 'La casa', chips: ['hub-chest', 'hub-train', 'hub-house', 'hub-sleep'] },
     { id: 'memoria', title: 'La memoria del gremio', chips: ['hub-hall', 'hub-memory'] },
 ];
@@ -126,6 +126,9 @@ export function hallDetail(id, hall) {
             if (!h) return '';
             return h.built > 0 ? `${count(h.built, 'nivel levantado', 'niveles levantados')} de ${h.total}` : 'Nada levantado todavía';
         }
+        // E8.3: quedarse de maestro; los nuevos empiezan con ventaja.
+        case 'hub-retire':
+            return 'Quedarse de maestro: los nuevos empiezan con más nivel y aprenden de ti';
         // J3.3: las camas de la casa no se pagan; dormir en ellas guarda la partida (J15.2).
         case 'hub-sleep':
             return 'Sin pagar: se cura, amanece y se guarda la partida';

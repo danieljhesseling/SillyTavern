@@ -19,7 +19,7 @@ import { injuryTableFor } from '../game-engine/compendio/ailments.js';
 import {
     rollDiceDetailed, getDistanceInFeet, getAttackRangeFeet, createEmptyCombatEncounter, nextRandom,
 } from './combat-rules.js';
-import { bestFor } from '../game-engine/rules/equipment.js';
+import { bestFor, equippedIn } from '../game-engine/rules/equipment.js';
 import { isPassable, getCell } from '../game-engine/board/terrain.js';
 import { treasureInChest } from '../game-engine/campaign/scenarios.js';
 import { patchUpAfterFight } from '../game-engine/rules/field-uses.js';
@@ -27,7 +27,7 @@ import {
     ROLES as ENEMY_ROLES, roleOf as bandRoleOf, tacticOf, describeBand,
 } from '../game-engine/combat/enemy-roles.js';
 import { readNemeses, comeback, nemesisFalls } from '../game-engine/campaign/nemesis.js';
-import { isExit, leaveBoard, hasLeft, stillFighting, everyoneOut, leaveLine } from '../game-engine/board/exits.js';
+import { isExit, leaveBoard, hasLeft, stillFighting, everyoneOut, leaveLine, exitCells } from '../game-engine/board/exits.js';
 import { truceLine } from '../game-engine/combat/morale-options.js';
 import { bossPhase } from '../game-engine/combat/boss-phases.js';
 import {
@@ -36,13 +36,13 @@ import {
 } from '../game-engine/combat/level-adjust.js';
 import { findPath, getPathCost } from '../game-engine/board/pathfinding.js';
 import { planAllyTurn, stanceOf, STANCES, DEFAULT_PREFERENCE } from '../game-engine/combat/ally-ai.js';
-import { startTurn as startManeuverTurn, readManeuvers, cannotAct } from '../game-engine/combat/maneuvers.js';
+import { startTurn as startManeuverTurn, readManeuvers, cannotAct, recordManeuver } from '../game-engine/combat/maneuvers.js';
 import { dropReadied } from '../game-engine/combat/readied.js';
 import { perkBonus } from '../game-engine/rules/level-perks.js';
 import { isIndoors } from '../game-engine/world/visibility.js';
 import { spreadFire } from '../game-engine/board/living-terrain.js';
 import { noteOutcome, shouldSoften, softenEnemy, SOFTEN_NOTE } from '../game-engine/campaign/safety-net.js';
-import { wardLost } from '../game-engine/campaign/guests.js';
+import { wardLost, guestMember } from '../game-engine/campaign/guests.js';
 import { buildVictoryReport } from '../game-engine/combat/tally.js';
 import { afterFightStep, whereItAsks } from '../game-engine/combat/after-fight.js';
 import { fallenCard, partyHasFallen } from '../game-engine/combat/party-fallen.js';
@@ -56,7 +56,8 @@ import { planRetreat } from '../game-engine/combat/retreat.js';
 import { advanceTurn } from '../game-engine/combat/turn-machine.js';
 import { applyInjury, describeInjuries } from '../game-engine/rules/injuries.js';
 import { resolveFall } from '../game-engine/rules/mortality.js';
-import { isIronRun, modeOf, modeLabel } from '../game-engine/rules/modes.js';
+import { isIronRun, modeOf, modeLabel, hasLetter } from '../game-engine/rules/modes.js';
+import { hardDeath, hardModeOn } from '../game-engine/ui/hard-mode-option.js';
 import { epitaphFor, heirloomOf, heirOf, addGrave, addToHall } from '../game-engine/campaign/legacy.js';
 import { listNames } from '../game-engine/campaign/engine-narrator.js';
 import { countedName } from '../game-engine/campaign/narration-notes.js';
@@ -67,7 +68,10 @@ import { boxExamples } from '../game-engine/campaign/read-box.js';
 import { readReasons } from '../game-engine/rules/companions.js';
 import { planSpawnCells } from '../game-engine/combat/spawn.js';
 import { enemiesInRoom, awakePlacements } from '../game-engine/campaign/campaign-map.js';
-import { buildBoardState, judgeScenario, hasScenario, leftToDo, objectivesLeftWalking, walkingObjectiveStatus } from '../game-engine/combat/scenario-board.js';
+import { buildBoardState, judgeScenario, hasScenario, leftToDo, objectivesLeftWalking, walkingObjectiveStatus, lastRoundFor, wantsEscape, heldCellsOf } from '../game-engine/combat/scenario-board.js';
+// E1.1 de ROADMAP_ENTRETENIDO: los objetos que romper, los que duermen y quien hay que proteger.
+import { isObjectFoe } from '../game-engine/combat/enemy-ai.js';
+import { sleepersOf, wakeAll, sleeperDC, sleepersNear, sneakPast } from '../game-engine/board/sleepers.js';
 import { needsStabilizing, bestTender, tendFallen, stableSaves } from '../game-engine/rules/stabilize.js';
 import { skillModifier } from '../game-engine/rules/checks.js';
 import { recordBondEvent, getBondProgress } from '../game-engine/campaign/bonds.js';
@@ -102,6 +106,9 @@ import { stageTurn } from './combat-fx.js';
 import { noteBeforeLoot, planOutcome } from './combat-outcome.js';
 import { resolveEnemyAttackOn, resolveEnemyTurnAction } from './enemy-turn.js';
 import { allyBeforeTurn2024, allyInstead2024, allyAfterAttack2024, allyRescue2024 } from './ally-turn-2024.js';
+import { allyBondPlay } from './bond-play.js';
+import { isRogue, isSneakWeapon } from '../game-engine/rules/sneak-attack.js';
+import { weaponOf } from '../game-engine/rules/equipment.js';
 import {
     handlePlayerCombatMove, performManeuver, handlePlayerCombatAttack, endPlayerCombatTurn,
 } from './player-actions.js';
@@ -111,6 +118,7 @@ import {
 } from './board.js';
 import { lastWaiting, renderLocationMapsPreview } from './board-view.js';
 import { beginAmbushPlacement } from './fight-entry.js';
+import { dungeonFightEnded } from './dungeon.js';
 import { lastLevelPlan, getLocationBoards, hereLocation, lastCompendium, saveCurrentBoard, lastHub, lastHubHome } from './world.js';
 import { getCampaignCalendar, getCampaignBonds, saveCampaignState, markLocationComplete } from './time.js';
 import { notePlot, getPlot, scenesPending } from './plot.js';
@@ -132,14 +140,20 @@ import { brawlTalk, endBrawl } from './brawl.js';
  * La iniciativa de alguien: el d20 y lo que suma. H19 (tanda 22): no sale aún; se apunta en
  * `rows` y salen todas juntas en una tarjeta (`showInitiativeRolls`).
  *
- * @param {{id: string, name: string, dexterity: number, enemy: boolean, extra?: number}} who
+ * @param {{id: string, name: string, dexterity: number, enemy: boolean, extra?: number, surprised?: boolean}} who
  *   `extra`: lo que suma además de la Destreza (la moral del grupo, quien vigila, una mejora).
+ *   E2.3: `surprised`, con desventaja (2024).
  * @param {import('./combat-log.js').InitiativeRow[]} rows
  * @returns {number}
  */
-function rollInitiative({ id, name, dexterity, enemy, extra = 0 }, rows) {
+function rollInitiative({ id, name, dexterity, enemy, extra = 0, surprised = false }, rows) {
     const dexMod = getAbilityModifier(dexterity || 10);
-    const roll = rollDiceDetailed(`1d20${dexMod >= 0 ? '+' : ''}${dexMod}`, 20);
+    let roll = rollDiceDetailed(`1d20${dexMod >= 0 ? '+' : ''}${dexMod}`, 20);
+    // E2.3 (2024): quien está sorprendido tira la iniciativa con desventaja: dos dados, el peor.
+    if (surprised) {
+        const again = rollDiceDetailed(`1d20${dexMod >= 0 ? '+' : ''}${dexMod}`, 20);
+        if (again.total < roll.total) roll = again;
+    }
     const d20 = roll.natural ?? roll.rolls[0] ?? roll.total;
     const total = roll.total + (Number(extra) || 0);
     rows.push({ id: String(id), name: String(name), natural: Number(d20) || 0, modifier: dexMod + (Number(extra) || 0), total, enemy });
@@ -273,7 +287,8 @@ function canTurnEntryAct(entry) {
     if (!entry) return false;
     if (entry.isEnemy) {
         const enemy = getEnemyByInstanceId(entry.id);
-        return Boolean(enemy && enemy.currentHp > 0);
+        // E1.1: un objeto que romper (el cristal del ritual) no tiene turno.
+        return Boolean(enemy && enemy.currentHp > 0 && !isObjectFoe(enemy));
     }
     const member = getPartyMemberByTurnEntry(entry);
     // B2: quien salió ya no tiene turno.
@@ -340,6 +355,8 @@ function resolveDeathSave(member) {
  */
 export function buryMember(member, today, bonds) {
     const place = currentLocationName || '';
+    // E8.7: quien puede volver en el templo no deja herencia: la necesitará al volver.
+    const comesBack = Boolean(member?.revivable);
     const epitaph = epitaphFor(member, { day: today, place, className: String(member.charClass ?? member.className ?? '') });
     if (chat_metadata) {
         chat_metadata[GRAVES_KEY] = addGrave(chat_metadata[GRAVES_KEY], { name: String(member.name), place, day: today, epitaph });
@@ -351,7 +368,7 @@ export function buryMember(member, today, bonds) {
         party: partyMembers,
         bondRanks: Object.fromEntries(partyMembers.map(m => [String(m.id), getBondProgress(bonds, String(m.id)).rank])),
     });
-    const heirloom = heirloomOf(member);
+    const heirloom = comesBack ? null : heirloomOf(member);
     let inherited = '';
     if (heir && heirloom) {
         removeItemFromInventory(/** @type {any} */ (member), String(heirloom.id));
@@ -382,6 +399,21 @@ export function buryMember(member, today, bonds) {
         moment: 'muerte',
     })
         .catch(error => console.error('[party] death note failed', error));
+}
+
+/**
+ * E8.7 (D-J64): si la muerte es para siempre: la opción «Modo duro» o la letra «De hierro».
+ *
+ * @returns {boolean}
+ */
+export function deathIsFinal() {
+    let iron = false;
+    try {
+        iron = hasLetter(survivalNow(), 'e');
+    } catch {
+        iron = false;
+    }
+    return hardDeath({ option: hardModeOn(), iron }).hard;
 }
 
 /** La partida en la que ya se dijo que había caído todo el grupo: no se repite sola. */
@@ -448,10 +480,15 @@ export function applyFall(member, cause = '') {
         // De que viene el golpe elige la rama: una caida rompe huesos, el fuego quema
         // manos y el frio se lleva dedos. Sin bateria de estados, la tabla de siempre.
         table: injuryTableFor(lastCompendium, cause),
+        // E8.7: con el modo duro (o de hierro), quien muere no vuelve.
+        hard: deathIsFinal(),
     });
 
     if (fall.outcome === 'dies') {
         member.dead = true;
+        // E8.7: el día en que murió (el templo mira cuánto hace) y si se le puede devolver la vida.
+        /** @type {any} */ (member).diedOn = Math.max(1, Math.floor(Number(getCampaignCalendar()?.day) || 1));
+        /** @type {any} */ (member).revivable = Boolean(fall.revivable);
         countStat('deaths');
         postCombatNarration(`⚰️ [COMBAT] ${fall.reason}`);
         toastr.error(fall.reason, 'Se acabo', { timeOut: 15000 });
@@ -701,6 +738,8 @@ function advanceTurnIndex(depth = 0) {
         bossPhases();
         // A scenario won by the clock has no other moment to notice.
         if (checkScenarioOutcome()) return null;
+        // E1.1: lo que tiene plazo, avisado una ronda antes.
+        warnLastRound();
     }
 
     // J19.4, J19.6 y J19.7: al empezar su turno se le baja el Escudo, le saltan las zonas en
@@ -739,6 +778,59 @@ function objectiveCellFor(member) {
         }
     }
     return null;
+}
+
+/**
+ * E1.1: la casilla que el tablero pide defender y que nadie del grupo guarda, la más cercana; o
+ * nada si ya está en una, si están todas guardadas o si no se llega.
+ *
+ * @param {any} member
+ * @returns {{x: number, y: number}|null}
+ */
+function guardCellFor(member) {
+    const held = heldCellsOf(getActiveBoardContext().board?.objectives);
+    if (held.length === 0 || (Number(member?.hp) || 0) <= 0) return null;
+    const here = partyCell(member);
+    if (held.some(c => c.x === here.x && c.y === here.y)) return null;
+    const { terrain, gridWidth, gridHeight } = getActiveBoardContext();
+    const busy = new Set([
+        ...partyMembers.filter(m => String(m.id) !== String(member.id) && (Number(m.hp) || 0) > 0 && !m.dead)
+            .map(m => `${Number(m.mapPosition?.gridX) || 0},${Number(m.mapPosition?.gridY) || 0}`),
+        ...getAliveEnemies().map(e => `${Number(e.gridX) || 0},${Number(e.gridY) || 0}`),
+    ]);
+    /** @type {{x: number, y: number, steps: number}|null} */
+    let best = null;
+    for (const cell of held) {
+        if (busy.has(`${cell.x},${cell.y}`)) continue;
+        const path = findPath(terrain, here.x, here.y, cell.x, cell.y, gridWidth, gridHeight, { occupied: busy });
+        if (path && (!best || path.length < best.steps)) best = { x: cell.x, y: cell.y, steps: path.length };
+    }
+    return best ? { x: best.x, y: best.y } : null;
+}
+
+/**
+ * E1.1: la salida del tablero a la que se llega antes, sin nadie encima (o la suya, si ya está).
+ *
+ * @param {any} member
+ * @returns {{x: number, y: number}|null}
+ */
+function nearestExit(member) {
+    const { terrain, gridWidth, gridHeight } = getActiveBoardContext();
+    const from = partyCell(member);
+    const taken = new Set([
+        ...partyMembers.filter(m => String(m.id) !== String(member.id) && (Number(m.hp) || 0) > 0 && !hasLeft(combatEncounter.left, m.id))
+            .map(m => `${Number(m.mapPosition?.gridX) || 0},${Number(m.mapPosition?.gridY) || 0}`),
+        ...getAliveEnemies().map(e => `${Number(e.gridX) || 0},${Number(e.gridY) || 0}`),
+    ]);
+    /** @type {{x: number, y: number, steps: number}|null} */
+    let best = null;
+    for (const cell of exitCells(terrain)) {
+        if (cell.x === from.x && cell.y === from.y) return cell;
+        if (taken.has(`${cell.x},${cell.y}`)) continue;
+        const path = findPath(terrain, from.x, from.y, cell.x, cell.y, gridWidth, gridHeight, { occupied: taken });
+        if (path && (!best || path.length < best.steps)) best = { x: cell.x, y: cell.y, steps: path.length };
+    }
+    return best ? { x: best.x, y: best.y } : null;
 }
 
 /**
@@ -785,8 +877,10 @@ function walkTowardObjective(member, goal) {
     const said = `[COMBAT] ${member.name}: no queda nadie, así que va a lo que pide el tablero, (${goal.x + 1}, ${goal.y + 1}).`;
     if (from.x === goal.x && from.y === goal.y) return said;
     const occupied = new Set(partyMembers
-        .filter(m => Number(m.id) !== Number(member.id) && (Number(m.hp) || 0) > 0)
+        .filter(m => Number(m.id) !== Number(member.id) && (Number(m.hp) || 0) > 0 && !hasLeft(combatEncounter.left, m.id))
         .map(m => `${Number(m.mapPosition?.gridX) || 0},${Number(m.mapPosition?.gridY) || 0}`));
+    // E1.1: huyendo hacia la salida aún quedan enemigos en pie: tampoco se pasa por encima de ellos.
+    for (const enemy of getAliveEnemies()) occupied.add(`${Number(enemy.gridX) || 0},${Number(enemy.gridY) || 0}`);
     const path = findPath(terrain, from.x, from.y, goal.x, goal.y, gridWidth, gridHeight, { occupied });
     if (!path || path.length < 2) return `[COMBAT] ${member.name} no encuentra por dónde llegar a (${goal.x + 1}, ${goal.y + 1}).`;
     const feet = getRemainingMovementFeet(member);
@@ -819,6 +913,38 @@ export function resolveAllyTurnAction(entry) {
     if (!member) return '';
     const out = cannotAct(member.activeConditions);
     if (out && (Number(member.hp) || 0) > 0) return `💤 [COMBAT] ${member.name} no puede actuar (${CONDITION_WORDS[out] ?? out}): pierde el turno.`;
+    // E1.1: quien se protege en el tablero no pelea: se agacha y se cubre (Esquivar, 5e).
+    if (/** @type {any} */ (member).boardWard) {
+        combatEncounter.maneuvers = recordManeuver(combatEncounter.maneuvers, 'esquivar', String(member.id));
+        saveCombatState();
+        return `🛡️ [COMBAT] ${member.name} se agacha y se cubre como puede: quien le ataque, con desventaja.`;
+    }
+    // E1.1: si el tablero se gana saliendo, quien va solo corre a la salida en vez de pelear.
+    const escapeTo = wantsEscape(getActiveBoardContext().board?.objectives) ? nearestExit(member) : null;
+    if (escapeTo) {
+        // Con un tesoro que sacar antes de irse (la gema de la choza), primero el cofre: salir
+        // todos sin él es perder el tablero.
+        const chest = chestToOpen(member);
+        if (chest?.at) {
+            openChest(getActiveBoardContext().board, chest.x, chest.y);
+            return `[COMBAT] ${member.name} abre el cofre que buscabais.`;
+        }
+        if (chest?.beside) {
+            walkTowardObjective(member, chest.beside);
+            return `[COMBAT] ${member.name} va a por el cofre (${chest.x + 1}, ${chest.y + 1}).`;
+        }
+        const here = partyCell(member);
+        if (here.x === escapeTo.x && here.y === escapeTo.y) {
+            leaveThroughExit(member);
+            return '';
+        }
+        walkTowardObjective(member, escapeTo);
+        return `[COMBAT] ${member.name} corre hacia la salida (${escapeTo.x + 1}, ${escapeTo.y + 1}).`;
+    }
+    // E1.1: si el tablero pide defender unas casillas (la puerta), quien va solo se pone en la que
+    // nadie guarda, y desde ahí pelea como siempre.
+    const guard = guardCellFor(member);
+    if (guard) walkTowardObjective(member, guard);
 
     const living = combatEncounter.enemies.filter((/** @type {any} */ e) => (Number(e.currentHp) || 0) > 0);
     if (living.length === 0) {
@@ -868,6 +994,8 @@ export function resolveAllyTurnAction(entry) {
             speedFeet: getRemainingMovementFeet(member),
             // Su arma de verdad: un arquero que se queda atras tiene que poder disparar.
             attackRangeFeet: getAttackRangeFeet(member),
+            // E3.1: un pícaro con arma sutil o de lejos busca dónde meter su furtivo.
+            sneak: isRogue(member) && isSneakWeapon(weaponOf(member)),
         },
         leader,
         enemies: living.map((/** @type {any} */ e) => ({
@@ -878,6 +1006,9 @@ export function resolveAllyTurnAction(entry) {
             maxHp: Number(e.maxHp) || 1,
             reachFeet: Number(e.attackRangeFeet) || 5,
             boss: Boolean(e.boss),
+            // E3.1: lo que le da ventaja contra él: en el suelo, o con la guardia abierta.
+            prone: (Array.isArray(e.activeConditions) ? e.activeConditions : []).includes('Prone'),
+            helped: readManeuvers(combatEncounter.maneuvers).helped.some(h => h.targetId === String(e.instanceId)),
         })),
         allies: [...partyMembers, ...livingSummons()]
             .filter(m => Number(m.id) !== Number(member.id) && (Number(m.hp) || 0) > 0)
@@ -912,9 +1043,11 @@ export function resolveAllyTurnAction(entry) {
     // Lo que no pega (un familiar), no pega: se queda al lado de quien lo llamó.
     if (plan.action === 'attack' && plan.targetId != null && !(member.summon && member.attacks === false)) {
         const target = living.find((/** @type {any} */ e) => String(e.instanceId) === String(plan.targetId));
-        if (target) handlePlayerCombatAttack(String(target.name));
+        // E3.4: con vínculo, lo suyo (su golpe definitivo o su jugada del rango 7) en vez del golpe.
+        const bonded = Boolean(target) && allyBondPlay(member, target);
+        if (target && !bonded) handlePlayerCombatAttack(String(target.name));
         // Tanda 12: con un arma ligera en cada mano, también la otra.
-        if (target) allyAfterAttack2024(member, target);
+        if (target && !bonded) allyAfterAttack2024(member, target);
     }
 
     return lines.join('\n');
@@ -1227,6 +1360,112 @@ export function wakeRoomEnemies(board, room) {
 }
 
 /**
+ * E1.1: quien hay que proteger en este tablero (`ward`), en él y de vuestro lado mientras dura
+ * la pelea: un invitado que no pelea (se cubre en su turno) y se va al acabarla.
+ *
+ * @param {any} board El tablero abierto.
+ */
+function joinBoardWard(board) {
+    const ward = board?.ward;
+    const name = String(ward?.name ?? '').trim();
+    // Si ya va con el grupo (Ireena, una vez reclutada), se protege a la del grupo.
+    if (!name || partyMembers.some(m => /** @type {any} */ (m).boardWard === board.name || (!m.dead && String(m.name).toLowerCase() === name.toLowerCase()))) return;
+    const guest = guestMember({
+        id: Date.now(), name, kind: 'ward', contractId: `tablero:${board.name}`,
+        level: Number(partyMembers[0]?.level) || 1, base: partyMembers[0], stats: { gender: String(ward.gender ?? '') },
+    });
+    if (Number(ward.hp) > 0) {
+        guest.hp = Math.floor(Number(ward.hp));
+        guest.maxHp = guest.hp;
+    }
+    guest.boardWard = String(board.name);
+    guest.control = 'engine';
+    guest.mapPosition = { locationName: currentLocationName, gridX: Number(ward.x) || 0, gridY: Number(ward.y) || 0 };
+    partyMembers.push(guest);
+    savePartyState();
+    renderPartyMembers();
+    postCombatNarration(`🛡️ [COMBAT] ${name} está en medio y no sabe pelear: que no caiga.`);
+}
+
+/**
+ * E1.1: al acabar la pelea, quien se protegía en el tablero se queda en él y deja el grupo.
+ *
+ * @param {string} reason Cómo ha acabado la pelea.
+ */
+function boardWardsLeave(reason) {
+    const wards = partyMembers.filter(m => /** @type {any} */ (m).boardWard);
+    if (wards.length === 0) return;
+    for (const contract of new Set(wards.map(m => String(m.guest?.contractId ?? '')))) {
+        dismissGuests(contract, reason === 'victory' ? 'cumplido' : 'perdido');
+    }
+}
+
+/**
+ * E1.1: los que dormían en el tablero abierto, despiertos ya (y apuntado, para «sin despertar a
+ * nadie»). Lo guarda el tablero.
+ *
+ * @returns {boolean} Si había alguno dormido.
+ */
+function wakeBoardSleepers() {
+    const board = getActiveBoardContext().board;
+    if (!board || sleepersOf(board.enemyPlacements).length === 0) return false;
+    board.enemyPlacements = wakeAll(board.enemyPlacements);
+    board.awakened = true;
+    persistBoardTerrain(board);
+    return true;
+}
+
+/**
+ * E1.1: quien se mueve fuera de combate cerca de los que duermen tira Sigilo contra su
+ * Percepción pasiva (−5, dormidos). Una tirada por cada uno que se ha movido, comparada con
+ * cada uno de los que oyen. Si alguno se despierta, despiertan todos y empieza la pelea: ellos
+ * primero, que os han pillado.
+ *
+ * @param {any[]} movers Los del grupo que acaban de moverse.
+ * @returns {boolean} Si se ha despertado alguien.
+ */
+export function sneakPastSleepers(movers) {
+    if (combatEncounter.active || !currentBoardName || isBoardWon(currentLocationName, currentBoardName)) return false;
+    const board = getActiveBoardContext().board;
+    const sleeping = sleepersOf(board?.enemyPlacements);
+    if (!board || sleeping.length === 0) return false;
+    const templates = getCurrentWorldEnemies();
+    const listenersOf = (/** @type {any[]} */ list) => list.map(s => ({
+        name: String(s.name),
+        dc: sleeperDC(templates.find(t => String(t.name).toLowerCase() === String(s.name).toLowerCase())),
+    }));
+    /** @type {string[]} */
+    const lines = [];
+    let woke = false;
+    for (const member of movers.filter(m => m && !m.dead && (Number(m.hp) || 0) > 0)) {
+        const near = sleepersNear(sleeping, partyCell(member));
+        if (near.length === 0) continue;
+        const armour = equippedIn(member, 'body');
+        const result = sneakPast({
+            who: String(member.name),
+            modifier: skillModifier(member, 'stealth').modifier,
+            listeners: listenersOf(near),
+            rollD20: () => rollDiceDetailed('1d20', 20).total,
+            clumsy: Boolean(armour?.stealthDisadvantage) || String(armour?.dexMode ?? '') === 'none',
+        });
+        lines.push(result.line);
+        if (result.woke.length > 0) {
+            woke = true;
+            break;
+        }
+    }
+    if (lines.length > 0) postCombatNarration(`[TABLERO] ${lines.join('\n')}`);
+    if (!woke) return false;
+    toastr.warning('Os han oído: se despiertan y van a por vosotros.', '¡Despiertos!', { timeOut: 9000 });
+    wakeBoardSleepers();
+    startWaitingFight(sleeping.map(s => ({ name: String(s.name), x: Number(s.x) || 0, y: Number(s.y) || 0 })), {
+        enemiesFirst: true, said: '[COMBAT] ¡Os han oído! Los que dormían se levantan y empuñan las armas.',
+    });
+    renderLocationMapsPreview();
+    return true;
+}
+
+/**
  * Start a combat encounter on the current board.
  * @param {import('../dnd-system.js').EnemyTemplate} template - Enemy template
  * @param {number} count - Number of enemies to spawn
@@ -1308,17 +1547,20 @@ export function startCombat(template, count, gridWidth = 50, gridHeight = 50) {
  * turno: existian en el encuentro y no actuaban nunca.
  *
  * @param {import('../dnd-system.js').EnemyInstance[]} newEnemies
- * @param {{enemiesFirst?: boolean, brawl?: import('../game-engine/combat/brawl.js').Brawl|null}} [options] J12.2: os han
+ * @param {{enemiesFirst?: boolean, brawl?: import('../game-engine/combat/brawl.js').Brawl|null, surprised?: boolean}} [options] J12.2: os han
  *   pillado huyendo o escondidos, y empiezan ellos, tire lo que tire cada uno. J12.7: `brawl`, la
  *   bandera de una pelea sin muertes, puesta antes del primer golpe; quien mira un duelo no tira
- *   iniciativa y va como «fuera» (nadie le pega).
+ *   iniciativa y va como «fuera» (nadie le pega). E2.3: `surprised`, el grupo sorprendido (2024): tira
+ *   la iniciativa con desventaja.
  * @returns {string} El orden de iniciativa, ya escrito.
  */
-function beginEncounterWith(newEnemies, { enemiesFirst = false, brawl = null } = {}) {
+function beginEncounterWith(newEnemies, { enemiesFirst = false, brawl = null, surprised = false } = {}) {
     // Idea 200: la pelea se cuenta aquí, por donde pasan todas (el botón y la ficha del
     // tablero, una sala que se abre, `/fight`). Contada solo en `startCombat`, la bodega
     // salía en el final como «0 combates: 1 ganados».
     if (!combatEncounter.active) countStat('fights');
+    // E1.1: quien hay que proteger en este tablero entra en la pelea de vuestro lado.
+    if (!combatEncounter.active && !brawl) joinBoardWard(getActiveBoardContext().board);
     // Idea 25: tras dos derrotas seguidas, con la red puesta, este baja un escalón.
     if (chat_metadata && shouldSoften(chat_metadata[SAFETY_KEY], Boolean(chat_metadata[SAFETY_ON_KEY])) && !combatEncounter.active) {
         for (const enemy of newEnemies) Object.assign(enemy, softenEnemy(enemy));
@@ -1342,10 +1584,11 @@ function beginEncounterWith(newEnemies, { enemiesFirst = false, brawl = null } =
     // Quien ha muerto ya no pelea (idea 36): antes seguía tirando iniciativa, y un descanso
     // lo ponía en pie otra vez.
     for (const m of partyMembers.filter(member => !member.dead && !brawl?.watching.includes(String(member.id)))) {
-        const init = rollInitiative({ id: String(m.id), name: m.name, dexterity: m.dexterity || 10, enemy: false, extra: morale.value + sentinel + perkBonus(m, 'initiative') }, initiativeRows);
+        const init = rollInitiative({ id: String(m.id), name: m.name, dexterity: m.dexterity || 10, enemy: false, extra: morale.value + sentinel + perkBonus(m, 'initiative'), surprised }, initiativeRows);
         turnEntries.push({ id: String(m.id), name: m.name, initiative: init, isEnemy: false });
     }
     if (morale.value !== 0) postCombatNarration(`🫂 [COMBAT] Moral del grupo: ${morale.label}.`);
+    if (surprised) postCombatNarration('😱 [COMBAT] Os han sorprendido: el grupo tira la iniciativa con desventaja.');
     // Ideas 73 y 90: la niebla, la lluvia, el viento o la noche, dichos antes del primer golpe.
     const seen = boardVisibility();
     if (seen.note) postCombatNarration(`🌫️ [COMBAT] ${seen.note}`);
@@ -1465,24 +1708,35 @@ export function waitingSummary(awake) {
  * Empezar la pelea con los que esperan en el tablero: el botón del tablero y la ficha.
  *
  * @param {Array<{name: string, x: number, y: number}>} awake
- * @param {{enemiesFirst?: boolean, said?: string}} [options] J12.2: si os pillaron al evitarla, empiezan ellos.
- *   Tanda 10: `said`, lo que se cuenta al empezar, si no es lo de siempre.
+ * @param {{enemiesFirst?: boolean, said?: string, surprised?: boolean, nightAmbush?: boolean}} [options] J12.2: si os
+ *   pillaron al evitarla, empiezan ellos. Tanda 10: `said`, lo que se cuenta al empezar, si no es lo de siempre.
+ *   E2.3: `surprised`, el grupo sorprendido (iniciativa con desventaja); `nightAmbush`, la emboscada de
+ *   noche en la mazmorra: ganarla no gana la pelea escrita del tablero.
  */
-export function startWaitingFight(awake, { enemiesFirst = false, said = '' } = {}) {
+export function startWaitingFight(awake, { enemiesFirst = false, said = '', surprised = false, nightAmbush = false } = {}) {
     if (combatEncounter.active) return;
     // J9.1: con todo el grupo muerto no se empieza nada: se dice, con sus salidas.
     if (partyHasFallen(partyMembers)) {
         void sayPartyFallen({ again: true });
         return;
     }
-    const enemies = instancesFromPlacements(awake);
+    // E1.1: una pelea hace ruido: los que dormían en el tablero se despiertan y entran en ella.
+    const sleeping = sleepersOf(getActiveBoardContext().board?.enemyPlacements);
+    const same = (/** @type {any} */ a, /** @type {any} */ b) => a.name === b.name && Number(a.x) === Number(b.x) && Number(a.y) === Number(b.y);
+    const fighting = [...awake, ...sleeping.filter(s => !awake.some(a => same(a, s)))];
+    if (sleeping.length > 0) wakeBoardSleepers();
+    const enemies = instancesFromPlacements(fighting);
     if (enemies.length === 0) {
         toastr.warning('Ninguno de los enemigos del tablero existe en el mundo.');
         return;
     }
     setCombatLogEntries([]);
-    postCombatNarration(said || `[COMBAT] Empieza el combate del tablero: ${waitingSummary(awake)}.`);
-    beginEncounterWith(enemies, { enemiesFirst });
+    postCombatNarration(said || `[COMBAT] Empieza el combate del tablero: ${waitingSummary(fighting)}.`);
+    beginEncounterWith(enemies, { enemiesFirst, surprised });
+    if (nightAmbush) {
+        /** @type {any} */ (combatEncounter).nightAmbush = true;
+        saveCombatState();
+    }
     showInitiativeBanner(enemies.map(e => e.name));
     renderLocationMapsPreview();
 }
@@ -1503,13 +1757,27 @@ export function judgeCurrentScenario() {
     const board = getLocationBoards(location).find((/** @type {any} */ b) => b.name === currentBoardName);
     if (!board || !hasScenario(board)) return null;
 
-    return judgeScenario(board.objectives, buildBoardState({
+    return judgeScenario(board.objectives, scenarioStateNow(board));
+}
+
+/**
+ * Cómo está el tablero de la pelea para su misión: la ronda, quién sigue en pie, los tesoros ya
+ * sacados (también antes de la pelea) y, E1.1, quién ha salido por una salida y si se ha
+ * despertado alguien de los que dormían.
+ *
+ * @param {any} board El tablero guardado.
+ * @returns {import('../game-engine/campaign/scenarios.js').BoardState}
+ */
+function scenarioStateNow(board) {
+    const live = getActiveBoardContext().board;
+    return buildBoardState({
         round: combatEncounter.round,
         enemies: combatEncounter.enemies,
         party: partyMembers,
-        // Lo abierto antes de la pelea también cuenta.
         collectedTreasures: collectedHere(board),
-    }));
+        left: Array.isArray(combatEncounter.left) ? combatEncounter.left : [],
+        awakened: Boolean(board?.awakened || live?.awakened),
+    });
 }
 
 /**
@@ -1525,9 +1793,7 @@ function objectiveLeftNow() {
     if (!board || !hasScenario(board)) return [];
     const live = getActiveBoardContext().board;
     const wavesLeft = (Array.isArray(live?.waves) ? live.waves : []).some((/** @type {any} */ w) => w && !w.done && !w.help);
-    return objectivesLeftWalking(board.objectives, buildBoardState({
-        round: combatEncounter.round, enemies: combatEncounter.enemies, party: partyMembers, collectedTreasures: collectedHere(board),
-    }), { wavesLeft });
+    return objectivesLeftWalking(board.objectives, scenarioStateNow(board), { wavesLeft });
 }
 
 /**
@@ -1540,6 +1806,8 @@ function objectiveLeftNow() {
  */
 export function checkObjectiveLeft() {
     const left = chat_metadata?.[OBJECTIVE_LEFT_KEY];
+    // E1.1: un tablero que se gana sin pelear (el robo con los guardias dormidos).
+    if (!left && !combatEncounter.active) return checkQuietBoard();
     if (!left || combatEncounter.active || left.place !== currentLocationName || left.board !== currentBoardName) return false;
     const location = getCurrentWorldLocationMaps().find(l => l.name === currentLocationName);
     const board = getLocationBoards(location).find((/** @type {any} */ b) => b.name === currentBoardName);
@@ -1561,6 +1829,40 @@ export function checkObjectiveLeft() {
     notePlot({ kind: 'win', place: currentLocationName, board: currentBoardName });
     // D-J45: ahora sí, «Continuar» sigue el hilo desde aquí.
     lastWin = { owner: chat_metadata, place: currentLocationName, board: currentBoardName };
+    if (isShellOpen()) refreshGameShell();
+    return true;
+}
+
+/**
+ * E1.1: un tablero con gente dormida se puede ganar sin pelear: sacar el cofre y llegar a la
+ * salida sin despertar a nadie. Fuera de combate, sin nadie despierto a la vista y con todo lo
+ * que pide hecho andando (tesoros, casillas), el tablero se gana como si se hubiera peleado.
+ *
+ * @returns {boolean} Si se ha ganado ahora.
+ */
+function checkQuietBoard() {
+    if (combatEncounter.active || !currentBoardName || isBoardWon(currentLocationName, currentBoardName)) return false;
+    const location = getCurrentWorldLocationMaps().find(l => l.name === currentLocationName);
+    const board = getLocationBoards(location).find((/** @type {any} */ b) => b.name === currentBoardName);
+    const live = getActiveBoardContext().board;
+    if (!board || !hasScenario(board) || sleepersOf(live?.enemyPlacements ?? board.enemyPlacements).length === 0) return false;
+    if (lastWaiting.board === currentBoardName && lastWaiting.placements.length > 0) return false;
+    const goals = (Array.isArray(board.objectives) ? board.objectives : []).filter((/** @type {any} */ o) => !o?.optional && !['protect', 'unseen'].includes(String(o?.type)));
+    if (goals.length === 0 || !goals.every((/** @type {any} */ o) => ['reach_cell', 'loot', 'escort'].includes(String(o?.type)))) return false;
+    const here = partyMembers.filter(m => !m.dead && (!m.mapPosition?.locationName || m.mapPosition.locationName === currentLocationName));
+    const state = buildBoardState({ round: 1, enemies: [], party: here, collectedTreasures: collectedHere(board), awakened: Boolean(live?.awakened) });
+    const now = walkingObjectiveStatus(board.objectives, goals.map((/** @type {any} */ o) => String(o.id)), state);
+    if (now.status !== 'done') return false;
+    // Ganado así, nadie se ha despertado: «sin despertar a nadie» también está hecho.
+    const quiet = board.objectives.filter((/** @type {any} */ o) => o?.type === 'unseen').map((/** @type {any} */ o) => String(o.label || 'Sin despertar a nadie'));
+    postCombatNarration(`🎯 [TABLERO] ✅ ${[...now.labels, ...quiet].join(' · ')}.\n🏁 [TABLERO] Objetivos cumplidos sin que nadie se despierte.`);
+    toastr.success(now.labels.join(' · '), 'Objetivo cumplido');
+    recordBoardWon(currentLocationName, currentBoardName);
+    markLocationComplete(currentLocationName);
+    notePlot({ kind: 'win', place: currentLocationName, board: currentBoardName });
+    // D-J45: «Continuar» sigue el hilo desde aquí.
+    lastWin = { owner: chat_metadata, place: currentLocationName, board: currentBoardName };
+    renderLocationMapsPreview();
     if (isShellOpen()) refreshGameShell();
     return true;
 }
@@ -1624,15 +1926,28 @@ export function tendFallenOutOfFight() {
 }
 
 /**
+ * E1.1: lo que vence al empezar la ronda siguiente, dicho una ronda antes: un aviso fuera de la
+ * novela (no lo dice nadie) y una línea en el registro de la pelea.
+ */
+function warnLastRound() {
+    const location = getCurrentWorldLocationMaps().find(l => l.name === currentLocationName);
+    const board = getLocationBoards(location).find((/** @type {any} */ b) => b.name === currentBoardName);
+    if (!board || !hasScenario(board)) return;
+    const labels = lastRoundFor(board.objectives, scenarioStateNow(board));
+    if (labels.length === 0) return;
+    const line = `Última ronda para: ${labels.join(' · ')}.`;
+    postCombatNarration(`⏳ [COMBAT] ${line}`);
+    toastr.warning(line, '¡Se acaba el tiempo!', { timeOut: 9000 });
+}
+
+/**
  * M4: sin nadie en pie y la misión del tablero sin cumplir, decir qué falta (un cofre, una
  * casilla, aguantar unas rondas), una vez por pelea. Antes la pelea seguía sin decir por qué.
  */
 function sayWhatIsLeft() {
     const location = getCurrentWorldLocationMaps().find(l => l.name === currentLocationName);
     const board = getLocationBoards(location).find((/** @type {any} */ b) => b.name === currentBoardName);
-    const line = board ? leftToDo(board.objectives, buildBoardState({
-        round: combatEncounter.round, enemies: combatEncounter.enemies, party: partyMembers, collectedTreasures: collectedHere(board),
-    })) : '';
+    const line = board ? leftToDo(board.objectives, scenarioStateNow(board)) : '';
     // Lo mismo con otra ronda no se repite: solo cuando cambia lo que falta.
     const key = line.replace(/\d+/g, '#');
     if (!line || /** @type {any} */ (combatEncounter).leftSaid === key) return;
@@ -1717,6 +2032,10 @@ export function endCombat(reason = 'ended', { said = '', told = '' } = {}) {
         postCombatNarration(`💀 [GREMIO] ${escorted.name} ha caído: el encargo «${lost.title}» se pierde.`);
         dismissGuests(String(lost.id), 'perdido');
     }
+    // E1.1: quien se protegía en el tablero se queda en él.
+    boardWardsLeave(reason);
+    // E2.3: quien peleó sin la armadura que se quitó para dormir, se la pone.
+    dungeonFightEnded(reason);
     postCombatNarration(buildCombatSummary(/** @type {'victory'|'defeat'|'manual'|'ended'} */ (reason === 'fled' ? 'manual' : reason), said));
 
     // Winning has to be worth something, or the tactical engine underneath is doing
@@ -1766,7 +2085,9 @@ export function endCombat(reason = 'ended', { said = '', told = '' } = {}) {
             notePlot({ kind: 'defeat', enemy: String(fallen.name) });
         }
         // Tanda 16: con la misión a medias (falta salir por la ventana), el hilo espera a que se cumpla.
-        if (objectiveLeft.length === 0) notePlot({ kind: 'win', place: currentLocationName, board: currentBoardName });
+        // E2.3: la emboscada de noche no es la pelea escrita del tablero: ni la gana ni cuenta para el hilo.
+        const nightAmbush = Boolean(/** @type {any} */ (combatEncounter).nightAmbush);
+        if (objectiveLeft.length === 0 && !nightAmbush) notePlot({ kind: 'win', place: currentLocationName, board: currentBoardName });
         else if (chat_metadata) {
             chat_metadata[OBJECTIVE_LEFT_KEY] = {
                 place: currentLocationName, board: currentBoardName, left: objectiveLeft, round: Number(combatEncounter.round) || 1,
@@ -1779,7 +2100,7 @@ export function endCombat(reason = 'ended', { said = '', told = '' } = {}) {
         const wonBoard = getActiveBoardContext().board;
         const written = new Set((wonBoard?.enemyPlacements ?? []).map((/** @type {any} */ p) => String(p.name).toLowerCase()));
         const fought = combatEncounter.enemies.some(e => written.has(String(e.name).replace(/\s+\d+$/, '').toLowerCase()));
-        if (currentBoardName && fought) recordBoardWon(currentLocationName, currentBoardName);
+        if (currentBoardName && fought && !nightAmbush) recordBoardWon(currentLocationName, currentBoardName);
         // Idea 52: el sitio sabe quién le ha quitado ese peso de encima.
         raiseFame(currentLocationName);
 
@@ -2065,6 +2386,11 @@ export function answerTruce(accept) {
 export function offerExit(member, x, y) {
     if (!combatEncounter.active || (Number(member?.hp) || 0) <= 0) return;
     if (!isExit(getActiveBoardContext().terrain, x, y)) return;
+    // E1.1: si el tablero se gana saliendo, pisar la salida es salir, sin preguntar.
+    if (wantsEscape(getActiveBoardContext().board?.objectives)) {
+        leaveThroughExit(member);
+        return;
+    }
     const toast = toastr.info(`${member.name} está en una salida. Salir le saca de esta pelea: nadie le ataca y ya no actúa. Cuando salgáis todos, se acaba en huida.`, '🚪 Una salida', { timeOut: 12000 });
     $(toast).find('.toast-message').append($('<button class="menu_button exit-leave" style="margin-top:6px;"></button>').text('Salir por aquí').on('click', () => { leaveThroughExit(member); }));
 }
@@ -2084,10 +2410,14 @@ export function leaveThroughExit(member) {
         return '';
     }
     if ((Number(member.hp) || 0) <= 0 || hasLeft(combatEncounter.left, member.id)) return '';
-    const wasTurn = String(getPartyMemberByTurnEntry(getCurrentTurnEntry())?.id ?? '') === String(member.id);
+    // E1.1: quien va solo (el juego le lleva) sale en su turno, y su turno lo acaba la pelea.
+    const wasTurn = String(getPartyMemberByTurnEntry(getCurrentTurnEntry())?.id ?? '') === String(member.id)
+        && !actsOnItsOwn(getCurrentTurnEntry());
     combatEncounter.left = leaveBoard(combatEncounter.left, member.id);
     postCombatNarration(leaveLine(member.name, stillFighting(partyMembers, combatEncounter.left).length));
     saveCombatState();
+    // E1.1: si lo que pedía el tablero era salir, con el último fuera se ha ganado.
+    if (checkScenarioOutcome()) return '';
     if (everyoneOut(partyMembers.filter(m => !m.dead), combatEncounter.left)) {
         finishEscape('Todos fuera.');
         return '';

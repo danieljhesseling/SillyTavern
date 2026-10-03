@@ -42,6 +42,7 @@ import { damageLine } from '../game-engine/rules/roll-line.js';
 import { chooseEnemyBark } from '../game-engine/combat/barks.js';
 import { breaksMorale } from '../game-engine/combat/crits.js';
 import { planEndure } from '../game-engine/combat/bond-perks.js';
+import { announceBond } from './bond-play.js';
 import { spendPerk } from '../game-engine/campaign/bonds.js';
 import { knownAbilities, spendAbilityUse } from '../game-engine/rules/abilities.js';
 import { readCasterBlock, spendEnemySlot, enemySpellAbilities, enemySpellAt, enemySlotsLeft } from '../game-engine/combat/enemy-spells.js';
@@ -165,6 +166,8 @@ function enemyStrike(enemy, target, { weapon = null, noModifier = false } = {}) 
         attackerKind: enemyKind(enemy),
         // Tanda 12: quien sale de su escondite pega con ventaja (y deja de estar escondido).
         attackerId: on ? enemyId : '',
+        // E3.1: agarrado por uno de los tuyos, pega con desventaja a los demás (2024).
+        grappledBy: String(/** @type {any} */ (enemy).grappledBy ?? ''),
     });
     /** @type {{mode: 'advantage'|'disadvantage'|'normal', reasons: string[]}} */
     let edge = baseEdge;
@@ -330,7 +333,9 @@ export function damagePartyMember(target, totalDamage, isCrit = false) {
     if (rescue) {
         saveCampaignState(null, spendPerk(getCampaignBonds(), rescue.saviourId, rescue.perkId));
         target.hp = 1;
-        lines.push(`🛡️ ${rescue.saviourName} se interpone: ${target.name} aguanta con 1 HP.`);
+        lines.push(`🛡️ ${rescue.saviourName} se interpone: ${target.name} aguanta con 1 PG.`);
+        // E3.4: lo dice quien se interpone, y las dos fichas brillan.
+        announceBond(partyMembers.find(m => String(m.id) === String(rescue.saviourId)), 'endure', { partner: target });
         rememberTogether(`${rescue.saviourName} se interpuso para salvar a ${target.name} en ${currentBoardName || currentLocationName}.`,
             [rescue.saviourName, String(target.name)]);
         recordFeat(partyMembers.find(m => String(m.id) === String(rescue.saviourId)), 'rescue');

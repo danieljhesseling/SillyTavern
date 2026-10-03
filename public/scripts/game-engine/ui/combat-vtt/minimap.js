@@ -106,6 +106,7 @@ export const MINIMAP_COLORS = {
     difficult: '#7a6233',
     brush: '#3f6b2c',
     ice: '#8fb7c9',
+    mud: '#5c4630',
     chasm: '#0a0a0a',
     high: '#57523f',
     door: '#a4793d',

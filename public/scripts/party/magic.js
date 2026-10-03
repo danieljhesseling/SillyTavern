@@ -16,7 +16,7 @@ import { asAbility } from '../game-engine/compendio/skills.js';
 import { rollDiceDetailed, getDistanceInFeet, getPlayerAttackBonus } from './combat-rules.js';
 import { setCell as setTerrainCell, getCell, TERRAIN_TYPES } from '../game-engine/board/terrain.js';
 import { areaCells, creaturesIn, isArea, describeArea } from '../game-engine/rules/area.js';
-import { elementOf, reactTerrain, comboFor, ELEMENT_ICONS } from '../game-engine/rules/tags.js';
+import { elementOf, reactTerrain, comboFor, ELEMENT_ICONS, isLightning, waterArc } from '../game-engine/rules/tags.js';
 import { MAGIC_ITEMS, afterUse, canLearnScroll } from '../game-engine/rules/magic-items.js';
 import {
     grimoireAbilities, spellById, spellAbility, spendCharge, magicInData, knownSpells, describeSpell,
@@ -76,7 +76,8 @@ import { currentPet } from './pet.js';
 import { noteDeed, worldWrite } from './world-growth.js';
 import { postCombatNarration, postForModel, showTip, narratorMode } from './narration.js';
 import { savePartyState, renderPartyMembers } from './roster.js';
-import { judgeDecision, recordFeat } from './companions.js';
+import { judgeDecision, recordFeat, getPartyFormation } from './companions.js';
+import { preparedByRole, roleOf } from '../game-engine/rules/level-advice.js';
 import { brawlRefused } from './brawl.js';
 
 /**
@@ -813,6 +814,7 @@ export function afterRestMagic(kind) {
     /** @type {string[]} */
     const lines = [];
     if (kind !== 'largo') return lines;
+    const leader = partyMembers.find(m => !m.dead && !m.guest) ?? null;
     for (const member of partyMembers.filter(m => !m.dead)) {
         member.concentration = null;
         delete member.spellAc;
@@ -824,6 +826,15 @@ export function afterRestMagic(kind) {
         }
         const casting = casterOf(classRowOf(member));
         if (casting && casting.mode !== 'known' && !casting.ritualsOnly) member.mayPrepare = true;
+        // E7.4 (G5.6): los compañeros preparan solos según su papel: quien cura, curas. Se puede
+        // cambiar en su grimorio hasta que preparen (siguen pudiendo, `mayPrepare`).
+        if (casting && member !== leader) {
+            const picked = preparedByRole({ member, classRow: classRowOf(member), catalogue: spellRows(), role: roleOf(member, getPartyFormation()) });
+            if (picked && picked.length > 0) {
+                /** @type {any} */ (member).prepared = picked;
+                postCombatNarration(`📖 [MAGIA] ${member.name} prepara: ${picked.map(id => spellFor(id)?.name ?? id).join(', ')}.`);
+            }
+        }
     }
     savePartyState();
     const hero = partyMembers.find(m => !m.dead && !m.guest) ?? null;
@@ -1602,6 +1613,8 @@ export function resolveAbilityOnBoard({ actor, side, ability, subject }) {
     const rays = spell && !area ? Math.max(1, Math.floor(Number(ability.rays) || 1)) : 1;
     // R4: lo que se quita con un conjuro que roba vida.
     let drained = 0;
+    /** E1.3: a quién le ha dado el rayo, y dónde. @type {Array<{x: number, y: number, damage: number}>} */
+    const struck = [];
     for (const victim of fifth?.done ? [] : victims) {
         const target = victim.ref;
         /** @type {any} */
@@ -1642,6 +1655,8 @@ export function resolveAbilityOnBoard({ actor, side, ability, subject }) {
             last = plan;
         }
         const plan = last ?? { hit: false, saved: true };
+        // E1.3: el rayo que le da a quien está en el agua, para llevarlo por ella (abajo).
+        if (isLightning(ability) && (Number(last?.damage) || 0) > 0) struck.push({ x: victim.x, y: victim.y, damage: Number(last.damage) });
 
         // El elemento y dónde está, o cómo está: en el agua, el frío hiela.
         if (element && plan.hit && !plan.saved && (Number(target.currentHp ?? target.hp) || 0) > 0) {
@@ -1654,6 +1669,31 @@ export function resolveAbilityOnBoard({ actor, side, ability, subject }) {
                 }
                 if (combo.add) applyTimedCondition(target, victim.kind === 'enemy' ? String(target.instanceId) : String(target.id), combo.add, combo.rounds);
                 lines.push(`${ELEMENT_ICONS[/** @type {keyof typeof ELEMENT_ICONS} */ (element)] ?? '✨'} ${target.name}: ${combo.line}.`);
+            }
+        }
+    }
+
+    // E1.3 (cosecha propia): el agua lleva el rayo: quien está en la misma agua, a 15 pies como
+    // mucho de a quien le dio, se lleva la mitad. Una vez cada uno.
+    if (struck.length > 0 && context.terrain) {
+        const hitAlready = new Set(victims.map(v => v.ref));
+        const around = [
+            ...getAliveEnemies().map(e => ({ kind: /** @type {'enemy'} */ ('enemy'), ref: e, ...boardCellOf(e) })),
+            ...partyMembers.filter(m => !m.dead && (Number(m.hp) || 0) > 0).map(m => ({ kind: /** @type {'party'} */ ('party'), ref: m, ...boardCellOf(m) })),
+        ].filter(c => !hitAlready.has(c.ref));
+        for (const hit of struck) {
+            const share = Math.floor(hit.damage / 2);
+            if (share <= 0) continue;
+            for (const wet of waterArc({ terrain: context.terrain, from: hit, others: around.filter(c => !hitAlready.has(c.ref)) })) {
+                hitAlready.add(wet.ref);
+                lines.push(`⚡ El agua lleva el rayo hasta ${wet.ref.name}: ${share} de daño.`);
+                if (wet.kind === 'enemy') {
+                    wet.ref.currentHp = Math.max(0, (Number(wet.ref.currentHp) || 0) - share);
+                    floatOnToken(enemyTokenId(wet.ref), `-${share}`, 'damage');
+                    if (wet.ref.currentHp === 0) lines.push(`☠️ ${wet.ref.name} cae derrotado.`);
+                } else {
+                    lines.push(...damagePartyMember(wet.ref, share, false));
+                }
             }
         }
     }

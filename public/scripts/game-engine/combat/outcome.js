@@ -106,15 +106,28 @@ export const RESCUE_DAYS = 1;
  * @property {boolean} [canRest] Si se puede descansar aquí.
  * @property {OutcomeRescue|null} [rescue] Derrota: quién os recoge (sin nadie con vida, nada).
  * @property {boolean} [hard] D-J64: el modo de hierro (quien muere no vuelve).
+ * @property {string} [hardName] E8.7: cómo se llama lo que lo hace duro: «Modo duro» (la opción
+ *   del juego) o «Modo de hierro» (la letra del modo). Sin él, «Modo de hierro».
  * @property {boolean} [checkpoint] Si hay un punto guardado al que volver.
  * @property {boolean} [saves] Si se puede cargar una partida guardada.
  * @property {boolean} [home] Si se puede volver al gremio.
  * @property {string} [failed] Derrota sin caer: lo que dice la misión («El ratero ha escapado»).
  * @property {string[]} [upgrades] Idea 63: lo del botín que mejora lo que lleva alguien.
+ * @property {boolean} [quick] E7.2: la pelea se resolvió rápido (sin jugarla golpe a golpe).
+ * @property {string[]} [notes] E7.3 y E7.4: lo que hicieron solos los que lleva el juego (ponerse
+ *   algo mejor, subir de nivel). Va con las mejoras del botín.
  */
 
 /** @param {any} value @returns {string} */
 const text = (value) => String(value ?? '').trim();
+
+/**
+ * E8.7: unos nombres en una frase: «Nella», «Nella y Gerd», «Nella, Gerd y Osric».
+ *
+ * @param {string[]} names
+ * @returns {string}
+ */
+const listOf = (names) => (names.length > 1 ? `${names.slice(0, -1).join(', ')} y ${names[names.length - 1]}` : names[0] ?? '');
 
 /** @param {any} value @returns {number} */
 const num = (value) => {
@@ -305,7 +318,8 @@ function memberRow(member, { hard = false, victory = true }) {
         deeds,
         best: victory && Boolean(member.best),
         xpText: victory && xp > 0 ? `+${xp} PX` : '',
-        levelUp: victory && next > level ? `Subir a nivel ${next}` : '',
+        // E8.2: pasado el nivel 20 no se sube: se gana un don épico.
+        levelUp: victory && next > level ? (next > 20 ? 'Elegir un don épico' : `Subir a nivel ${next}`) : '',
         nextLevel: next > level ? next : 0,
     };
 }
@@ -354,14 +368,17 @@ export function outcomeView(input) {
             kind: /** @type {'victory'} */ ('victory'),
             fallen: false,
             title: 'Victoria',
-            sub: `Encuentro superado${where ? ` ${where}` : ''} · ronda ${round}`,
+            // E7.2: resuelta rápido, con las rondas que duró.
+            sub: input.quick
+                ? `Resuelto rápido${where ? ` ${where}` : ''} · ${round} ${round === 1 ? 'ronda' : 'rondas'}`
+                : `Encuentro superado${where ? ` ${where}` : ''} · ronda ${round}`,
             crest: 'fa-shield-halved',
             rosterTitle: 'Balance de la compañía',
             members,
             lootTitle: 'Botín',
             gold: gold > 0 ? `+${gold} de oro` : '',
             items,
-            upgrades: (Array.isArray(input.upgrades) ? input.upgrades : []).map(text).filter(Boolean),
+            upgrades: [...(Array.isArray(input.notes) ? input.notes : []), ...(Array.isArray(input.upgrades) ? input.upgrades : [])].map(text).filter(Boolean),
             emptyLoot: gold > 0 || items.length > 0 ? '' : 'Nada que llevarse.',
             cost: null,
             note: { icon: 'fa-clock', text: [text(input.time), leftovers].filter(Boolean).join(' · ') },
@@ -372,7 +389,7 @@ export function outcomeView(input) {
 
     // ---- Derrota
     const fellNames = (input.members ?? []).filter(m => m.dead || num(m.hp) <= 0).map(m => text(m.name));
-    const hardNote = hard ? 'Modo de hierro: quien muere no vuelve, tampoco un confidente.' : '';
+    const hardNote = hard ? `${text(input.hardName) || 'Modo de hierro'}: quien muere no vuelve, tampoco un confidente.` : '';
     /** @type {OutcomeButton[]} */
     const buttons = [];
     /** @type {{title: string, purse: string, lines: Array<{icon: string, title: string, text: string}>}|null} */
@@ -416,6 +433,12 @@ export function outcomeView(input) {
             buttons.push({ id: 'close', label: 'Seguir', icon: 'fa-arrow-right', tone: 'red', main: true });
         }
         if (!hard && input.checkpoint) note = 'Si prefieres, puedes volver al punto guardado de antes.';
+    }
+    // E8.7 (D-J64): sin modo duro, y con alguien en pie para llevarle, quien de los tuyos ha
+    // muerto puede volver en el templo.
+    const raisable = (input.members ?? []).filter(m => m.dead && !m.guest).map(m => text(m.name)).filter(Boolean);
+    if (!hard && !allDead && raisable.length > 0) {
+        note = [`En el templo se puede devolver la vida a ${listOf(raisable)}, pagando.`, note].filter(Boolean).join(' ');
     }
     return {
         kind: /** @type {'defeat'} */ ('defeat'),

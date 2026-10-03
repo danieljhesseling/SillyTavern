@@ -26,6 +26,7 @@ import { restoreAbilityUses } from '../game-engine/rules/abilities.js';
 import { relieve } from '../game-engine/rules/needs.js';
 import { readInjuries, setInjury } from '../game-engine/rules/injuries.js';
 import { buildPersonalWeapon } from '../game-engine/combat/bond-perks.js';
+import { pairMoveOf, ultimateOf } from '../game-engine/combat/bond-moves.js';
 import { addItemToInventory, createItem } from '../dnd-system.js';
 import { rollDice } from './combat-rules.js';
 
@@ -160,7 +161,12 @@ export function createCampaignState(deps) {
             deps.rankedUp?.(member, result.rankAfter);
 
             for (const perk of result.unlockedPerks) {
-                deps.narrate(`🎖️ [CAMPAÑA] Desbloqueado: ${perk.label} — ${perk.description}`);
+                // E3.4: la jugada del rango 7 y el golpe del 10, con su nombre («Yunque y martillo»).
+                const named = perk.id === 'pair_move' ? `${pairMoveOf(member).name} (su jugada contigo, una vez por combate)`
+                    : perk.id === 'ultimate' ? `${ultimateOf(member).name} (su golpe definitivo, una vez al día)` : '';
+                deps.narrate(named
+                    ? `🎖️ [CAMPAÑA] Desbloqueado con ${member.name}: ${named}.`
+                    : `🎖️ [CAMPAÑA] Desbloqueado: ${perk.label} — ${perk.description}`);
 
                 // El rango 10 no es solo un aviso: deja un arma en la ficha, una vez, y
                 // se queda ahí después del combate. Un bonus invisible no sería una

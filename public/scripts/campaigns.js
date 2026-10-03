@@ -1718,6 +1718,9 @@ export async function changeHubHero(choice) {
             giveStartingPurse(HUB_NEXT_HERO_GOLD);
             if (before) await keepInHub(worldName, { add: before, day: today });
             await beginCampaignPlot(hero);
+            // E8.3: con maestros en el gremio, el nuevo llega con ventaja y aprende de ellos.
+            const { welcomeNewHero } = await import('./party/long-life.js');
+            await welcomeNewHero().catch(error => console.error('[gremio] los maestros', error));
             return true;
         }
 
@@ -1918,6 +1921,9 @@ export async function returnToHub() {
         const id = String(data?.metadata?.[HUB_CAMPAIGN_KEY] ?? '');
         // J7.2: con la campaña terminada, cada compañero de esta tierra decide si se viene al gremio.
         const stays = plotEndingTitle() ? await settleCampaignCompanions({ campaign: id }) : null;
+        // E8.6: los mercenarios que vuelven vivos suman una salida (a la tercera, veteranos).
+        const { countMercenaryTrips, promoteVeterans } = await import('./party/long-life.js');
+        countMercenaryTrips(String(data?.metadata?.[HUB_BOARD_NAME_KEY] || chat_metadata?.[HUB_BOARD_NAME_KEY] || worldName));
         const carried = partySnapshot();
         const entries = carriedEntries(data, carried);
         const home = await loadWorldInfo(homeWorld);
@@ -2003,6 +2009,8 @@ export async function returnToHub() {
         toastr.success(ending
             ? `Volvéis al gremio. La campaña acabó: ${ending}.`
             : 'Volvéis al gremio con todo lo ganado. La campaña queda donde la dejáis.', 'El gremio');
+        // E8.6: ya en casa, quien se ha ganado ser veterano lo cuenta (sin esperar: la vuelta acaba).
+        setTimeout(() => { void promoteVeterans().catch(error => console.error('[gremio] veteranos', error)); }, 0);
     } catch (error) {
         console.error('[gremio] no se pudo volver', error);
         toastr.error(String(error?.message || error), 'No se pudo volver al gremio');

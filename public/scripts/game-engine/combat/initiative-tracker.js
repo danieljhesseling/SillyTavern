@@ -39,6 +39,8 @@ export const STATUS_ICONS = {
     unconscious: { icon: 'fa-bed', label: 'Inconsciente', effect: 'en el suelo, tirando salvaciones de muerte' },
     exhaustion: { icon: 'fa-battery-quarter', label: 'Agotado', effect: 'cansado: todo le cuesta más' },
     bleeding: { icon: 'fa-droplet', label: 'Sangrando', effect: 'pierde vida hasta que alguien le cure' },
+    // E1.1: el guardia que duerme en el tablero (`board/sleepers.js`).
+    dormido: { icon: 'fa-bed', label: 'Dormido', effect: 'no os ha visto; si pasáis a 10 pies, tirad Sigilo o se despierta' },
     // J19: los que dejan los conjuros (`SPELL_CONDITIONS` de `rules/spell-catalogue.js`).
     guiado: { icon: 'fa-compass', label: 'Guiado', effect: 'suma 1d4 a su próxima prueba' },
     resguardado: { icon: 'fa-shield-heart', label: 'Resguardado', effect: 'suma 1d4 a su próxima salvación' },

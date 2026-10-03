@@ -46,8 +46,11 @@ import {
 } from './magic.js';
 import { getCurrentWorldFactions } from './factions.js';
 import { getCampaignBonds } from './time.js';
+import { getRank } from '../game-engine/campaign/bonds.js';
+import { bondSheetRows } from '../game-engine/combat/bond-moves.js';
 import { postCombatNarration, narratorMode } from './narration.js';
 import { savePartyState, getPartyEntryDisplayName, loadDndCatalog, renderPartyMembers } from './roster.js';
+import { equipBestButton, autoEquipGameCompanions } from './friction.js';
 
 /** @typedef {import('./types.js').PartyMember} PartyMember */
 /** @typedef {import('./types.js').DndCatalog} DndCatalog */
@@ -242,7 +245,10 @@ export async function openOwnSheet(member) {
             onAttune: (itemId, on) => attuneItem(member, itemId, on),
             attuneNote: attuneNoteOf(member),
             xpTable: rules?.progression?.xpThresholds ?? null,
-            bondRank: Number(getCampaignBonds()?.[String(member.id)]?.rank) || 0,
+            // E3.4: el rango de verdad (antes se leía mal y la ficha no lo decía nunca) y lo que da
+            // en combate. Tu héroe y las invocaciones no tienen vínculo contigo.
+            bondRank: bondRankOf(member),
+            bondPerks: bondRankOf(member) > 0 ? bondSheetRows(member, bondRankOf(member)) : [],
             onEdit: () => { void openPartyMemberModal(member); },
             // Idea 59: lo que habla.
             languages: languagesOf(member),
@@ -264,6 +270,8 @@ export async function openOwnSheet(member) {
             // J1.7: en qué campañas ha estado (en el juego del gremio: en el gremio o en una campaña suya).
             campaigns: lastHub || lastHubHome ? campaignLinesOf(member) : null,
             onGive: (itemId, toId) => handItem(member, itemId, toId),
+            // E7.3: el mejor arma y la mejor armadura de lo que hay a mano, de un toque.
+            onEquipBest: combatEncounter.active ? null : () => equipBestButton(member),
             Popup,
             POPUP_TYPE,
         });
@@ -365,6 +373,8 @@ function handItem(member, itemId, toId) {
     renderPartyMembers();
     postCombatNarration(`🎒 [GRUPO] ${given.line}`);
     toastr.success(given.line, 'Repartir');
+    // E7.3 (G5.5): si quien lo recibe lo lleva el juego, se lo pone si es mejor.
+    for (const note of autoEquipGameCompanions()) toastr.info(note, 'Se lo pone');
     return true;
 }
 
@@ -1934,4 +1944,16 @@ async function openMemoryEditor(member, memId, onSave) {
     }
 
     onSave();
+}
+
+/**
+ * E3.4: el vínculo de alguien contigo, para su ficha: 0 si es tu héroe o una invocación (no hay
+ * vínculo que enseñar).
+ *
+ * @param {any} member
+ * @returns {number}
+ */
+function bondRankOf(member) {
+    if (!member || member === partyMembers[0] || member.summon) return 0;
+    return getRank(getCampaignBonds(), String(member.id));
 }

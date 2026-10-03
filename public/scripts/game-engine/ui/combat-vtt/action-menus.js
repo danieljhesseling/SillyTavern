@@ -28,6 +28,8 @@
  * @property {number} distanceFeet
  * @property {number} [chance] Lo que tiene de acertar, en tanto por ciento.
  * @property {string} [edge] «con ventaja», «con desventaja» o vacío.
+ * @property {string} [sneak] E3.1: el furtivo del pícaro que llevaría el golpe («Furtivo +2d6»), o vacío.
+ * @property {string} [sneakWhy] Y por qué («está en el suelo», «Gerd está a su lado»).
  * @property {boolean} [enabled]
  * @property {string} [reason]
  * @property {string} [note] Algo más que decir (lo que ya se sabe de él).
@@ -148,12 +150,25 @@
  *   (la de la barra sola, sin los menús).
  * @property {{id: string, token: string|number}} [actor] J12.18: quien juega, para encender su
  *   ficha con lo que se hace a sí mismo.
+ * @property {BondView[]} [bond] E3.4: lo que da el vínculo ahora (a una, la jugada del rango 7, el
+ *   golpe definitivo), cada cosa con contra quién.
+ */
+
+/**
+ * @typedef {Object} BondView E3.4: una jugada del vínculo, con contra quién se puede.
+ * @property {'pair'|'pair_move'|'ultimate'} kind
+ * @property {string} name «Yunque y martillo».
+ * @property {string} desc Lo que hace.
+ * @property {string} badge «Vínculo 7».
+ * @property {string} companionId El compañero del vínculo.
+ * @property {string} [partnerId] Con quién la hace quien juega (a una).
+ * @property {TargetView[]} targets
  */
 
 /**
  * @typedef {Object} Badge
  * @property {string} text
- * @property {'damage'|'heal'|'reach'|'cost'|'dc'|'mastery'|'plain'|'chance'} kind
+ * @property {'damage'|'heal'|'reach'|'cost'|'dc'|'mastery'|'plain'|'chance'|'sneak'|'bond'} kind
  */
 
 /**
@@ -337,10 +352,14 @@ function targetItem(t, pickPrefix, { showChance = false, tone } = {}) {
     const chance = showChance && t.chance !== undefined && t.chance !== null && Number.isFinite(Number(t.chance));
     if (chance) badges.push({ text: `${Math.round(Number(t.chance))} %`, kind: 'chance' });
     if (Number(t.dc) > 0) badges.push({ text: `CD ${Math.round(Number(t.dc))}${t.save ? ` · ${t.save}` : ''}`, kind: 'dc' });
+    // E3.1: el furtivo del pícaro, si este golpe lo lleva, y por qué.
+    if (text(t.sneak)) badges.push({ text: text(t.sneak), kind: 'sneak' });
     const edge = text(t.edge);
     const notes = [
         text(t.note),
         edge && !/^con /.test(edge) ? `con ${edge}` : edge,
+        // Si es por la misma ventaja, ya se lee al lado; si es por un aliado pegado, se dice.
+        text(t.sneak) && text(t.sneakWhy) && !edge.includes(text(t.sneakWhy)) ? `furtivo: ${text(t.sneakWhy)}` : '',
         // Lo que le tapa cuenta contra un ataque (su CA ya lo lleva sumado), no contra una salvación.
         chance && Number(t.cover) > 0 ? `tras cobertura (+${Math.round(Number(t.cover))} CA)` : '',
     ].filter(Boolean);
@@ -485,6 +504,25 @@ export function buildAttackMenu(s) {
         }
     }
     if (weaponItems.length > 0) sections.push({ title: '', items: weaponItems });
+
+    // E3.4: lo que da el vínculo con alguien (a una, su jugada del rango 7, su golpe definitivo).
+    const bonded = (s.bond || []).filter(b => (b.targets || []).length > 0);
+    if (bonded.length > 0) {
+        sections.push({
+            title: 'Con tu vínculo',
+            items: bonded.map(b => {
+                const prefix = `bond:${b.kind}:${b.kind === 'pair' ? (b.partnerId || b.companionId) : b.companionId}`;
+                const cost = b.kind === 'pair_move' ? 'Una vez por combate' : b.kind === 'ultimate' ? 'Una vez al día' : 'Su reacción';
+                return {
+                    kind: /** @type {const} */ ('card'), key: prefix, name: b.name,
+                    icon: b.kind === 'ultimate' ? 'fa-star' : 'fa-people-arrows', tone: 'bond', desc: b.desc,
+                    badges: [{ text: b.badge, kind: /** @type {const} */ ('bond') }, { text: cost, kind: /** @type {const} */ ('cost') }],
+                    enabled: !blocked, reason: blocked, aim: blocked ? undefined : choicesAim(b.targets, 'harm'),
+                    next: { title: `${b.name}: ¿contra quién?`, items: b.targets.map(t => targetItem(t, prefix)) },
+                };
+            }),
+        });
+    }
 
     // Las otras armas: cambiar a ella y atacar, en un paso.
     /** @type {MenuItem[]} */

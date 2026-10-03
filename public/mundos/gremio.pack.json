@@ -714,9 +714,12 @@
       "id": "q_ratero_muelle",
       "name": "El ratero del muelle",
       "act": 1,
-      "description": "Un ratero le ha quitado la bolsa a Tomás y se ha metido en el embarcadero, sin salida. Hay que pararlo.",
+      "description": "Un ratero le ha quitado la bolsa a Tomás y se ha metido en el embarcadero, sin salida. Hay que pararlo. Si tarda mucho, tira la bolsa al agua.",
       "boardId": "muelle_puerto_alba",
-      "objectives": [{ "type": "eliminate_all", "label": "Parar al ratero" }]
+      "objectives": [
+        { "type": "eliminate_all", "label": "Parar al ratero" },
+        { "type": "eliminate", "label": "Pararlo antes de que tire la bolsa al agua", "target": "Ratero del muelle", "beforeRound": 4, "optional": true }
+      ]
     },
     {
       "id": "q_prueba_gremio",

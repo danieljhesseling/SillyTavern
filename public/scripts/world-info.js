@@ -232,6 +232,8 @@ function extractWorldMonsterTemplates(data) {
             // dice de él (de ahí sale el arma si la ficha no la dice: «usa dagas untadas»).
             ...(String(d.weapon || '').trim() ? { weapon: String(d.weapon).trim() } : {}),
             ...(Number(d.potions) > 0 ? { potions: Math.floor(Number(d.potions)) } : {}),
+            // E1.1: su Percepción, si la ficha la dice (pasar junto a él dormido, `sleepers.js`).
+            ...(d.perception !== undefined && d.perception !== null && Number.isFinite(Number(d.perception)) ? { perception: Number(d.perception) } : {}),
             description: String(entry.content || '').slice(0, 600),
         });
     }

@@ -43,15 +43,17 @@ function el(tag, className = '', content = '') {
  * @param {string} input.question
  * @param {string} [input.yes]
  * @param {string} [input.no]
+ * @param {string} [input.other] E2.4: una tercera respuesta (tecla 3), si la hay: «Dormimos aquí». Elegida,
+ *   la pregunta devuelve `'other'`.
  * @param {string} [input.kind] Para las pruebas y el estilo (`curar`).
  * @param {string} [input.pack]
  * @param {string} [input.town]
  * @param {boolean} [input.night]
  * @param {HTMLElement|null} [input.mount]
- * @returns {Promise<boolean>} Si se dijo que sí.
+ * @returns {Promise<boolean|'other'>} Si se dijo que sí (o `'other'`, la tercera).
  */
 export async function askInScene({
-    title, who = null, notes = [], question, yes = 'Sí', no = 'No', kind = '', pack = '', town = '', night = false, mount = null,
+    title, who = null, notes = [], question, yes = 'Sí', no = 'No', other = '', kind = '', pack = '', town = '', night = false, mount = null,
 }) {
     await loadPixelManifest().catch(() => null);
     const dialog = /** @type {HTMLDialogElement} */ (el('dialog', `qd-dialog vq-dialog${kind ? ` vq-${kind}` : ''}`));
@@ -105,7 +107,7 @@ export async function askInScene({
 
     return new Promise(resolve => {
         let done = false;
-        const close = (/** @type {boolean} */ answer) => {
+        const close = (/** @type {boolean|'other'} */ answer) => {
             if (done) return;
             done = true;
             dialog.close();
@@ -123,6 +125,15 @@ export async function askInScene({
         };
         chip(yes, '1', true).focus();
         chip(no, '2', false);
+        // E2.4: la tercera respuesta, si la hay.
+        if (text(other)) {
+            const button = /** @type {HTMLButtonElement} */ (el('button', 'qd-chip qd-chip-reply vq-other'));
+            button.type = 'button';
+            button.dataset.answer = 'otra';
+            button.append(el('span', 'qd-key', '3'), el('span', 'qd-label', text(other)));
+            button.addEventListener('click', () => close('other'));
+            chips.appendChild(button);
+        }
         dialog.addEventListener('cancel', (event) => {
             event.preventDefault();
             close(false);
@@ -137,6 +148,9 @@ export async function askInScene({
             } else if (key === '2' || key === 'n') {
                 event.preventDefault();
                 close(false);
+            } else if (key === '3' && text(other)) {
+                event.preventDefault();
+                close('other');
             }
         });
     });

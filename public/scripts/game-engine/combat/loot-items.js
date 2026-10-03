@@ -38,7 +38,10 @@ const CATALOGUE = {
     'Poción de curación': { type: 'gear', category: 'magic', subcategory: 'potion', weight: 0.5, description: 'Recupera 2d4+2 puntos de vida al beberla.' },
     'Poción de curación mayor': { type: 'gear', category: 'magic', subcategory: 'potion', weight: 0.5, description: 'Recupera 4d4+4 puntos de vida al beberla.' },
     'Cuerda de seda (15 m)': { type: 'gear', category: 'gear', subcategory: 'tool', weight: 2.5 },
-    'Raciones de viaje': { type: 'gear', category: 'gear', subcategory: 'consumable', weight: 1 },
+    'Raciones de viaje': { type: 'gear', category: 'gear', subcategory: 'consumable', weight: 1, price: 1, description: 'Comida seca para un día. Para dormir dentro de una mazmorra hace falta una por cabeza.' },
+    // E2 de ROADMAP_ENTRETENIDO: lo que pesa en la mazmorra. Siempre en la tienda (`town.js`).
+    'Antorcha': { type: 'gear', category: 'gear', subcategory: 'generic', weight: 0.5, price: 1, description: 'Alumbra 20 pies, y penumbra 20 más. Dura una hora y ocupa una mano.' },
+    'Kit de curandero': { type: 'gear', category: 'gear', subcategory: 'tool', weight: 1.5, price: 5, uses: 10, description: 'Diez usos. Con uno, se estabiliza a quien se desangra sin tirar Medicina.' },
     'Antorcha bendecida': { type: 'gear', category: 'gear', subcategory: 'consumable', weight: 0.5 },
     'Daga mellada': { type: 'weapon', category: 'weapon', subcategory: 'simple_melee', weight: 0.5, damageDice: '1d4', damageType: 'piercing', slot: 'weapon' },
     'Bolsa de canicas': { type: 'gear', category: 'gear', subcategory: 'tool', weight: 1 },

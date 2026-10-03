@@ -977,6 +977,44 @@
     margin-top: 2px;
 }
 
+/* E3.4: lo que da el vínculo en combate, en su ficha: lo abierto, y lo siguiente más apagado. */
+.ch-bond-perks {
+    margin: 8px 0 4px;
+    padding: 6px 8px;
+    border-left: 3px solid rgba(244, 114, 182, 0.6);
+    border-radius: 6px;
+    background: rgba(244, 114, 182, 0.08);
+}
+
+.ch-bond-perks-title {
+    font-size: 0.78rem;
+    font-weight: 700;
+    opacity: 0.8;
+    margin-bottom: 3px;
+}
+
+.ch-bond-perk {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    padding: 2px 0;
+}
+
+.ch-bond-perk-name {
+    font-size: 0.86rem;
+    font-weight: 600;
+}
+
+.ch-bond-perk-what {
+    font-size: 0.76rem;
+    opacity: 0.75;
+}
+
+.ch-bond-perk-next {
+    opacity: 0.6;
+    font-style: italic;
+}
+
 /* ---------------------------------------------------------------- la vida */
 
 /* Primero y grande: es lo que se viene a mirar. */

@@ -74,6 +74,11 @@ import { renderLocationMapsPreview } from './board-view.js';
 import { canParleyNow, openParleyChoice } from './avoid.js';
 import { recordFeat } from './companions.js';
 import { fxMark, stageAttack } from './combat-fx.js';
+import { sneakFor } from './combo-rules.js';
+import { bondChoices, resolveBondMove } from './bond-play.js';
+import { useHealerKit } from './dungeon.js';
+import { resolvePairStrike, resolveUltimateById } from './player-actions.js';
+import { sneakBadge } from '../game-engine/rules/sneak-attack.js';
 
 /** @typedef {import('../game-engine/ui/combat-vtt/action-menus.js').BarSnapshot} BarSnapshot */
 /** @typedef {import('../game-engine/ui/combat-vtt/action-menus.js').TargetView} TargetView */
@@ -142,9 +147,10 @@ function memberFace(member) {
  * @param {any} enemy
  * @param {number} distanceFeet
  * Con el número explicado en `note` («+5 al ataque: +3 de Fuerza y +2 de competencia») y, si
- * va con ventaja o desventaja, por qué, en `edge` («desventaja: está en el suelo…»).
+ * va con ventaja o desventaja, por qué, en `edge` («desventaja: está en el suelo…»). E3.1: si lleva
+ * el furtivo del pícaro, `sneak` («Furtivo +2d6») y `sneakWhy` («está en el suelo»).
  *
- * @returns {{chance: number, edge: string, note: string}}
+ * @returns {{chance: number, edge: string, note: string, sneak?: string, sneakWhy?: string}}
  */
 function forecastAgainst(member, wielder, enemy, distanceFeet) {
     const rangeFeet = getAttackRangeFeet(wielder);
@@ -165,14 +171,18 @@ function forecastAgainst(member, wielder, enemy, distanceFeet) {
         flanked: partyFlanks(member, enemy),
         attackerId: String(member.id),
         hindered: attackHindrance(partyCell(member), cellOf(enemy), distanceFeet),
+        grappledBy: String(member.grappledBy ?? ''),
     });
     const vexed = hasVex(combatEncounter.tactics, { by: String(member.id), target: String(enemy.instanceId), round: Number(combatEncounter.round) || 1 });
     const edge = combineEdge(base, vexed ? ['le tienes molestado'] : []);
     const { ac } = getTargetArmorClass(enemy, member);
+    // E3.1: si el golpe llevaría el furtivo del pícaro, se dice antes, con su porqué.
+    const sneak = sneakFor(member, brawlOf(combatEncounter) ? null : weaponOf(wielder), enemy, edge);
     return {
         chance: Math.round(hitChance(attackMod, ac, edge.mode) * 100),
         edge: describeEdgeReason(edge.mode, edge.reasons),
         note: describeAttackBonus(parts),
+        ...(sneak.ok ? { sneak: sneakBadge(sneak), sneakWhy: sneak.why } : {}),
     };
 }
 
@@ -595,7 +605,33 @@ export function buildCombatBarSnapshot({ full = true } = {}) {
         studied: Object.fromEntries(Object.entries(readTactics(combatEncounter.tactics).studied).map(([id, facts]) => [id, facts.length])),
         // J12.18: quien juega, para encender su ficha con lo que se hace a sí mismo.
         actor: { id: String(member.id), token: member.id },
+        // E3.4: lo que da el vínculo ahora mismo.
+        bond: bondViews(member, enemies),
     };
+}
+
+/**
+ * E3.4: lo que da el vínculo a quien juega (`bondChoices`), juntado por jugada, cada una con sus
+ * enemigos posibles.
+ *
+ * @param {any} member
+ * @param {TargetView[]} enemies Los enemigos como los enseña la barra.
+ * @returns {import('../game-engine/ui/combat-vtt/action-menus.js').BondView[]}
+ */
+function bondViews(member, enemies) {
+    /** @type {Map<string, import('../game-engine/ui/combat-vtt/action-menus.js').BondView>} */
+    const groups = new Map();
+    for (const choice of bondChoices(member)) {
+        const key = `${choice.kind}:${choice.companionId}:${choice.partnerId}`;
+        const group = groups.get(key) ?? {
+            kind: choice.kind, name: choice.name, desc: choice.desc, badge: choice.badge,
+            companionId: choice.companionId, partnerId: choice.partnerId, targets: [],
+        };
+        const target = enemies.find(e => e.id === choice.enemyId);
+        if (target) group.targets.push({ ...target, ...(choice.kind === 'ultimate' ? { note: choice.desc } : {}) });
+        groups.set(key, group);
+    }
+    return [...groups.values()];
 }
 
 /**
@@ -759,6 +795,8 @@ export function unarmedStrike(mode, targetId) {
             lines.push(`❌ ${target.name} se zafa.`);
         } else if (mode === 'agarrar') {
             applyTimedCondition(target, id, 'Grappled', 1);
+            // E3.1: quién le agarra: a los demás les pega con desventaja (2024).
+            target.grappledBy = String(member.id);
             lines.push(`✅ ${target.name} queda agarrado: no se mueve hasta tu próximo turno.`);
         } else if (mode === 'apartar') {
             lines.push(...pushEnemyAway(member, target, 1));
@@ -1013,6 +1051,18 @@ export function stabilizeAlly(allyId) {
         return '';
     }
     Object.assign(combatEncounter, useAction(combatEncounter, 'action'));
+    // E2.4: con un kit de curandero (2024), sin tirar: se gasta un uso.
+    const kit = useHealerKit(member);
+    if (kit.used) {
+        ally.deathSaves = stableSaves();
+        soundCue('heal');
+        postCombatNarration(`[COMBAT] 🩹 ${member.name} atiende a ${ally.name} ${kit.line}: deja de desangrarse. Sigue a 0 PG, pero ya no tira salvaciones de muerte.`);
+        toastr.info(`${member.name} estabiliza a ${ally.name} ${kit.line}.`, 'Kit de curandero');
+        saveCombatState();
+        savePartyState();
+        renderLocationMapsPreview();
+        return `${member.name}: estabilizar a ${ally.name}`;
+    }
     const { modifier } = skillModifier(member, 'medicine');
     const natural = rollDiceDetailed('1d20', 20).total;
     const check = stabilizeCheck({ helper: String(member.name), target: String(ally.name), natural, modifier });
@@ -1194,6 +1244,17 @@ export function runCombatBarPick(pick) {
         case 'prone': setProne(true); break;
         case 'stand': setProne(false); break;
         case 'parley': void openParleyChoice(); break;
+        // E3.4: «bond:tipo:compañero:enemigo»: a una, la jugada del rango 7 o el golpe definitivo.
+        case 'bond': {
+            const member = actingMember();
+            const enemy = getAliveEnemies().find(e => String(e.instanceId) === String(c));
+            if (!member || !enemy) break;
+            if (a === 'pair') resolvePairStrike(member, b, enemy);
+            else if (a === 'pair_move') resolveBondMove(member, b, c);
+            else if (a === 'ultimate') resolveUltimateById(c);
+            renderLocationMapsPreview();
+            break;
+        }
         default: break;
     }
     return { keepOpen: '' };

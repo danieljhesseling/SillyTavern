@@ -11,7 +11,7 @@
  */
 
 import {
-    OBJECTIVE_TYPES, normalizeObjectives, evaluateScenario, describeObjectives,
+    OBJECTIVE_TYPES, CONDITION_TYPES, normalizeObjectives, evaluateScenario, evaluateObjective, describeObjectives, deadlineText,
 } from '../campaign/scenarios.js';
 
 /**
@@ -26,9 +26,11 @@ import {
  * @param {Array<any>} input.enemies
  * @param {Array<any>} input.party
  * @param {string[]} [input.collectedTreasures]
+ * @param {any} [input.left] E1.1: quién ha salido por una salida (`combatEncounter.left`).
+ * @param {boolean} [input.awakened] E1.1: si se ha despertado alguien de los que dormían.
  * @returns {import('../campaign/scenarios.js').BoardState}
  */
-export function buildBoardState({ round, enemies, party, collectedTreasures = [] }) {
+export function buildBoardState({ round, enemies, party, collectedTreasures = [], left = [], awakened = false }) {
     return {
         round: Number(round) || 1,
         enemies: (Array.isArray(enemies) ? enemies : []).map(e => ({
@@ -44,8 +46,13 @@ export function buildBoardState({ round, enemies, party, collectedTreasures = []
             currentHp: Number(m?.hp ?? m?.currentHp) || 0,
             gridX: Number(m?.mapPosition?.gridX ?? m?.gridX) || 0,
             gridY: Number(m?.mapPosition?.gridY ?? m?.gridY) || 0,
+            // E1.1: proteger a alguien por su nombre o por su entrada del mundo.
+            ...(m?.name ? { name: String(m.name) } : {}),
+            ...(m?.wiUid !== undefined && m?.wiUid !== null ? { uid: String(m.wiUid) } : {}),
         })),
         collectedTreasures: Array.isArray(collectedTreasures) ? collectedTreasures : [],
+        ...(Array.isArray(left) && left.length > 0 ? { left: left.map(String) } : {}),
+        ...(awakened ? { awakened: true } : {}),
     };
 }
 
@@ -73,7 +80,8 @@ export function judgeScenario(objectives, board) {
         const objective = byId.get(result.id);
         return {
             id: result.id,
-            label: String(objective?.label || OBJECTIVE_TYPES[objective?.type]?.label || result.id),
+            // E1.1: con su plazo a la vista, en la cabecera de la pelea.
+            label: `${String(objective?.label || OBJECTIVE_TYPES[objective?.type]?.label || result.id)}${deadlineText(/** @type {any} */ (objective))}`,
             status: result.status,
             optional: Boolean(result.optional),
         };
@@ -122,17 +130,53 @@ export function leftToDo(objectives, board) {
     const byId = new Map(list.map(o => [o.id, o]));
     const round = Number(board?.round) || 1;
     const parts = results
-        .filter(r => !r.optional && r.status === 'pending' && r.type !== 'protect')
+        .filter(r => !r.optional && r.status === 'pending' && !CONDITION_TYPES.has(r.type))
         .map(r => {
             const o = /** @type {any} */ (byId.get(r.id));
             const cell = o?.cell ? ` (${Number(o.cell.x) + 1}, ${Number(o.cell.y) + 1})` : '';
             if (o.type === 'loot') return `${o.label}: está en un cofre del tablero; id a su lado y pulsadlo.`;
             if (o.type === 'reach_cell') return `${o.label}: id a la casilla${cell}.`;
             if (o.type === 'escort') return `${o.label}: llevadle hasta la casilla${cell}.`;
-            if (o.type === 'survive_rounds') return `${o.label}: aguantad hasta la ronda ${o.rounds ?? round} (vais por la ${round}); pasad turno.`;
+            if (o.type === 'survive_rounds' || o.type === 'hold') return `${o.label}: aguantad hasta la ronda ${o.rounds ?? round} (vais por la ${round}); pasad turno.`;
             return `${o.label}.`;
         });
     return parts.length > 0 ? `Ya no queda nadie en pie, pero aún falta: ${parts.join(' ')}` : '';
+}
+
+/**
+ * E1.1: lo que vence en la ronda siguiente y aún no está hecho, para avisar una ronda antes
+ * («Última ronda para salir por la ventana»). Lo dice quien lleva la pelea, fuera de la novela.
+ *
+ * @param {Array<any>} objectives
+ * @param {import('../campaign/scenarios.js').BoardState} board
+ * @returns {string[]} Las etiquetas.
+ */
+export function lastRoundFor(objectives, board) {
+    const round = Number(board?.round) || 1;
+    return normalizeObjectives(objectives)
+        .filter(o => !o.optional && o.beforeRound === round + 1 && evaluateObjective(o, board) === 'pending')
+        .map(o => String(o.label || OBJECTIVE_TYPES[o.type]?.label || o.id));
+}
+
+/**
+ * E1.1: si el tablero se gana saliendo (`escape`): los del grupo que lleva el juego van a la
+ * salida en vez de pelear, y pisarla es salir.
+ *
+ * @param {Array<any>} objectives
+ * @returns {boolean}
+ */
+export function wantsEscape(objectives) {
+    return normalizeObjectives(objectives).some(o => o.type === 'escape' && !o.optional);
+}
+
+/**
+ * E1.1: las casillas que el tablero pide defender, para dibujarlas y decirlas.
+ *
+ * @param {Array<any>} objectives
+ * @returns {Array<{x: number, y: number}>}
+ */
+export function heldCellsOf(objectives) {
+    return normalizeObjectives(objectives).filter(o => o.type === 'hold').flatMap(o => o.cells ?? []);
 }
 
 /** Tanda 16: lo que se puede cumplir sin pelea: llegar a una casilla, llevar a alguien, sacar un tesoro. */
@@ -158,7 +202,7 @@ export function objectivesLeftWalking(objectives, board, { wavesLeft = false } =
     if (list.length === 0 || wavesLeft || (board?.enemies ?? []).some(e => (Number(e?.currentHp) || 0) > 0)) return [];
     const { status, results } = evaluateScenario(list, board);
     if (status !== 'active') return [];
-    const pending = results.filter(r => !r.optional && r.status === 'pending' && r.type !== 'protect');
+    const pending = results.filter(r => !r.optional && r.status === 'pending' && !CONDITION_TYPES.has(r.type));
     if (pending.length === 0 || !pending.every(r => DONE_WALKING.has(r.type))) return [];
     return pending.map(r => r.id);
 }

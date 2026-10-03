@@ -649,6 +649,8 @@ export function validatePack(raw) {
 
     const bestiary = new Set(pack.bestiary.map((/** @type {any} */ e) => text(e.name).toLowerCase()).filter(Boolean));
     const allies = new Set(pack.confidants.map((/** @type {any} */ c) => text(c.name).toLowerCase()).filter(Boolean));
+    // E1.1: y quien se protege en su tablero sin ser de la campaña (`ward`).
+    for (const board of pack.boards) if (text(board?.ward?.name)) allies.add(text(board.ward.name).toLowerCase());
     const boardIds = new Set();
     /** @type {Map<string, {width: number, height: number, map: string[]}>} */
     const boardSizes = new Map();
@@ -749,6 +751,18 @@ export function validatePack(raw) {
             }
         });
 
+        // E1.1: los refuerzos, del bestiario y dentro del mapa; quien se protege, en el suelo.
+        (Array.isArray(board.waves) ? board.waves : []).forEach((/** @type {any} */ wave, /** @type {number} */ i) => {
+            for (const name of Array.isArray(wave?.names) ? wave.names : []) {
+                if (!bestiary.has(text(name).toLowerCase())) errors.push({ path: `${path}.waves[${i}]`, message: `"${text(name)}" no está en el bestiario.` });
+            }
+            if (!(Number(wave?.round) >= 1)) errors.push({ path: `${path}.waves[${i}].round`, message: '`round` tiene que ser la ronda en la que llegan (1 o más).' });
+            if (cellState(board.map, size, wave) === 'outside') errors.push({ path: `${path}.waves[${i}]`, message: `(${wave?.x},${wave?.y}) cae fuera del mapa.` });
+        });
+        if (board.ward !== undefined && cellState(board.map, size, board.ward) !== 'ok') {
+            errors.push({ path: `${path}.ward`, message: `(${board.ward?.x},${board.ward?.y}): quien se protege tiene que estar en una casilla de suelo del mapa.` });
+        }
+
         // Solo si el tablero se sostiene: inundar un mapa con las filas desiguales, o con
         // el grupo empezando dentro de un muro, dice cosas ciertas sobre un fallo que ya
         // se ha contado. Una causa, un mensaje.
@@ -784,6 +798,13 @@ export function validatePack(raw) {
                 errors.push({ path: `${oPath}.type`, message: `"${type}" no es un tipo de objetivo. Los que hay: ${Object.keys(OBJECTIVE_TYPES).join(', ')}.` });
                 return;
             }
+            // E1.1: escapar pide salidas en el mapa (`x`), y el plazo es una ronda de verdad.
+            if (type === 'escape' && size?.map && !size.map.some((/** @type {string} */ row) => row.includes('x'))) {
+                errors.push({ path: `${oPath}.type`, message: `Para escapar, el tablero "${boardId}" necesita casillas de salida (\`x\`) en el mapa.` });
+            }
+            if (objective.beforeRound !== undefined && !(Number(objective.beforeRound) >= 2)) {
+                errors.push({ path: `${oPath}.beforeRound`, message: '`beforeRound` es la ronda en la que se pierde: 2 o más.' });
+            }
 
             for (const field of OBJECTIVE_FIELDS[type] ?? []) {
                 const value = objective[field.writes];
@@ -812,13 +833,21 @@ export function validatePack(raw) {
                     if (!Number.isFinite(Number(value)) || Number(value) <= 0) {
                         errors.push({ path: `${oPath}.${field.writes}`, message: `\`${field.writes}\` tiene que ser un número mayor que cero.` });
                     }
-                } else if (field.kind === 'cell') {
+                } else if (field.kind === 'cell' || field.kind === 'cells') {
+                    // E1.1: `cells` es una lista de casillas (las que se defienden).
+                    const list = field.kind === 'cells' ? (Array.isArray(value) ? value : []) : [value];
+                    if (field.kind === 'cells' && list.length === 0) {
+                        errors.push({ path: `${oPath}.${field.writes}`, message: `Falta \`${field.writes}\`. ${field.help}` });
+                        continue;
+                    }
                     if (!size || size.width === 0) continue;
-                    const state = cellState(size.map, size, value);
-                    if (state === 'outside') {
-                        errors.push({ path: `${oPath}.${field.writes}`, message: `(${value?.x},${value?.y}) cae fuera del tablero "${boardId}".` });
-                    } else if (state === 'blocked') {
-                        errors.push({ path: `${oPath}.${field.writes}`, message: `(${value.x},${value.y}) cae sobre un muro: nadie puede llegar ahí.` });
+                    for (const cell of list) {
+                        const state = cellState(size.map, size, cell);
+                        if (state === 'outside') {
+                            errors.push({ path: `${oPath}.${field.writes}`, message: `(${cell?.x},${cell?.y}) cae fuera del tablero "${boardId}".` });
+                        } else if (state === 'blocked') {
+                            errors.push({ path: `${oPath}.${field.writes}`, message: `(${cell.x},${cell.y}) cae sobre un muro: nadie puede llegar ahí.` });
+                        }
                     }
                 }
             }

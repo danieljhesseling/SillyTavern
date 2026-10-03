@@ -1832,6 +1832,8 @@
 .gs-grimoire .gs-tone-dark { color: #c4b5fd; border-color: rgba(196, 181, 253, 0.35); }
 .gs-grimoire .gs-tone-holy { color: #fde68a; border-color: rgba(253, 230, 138, 0.35); }
 .gs-grimoire .gs-tone-heal { color: #86efac; border-color: rgba(34, 197, 94, 0.35); }
+/* E3.4: lo que da el vínculo. */
+.gs-grimoire .gs-tone-bond { color: #f9a8d4; border-color: rgba(244, 114, 182, 0.45); }
 
 .gs-grimoire .gs-card-body {
     display: flex;
@@ -3331,6 +3333,20 @@ body.game-colorblind .vtt-board .wm-token-enemy img.wm-token-avatar {
     font-weight: 700;
 }
 
+/* E3.1: el furtivo del pícaro que llevaría el golpe. */
+.gs-grimoire .gs-badge-sneak {
+    border-color: rgba(167, 139, 250, 0.6);
+    color: #ddd6fe;
+    font-weight: 700;
+}
+
+/* E3.4: lo que da el vínculo (la jugada en pareja, el golpe definitivo). */
+.gs-grimoire .gs-badge-bond {
+    border-color: rgba(244, 114, 182, 0.55);
+    color: #fbcfe8;
+    font-weight: 700;
+}
+
 .gs-grimoire .gs-card-hp {
     display: flex;
     align-items: center;
@@ -4604,3 +4620,62 @@ dialog.vs-card.vo-layer::backdrop {
 }
 
 /* ============================ fin de 8. LA PANTALLA DE VICTORIA O DE DERROTA ============================ */
+
+/* ============================ 9. E3.4: LO QUE DA EL VÍNCULO, A LA VISTA ============================ */
+
+/* Salta una ventaja del vínculo: la ficha del compañero (y la de su pareja) brilla en rosa. */
+.wm-token.wm-token-bond {
+    animation: wm-bond-glow 1.6s ease-out 1;
+    z-index: 25;
+}
+
+@keyframes wm-bond-glow {
+    0% { box-shadow: 0 0 0 0 rgba(244, 114, 182, 0.95); }
+    35% { box-shadow: 0 0 0 7px rgba(244, 114, 182, 0.55), 0 0 18px 6px rgba(251, 207, 232, 0.7); }
+    100% { box-shadow: 0 0 0 14px rgba(244, 114, 182, 0); }
+}
+
+/* Su frase, en un bocadillo con el borde del vínculo. */
+.wm-bark.wm-bark-bond {
+    background: rgba(253, 242, 248, 0.97);
+    color: #3b0a24;
+    border: 1px solid rgba(219, 39, 119, 0.7);
+    font-weight: 600;
+    animation-duration: 2.8s;
+}
+
+/* El rótulo: «Vínculo 7 · Yunque y martillo», debajo de la ficha. */
+.wm-bond-banner {
+    position: absolute;
+    top: 104%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: max-content;
+    max-width: 220px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, rgba(157, 23, 77, 0.95), rgba(219, 39, 119, 0.95));
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+    pointer-events: none;
+    z-index: 26;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+    animation: wm-bond-banner 2.4s ease-out forwards;
+}
+
+@keyframes wm-bond-banner {
+    0% { opacity: 0; transform: translate(-50%, -4px) scale(0.9); }
+    12% { opacity: 1; transform: translate(-50%, 0) scale(1); }
+    80% { opacity: 1; }
+    100% { opacity: 0; }
+}
+
+:root[data-gs-motion="none"] .wm-token.wm-token-bond {
+    animation: none;
+    box-shadow: 0 0 0 4px rgba(244, 114, 182, 0.85);
+}
+
+/* ============================ fin de 9. LO QUE DA EL VÍNCULO ============================ */

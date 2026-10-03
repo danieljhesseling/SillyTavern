@@ -13,6 +13,7 @@ import { createSeededRandom } from '../game-engine/combat/seeded-random.js';
 import { derive } from '../game-engine/campaign/seed.js';
 import { spellById, spellsForClass } from '../game-engine/rules/grimoire.js';
 import { perkChoices, takePerk, PERKS, perksOf } from '../game-engine/rules/level-perks.js';
+import { pendingBoons } from '../game-engine/rules/epic-boons.js';
 import { respecCost, redoPerks } from '../game-engine/rules/respec.js';
 import { getActiveRuleset } from '../game-engine/rules/ruleset.js';
 import { INJURABLE_STATS } from '../game-engine/rules/injuries.js';
@@ -24,6 +25,10 @@ import { firstArt, loadPixelManifest } from '../game-engine/ui/pixel-art.js';
 import { buildSpellPicker, buildSpellSwap } from '../game-engine/ui/spell-picker.js';
 import { choicesBetween, applySpellPicks } from '../game-engine/rules/spell-picks.js';
 import { casterOf } from '../game-engine/rules/spell-slots.js';
+import {
+    roleOf, recommendAbilityPicks, recommendPerk, recommendSpells, describeAdvice,
+} from '../game-engine/rules/level-advice.js';
+import { getPartyFormation } from './companions.js';
 import { partyMembers } from './state.js';
 import { classRowOf, spellRows, spellFor, ensureSpellsOf } from './magic.js';
 import { renderLocationMapsPreview } from './board-view.js';
@@ -84,7 +89,9 @@ export function getAbilityLevels() {
 
 /** @param {any} member */
 export function canLevelUp(member) {
-    return levelForXp(member?.xp, getXpTable()) > Math.max(1, Math.floor(Number(member?.level) || 1));
+    return levelForXp(member?.xp, getXpTable()) > Math.max(1, Math.floor(Number(member?.level) || 1))
+        // E8.2: en el nivel 20, cada 30.000 PX de más dan un don épico; se coge como una subida.
+        || pendingBoons(member, getXpTable()) > 0;
 }
 
 /** El icono de cada mejora, por lo que mejora: se reconoce antes que la frase. */
@@ -117,19 +124,24 @@ function perkIcon(perk) {
  * @param {number} input.from
  * @param {number} input.to
  * @param {() => void} input.onChange
- * @returns {{root: JQuery, empty: boolean, ready: () => boolean, pick: () => ReturnType<typeof applySpellPicks>}}
+ * @param {keyof typeof import('../game-engine/rules/level-advice.js').ROLES|''} [input.role] E7.4: si se
+ *   dice, los de su papel salen ya marcados (`suggested`, sus nombres).
+ * @returns {{root: JQuery, empty: boolean, ready: () => boolean, pick: () => ReturnType<typeof applySpellPicks>, suggested: string[]}}
  */
-function spellChoiceSection({ member, classRow, from, to, onChange }) {
+function spellChoiceSection({ member, classRow, from, to, onChange, role = '' }) {
     const catalogue = spellRows();
     const card = choicesBetween({ classRow, from, to, catalogue, member });
     const root = $('<div class="lu-spells"></div>');
     const empty = !casterOf(classRow) || (card.lines.length === 0 && card.newCantrips === 0 && card.newSpells === 0 && !card.canSwap);
-    const none = { root, empty: true, ready: () => true, pick: () => applySpellPicks({ member, classRow, catalogue, card }) };
+    const none = { root, empty: true, ready: () => true, pick: () => applySpellPicks({ member, classRow, catalogue, card }), suggested: [] };
     if (empty) return none;
+    const cantripIds = role ? recommendSpells(card.cantripOptions, card.newCantrips, role) : [];
+    const spellIds = role ? recommendSpells(card.spellOptions, card.newSpells, role) : [];
+    const suggested = [...cantripIds, ...spellIds].map(id => [...card.cantripOptions, ...card.spellOptions].find(s => s.id === id)?.name ?? id);
     root.append($('<div class="lu-subtitle"></div>').text('Conjuros'));
     for (const line of card.lines) root.append($('<div class="lu-spell-line"></div>').text(line));
     const cantrips = card.newCantrips > 0
-        ? buildSpellPicker({ name: 'trucos', title: 'Trucos nuevos', options: card.cantripOptions, count: card.newCantrips, onChange })
+        ? buildSpellPicker({ name: 'trucos', title: 'Trucos nuevos', options: card.cantripOptions, count: card.newCantrips, chosen: cantripIds, onChange })
         : null;
     const spells = card.newSpells > 0
         ? buildSpellPicker({
@@ -137,6 +149,7 @@ function spellChoiceSection({ member, classRow, from, to, onChange }) {
             title: card.mode === 'spellbook' ? 'Al libro' : 'Conjuros nuevos',
             options: card.spellOptions,
             count: card.newSpells,
+            chosen: spellIds,
             hint: card.mode === 'spellbook' ? 'Lo que copies entra en tu libro; cada mañana preparas de ahí.' : '',
             onChange,
         })
@@ -153,6 +166,7 @@ function spellChoiceSection({ member, classRow, from, to, onChange }) {
             member, classRow, catalogue, card,
             cantrips: cantrips?.value() ?? [], spells: spells?.value() ?? [], swap: swap?.value() ?? null,
         }),
+        suggested,
     };
 }
 
@@ -230,6 +244,98 @@ const ABILITY_LABELS = {
 };
 
 /**
+ * Escribir en la ficha una subida ya decidida: los números, la mejora, los conjuros y lo que se
+ * aprende con la capa ligera. Lo usan la tarjeta y la subida sola de los compañeros (E7.4).
+ *
+ * @param {Object} input
+ * @param {any} input.member
+ * @param {import('../game-engine/rules/level-up.js').LevelPlan} input.plan
+ * @param {Record<string, number>} input.picks
+ * @param {string} input.perkId
+ * @param {string} input.perkLabel
+ * @param {ReturnType<typeof applySpellPicks>|null} input.spellPick
+ * @param {any} input.classRow
+ */
+function writeLevelUp({ member, plan, picks, perkId, perkLabel, spellPick, classRow }) {
+    const beforeStats = Object.fromEntries(INJURABLE_STATS.map(stat => [stat, Number(member[stat]) || 0]));
+    Object.assign(member, buildLevelUpPatch(member, plan, picks));
+    // Idea 46: lo elegido, que se nota jugando.
+    const perkPatch = perkId ? takePerk(member, perkId) : null;
+    if (perkPatch) Object.assign(member, perkPatch);
+    // Con una herida encima, lo ganado va también a sus números de antes de la herida:
+    // si no, al curarse (o al pasar el día) volvería el máximo de vida del nivel anterior.
+    keepGainsUnderInjuries(member, beforeStats);
+    if (spellPick) {
+        Object.assign(member, spellPick.patch);
+        if (spellPick.learned.length > 0) {
+            postCombatNarration(`📖 [NIVEL] ${member.name} aprende: ${spellPick.learned.map(id => spellFor(id)?.name ?? id).join(', ')}.`);
+        }
+    }
+    // R4: quien hace magia con la capa ligera aprende los conjuros de su clase del círculo
+    // que se le abre. Quien lanza con espacios ya los ha elegido arriba.
+    const before = new Set((Array.isArray(member.abilities) ? member.abilities : []).map(String));
+    const learned = casterOf(classRow) ? [] : spellsForClass({ className: String(member.class ?? ''), level: Number(member.level) || 1 }).filter(id => !before.has(id));
+    if (learned.length > 0) {
+        member.abilities = [...before, ...learned];
+        postCombatNarration(`📖 [NIVEL] ${member.name} aprende: ${learned.map(id => spellById(id)?.name ?? id).join(', ')}.`);
+    }
+    savePartyState();
+    renderPartyMembers();
+    const perkNote = perkId ? ` Mejora: ${perkLabel || perkId}.` : '';
+    postCombatNarration(`⭐ [NIVEL] ${describeLevelUp(member, plan)}${perkNote}`);
+}
+
+/**
+ * Las tres mejoras que se ofrecen a alguien al subir a un nivel: con la semilla de quién sube y a
+ * qué nivel (la tarjeta y la subida sola ofrecen lo mismo).
+ *
+ * @param {any} member
+ * @param {number} to
+ */
+function offeredPerks(member, to) {
+    return perkChoices({
+        member,
+        random: createSeededRandom(derive(String(chat_metadata?.[METADATA_KEY] || ''), 'mejora', String(member.id), String(to))),
+    });
+}
+
+/**
+ * E7.4 (G5.4): subir de nivel solo, con lo recomendado para su papel. Para los compañeros que
+ * lleva el juego: no preguntan.
+ *
+ * @param {any} member
+ * @returns {Promise<string>} Lo que ha subido, en una frase («Grimm sube a nivel 3: …»), o vacío.
+ */
+export async function levelUpByRole(member) {
+    if (!member || member.dead || !canLevelUp(member)) return '';
+    const hitDieByClass = await campaign.getHitDiceByClass();
+    const plan = planLevelUp({ member, table: getXpTable(), abilityLevels: getAbilityLevels(), hitDieByClass });
+    if (!plan.canLevel) return '';
+    const role = roleOf(member, getPartyFormation());
+    const picks = recommendAbilityPicks(member, plan.pointsToSpend);
+    const offered = offeredPerks(member, plan.to);
+    const perkId = recommendPerk(offered, role);
+    const classRow = classRowOf(member);
+    if (ensureSpellsOf(member)) savePartyState();
+    /** @type {ReturnType<typeof applySpellPicks>|null} */
+    let spellPick = null;
+    if (casterOf(classRow)) {
+        const catalogue = spellRows();
+        const card = choicesBetween({ classRow, from: plan.from, to: plan.to, catalogue, member });
+        const tried = applySpellPicks({
+            member, classRow, catalogue, card,
+            cantrips: recommendSpells(card.cantripOptions, card.newCantrips, role),
+            spells: recommendSpells(card.spellOptions, card.newSpells, role),
+        });
+        spellPick = tried.ok ? tried : null;
+    }
+    const perkLabel = offered.find(o => o.id === perkId)?.label ?? '';
+    writeLevelUp({ member, plan, picks, perkId, perkLabel, spellPick, classRow });
+    const spells = (spellPick?.learned ?? []).map(id => spellFor(id)?.name ?? id);
+    return `${member.name} sube a nivel ${plan.to} por su cuenta. ${describeAdvice({ role, picks, perk: perkLabel, spells }).replace('Lo recomendado: ', 'Elige: ')}`;
+}
+
+/**
  * Subir de nivel, con lo que da escrito antes de pulsar.
  *
  * Sube todos los niveles que la experiencia de de una vez, y para cuando hay que repartir
@@ -240,6 +346,12 @@ const ABILITY_LABELS = {
  */
 export async function openLevelUpCard(member) {
     if (!member) return;
+    // E8.2: después del nivel 20, en vez de un nivel, un don épico (`party/long-life.js`).
+    if (pendingBoons(member, getXpTable()) > 0) {
+        const { openBoonCard } = await import('./long-life.js');
+        await openBoonCard(member);
+        return;
+    }
 
     // El dado de golpe sale de la clase, que vive en el Lorebook: por eso esto espera.
     const hitDieByClass = await campaign.getHitDiceByClass();
@@ -265,9 +377,15 @@ export async function openLevelUpCard(member) {
     root.append(title);
     root.append($('<div class="lu-gains"></div>').text(
         `+${plan.hpGained} PG · +${plan.hitDiceGained} dado(s) de golpe`));
+    // E7.4: lo recomendado para su papel, dicho, y a un toque (`lu-recommend`, abajo).
+    const role = roleOf(member, getPartyFormation());
+    const advice = $('<div class="lu-advice"></div>');
+    root.append(advice);
 
     /** @type {Record<string, number>} */
     const picks = {};
+    /** @type {Array<() => void>} */
+    const painters = [];
     const remaining = $('<div class="lu-remaining"></div>');
 
     if (plan.pointsToSpend > 0) {
@@ -304,16 +422,14 @@ export async function openLevelUpCard(member) {
 
             row.append(minus, value, plus);
             grid.append(row);
+            painters.push(paint);
             paint();
         }
         root.append(grid);
     }
 
     // Idea 46: una mejora a elegir entre tres. Con la semilla de quién sube y a qué nivel.
-    const offered = perkChoices({
-        member,
-        random: createSeededRandom(derive(String(chat_metadata?.[METADATA_KEY] || ''), 'mejora', String(member.id), String(plan.to))),
-    });
+    const offered = offeredPerks(member, plan.to);
     let chosenPerk = '';
     if (offered.length > 0) {
         root.append($('<div class="lu-subtitle"></div>').text('Una mejora a elegir'));
@@ -337,10 +453,27 @@ export async function openLevelUpCard(member) {
     // J19.2: quien lanza con espacios elige aquí sus trucos y conjuros nuevos.
     const classRow = classRowOf(member);
     if (ensureSpellsOf(member)) savePartyState();
-    const spellSection = spellChoiceSection({ member, classRow, from: plan.from, to: plan.to, onChange: () => refresh() });
+    // E7.4: con los conjuros de su papel ya marcados (se pueden cambiar).
+    const spellSection = spellChoiceSection({ member, classRow, from: plan.from, to: plan.to, onChange: () => refresh(), role });
     if (!spellSection.empty) root.append(spellSection.root);
 
+    // E7.4: lo recomendado, en una frase y a un toque.
+    const suggested = recommendAbilityPicks(member, plan.pointsToSpend);
+    const suggestedPerk = recommendPerk(offered, role);
+    advice.text(describeAdvice({ role, picks: suggested, perk: offered.find(o => o.id === suggestedPerk)?.label ?? '', spells: spellSection.suggested }));
+
     const actions = $('<div class="lu-actions"></div>');
+    const recommend = $('<button class="menu_button lu-btn lu-recommend" type="button"></button>')
+        .append('<i class="fa-solid fa-wand-magic-sparkles"></i>')
+        .append($('<span></span>').text(' Lo recomendado'))
+        .attr('title', 'Elige por ti lo mejor para su papel. Puedes cambiarlo antes de subir.');
+    recommend.on('click', () => {
+        for (const key of Object.keys(picks)) delete picks[key];
+        Object.assign(picks, suggested);
+        for (const paint of painters) paint();
+        if (suggestedPerk) root.find(`.lu-perk[data-perk="${suggestedPerk}"]`).trigger('click');
+        refresh();
+    });
     const confirm = $('<button class="menu_button lu-btn lu-confirm" type="button"></button>').text('Subir de nivel');
 
     function refresh() {
@@ -357,7 +490,7 @@ export async function openLevelUpCard(member) {
         remaining.toggleClass('over', spent > plan.pointsToSpend);
     }
 
-    actions.append(confirm);
+    actions.append(recommend, confirm);
     root.append(actions);
     refresh();
 
@@ -375,32 +508,7 @@ export async function openLevelUpCard(member) {
             toastr.warning(spellPick.errors.join(' '), 'Conjuros');
             return;
         }
-        const beforeStats = Object.fromEntries(INJURABLE_STATS.map(stat => [stat, Number(member[stat]) || 0]));
-        Object.assign(member, buildLevelUpPatch(member, plan, picks));
-        // Idea 46: lo elegido, que se nota jugando.
-        const perkPatch = chosenPerk ? takePerk(member, chosenPerk) : null;
-        if (perkPatch) Object.assign(member, perkPatch);
-        // Con una herida encima, lo ganado va también a sus números de antes de la herida:
-        // si no, al curarse (o al pasar el día) volvería el máximo de vida del nivel anterior.
-        keepGainsUnderInjuries(member, beforeStats);
-        if (spellPick) {
-            Object.assign(member, spellPick.patch);
-            if (spellPick.learned.length > 0) {
-                postCombatNarration(`📖 [NIVEL] ${member.name} aprende: ${spellPick.learned.map(id => spellFor(id)?.name ?? id).join(', ')}.`);
-            }
-        }
-        // R4: quien hace magia con la capa ligera aprende los conjuros de su clase del círculo
-        // que se le abre. Quien lanza con espacios ya los ha elegido arriba.
-        const before = new Set((Array.isArray(member.abilities) ? member.abilities : []).map(String));
-        const learned = casterOf(classRow) ? [] : spellsForClass({ className: String(member.class ?? ''), level: Number(member.level) || 1 }).filter(id => !before.has(id));
-        if (learned.length > 0) {
-            member.abilities = [...before, ...learned];
-            postCombatNarration(`📖 [NIVEL] ${member.name} aprende: ${learned.map(id => spellById(id)?.name ?? id).join(', ')}.`);
-        }
-        savePartyState();
-        renderPartyMembers();
-        const perkNote = chosenPerk ? ` Mejora: ${offered.find(o => o.id === chosenPerk)?.label ?? chosenPerk}.` : '';
-        postCombatNarration(`⭐ [NIVEL] ${describeLevelUp(member, plan)}${perkNote}`);
+        writeLevelUp({ member, plan, picks, perkId: chosenPerk, perkLabel: offered.find(o => o.id === chosenPerk)?.label ?? chosenPerk, spellPick, classRow });
         void popup.complete(POPUP_RESULT.AFFIRMATIVE);
         renderLocationMapsPreview();
         if (isShellOpen()) refreshGameShell();

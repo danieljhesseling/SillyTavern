@@ -1566,6 +1566,14 @@
     border: 1px solid rgba(220, 240, 255, 0.7);
 }
 
+/* E1.3: el barro (sin dibujo, el de siempre: marrón y con charcos). */
+.wm-terrain-mud {
+    background: radial-gradient(circle at 30% 40%, rgba(70, 50, 30, 0.55) 0 22%, transparent 24%),
+        radial-gradient(circle at 70% 65%, rgba(70, 50, 30, 0.5) 0 18%, transparent 20%),
+        rgba(110, 80, 50, 0.4);
+    border: 1px solid rgba(130, 95, 60, 0.55);
+}
+
 .wm-terrain-brush {
     background: repeating-linear-gradient(60deg,
         rgba(70, 140, 60, 0.45) 0px, rgba(70, 140, 60, 0.45) 3px,

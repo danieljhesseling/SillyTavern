@@ -675,6 +675,15 @@ export function registerPartyCommands() {
         helpString: '<div>Volver a ver el final de la campaña: lo que pasó, qué fue de cada uno y lo que se lleva.</div>',
         callback: async () => await openEnding(),
     }));
+    // E8.3: retirarse al gremio de maestro.
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'retirarse',
+        helpString: '<div>Retirar al héroe que va (nivel 5 o más) de maestro del gremio: los nuevos empiezan con ventaja y aprenden una dote suya.</div>',
+        callback: async () => {
+            const { openRetirement } = await import('./long-life.js');
+            return await openRetirement();
+        },
+    }));
     SlashCommandParser.addCommandObject(SlashCommand.fromProps({
         name: 'salon',
         helpString: '<div>El salón de la fama: las campañas terminadas y los caídos de todas las partidas.</div>',

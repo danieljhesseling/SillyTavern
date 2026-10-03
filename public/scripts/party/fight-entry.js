@@ -39,6 +39,7 @@ import { controlOf } from './spell-turn.js';
 import { savePartyState } from './roster.js';
 import { postCombatNarration } from './narration.js';
 import { scenesPending } from './plot.js';
+import { quickOfferHere, resolveQuickly } from './friction.js';
 
 /**
  * @typedef {Object} PendingFight La pelea que está a punto de empezar: el grupo se coloca.
@@ -193,15 +194,22 @@ async function openFightIfNoticed() {
     const placements = [...lastWaiting.placements];
     const ways = avoidFor(board, foesOf(placements)).length;
     const opening = fightOpening({ ways });
+    // E7.2: si la pelea es claramente vuestra, la decisión sale aunque no haya otras salidas, con
+    // «Resolver rápido».
+    const quick = quickOfferHere(placements);
     opened++;
     noteSeenHere();
-    if (!opening.decide) {
+    if (!opening.decide && !quick) {
         beginPlacement({ placements });
         return;
     }
     deciding = true;
     try {
-        await openAvoidChoice({ auto: true, onFight: (/** @type {any[]} */ awake, /** @type {{enemiesFirst?: boolean}} */ how = {}) => fightFromChoice(awake, how) });
+        await openAvoidChoice({
+            auto: true,
+            onFight: (/** @type {any[]} */ awake, /** @type {{enemiesFirst?: boolean}} */ how = {}) => fightFromChoice(awake, how),
+            quick: quick ? { said: quick.said, onQuick: (/** @type {any[]} */ awake) => resolveQuickly(awake) } : null,
+        });
     } catch (error) {
         console.error('[pelea] no se pudo abrir la decisión', error);
     } finally {
