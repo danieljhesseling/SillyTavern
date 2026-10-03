@@ -200,12 +200,17 @@ Todo lo contado está en commits (el último, 135fa19f7).
    - el viaje con decisiones y menos clics aburridos.
 
    El orden final lo deciden tus partidas (J16.5). Algunas ideas, como otras victorias y empujar donde duele, se meten ya al escribir las tres campañas.
-3. **La ampliación definitiva de Strahd:**
+3. **El APK de Android** (lo pediste el 2026-10-03): solo Android, nada de Apple. El juego va dentro del APK, sin servidor y sin web; no se publica nada en internet.
+   - Las llamadas al servidor (`/api/...`) se responden dentro de la app y guardan en el propio teléfono, con IndexedDB.
+   - Se empaqueta con Capacitor.
+   - Exportar e importar la partida (J15.6) sirve de copia de seguridad.
+   - Parte del plan está en [[ROADMAP_PWA_SIN_SERVIDOR]]; de ese plan sobran GitHub Pages y la parte de iPhone.
+4. **La ampliación definitiva de Strahd:**
    - el Castillo Ravenloft con todas sus salas, hechas con mapas en imagen;
    - el Templo de Ámbar, el paso de Tsolenka y la Casa de la Muerte;
    - la lectura de las cartas de Tarokka;
    - más encuentros y misiones.
-4. **El modo mundo semiabierto.**
+5. **El modo mundo semiabierto.**
 
 **Para el modo mundo semiabierto, más adelante (D-J55):** [[ROADMAP_AUTOMATIZAR]] reúne lo que el juego podría hacer solo, sin IA:
 - la gente habla sola con conversaciones de novela visual;
