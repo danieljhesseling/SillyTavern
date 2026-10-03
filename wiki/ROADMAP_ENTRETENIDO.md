@@ -23,7 +23,7 @@ created: 2026-10-02
 
 ## 📍 Cómo va (2026-10-03, 23:00)
 
-**Avance: ~50 %** (15 de 32 ideas ya se juegan; el resto, en marcha). Nada de esto está aún en un commit: entra con el commit de cierre del modo guiado o en el siguiente.
+**Avance: ~60 %** (19 de 32 ideas ya se juegan; el resto, en marcha). Nada de esto está aún en un commit: entra con el commit de cierre del modo guiado o en el siguiente.
 
 | Bloque | Hecho | % aprox. | Quién |
 | :--- | :--- | :---: | :--- |
@@ -33,7 +33,7 @@ created: 2026-10-02
 | E4 · Compañeros con roce | — | 0 % | Un agente, empezando |
 | E5 · El gremio que paga | — | 0 % | Un agente, empezando |
 | E6 · El camino entre campañas | — | 0 % | Un agente, empezando |
-| E7 · Sin fricción aburrida | — | ~10 % | Un agente |
+| E7 · Sin fricción aburrida | E7.1, E7.2, E7.3, E7.4 | ~95 % | Un agente, con las últimas pruebas |
 | E8 · La larga vida | E8.1, E8.2, E8.3, E8.5, E8.6, E8.7 (probado en el navegador, 18 de 18) | 85 % | Un agente con E8.4 (mercenarios generados) |
 
 **Decisiones abiertas para Daniel (de E8, la larga vida):**
