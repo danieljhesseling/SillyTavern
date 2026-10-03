@@ -21,9 +21,9 @@ created: 2026-10-02
 - 🟡 existe a medias o sin contenido que lo use;
 - ⬜ no existe.
 
-## 📍 Cómo va (2026-10-03, 22:50)
+## 📍 Cómo va (2026-10-03, 23:00)
 
-**Avance: ~40 %** (9 de 32 ideas ya se juegan; el resto, en marcha). Nada de esto está aún en un commit: entra con el commit de cierre del modo guiado o en el siguiente.
+**Avance: ~50 %** (15 de 32 ideas ya se juegan; el resto, en marcha). Nada de esto está aún en un commit: entra con el commit de cierre del modo guiado o en el siguiente.
 
 | Bloque | Hecho | % aprox. | Quién |
 | :--- | :--- | :---: | :--- |
@@ -34,7 +34,15 @@ created: 2026-10-02
 | E5 · El gremio que paga | — | 0 % | Un agente, empezando |
 | E6 · El camino entre campañas | — | 0 % | Un agente, empezando |
 | E7 · Sin fricción aburrida | — | ~10 % | Un agente |
-| E8 · La larga vida | Escrito y enganchado (tramos, dones épicos, retirarse, mercenarios, resucitar, modo duro); falta la prueba en el navegador | ~65 % | Un agente |
+| E8 · La larga vida | E8.1, E8.2, E8.3, E8.5, E8.6, E8.7 (probado en el navegador, 18 de 18) | 85 % | Un agente con E8.4 (mercenarios generados) |
+
+**Decisiones abiertas para Daniel (de E8, la larga vida):**
+- Solo mueren de verdad los confidentes (D-J64). Tu héroe y los demás de los tuyos, si caen, quedan malheridos. ¿Quieres que el héroe también pueda morir y volver en el templo?
+- «Modo duro» es una opción del juego (como el Romance), no de cada partida. Encendido, quita «Cargar partida» cuando cae todo el grupo. ¿Así, o por partida?
+- El templo: los diamantes son del libro (500 para Alzar a los muertos, 1.000 para Resurrección). El donativo (100 o 200), la tabla de secuelas y la debilidad (−4 a cada característica durante 4 días; en el libro, −4 a las tiradas de d20) son cosecha propia. ¿Valen?
+- Dones épicos: Fortaleza y Velocidad van como en el libro; los otros cinco, adaptados (Proeza en combate, +2 al ataque). ¿Valen, o solo los exactos?
+- Retirarse: desde el nivel 5; el nuevo empieza 1 nivel más por cada 4 del maestro (hasta el 5); ventajas del gremio: mercenarios −25 %, 50 de oro a cada nuevo, templo −25 %. ¿Las cambias?
+- Un mercenario se hace veterano a la tercera vuelta al gremio con vida. ¿Cuentan también las peleas ganadas?
 
 **Decididas por Daniel (2026-10-03), un agente las está metiendo:**
 - **Forzar cerraduras requiere herramientas de ladrón** (E2.2), como en 5e. Se quita la vía «con maña».
@@ -107,10 +115,10 @@ Es la fase G5 de [[ROADMAP_AUTOMATIZAR]], que se puede adelantar.
 
 | ID | Idea | Hoy | D&D | Tamaño |
 | :--- | :--- | :---: | :--- | :---: |
-| E7.1 | **«Explorar hacia delante»:** el grupo avanza en formación y se para en seco ante una trampa, un cofre, una puerta o un enemigo. | ⬜ | — | M |
-| E7.2 | **«Resolver rápido»** las peleas triviales: dos ratas a nivel 5 se resuelven al instante con las reglas de siempre y cuestan un par de PG. `quick-sim.js` ya existe, del taller. | 🟡 | — | S |
-| E7.3 | **Equipar lo mejor con un clic** a cada compañero, según su clase y lo que domina. | ⬜ | — | S |
-| E7.4 | **Subir de nivel recomendado** y preparar conjuros según el papel (G5.4 y G5.6). | ⬜ | — | S |
+| E7.1 | **«Explorar hacia delante»:** el grupo avanza en formación y se para en seco ante una trampa, un cofre, una puerta o un enemigo. | ✅ | — | M |
+| E7.2 | **«Resolver rápido»** las peleas triviales: dos ratas a nivel 5 se resuelven al instante con las reglas de siempre y cuestan un par de PG. `quick-sim.js` ya existe, del taller. | ✅ | — | S |
+| E7.3 | **Equipar lo mejor con un clic** a cada compañero, según su clase y lo que domina. | ✅ | — | S |
+| E7.4 | **Subir de nivel recomendado** y preparar conjuros según el papel (G5.4 y G5.6). | ✅ | — | S |
 
 ---
 
@@ -129,13 +137,13 @@ Es la fase G5 de [[ROADMAP_AUTOMATIZAR]], que se puede adelantar.
 
 | ID | Idea | Hoy | D&D | Tamaño |
 | :--- | :--- | :---: | :--- | :---: |
-| E8.1 | **Campañas por tramos de nivel**, como las aventuras oficiales: 1-4, 5-10, 11-16 y 17-20. El tablón ofrece las de tu tramo y el ajuste de D-J56 hace el resto. Las cortas y las largas caben en cualquier tramo. | 🟡 | Sí: los cuatro tramos de juego | S |
-| E8.2 | **Después del nivel 20, dones épicos** en vez de niveles: cada «nivel» de experiencia de más da un don (2024 los trae en el nivel 19 y la guía del máster sigue después). El techo no corta el progreso. | ⬜ | Sí: dones épicos | M |
-| E8.3 | **Retirarse al gremio en vez de reiniciar.** Un héroe alto se queda como maestro: sube el nivel con el que empiezan los nuevos, enseña una dote, da una ventaja al gremio y va al Salón de la fama. Empiezas otro héroe con ventaja: se juega de nuevo sin perder lo ganado. | ⬜ | Cosecha propia, al estilo *Darkest Dungeon* | M |
+| E8.1 | **Campañas por tramos de nivel**, como las aventuras oficiales: 1-4, 5-10, 11-16 y 17-20. El tablón ofrece las de tu tramo y el ajuste de D-J56 hace el resto. Las cortas y las largas caben en cualquier tramo. | ✅ | Sí: los cuatro tramos de juego | S |
+| E8.2 | **Después del nivel 20, dones épicos** en vez de niveles: cada «nivel» de experiencia de más da un don (2024 los trae en el nivel 19 y la guía del máster sigue después). El techo no corta el progreso. | ✅ | Sí: dones épicos | M |
+| E8.3 | **Retirarse al gremio en vez de reiniciar.** Un héroe alto se queda como maestro: sube el nivel con el que empiezan los nuevos, enseña una dote, da una ventaja al gremio y va al Salón de la fama. Empiezas otro héroe con ventaja: se juega de nuevo sin perder lo ganado. | ✅ | Cosecha propia, al estilo *Darkest Dungeon* | M |
 | E8.4 | **Dos capas de gente.** Pocos **confidentes** escritos (como *Persona*), que son el corazón. Muchos **mercenarios** generados, baratos y siempre disponibles. | 🟡 | — | — |
-| E8.5 | **Por qué llevar mercenarios:**<br>• **riesgo:** a la mazmorra peligrosa no quieres llevar a Nella;<br>• **disponibilidad:** los confidentes tienen su vida, sus horarios, sus heridas, y a veces no quieren ir (desaprobación, E4.1);<br>• **oficio:** un mercenario trae justo lo que falta (trampas, curas);<br>• **coste:** cobran cada semana, los confidentes no. | ⬜ | — | M |
-| E8.6 | **Veteranos que se ganan su historia.** Un mercenario que sobrevive varias expediciones gana un apodo, un rasgo, un recuerdo de lo que vivió con el grupo y una misión corta generada (E4.3). El cariño sale de jugar, no de escribir: como los soldados de *XCOM*. | ⬜ | — | M |
-| E8.7 | **La muerte cuenta, pero se puede deshacer pagando.** Las salvaciones de muerte de siempre; resucitar en el templo cuesta oro y diamantes y deja una secuela. Los mercenarios mueren de verdad; un confidente caído queda malherido semanas, y solo muere si lo arriesgas en un final. Un **modo duro** opcional con muerte permanente para todos. | 🟡 | Sí: Revivir y Resurrección cuestan componentes caros | M |
+| E8.5 | **Por qué llevar mercenarios:**<br>• **riesgo:** a la mazmorra peligrosa no quieres llevar a Nella;<br>• **disponibilidad:** los confidentes tienen su vida, sus horarios, sus heridas, y a veces no quieren ir (desaprobación, E4.1);<br>• **oficio:** un mercenario trae justo lo que falta (trampas, curas);<br>• **coste:** cobran cada semana, los confidentes no. | ✅ | — | M |
+| E8.6 | **Veteranos que se ganan su historia.** Un mercenario que sobrevive varias expediciones gana un apodo, un rasgo, un recuerdo de lo que vivió con el grupo y una misión corta generada (E4.3). El cariño sale de jugar, no de escribir: como los soldados de *XCOM*. | ✅ | — | M |
+| E8.7 | **La muerte cuenta, pero se puede deshacer pagando.** Las salvaciones de muerte de siempre; resucitar en el templo cuesta oro y diamantes y deja una secuela. Los mercenarios mueren de verdad; un confidente caído queda malherido semanas, y solo muere si lo arriesgas en un final. Un **modo duro** opcional con muerte permanente para todos. | ✅ | Sí: Revivir y Resurrección cuestan componentes caros | M |
 
 ## Lo que se descartó o se corrigió del análisis del 2026-10-03
 
