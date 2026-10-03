@@ -33,7 +33,7 @@ created: 2026-10-02
 | E4 · Compañeros con roce | — | 0 % | Un agente, empezando |
 | E5 · El gremio que paga | — | 0 % | Un agente, empezando |
 | E6 · El camino entre campañas | — | 0 % | Un agente, empezando |
-| E7 · Sin fricción aburrida | E7.1, E7.2, E7.3, E7.4 | ~95 % | Un agente, con las últimas pruebas |
+| E7 · Sin fricción aburrida | Todo (probado en el navegador, 19 de 19) | 100 % | — |
 | E8 · La larga vida | E8.1, E8.2, E8.3, E8.5, E8.6, E8.7 (probado en el navegador, 18 de 18) | 85 % | Un agente con E8.4 (mercenarios generados) |
 
 **Decisiones abiertas para Daniel (de E8, la larga vida):**
@@ -43,6 +43,9 @@ created: 2026-10-02
 - Dones épicos: Fortaleza y Velocidad van como en el libro; los otros cinco, adaptados (Proeza en combate, +2 al ataque). ¿Valen, o solo los exactos?
 - Retirarse: desde el nivel 5; el nuevo empieza 1 nivel más por cada 4 del maestro (hasta el 5); ventajas del gremio: mercenarios −25 %, 50 de oro a cada nuevo, templo −25 %. ¿Las cambias?
 - Un mercenario se hace veterano a la tercera vuelta al gremio con vida. ¿Cuentan también las peleas ganadas?
+
+**Decisión abierta para Daniel (de E7):**
+- Tras dormir, los compañeros que preparan conjuros los preparan solos según su papel (la clériga, curas primero). A tu héroe le sigue saliendo su cuadro de preparar, vacío como siempre. ¿Quieres que le salga ya marcado con lo de su papel?
 
 **Decididas por Daniel (2026-10-03), un agente las está metiendo:**
 - **Forzar cerraduras requiere herramientas de ladrón** (E2.2), como en 5e. Se quita la vía «con maña».
