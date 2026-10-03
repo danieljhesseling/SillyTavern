@@ -279,6 +279,8 @@ const FORK_FILES = [
     'public/scripts/game-engine/ui/combat-vtt/impact.js',
     // J12.20 y J12.21: el muelle táctico y la pantalla de victoria o derrota.
     'public/scripts/game-engine/ui/combat-vtt/dock.js',
+    'public/scripts/game-engine/combat/outcome.js',
+    'public/scripts/game-engine/ui/combat-vtt/outcome-screen.js',
     // J12.7: las peleas de taberna y los duelos, sin muertes, y su cartel.
     'public/scripts/game-engine/combat/brawl.js',
     'public/scripts/game-engine/campaign/tavern-brawl.js',

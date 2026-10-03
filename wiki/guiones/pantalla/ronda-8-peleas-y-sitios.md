@@ -140,7 +140,7 @@ encuentro:
         text: "Hacer que el teniente lea su lista en voz alta, delante de todo el patio"
         dc: 15
         success:
-          text: "El teniente lee tres nombres, se para en el cuarto y se calla. «Retirada.» Se van sin el Libro de Llegadas."
+          text: "El teniente lee tres nombres, se para en el cuarto y se calla. «Retirada.» Se van sin la lista de Jonás."
           effects: [{ standing: La Acogida, amount: 1 }]
         failure: "«Las listas no se leen: se tachan.» Los celadores avanzan."
       - kind: pagar
@@ -161,10 +161,10 @@ encuentro:
         partial: "El teniente duda, con la lista en la mano. Esta ronda, nadie ataca."
         failure: "«La lista me la sé de memoria.»"
       engañar:
-        text: "Gritar que el Libro de Llegadas ya ha salido por detrás, hacia el bosque"
+        text: "Gritar que la lista de Jonás ya ha salido por detrás, hacia el bosque"
         dc: 13
         success: "«¡Al bosque!» Los celadores salen corriendo por la puerta que no es."
-        failure: "«El libro está en la cocina. Lo huelo desde aquí.»"
+        failure: "«La lista está en la cocina. La huelo desde aquí.»"
       no: [entregarse]
 
 encuentro:
@@ -380,7 +380,7 @@ encuentro:
     avoid:
       - kind: hablar
         text: "Decirles a los vecinos de Brasa que se vayan a casa: esta noche no gana nadie"
-        dc: 15
+        dc: 17
         success: "Jonás baja la pala. «Hoy no.» La Acogida se retira con sus heridos, mirándote como a un desconocido."
         failure: "«¡Tú eras de los nuestros!» Levantan las sartenes."
     parley:
@@ -471,6 +471,19 @@ localidad:
         text: "la campanilla de la Acogida, junto a la puerta de la posada"
         skill: insight
         found: "La posadera lo explica sin dejar de remover el guiso: «La tocamos cuando alguien sale del bosque. Que nadie despierte solo, criatura.»"
+
+localidad:
+  id: casa-acogida
+  paquete:
+    sights:
+      - verbo: mirar
+        text: "las mesas largas del comedor de la Acogida"
+        skill: perception
+        found: "Hay platos para cuarenta y solo comen doce. El portavoz los pone igual: «Por si llega alguien del bosque. ¡Vamos!»"
+      - verbo: leer
+        text: "la lista clavada detrás de la puerta"
+        skill: investigation
+        found: "Treinta y un nombres de huéspedes, con lo que deben y a quién. Al lado de algunos, a lápiz: «ya no se acuerda»."
 
 localidad:
   id: bosque-copiado

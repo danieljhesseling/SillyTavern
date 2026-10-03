@@ -195,7 +195,7 @@ confidente:
         title: La puerta para ti
         where: posada
         beats:
-          - say: "Pase lo que pase en el paso, mi puerta se abrirá siempre para ti. Aunque llegues de noche, aunque llegues {perseguido|perseguida}."
+          - say: "Pase lo que pase en el paso, mi puerta se abrirá siempre para ti. Aunque llegues de noche, aunque llegues con medio reino detrás."
             mood: alegre
           - say: "Te lo juro por la forja. Y una enana no jura por la forja en vano."
             replies:

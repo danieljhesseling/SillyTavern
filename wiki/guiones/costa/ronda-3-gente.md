@@ -161,7 +161,7 @@ pnj:
   quiere: 'Que el trato dure para siempre: que firme una mano más joven antes de que alguien mate a la que lo sostiene.'
   sabe: 'Todo lo que pasó en el Bajo hace treinta años, porque lo negoció ella.'
   secreto: 'Firmó el trato. Fue ella quien ofreció a los muertos del pueblo, y ahora quiere que firme la niña Uxue en la bajamar grande.'
-  voz: 'Suave y educada, nunca levanta la voz. Llama «{hijo|hija}» a todo el mundo y ofrece café antes de amenazar.'
+  voz: 'Suave y educada, nunca levanta la voz. Llama «hijo» o «hija» a todo el mundo y ofrece café antes de amenazar.'
   paquete:
     gender: Mujer
     famous: true
@@ -437,7 +437,7 @@ confidente:
   arcana: La Luna
   descripcion: 'Contrabandista de Arenales, cuarenta y tantos, cobra hasta los consejos. Trabajó para los de la cala hasta que el Gallo le dejó sin su parte.'
   al_llegar:
-    la-cala: 'Mi antigua oficina. No toques nada, {patrón|patrona}, que aquí todo tiene dueño.'
+    la-cala: 'Mi antigua oficina. No toques nada, camarada, que aquí todo tiene dueño.'
     arenales: 'Mi pueblo. Pobre, feo y con la mitad de las cruces nuevas. Lo quiero igual.'
     la-salazon: 'Aquí se hace la sal que yo vendía. Mejor no saludar a nadie.'
   paquete:

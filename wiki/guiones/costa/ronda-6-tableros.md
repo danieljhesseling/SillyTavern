@@ -128,14 +128,14 @@ tablero:
     - '#WWWWWWWWWWWWWWWWWW#'
     - '#WW##############WW#'
     - '#WW#..w.#...k#..#WW#'
-    - '#WW#....D....D..#WW#'
+    - '#WW#....o....o..#WW#'
     - '#WW#ww..#....#.w#WW#'
     - '#WW##.######.##.##W#'
     - '#WWw......ww......W#'
     - '#Ww...c.......c..wW#'
-    - '#x.....wwWWWw.....W#'
+    - '#......wwWWWw....xW#'
     - '####################'
-  inicio_grupo: [[2, 9], [3, 9], [2, 8], [3, 8]]
+  inicio_grupo: [[14, 9], [15, 9], [16, 9], [15, 8]]
   paquete:
     zones:
       - name: El camarote del patrón
@@ -208,7 +208,7 @@ tablero:
     - '#~~..c..c....c..~~.#'
     - '#..................#'
     - '####################'
-  inicio_grupo: [[1, 10], [2, 10], [3, 10], [4, 10]]
+  inicio_grupo: [[8, 10], [9, 10], [10, 10], [11, 10]]
   paquete:
     zones:
       - name: La capilla sin puerta
@@ -507,7 +507,7 @@ encuentro:
   nota: 'Entra en el casco de la Esperanza por el boquete, llega al camarote del patrón y sácale el cuaderno de Martín Goikoa antes de que vuelva a subir el agua.'
   enemigos:
     - { bicho: cangrejo-pecio, cuantos: 2, en: [[11, 3], [5, 3]] }
-    - { bicho: anguila-bodega, cuantos: 2, en: [[10, 7], [16, 8]] }
+    - { bicho: anguila-bodega, cuantos: 2, en: [[10, 7], [2, 8]] }
     - { bicho: ahogado-viejo, cuantos: 1, en: [[15, 4]] }
   mision:
     objectives:
@@ -599,6 +599,7 @@ encuentro:
         condition: restrained
         spotDC: 12
         disarmDC: 30
+        once: true
     avoid:
       - kind: hablar
         text: 'Que Ane hable con la Vecina: le dirá que viene a quitarse, por las buenas'

@@ -646,7 +646,9 @@ try {
     const sceneOpen = () => page.evaluate(() => Boolean(document.querySelector('dialog.ps-dialog[open]')));
     await until(async () => await sceneOpen() || (await continueChip()).after !== '', 8000);
     const storyFirst = { ...(await continueChip()), already: await sceneOpen() };
-    if (!storyFirst.already) await page.locator('#game-shell .gs-vn-box .gs-chip-continue').first().click({ timeout: 5000 }).catch(() => {});
+    // J12.21: con la pantalla de victoria delante, su botón grande hace lo de «Continuar».
+    const goOn = page.locator('.vs-card .vo-go');
+    if (!storyFirst.already) await (await goOn.count() > 0 ? goOn : page.locator('#game-shell .gs-vn-box .gs-chip-continue')).first().click({ timeout: 5000 }).catch(() => {});
     const sceneShown = await until(sceneOpen, 8000);
     const sceneId = await page.evaluate(() => document.querySelector('dialog.ps-dialog[open] .ps-root')?.getAttribute('data-scene') || '');
     await shoot('«Continuar» tras ganar: primero, la escena del Asedio');

@@ -85,16 +85,11 @@ hito:
   acto: 1
   titulo: Lo que no se cuenta
   abre: 'tras_hito: la-nina-del-muelle'
-  pide: 'pistas: 2'
-  pistas:
-    - { donde: embarcadero-viejo, tirada: percepción }
-    - { donde: embarcadero-viejo, tirada: percepción }
-    - { donde: mareaviva, tirada: investigación }
-    - { donde: la-playa, tirada: supervivencia }
+  pide: 'hablar_con: ciriaco'
   cambia:
     abre_hito: la-vela
-  pista: 'Busca lo que el pueblo calla: bajo el embarcadero viejo, en el libro de la iglesia o en las huellas de la playa. Con dos pistas basta.'
-  escena: 'En la posada, la posadera te habla de la Vela: cada noche alguien se sienta en el embarcadero viejo y habla hasta que amanece. El patrón mayor de la Cofradía te ofrece el carro de mañana para que te vayas. Si quieres entender qué pasa, tendrás que mirarlo tú.'
+  pista: 'Ve al Embarcadero Viejo y habla con el pescador viejo que vela casi todas las noches. Por el camino, mira lo que el pueblo calla: el libro de la iglesia, los niños del muelle, las huellas de la playa.'
+  escena: 'En la posada, la posadera te habla de la Vela: cada noche alguien se sienta en el embarcadero viejo y habla hasta que amanece. El patrón mayor de la Cofradía te ofrece el carro de mañana para que te vayas. Si quieres entender qué pasa, tendrás que preguntarle al pescador viejo que vela en el embarcadero.'
   paquete:
     backdrop: posada
     beats:
@@ -156,7 +151,8 @@ hito:
               text: 'A Ciriaco, el del embarcadero. Otra vez. Tiene ochenta años y fiebre, y no hay nadie más.'
               presenta: ciriaco
       - who: Maite Ugarte
-        text: 'Si quieres saber lo que aquí no se cuenta, tendrás que mirarlo tú. Debajo del embarcadero viejo. En el libro de la iglesia. En la playa, al amanecer.'
+        text: 'Si quieres saber lo que aquí no se cuenta, mira el libro de la iglesia, o a los críos que saltan desde el muelle. Y luego baja al embarcadero viejo y pregúntale a Ciriaco. Lleva treinta años velando.'
+        presenta: ciriaco
 
 hito:
   id: la-vela
@@ -174,7 +170,7 @@ hito:
     beats:
       - who: Ciriaco Etxanobe
         mood: triste
-        text: 'Te estaba buscando. Ciriaco me llamo. Treinta años velando. Diez mil noches. Y esta noche no me tengo en pie.'
+        text: '¿Te manda Maite? Ciriaco me llamo. Treinta años velando. Diez mil noches. Y esta noche no me tengo en pie.'
       - who: Ciriaco Etxanobe
         text: 'Te sientas en la última tabla del embarcadero viejo. Les hablas. Del tiempo, de las redes, de lo que sea. Si te callas, suben.'
         options:
@@ -327,7 +323,6 @@ hito:
             effects:
               - bond: 1
                 who: Gorka Iturbe
-              - board: La marea que no baja
             reply:
               who: Gorka Iturbe
               mood: alegre
@@ -341,22 +336,17 @@ hito:
                 effects:
                   - attitude: 1
                     who: Lucio Iturbe
-                  - board: La marea que no baja
                 reply:
                   who: Lucio Iturbe
                   mood: triste
                   text: '…Hasta la playa. No más. Por los críos, no por vosotros.'
               failure:
-                effects:
-                  - board: La marea que no baja
                 reply:
                   who: Lucio Iturbe
                   mood: enfadado
                   text: 'Los críos de la Cofradía. Que los salve la Cofradía.'
           - id: playa-por-que
             text: '¿Por qué salen solo los niños?'
-            effects:
-              - board: La marea que no baja
             reply:
               who: Gorka Iturbe
               mood: triste
@@ -463,11 +453,7 @@ hito:
         text: '¡Otra vez tú por aquí! Las velas de contrabando, fuera de la ermita.'
       - who: Txomin Etxeberria
         mood: alegre
-        text: 'Paz, paz, rezadora. Txomin Etxeberria, de Arenales, para servir a quien pague. Velas de cera buena a mitad de precio, patrón.'
-        alt:
-          - if: { gender: Mujer }
-            mood: alegre
-            text: 'Paz, paz, rezadora. Txomin Etxeberria, de Arenales, para servir a quien pague. Velas de cera buena a mitad de precio, patrona.'
+        text: 'Paz, paz, rezadora. Txomin Etxeberria, de Arenales, para servir a quien pague. Velas de cera buena a mitad de precio, camarada.'
       - who: Txomin Etxeberria
         text: '¿La caja del cura? Claro que la conozco. La tiene el Gallo, el jefe de la cala. La usa para sacarle una bolsa a la señora Arrieta cada mes.'
       - who: Pilar Azkue
@@ -480,7 +466,6 @@ hito:
             effects:
               - gold: -10
               - rumor: r-la-cala
-              - board: La cueva del Gallo
             reply:
               who: Txomin Etxeberria
               mood: alegre
@@ -489,7 +474,6 @@ hito:
             text: 'Ya la encontraré por mi cuenta.'
             effects:
               - rumor: r-la-cala
-              - board: La cueva del Gallo
             reply:
               who: Txomin Etxeberria
               text: 'Al sur de la playa, donde las rocas hacen un arco. Gratis, por esta vez. Cuidado con el Gallo: canta antes de pelear.'
@@ -676,15 +660,12 @@ hito:
             effects:
               - bond: 1
                 who: Ane Goikoa
-              - board: La Esperanza con la marea baja
             reply:
               who: Ane Goikoa
               mood: triste
               text: '…Hasta las rocas. Del boquete para dentro, entras tú.'
           - id: pecio-solo
             text: 'Voy yo. Tú vigila el camino, por si vuelve Lucio.'
-            effects:
-              - board: La Esperanza con la marea baja
             reply:
               who: Ane Goikoa
               text: 'Vigilar es lo que mejor se me da. Ciento cuarenta y dos escalones de ventaja.'
@@ -720,8 +701,6 @@ hito:
         options:
           - id: bajamar-correr
             text: 'Vamos. Hoy no firma ninguna niña.'
-            effects:
-              - board: La Boca del Bajo en la bajamar grande
             reply:
               who: Sebastián Mendia
               mood: enfadado
@@ -730,7 +709,6 @@ hito:
             text: 'Entonces la Vecina no quería muertos. Quería compañía.'
             effects:
               - clue: 'Según el cuaderno del farero, la Vecina pidió compañía, no muertos. Lo de los muertos lo ofreció Rosalía Arrieta.'
-              - board: La Boca del Bajo en la bajamar grande
             reply:
               who: Sebastián Mendia
               mood: triste
@@ -780,8 +758,6 @@ hito:
           - id: pared-compania
             text: 'Le daremos compañía de vivos: la Vela, para siempre, por turnos.'
             irreversible: true
-            effects:
-              - board: La primera Vela de todos
             reply:
               who: Pilar Azkue
               mood: alegre
@@ -789,8 +765,6 @@ hito:
           - id: pared-mateo
             text: 'Devolveremos a Mateo al agua. Que todo siga como estaba.'
             irreversible: true
-            effects:
-              - board: La tumba de Mateo
             reply:
               who: Rosalía Arrieta
               mood: alegre
@@ -914,20 +888,12 @@ final:
       texto: 'Ane Goikoa sigue subiendo los ciento cuarenta y dos escalones cada noche, con el pelo blanco. Ya no cuenta las barcas: las espera.'
     - quien: gorka
       texto: 'Gorka Iturbe aprende a tenerle miedo al mar a los veintitrés años. Dice que es lo mejor que le ha pasado.'
-    - quien: begona
-      texto: 'Begoña Larrea escribe lo que pasó en cuarenta páginas y las manda a la ciudad. Nadie se lo cree. Ella se queda en la escuela igual.'
-    - quien: julian
-      texto: 'El hermano Julián entierra por fin a Mateo Iturbe con su nombre, y abre la iglesia cada domingo. Va gente.'
-    - quien: txomin
-      texto: 'Txomin Etxeberria vuelve a Arenales, donde ahora pescan igual que en Mareaviva. Cobra menos, y se ríe más.'
     - quien: rosalia
       texto: 'Rosalía Arrieta cierra la Salazón un mes de luto por los sesenta y un muertos que dio al agua. Después la abre otra vez: el mar sigue dando pescado, aunque menos.'
     - quien: lucio
       texto: 'Lucio Iturbe pone una cruz con nombre en la tumba de su padre. La primera de verdad en treinta años.'
     - quien: arenales
       texto: 'Los de Arenales vuelven a pescar en la bahía sin que nadie les eche. Ahora los dos pueblos entierran a sus muertos igual.'
-    - quien: cofradia
-      texto: 'La Cofradía de Mareaviva pierde la suerte y gana el sueño. En la primera tormenta, todos los barcos vuelven antes de tiempo.'
 
 final:
   id: un-trato-nuevo
@@ -936,22 +902,14 @@ final:
   epilogos:
     - quien: ane
       texto: 'Ane Goikoa conserva su mano blanca. La primera noche de cada mes le toca la Vela, y le cuenta a la Vecina las barcas que han entrado.'
-    - quien: gorka
-      texto: 'Gorka Iturbe se apunta a la Vela los sábados. Dice que la Vecina se ríe de sus chistes, o eso le parece.'
-    - quien: begona
-      texto: 'Begoña Larrea enseña a los niños a leer en voz alta en el embarcadero viejo. A la Vecina le gustan los cuentos.'
     - quien: julian
       texto: 'El hermano Julián reza en la última tabla una noche a la semana. Ya no llena cajas de piedras: los muertos se entierran en tierra, con su nombre.'
-    - quien: txomin
-      texto: 'Txomin Etxeberria vende velas para la Vela, a precio justo. Por primera vez en su vida, casi.'
     - quien: rosalia
       texto: 'Rosalía Arrieta hace la Vela todas las noches que le quedan. Dice que es lo menos que debe.'
     - quien: uxue
       texto: 'Uxue Lasarte duerme de un tirón. Los domingos va con su madre a la Vela y le canta a la Vecina.'
     - quien: rezadoras
       texto: 'Las Rezadoras escriben la lista nueva de la Vela, con todos los nombres del pueblo. Nadie la discute.'
-    - quien: arenales
-      texto: 'Los de Arenales miran la Vela desde el cabo, sin entenderla. Algunos, a escondidas, vienen a sentarse también.'
 
 final:
   id: el-trato-sigue
@@ -962,12 +920,6 @@ final:
       texto: 'Ane Goikoa sigue contando barcas. Ahora sabe que cada noche que vive es una noche más de trato, y duerme todavía peor.'
     - quien: gorka
       texto: 'Gorka Iturbe se va con la milicia de costa y no vuelve a Mareaviva. Escribe a su hermano cada mes; Lucio no contesta.'
-    - quien: begona
-      texto: 'Begoña Larrea pide el traslado a la ciudad. Antes de irse, quema los dibujos de los niños.'
-    - quien: julian
-      texto: 'El hermano Julián vuelve a llenar cajas de piedras. Cada vez reza un poco más bajo.'
-    - quien: txomin
-      texto: 'Txomin Etxeberria se queda con la cala. La señora Arrieta le paga bien por callar.'
     - quien: rosalia
       texto: 'Rosalía Arrieta busca otra mano joven para la próxima bajamar grande. Tiene tiempo.'
     - quien: lucio

@@ -61,7 +61,7 @@ pnj:
   id: jonas
   nombre: Jonás Pradera
   oficio: Portavoz de la Acogida
-  donde: brasa
+  donde: casa-acogida
   quiere: "Que ningún huésped más firme un pagaré con la Contaduría."
   sabe: "Cuántos huéspedes de Brasa deben dinero a Cifra: treinta y uno. Lleva la lista."
   secreto: "Hace diez años, recién llegado, cobraba una comisión por cada huésped que llevaba a firmar a la lonja."

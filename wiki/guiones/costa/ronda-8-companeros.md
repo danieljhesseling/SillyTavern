@@ -135,7 +135,7 @@ confidente:
         - kind: epilogo
           home: 'Ane deja el faro a Nicasio y se viene contigo al gremio después de «{ending}». Dice que en Puerto Alba hay demasiadas barcas para contarlas, y que por fin no le importa.'
           away: 'Ane y tú os quedáis en el faro de Mareaviva después de «{ending}». Cada noche, al girar la luz, te apunta en su cuaderno.'
-          hall: '{heroe} y Ane Goikoa, la farera, {juntos|juntas} desde el día {day}.'
+          hall: '{heroe} y Ane Goikoa, la farera: pareja desde el día {day}.'
     misionPersonal:
       id: ane-mi-madre
       title: Mi madre sube por los postes
@@ -335,7 +335,7 @@ confidente:
           title: El cuaderno nuevo
           where: plaza
           beats:
-            - say: 'He empezado un cuaderno nuevo. Este no es sobre Mareaviva. Es sobre {nosotros|nosotras}: sobre tú y yo. Lo tengo en la página dos y ya me he puesto colorada.'
+            - say: 'He empezado un cuaderno nuevo. Este no es sobre Mareaviva. Es sobre ti y sobre mí. Lo tengo en la página dos y ya me he puesto colorada.'
               mood: alegre
               replies:
                 - { text: 'Le pides escribir tú la página tres.', bond: 1, romance: avanza, then: 'Con buena letra, que la tuya parece de cura.', mood: alegre }
@@ -356,8 +356,8 @@ confidente:
             - 'Esta noche no corrijo. Esta noche me lees tú.'
         - kind: epilogo
           home: 'Begoña pide el traslado a la escuela de Puerto Alba para estar contigo después de «{ending}». Sus nuevos alumnos faltan a clase, y ella está encantada.'
-          away: 'Begoña y tú os quedáis en Mareaviva después de «{ending}». Ella da clase por la mañana, y por las tardes escribís {juntos|juntas} lo que pasó.'
-          hall: '{heroe} y Begoña Larrea, la maestra, {juntos|juntas} desde el día {day}.'
+          away: 'Begoña y tú os quedáis en Mareaviva después de «{ending}». Ella da clase por la mañana, y por las tardes escribís lo que pasó, a cuatro manos.'
+          hall: '{heroe} y Begoña Larrea, la maestra: pareja desde el día {day}.'
     misionPersonal:
       id: begona-cartas
       title: Las cartas que no llegaron
@@ -689,7 +689,7 @@ confidente:
         title: Todo tiene precio
         where: posada
         beats:
-          - say: '{Patrón|Patrona}, en esta vida todo tiene precio. Un consejo, una moneda. Un buen consejo, dos. Uno que te salve la vida, lo que lleves encima.'
+          - say: 'Camarada, en esta vida todo tiene precio. Un consejo, una moneda. Un buen consejo, dos. Uno que te salve la vida, lo que lleves encima.'
             mood: alegre
           - say: 'Pero contigo hago una excepción. Este es gratis: nunca bebas el aguardiente que no te sirvan delante. ¿Qué me das a cambio?'
             replies:
@@ -709,7 +709,7 @@ confidente:
         title: Lo que vende
         where: posada
         beats:
-          - say: 'Te voy a contar un secreto, {patrón|patrona}. La sal de la Salazón no vale más que otra. Lo que se paga es que viene de Mareaviva. Los de fuera creen que da suerte. Se la echan a los barcos.'
+          - say: 'Te voy a contar un secreto, camarada. La sal de la Salazón no vale más que otra. Lo que se paga es que viene de Mareaviva. Los de fuera creen que da suerte. Se la echan a los barcos.'
             mood: neutral
           - say: 'Yo la vendía sabiendo que la suerte de verdad la pagan los de Arenales. Y la vendía igual. ¿Qué piensas de mí ahora?'
             replies:
@@ -720,7 +720,7 @@ confidente:
         title: Lo que quiero
         where: muelle
         beats:
-          - say: 'Lo que quiero de verdad, {patrón|patrona}, es una barca. Mía, con papeles. Pescar en la bahía como un pescador honrado, con su suerte o sin ella.'
+          - say: 'Lo que quiero de verdad, camarada, es una barca. Mía, con papeles. Pescar en la bahía como un pescador honrado, con su suerte o sin ella.'
             mood: alegre
           - say: 'Suena aburrido, ¿eh? Pues es lo que más quiero en el mundo. No se lo digas a nadie, que pierdo fama.'
             replies:
@@ -730,7 +730,7 @@ confidente:
         title: La deuda
         where: muelle
         beats:
-          - say: 'He hecho cuentas, {patrón|patrona}. Entre lo que me has pagado, lo que me has salvado y lo que te he cobrado de más, te debo exactamente una vida. La mía.'
+          - say: 'He hecho cuentas, camarada. Entre lo que me has pagado, lo que me has salvado y lo que te he cobrado de más, te debo exactamente una vida. La mía.'
             mood: neutral
           - say: 'Así que cuando la necesites, está aquí. Sin cobrarte nada. Es la primera vez en mi vida que digo eso, así que apúntalo.'
             replies:

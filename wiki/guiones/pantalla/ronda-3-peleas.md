@@ -93,7 +93,7 @@ tablero:
 
 tablero:
   id: patio-de-la-acogida
-  localidad: brasa
+  localidad: casa-acogida
   mapa:
     - "##################"
     - "#^^^..........^^^#"
@@ -337,7 +337,7 @@ encuentro:
     - { bicho: ballestero, cuantos: 1, en: [[9, 9]] }
   objetivo: { tipo: survive_rounds, rondas: 4 }
   meta: Aguantar hasta que los huéspedes salgan por detrás
-  nota: "Los celadores vienen a por el Libro de Llegadas. Hay que aguantar en el patio cuatro rondas."
+  nota: "Los celadores vienen a por la lista de Jonás, la de los huéspedes que deben a Cifra. Hay que aguantar en el patio cuatro rondas."
 
 encuentro:
   id: enc-fielato-noche
@@ -419,6 +419,7 @@ encuentro:
     - { bicho: contador-mayor, cuantos: 1, en: [[8, 5]] }
     - { bicho: escribano, cuantos: 2, en: [[3, 6], [14, 6]] }
     - { bicho: cristal, cuantos: 2, en: [[5, 3], [12, 3]] }
+    - { bicho: huesped-a-sueldo, cuantos: 1, en: [[8, 9]] }
   objetivo: { tipo: eliminate, bicho: contador-mayor }
   meta: Detener al Contador Mayor
   nota: "El final, para nivel 4. La cumbre no tiene barandilla: lo que cae, no vuelve a subir."
@@ -429,8 +430,8 @@ encuentro:
   tablero: puerta-de-la-torre
   acto: 4
   enemigos:
-    - { bicho: acogido, cuantos: 4, en: [[3, 9], [7, 9], [11, 9], [14, 9]] }
-  objetivo: { tipo: survive_rounds, rondas: 5 }
+    - { bicho: acogido, cuantos: 6, en: [[3, 9], [7, 9], [11, 9], [14, 9], [4, 10], [8, 10]] }
+  objetivo: { tipo: survive_rounds, rondas: 6 }
   meta: Aguantar en la puerta de la torre
   nota: "La Acogida sube a por la torre. Son gente que conoces."
 
@@ -593,7 +594,7 @@ encargo:
   faccion: { id: acogida }
   acto: 2
   recompensa: "30 monedas de la caja de la Acogida"
-  giro: "Los celadores no vienen a por deudores: vienen a por el Libro de Llegadas de Remedios."
+  giro: "Los celadores no vienen a por deudores: vienen a por la lista de Jonás, la de los treinta y un huéspedes que deben a Cifra. Sin ella, nadie sabe a quién ayudar."
   encuentro: enc-redada
 
 encargo:

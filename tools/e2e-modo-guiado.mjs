@@ -34,6 +34,8 @@ const PORT = Number(argAfter('--port')) || 8580;
 const BASE = `http://127.0.0.1:${PORT}`;
 const HEADED = process.argv.includes('--headed');
 const SHOT = argAfter('--captura');
+/** Con `--solo-1387`: tras el muelle, «Saltar la prueba» y directo a 1387 (para repetir solo esa parte). */
+const ONLY_1387 = process.argv.includes('--solo-1387');
 
 const require = createRequire(join(ROOT, 'tests/package.json'));
 const { chromium } = require('@playwright/test');
@@ -115,7 +117,11 @@ try {
             await page.waitForTimeout(200);
         }
     };
-    const dropToasts = () => page.evaluate(() => document.querySelectorAll('#toast-container .toast').forEach(t => t.remove()));
+    /** Quitar los avisos y, si está, cerrar la pantalla de victoria o derrota (J12.21) con «Seguir». */
+    const dropToasts = () => page.evaluate(() => {
+        document.querySelectorAll('#toast-container .toast').forEach(t => t.remove());
+        /** @type {HTMLElement|null} */ (document.querySelector('.vo-go'))?.click();
+    });
     /** Lo que el juego sabe ahora. */
     const state = () => page.evaluate(() => {
         const m = window.SillyTavern.getContext().chatMetadata || {};
@@ -193,8 +199,8 @@ try {
         }
     };
     /** Ganar la pelea que empieza sola en el tablero abierto. */
-    const winFight = async () => {
-        const fought = await entrarEnLaPelea(page);
+    const winFight = async (ms = 30000) => {
+        const fought = await entrarEnLaPelea(page, { ms });
         if (fought) {
             await until(async () => (await state()).fighting, 10000);
             await clearDice();
@@ -214,6 +220,7 @@ try {
     const toPlace = async () => {
         await playAllScenes();
         await until(async () => {
+            await dropToasts();
             const now = await state();
             if (now.board === '' && await sceneNow() === 'exploration') return true;
             // En el tablero, sin pelea: «Salir del tablero» en la fila, o su botón de arriba a la izquierda.
@@ -270,6 +277,10 @@ try {
         const target = (await placeView()).steps.find(s => pattern.test(s.id) || pattern.test(s.label));
         if (!target) return false;
         await page.locator(`#game-shell .gs-story-step[data-step="${target.id}"]`).click({ timeout: 5000 }).catch(() => {});
+        // J11.1: un tablero que deja algo sin vuelta atrás pregunta antes; se entra.
+        if (target.id.startsWith('story:board:') && await page.waitForSelector('.popup:visible .nr-confirm', { timeout: 2500 }).then(() => true).catch(() => false)) {
+            await page.locator('.popup:visible .popup-button-ok').last().click({ timeout: 5000 }).catch(() => {});
+        }
         return true;
     };
     /** Viajar con la ventana del viaje: el paso normal. */
@@ -313,126 +324,139 @@ try {
     const outside = await toPlace();
     now = await state();
 
-    // === 2. Puerto Alba, guiado ============================================================
-    await until(async () => (await placeView()).places.length > 0, 10000);
-    let view = await placeView();
-    check('en Puerto Alba, fuera del muelle, se ven los sitios del pueblo', outside && view.places.includes('gremio') && view.places.includes('posada'), JSON.stringify({ now, view }));
-    check('sin la fila de acciones libres, sin «Tirada», sin «Tableros de aquí» ni «Viajar» (D-J62)', guidedOk(view), JSON.stringify(view));
-    check('la novela tampoco ofrece lo escondido en su fila (D-J62)', !view.vnRow.some(c => FREE.test(c)), JSON.stringify(view.vnRow));
-    check('lo que pide la historia: «Hablar con Brunilda», con quién lo pide debajo', view.steps.some(s => s.id === 'story:talk:Brunilda' && /^Hablar con /.test(s.label) && /Lo pide la historia/.test(s.note)), JSON.stringify(view.steps));
-    await shoot('puerto-alba');
-
-    // Lo de mirar, en su sitio: los avisos de la lonja, en la tienda; las barcas, en el muelle.
-    await enterPlace('tienda');
-    const shopActs = await placeActs();
-    await shoot('tienda-avisos');
-    await leavePlace();
-    const docks = view.places.includes('muelle') ? await enterPlace('muelle') : false;
-    const docksActs = docks ? await placeActs() : [];
-    if (docks) await leavePlace();
-    await enterPlace('posada');
-    const innActs = await placeActs();
-    await leavePlace();
-    check('lo que se mira suelto va a su sitio: los avisos de la lonja, en la tienda; las barcas, en el muelle (D-J62)',
-        shopActs.some(a => /^look:/.test(a)) && (!docks || docksActs.some(a => /^look:/.test(a))), JSON.stringify({ shopActs, docksActs }));
-    const rumorsLeft = await page.evaluate(async () => (await import('/scripts/party/town.js')).rumorsLeftHere());
-    check('y los rumores, en la taberna, una sola vez (D-J62)', rumorsLeft === 0 || innActs.filter(a => a === 'rumor' || a === 'inn-rumor').length === 1, JSON.stringify({ rumorsLeft, innActs }));
-
-    // === 3. Brunilda y la bodega, hablando =================================================
-    await step(/^story:talk:Brunilda$/);
-    const talkOpen = await until(async () => (await story())?.id === 'brunilda-la-casa', 10000);
-    await playStory(['quiero-entrar', 'prueba-voy']);
-    // La escena de la prueba: «Ninguna. Voy ahora mismo» y luego «Ahora no».
-    const trialScene = await until(async () => (await story())?.id === 'la-prueba', 15000);
-    const trialFrames = await playStory(['voy-ya', 'bodega-luego']);
-    const lastFrame = trialFrames.find((/** @type {any} */ f) => f.options.some((/** @type {any} */ o) => o.id === 'bajo-a-la-bodega')) ?? null;
-    await page.waitForTimeout(1200);
-    now = await state();
-    check('Brunilda manda a la bodega; su escena acaba con «Bajo a la bodega» o «Ahora no»', talkOpen && trialScene
-        && Boolean(lastFrame?.options.some((/** @type {any} */ o) => o.id === 'bajo-a-la-bodega')) && Boolean(lastFrame?.options.some((/** @type {any} */ o) => o.id === 'bodega-luego')),
-    JSON.stringify(lastFrame));
-    await carryOn('exploration');
-    view = await placeView();
-    check('con «Ahora no» se sigue en el pueblo, y no hay ningún botón para entrar en la bodega: se baja hablando (D-J62)',
-        now.board === '' && now.open.includes('la-prueba') && !view.steps.some(s => /bodega/i.test(`${s.id} ${s.label}`)), JSON.stringify({ now, steps: view.steps }));
-    await enterPlace('gremio');
-    const hallBefore = await placeActs();
-    check('en la Casa del Gremio, durante el prólogo, está «Saltar la prueba»', hallBefore.includes('hub-skip'), JSON.stringify(hallBefore));
-    await act('talk-local:Brunilda');
-    const again = await until(async () => (await story())?.id === 'brunilda-la-casa', 10000);
-    const offered = (await story())?.options.find((/** @type {any} */ o) => o.id === 'bajar') ?? null;
-    await playStory(['bajar']);
-    const cellar = await until(async () => (await state()).board === 'La bodega del gremio', 15000);
-    check('«Hablar con Brunilda» → «Bajo a la bodega.»: se entra en la bodega (D-J62)', again && Boolean(offered) && cellar, JSON.stringify({ offered, now: await state() }));
-    await page.waitForTimeout(1500);
-    await shoot('bodega');
-    const ratsWon = await winFight();
-    check('y la pelea con las ratas empieza sola y se gana', ratsWon, JSON.stringify(await state()));
-    await toPlace();
-    // El libro: «Ya he limpiado la bodega» (antes, la escena de la subida, si sale).
-    await playAllScenes();
-    await carryOn('exploration');
-    // Al subir de la bodega se está en la Casa del Gremio (o en la plaza): Brunilda, en su sala
-    // («Hablar con Brunilda» del sitio) o en lo que pide la historia.
-    const upAt = await page.evaluate(() => document.querySelector('#game-shell .gs-town-scene')?.getAttribute('data-place') || '');
-    await until(async () => (await placeActs()).includes('talk-local:Brunilda') || (await placeView()).steps.some(s => s.id === 'story:talk:Brunilda'), 10000);
-    if ((await placeActs()).includes('talk-local:Brunilda')) await act('talk-local:Brunilda');
-    else await step(/^story:talk:Brunilda$/);
-    const bookTalk = await until(async () => (await story())?.id === 'brunilda-la-casa', 10000);
-    const bookOffered = (await story())?.options.some((/** @type {any} */ o) => o.id === 'hecho') ?? false;
-    if (bookTalk) await playStory(['hecho', 'libro-tablon']);
-    await page.waitForTimeout(1000);
-    now = await state();
-    check('Brunilda apunta tu nombre en el libro: el prólogo, hecho', now.done.includes('la-prueba') && now.done.includes('el-tablon'),
-        JSON.stringify({ upAt, bookTalk, bookOffered, scene: await sceneNow(), now }));
-
-    // === 4. Todo lo del gremio, dentro de la Casa del Gremio =================================
-    await carryOn('exploration');
-    view = await placeView();
-    check('fuera, en la plaza, la fila sigue sin el tablón ni contratar (D-J62)', guidedOk(view), JSON.stringify(view));
-    await enterPlace('gremio');
-    const hall = await placeActs();
-    const wanted = ['hub-board', 'hub-hire', 'hub-errands', 'hub-heroes', 'hub-chest', 'hub-train', 'hub-house', 'hub-formation', 'hub-sleep', 'hub-memory'];
-    check('en la Casa del Gremio están el tablón, contratar, los encargos, tus personajes, el cofre, entrenar, los edificios, la formación, dormir y la memoria',
-        wanted.every(id => hall.includes(id)), JSON.stringify({ missing: wanted.filter(id => !hall.includes(id)), hall }));
-    await shoot('casa-del-gremio');
-
-    // === 5. Un encargo: «Ir a…» y, al llegar, su pelea ====================================
-    await act('hub-errands');
-    await page.waitForSelector('.popup:visible .hb-root', { timeout: 10000 }).catch(() => {});
-    const errands = await page.evaluate(() => [...document.querySelectorAll('.popup .hb-root .hb-card')].map(c => ({
-        name: (c.querySelector('.vt-name')?.textContent || '').trim(), can: Boolean(c.querySelector('button')),
-    })));
-    const pickErrand = errands.find(e => e.can && /cala|faro|salinas|cementerio|carb[oó]n/i.test(e.name)) ?? errands.find(e => e.can);
-    if (pickErrand) await page.locator('.popup:visible .hb-root .hb-card').filter({ hasText: pickErrand.name }).locator('button').first().click({ timeout: 5000 }).catch(() => {});
-    await until(async () => Boolean((await state()).taken), 15000);
-    await page.waitForTimeout(1000);
-    await leavePlace();
-    now = await state();
-    view = await placeView();
-    const goStep = view.steps.find(s => s.id.startsWith('story:go:') && /El encargo de/.test(s.note));
-    check('aceptar un encargo da «Ir a…», con quién lo pide debajo (D-J62)', Boolean(now.taken) && Boolean(goStep) && /^Ir a /.test(goStep?.label ?? ''), JSON.stringify({ errands, taken: now.taken, steps: view.steps }));
-    await shoot('encargo-ir-a');
-    if (goStep) {
-        await page.locator(`#game-shell .gs-story-step[data-step="${goStep.id}"]`).click({ timeout: 5000 }).catch(() => {});
-        await travelPopup();
-        const arrived = await until(async () => (await state()).here === now.taken?.where, 30000);
-        const fightHere = await until(async () => Boolean((await state()).board), 15000);
-        await page.waitForTimeout(1500);
-        const there = await state();
-        check('al llegar al sitio del encargo, se entra solo en su tablero (la pelea empieza sola)', arrived && fightHere && (!now.taken?.board || there.board === now.taken.board), JSON.stringify(there));
-        await shoot('encargo-llegada');
-        await winFight();
-        await toPlace();
-        view = await placeView();
-        check('fuera del pueblo, sin «Tableros de aquí» ni «Viajar»; y se puede volver a Puerto Alba',
-            guidedOk(view) && view.steps.some(s => s.id === 'story:go:Puerto Alba' && /^(Volver|Ir) a Puerto Alba$/.test(s.label)), JSON.stringify(view));
-        await shoot('volver');
-        await step(/^story:go:Puerto Alba$/);
-        await travelPopup();
-        await until(async () => (await state()).here === 'Puerto Alba', 30000);
+    /** @type {any} */
+    let view = null;
+    if (ONLY_1387) {
+        // Directo a 1387: «Saltar la prueba» en la Casa del Gremio, y el tablón.
+        await enterPlace('gremio');
+        await act('hub-skip');
+        await page.waitForSelector('.popup:has-text("¿Saltar la prueba?")', { timeout: 10000 }).catch(() => {});
+        await page.locator('.popup-button-ok:visible').first().click({ timeout: 5000 }).catch(() => {});
+        await until(async () => (await state()).done.includes('la-prueba'), 15000);
         await playAllScenes();
         await carryOn('exploration');
+    } else {
+        // === 2. Puerto Alba, guiado ============================================================
+        await until(async () => (await placeView()).places.length > 0, 10000);
+        view = await placeView();
+        check('en Puerto Alba, fuera del muelle, se ven los sitios del pueblo', outside && view.places.includes('gremio') && view.places.includes('posada'), JSON.stringify({ now, view }));
+        check('sin la fila de acciones libres, sin «Tirada», sin «Tableros de aquí» ni «Viajar» (D-J62)', guidedOk(view), JSON.stringify(view));
+        check('la novela tampoco ofrece lo escondido en su fila (D-J62)', !view.vnRow.some(c => FREE.test(c)), JSON.stringify(view.vnRow));
+        check('lo que pide la historia: «Hablar con Brunilda», con quién lo pide debajo', view.steps.some(s => s.id === 'story:talk:Brunilda' && /^Hablar con /.test(s.label) && /Lo pide la historia/.test(s.note)), JSON.stringify(view.steps));
+        await shoot('puerto-alba');
+
+        // Lo de mirar, en su sitio: los avisos de la lonja, en la tienda; las barcas, en el muelle.
+        await enterPlace('tienda');
+        const shopActs = await placeActs();
+        await shoot('tienda-avisos');
+        await leavePlace();
+        const docks = view.places.includes('muelle') ? await enterPlace('muelle') : false;
+        const docksActs = docks ? await placeActs() : [];
+        if (docks) await leavePlace();
+        await enterPlace('posada');
+        const innActs = await placeActs();
+        await leavePlace();
+        check('lo que se mira suelto va a su sitio: los avisos de la lonja, en la tienda; las barcas, en el muelle (D-J62)',
+            shopActs.some(a => /^look:/.test(a)) && (!docks || docksActs.some(a => /^look:/.test(a))), JSON.stringify({ shopActs, docksActs }));
+        const rumorsLeft = await page.evaluate(async () => (await import('/scripts/party/town.js')).rumorsLeftHere());
+        check('y los rumores, en la taberna, una sola vez (D-J62)', rumorsLeft === 0 || innActs.filter(a => a === 'rumor' || a === 'inn-rumor').length === 1, JSON.stringify({ rumorsLeft, innActs }));
+
+        // === 3. Brunilda y la bodega, hablando =================================================
+        await step(/^story:talk:Brunilda$/);
+        const talkOpen = await until(async () => (await story())?.id === 'brunilda-la-casa', 10000);
+        await playStory(['quiero-entrar', 'prueba-voy']);
+        // La escena de la prueba: «Ninguna. Voy ahora mismo» y luego «Ahora no».
+        const trialScene = await until(async () => (await story())?.id === 'la-prueba', 15000);
+        const trialFrames = await playStory(['voy-ya', 'bodega-luego']);
+        const lastFrame = trialFrames.find((/** @type {any} */ f) => f.options.some((/** @type {any} */ o) => o.id === 'bajo-a-la-bodega')) ?? null;
+        await page.waitForTimeout(1200);
+        now = await state();
+        check('Brunilda manda a la bodega; su escena acaba con «Bajo a la bodega» o «Ahora no»', talkOpen && trialScene
+            && Boolean(lastFrame?.options.some((/** @type {any} */ o) => o.id === 'bajo-a-la-bodega')) && Boolean(lastFrame?.options.some((/** @type {any} */ o) => o.id === 'bodega-luego')),
+        JSON.stringify(lastFrame));
+        await carryOn('exploration');
+        view = await placeView();
+        check('con «Ahora no» se sigue en el pueblo, y no hay ningún botón para entrar en la bodega: se baja hablando (D-J62)',
+            now.board === '' && now.open.includes('la-prueba') && !view.steps.some(s => /bodega/i.test(`${s.id} ${s.label}`)), JSON.stringify({ now, steps: view.steps }));
+        await enterPlace('gremio');
+        const hallBefore = await placeActs();
+        check('en la Casa del Gremio, durante el prólogo, está «Saltar la prueba»', hallBefore.includes('hub-skip'), JSON.stringify(hallBefore));
+        await act('talk-local:Brunilda');
+        const again = await until(async () => (await story())?.id === 'brunilda-la-casa', 10000);
+        const offered = (await story())?.options.find((/** @type {any} */ o) => o.id === 'bajar') ?? null;
+        await playStory(['bajar']);
+        const cellar = await until(async () => (await state()).board === 'La bodega del gremio', 15000);
+        check('«Hablar con Brunilda» → «Bajo a la bodega.»: se entra en la bodega (D-J62)', again && Boolean(offered) && cellar, JSON.stringify({ offered, now: await state() }));
+        await page.waitForTimeout(1500);
+        await shoot('bodega');
+        const ratsWon = await winFight();
+        check('y la pelea con las ratas empieza sola y se gana', ratsWon, JSON.stringify(await state()));
+        await toPlace();
+        // El libro: «Ya he limpiado la bodega» (antes, la escena de la subida, si sale).
+        await playAllScenes();
+        await carryOn('exploration');
+        // Al subir de la bodega se está en la Casa del Gremio (o en la plaza): Brunilda, en su sala
+        // («Hablar con Brunilda» del sitio) o en lo que pide la historia.
+        const upAt = await page.evaluate(() => document.querySelector('#game-shell .gs-town-scene')?.getAttribute('data-place') || '');
+        await until(async () => (await placeActs()).includes('talk-local:Brunilda') || (await placeView()).steps.some(s => s.id === 'story:talk:Brunilda'), 10000);
+        if ((await placeActs()).includes('talk-local:Brunilda')) await act('talk-local:Brunilda');
+        else await step(/^story:talk:Brunilda$/);
+        const bookTalk = await until(async () => (await story())?.id === 'brunilda-la-casa', 10000);
+        const bookOffered = (await story())?.options.some((/** @type {any} */ o) => o.id === 'hecho') ?? false;
+        if (bookTalk) await playStory(['hecho', 'libro-tablon']);
+        await page.waitForTimeout(1000);
+        now = await state();
+        check('Brunilda apunta tu nombre en el libro: el prólogo, hecho', now.done.includes('la-prueba') && now.done.includes('el-tablon'),
+            JSON.stringify({ upAt, bookTalk, bookOffered, scene: await sceneNow(), now }));
+
+        // === 4. Todo lo del gremio, dentro de la Casa del Gremio =================================
+        await carryOn('exploration');
+        view = await placeView();
+        check('fuera, en la plaza, la fila sigue sin el tablón ni contratar (D-J62)', guidedOk(view), JSON.stringify(view));
+        await enterPlace('gremio');
+        const hall = await placeActs();
+        const wanted = ['hub-board', 'hub-hire', 'hub-errands', 'hub-heroes', 'hub-chest', 'hub-train', 'hub-house', 'hub-formation', 'hub-sleep', 'hub-memory'];
+        check('en la Casa del Gremio están el tablón, contratar, los encargos, tus personajes, el cofre, entrenar, los edificios, la formación, dormir y la memoria',
+            wanted.every(id => hall.includes(id)), JSON.stringify({ missing: wanted.filter(id => !hall.includes(id)), hall }));
+        await shoot('casa-del-gremio');
+
+        // === 5. Un encargo: «Ir a…» y, al llegar, su pelea ====================================
+        await act('hub-errands');
+        await page.waitForSelector('.popup:visible .hb-root', { timeout: 10000 }).catch(() => {});
+        const errands = await page.evaluate(() => [...document.querySelectorAll('.popup .hb-root .hb-card')].map(c => ({
+            name: (c.querySelector('.vt-name')?.textContent || '').trim(), can: Boolean(c.querySelector('button')),
+        })));
+        const pickErrand = errands.find(e => e.can && /cala|faro|salinas|cementerio|carb[oó]n/i.test(e.name)) ?? errands.find(e => e.can);
+        if (pickErrand) await page.locator('.popup:visible .hb-root .hb-card').filter({ hasText: pickErrand.name }).locator('button').first().click({ timeout: 5000 }).catch(() => {});
+        await until(async () => Boolean((await state()).taken), 15000);
+        await page.waitForTimeout(1000);
+        await leavePlace();
+        now = await state();
+        view = await placeView();
+        const goStep = view.steps.find(s => s.id.startsWith('story:go:') && /El encargo de/.test(s.note));
+        check('aceptar un encargo da «Ir a…», con quién lo pide debajo (D-J62)', Boolean(now.taken) && Boolean(goStep) && /^Ir a /.test(goStep?.label ?? ''), JSON.stringify({ errands, taken: now.taken, steps: view.steps }));
+        await shoot('encargo-ir-a');
+        if (goStep) {
+            await page.locator(`#game-shell .gs-story-step[data-step="${goStep.id}"]`).click({ timeout: 5000 }).catch(() => {});
+            await travelPopup();
+            const arrived = await until(async () => (await state()).here === now.taken?.where, 30000);
+            const fightHere = await until(async () => Boolean((await state()).board), 15000);
+            await page.waitForTimeout(1500);
+            const there = await state();
+            check('al llegar al sitio del encargo, se entra solo en su tablero (la pelea empieza sola)', arrived && fightHere && (!now.taken?.board || there.board === now.taken.board), JSON.stringify(there));
+            await shoot('encargo-llegada');
+            await winFight();
+            await toPlace();
+            view = await placeView();
+            check('fuera del pueblo, sin «Tableros de aquí» ni «Viajar»; y se puede volver a Puerto Alba',
+                guidedOk(view) && view.steps.some(s => s.id === 'story:go:Puerto Alba' && /^(Volver|Ir) a Puerto Alba$/.test(s.label)), JSON.stringify(view));
+            await shoot('volver');
+            await step(/^story:go:Puerto Alba$/);
+            await travelPopup();
+            await until(async () => (await state()).here === 'Puerto Alba', 30000);
+            await playAllScenes();
+            await carryOn('exploration');
+        }
     }
 
     // === 6. 1387: «Ir a…» adonde manda la historia ==========================================
@@ -443,7 +467,9 @@ try {
     const in1387 = await until(async () => /1387/.test((await state()).world), 150000);
     await page.waitForTimeout(2000);
     await playAllScenes();
-    const inn = await winFight();
+    // Cargar la campaña y su escena tarda (con otras pruebas a la vez, más): hasta 90 s.
+    await until(async () => (await state()).board === 'El cuarto de la posada', 30000);
+    const inn = await winFight(90000);
     check('1387 empieza en el cuarto de la posada, y su pelea se gana', in1387 && inn, JSON.stringify(await state()));
     // Se sale del cuarto sin haber saltado por la ventana: sin «Tableros de aquí», la historia
     // tiene que llevar de vuelta a terminarlo (si no, no habría por dónde seguir).
@@ -456,6 +482,8 @@ try {
     await shoot('1387-pueblo');
     await step(/^story:board:El cuarto de la posada$/);
     const inRoom = await until(async () => (await state()).board === 'El cuarto de la posada', 10000);
+    await page.waitForTimeout(1000);
+    await shoot('1387-cuarto');
     // Andar hasta la ventana (la casilla 8, 10), como quien arrastra su ficha.
     const walked = await page.evaluate(async () => {
         const { partyMembers } = await import('/scripts/party/state.js');

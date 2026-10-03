@@ -11,7 +11,7 @@ author: DanielJHesseling / Claude Opus 5.5
 >
 > **Cuándo sale cada escena.** La de un hito sale al abrirse, donde esté el grupo; la de uno que pide llegar a un sitio, al llegar. Por eso habla quien está allí en ese momento: en Brasa, la posadera y la cantora; en Cifra, la escribana, la pintora y la capitana; en la torre, quien sube con vosotros. Los compañeros solo hablan en el hilo en su casa (Candela en la posada, Arel en la Hondonada, Nieves en Cifra), donde están aunque no vayan en el grupo.
 >
-> **A los tableros se entra hablando** (D-J62): «Entramos a medianoche», «Subimos por la izquierda», «Subo. Que se acabe hoy». Cuando el tablero está en el mismo sitio, todas las respuestas de la decisión llevan a él (`{board: …}`), para que nadie se quede sin camino. Cuando está lejos, la respuesta lleva al sitio (`{go: …}`) y la pelea empieza sola al llegar: un tablero al que lleva una conversación ya no sale en «Lo que pide la historia», y si el viaje se corta (un suceso, la noche) no habría botón para entrar.
+> **Cómo se llega a cada pelea del hilo** (D-J62): la conversación dice adónde se va y por qué («Entramos a medianoche», «Subimos por la izquierda»). Cuando el tablero está lejos, la respuesta lleva al sitio (`{go: …}`) y la pelea empieza sola al llegar; cuando está aquí, lo ofrece «Lo que pide la historia». Las escenas del hilo no llevan `{board: …}`: un tablero al que lleva una conversación deja de salir en «Lo que pide la historia», y si se sale de él sin pelear (un suceso, la noche) no queda botón para volver (los dos atascos de las vueltas 1 y 2). A la pelea de la loba sí se entra hablando, con Florián, que lo puede repetir.
 >
 > **Comprobación:** ninguna línea sin `who`; cada persona se presenta en su primera línea o la presentan; las dos decisiones grandes (el libro, la oferta) son irreversibles y la escena de después se acuerda de ellas (`alt` con `chose`). ✔
 
@@ -232,11 +232,10 @@ hito:
         options:
           - id: registro-medianoche
             text: "Entramos a medianoche, con el cambio de guardia."
-            effects: [{ board: La sala del registro }]
             reply: { who: Pelayo Ojeda, text: "Medianoche. Ni un minuto antes, que los de la tarde llevan ballesta." }
           - id: registro-ya
             text: "Entramos ya, antes de que te lo pienses mejor."
-            effects: [{ board: La sala del registro }, { attitude: -1 }]
+            effects: [{ attitude: -1 }]
             reply: { who: Pelayo Ojeda, mood: enfadado, text: "¿Ahora? ¡Con la guardia de la tarde! Si sale mal, yo no he dicho nada." }
 
 hito:
@@ -373,11 +372,10 @@ hito:
         options:
           - id: cristales-muro
             text: "Subimos por la izquierda, pegados al muro."
-            effects: [{ board: Los cristales de la Torre Tres }]
+            effects: [{ attitude: 1 }]
             reply: { who: Sabina Torrera, mood: alegre, text: "¡Así se sube una torre! Despacito y con la piedra a la espalda." }
           - id: cristales-frente
             text: "Subimos de frente. Que nos vean venir."
-            effects: [{ board: Los cristales de la Torre Tres }]
             reply: { who: Sabina Torrera, text: "Valientes o tontos, que en copla rima igual." }
 
 hito:
@@ -506,11 +504,10 @@ hito:
         options:
           - id: cumbre-subo
             text: "Subo. Que se acabe hoy."
-            effects: [{ board: La cumbre de la Torre Siete }]
             reply: { who: Jonás Pradera, mood: alegre, text: "¡Vamos! ¡Que suene la campanilla!" }
           - id: cumbre-trampilla
             text: "Subo. Cornelio, abre la trampilla."
-            effects: [{ board: La cumbre de la Torre Siete }, { attitude: 1, who: Cornelio Sumas }]
+            effects: [{ attitude: 1, who: Cornelio Sumas }]
             reply: { who: Cornelio Sumas, text: "Ciento catorce… Sí. Sí. Abro. Que no se me olvide cerrarla." }
 
 hito:
@@ -521,11 +518,15 @@ hito:
       - who: Leandro Tallada
         text: "Mañana sube la Acogida, con palas y sartenes. Gente que conoces."
       - who: Leandro Tallada
-        text: "Tú estarás en la puerta de la torre. Aguanta hasta que se cansen. Cinco rondas, quizá seis."
+        text: "Tú estarás en la puerta de la torre. Aguanta hasta que se cansen: seis rondas, más o menos."
       - who: Valeria Cerrojo
         mood: triste
         text: "Son vecinos de Brasa. Pelean mal, pero no se rinden."
         options:
           - id: puerta-ire
             text: "Iré a la puerta."
-            eff
+            effects: [{ go: La Torre Siete }]
+            reply: { who: Leandro Tallada, mood: alegre, text: "Por cuenta de la torre." }
+          - id: puerta-dia
+            text: "Necesito un día."
+            reply: { who: Leandro Tallada, text: "Un día. Ni uno más." }

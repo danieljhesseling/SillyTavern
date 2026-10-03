@@ -113,6 +113,8 @@ export function observe(page) {
             dice: Boolean(dice) && (!top || Boolean(hit && dice.contains(hit))),
             diceText: said(document.querySelector('.wm-dice-overlay.active .wm-dice-card')).slice(0, 120),
             pause: seen(document.querySelector('#game-shell .gs-pause')),
+            // J12.21: la pantalla de victoria o derrota, que tapa el pueblo y el tablero (no siempre es una ventana).
+            outcome: seen(document.querySelector('.vo-go')),
             layer,
             dialogs: dialogs.length,
             // Las ventanas que quedan debajo de la de encima (una escena sobre un suceso, J16).
@@ -452,6 +454,10 @@ export function createBot(page, { fast = true, log = console.log, prefer = [] } 
             await act(v, `pasar los dados («${v.diceText.slice(0, 60)}»)`, () => press(page.locator('.wm-dice-overlay.active .wm-dice-next'), 2500), { quiet: true });
             return true;
         }
+        // J12.21: la pantalla de victoria o derrota tapa el pueblo y el tablero: su botón de por
+        // defecto («Seguir»), como quien juega.
+        const outcome = page.locator('.vo-go:visible');
+        if (!v.layer && await outcome.count() > 0) return act(v, 'seguir tras la pelea (la pantalla de victoria o derrota)', () => press(outcome.first()), { module: 'outcome-screen.js', quiet: true });
         const layer = v.layer;
         if (!layer) return false;
         const top = page.locator('dialog[data-vuelta-top]');
@@ -1057,6 +1063,9 @@ export function createBot(page, { fast = true, log = console.log, prefer = [] } 
             if (await leave.count() > 0) return act(v, 'salir del tablero (su botón)', () => press(leave), { module: 'board-view.js' });
         }
         if (v.scene === 'dialogue' && v.vn.next) return act(v, `«Continuar» (a ${v.vn.next})`, () => press(chip(/^Continuar$/)), { module: 'game-shell.js' });
+        // D-J62: «Continuar» sin destino escrito también lleva a la pantalla del sitio, que es donde
+        // está lo que pide la historia.
+        if (v.scene === 'dialogue' && await chip(/^Continuar$/).count() > 0) return act(v, '«Continuar» (a la pantalla del sitio)', () => press(chip(/^Continuar$/)), { module: 'game-shell.js' });
         if (v.scene !== 'exploration') {
             const map = page.locator('#game-shell .gs-tools .gs-map:visible');
             if (await map.count() > 0) return act(v, 'abrir el mapa', () => press(map), { module: 'game-shell.js' });
@@ -1275,7 +1284,8 @@ export function createBot(page, { fast = true, log = console.log, prefer = [] } 
                 markDecision();
                 return act(v, `tirada de ${t.skill}`, () => press(list), { module: 'game-shell.js (Tirada)' });
             }
-            return false;
+            // D-J62: «Intentarlo» solo está en la pantalla del sitio: se va a ella.
+            return v.scene !== 'exploration' ? toMap(v) : false;
         }
         // Llegar ya está hecho, o el hito no pide nada: seguir leyendo.
         if (v.scene === 'dialogue' && v.vn.next) return act(v, '«Continuar»', () => press(chip(/^Continuar$/)), { module: 'game-shell.js' });
@@ -1431,7 +1441,7 @@ export async function runCampaign(bot, { pack, stop, maxSteps = 900, log = conso
         }
         // Con algo encima (una ventana, los dados, la pausa) solo se puede tocar eso: aunque no
         // se pueda pulsar, no se sigue por debajo (repetirlo es un atasco, y se ve arriba).
-        if (v.layer || v.dice || v.pause) {
+        if (v.layer || v.dice || v.pause || v.outcome) {
             await bot.handleLayer(v, { onHub, onEnd });
             misses = 0;
             continue;

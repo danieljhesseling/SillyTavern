@@ -3785,3 +3785,747 @@ body.game-colorblind .vtt-board .wm-token-enemy img.wm-token-avatar {
 }
 
 /* ============================ fin de 7. LOS OBJETIVOS Y LOS GOLPES ============================ */
+
+/* ================================================================================
+   8. LA PANTALLA DE VICTORIA O DE DERROTA (J12.21, Daniel, 2026-10-03)
+   game-engine/ui/combat-vtt/outcome-screen.js, como la maqueta wiki/maquetas/resultado-combate.html
+   (sin sus fuentes ni sus caras de fuera: el arte del juego y Font Awesome, que ya trae). Sale
+   cuando se ha visto el último golpe. La capa lleva `.vs-card`, la clase de la tarjeta de antes
+   (combat-cues.css): aquí se pisa todo lo suyo.
+   ================================================================================ */
+
+.vs-card.vo-layer {
+    --vo-gold: #e2c27a;
+    --vo-gold-bright: #ffd27a;
+    --vo-text: #eee4d2;
+    --vo-danger: #d08a86;
+    --vo-danger-bg: rgba(140, 58, 54, 0.25);
+    --vo-danger-border: rgba(208, 138, 134, 0.6);
+    --vo-success: #6f9e5d;
+    --vo-success-bg: rgba(111, 158, 93, 0.2);
+    --vo-modal-bg: rgba(18, 15, 12, 0.97);
+    --vo-panel-bg: rgba(26, 22, 18, 0.85);
+    --vo-panel-border: rgba(214, 180, 106, 0.22);
+    position: fixed;
+    inset: 0;
+    top: 0;
+    left: 0;
+    z-index: 9000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    width: 100vw;
+    height: 100dvh;
+    min-width: 0;
+    max-width: none;
+    max-height: none;
+    margin: 0;
+    padding: 20px;
+    border: none;
+    border-radius: 0;
+    background: rgba(5, 5, 8, 0.62);
+    backdrop-filter: blur(3px);
+    box-shadow: none;
+    transform: none;
+    color: var(--vo-text);
+    font-family: inherit;
+    cursor: default;
+}
+
+.vs-card.vo-layer.vo-pending,
+.vs-card.vo-pending {
+    display: none;
+}
+
+dialog.vs-card.vo-layer::backdrop {
+    background: transparent;
+}
+
+/* Los avisos que esperaban al último golpe («Fama», «Lo que tienes entre manos») salen a la vez
+   que la pantalla: en pantalla grande, abajo a la izquierda, para no taparle el título ni los
+   botones (que van a la derecha). Se siguen pudiendo pulsar («Escuchar»). En el teléfono, la
+   tarjeta llega hasta abajo: se quedan arriba. */
+@media (min-width: 701px) and (min-height: 600px) {
+    body:has(> .vs-card.vo-layer) > #toast-container {
+        top: auto !important;
+        right: auto !important;
+        bottom: 12px !important;
+        left: 12px !important;
+        width: auto !important;
+        margin-top: 0 !important;
+    }
+
+    body:has(> .vs-card.vo-layer) > #toast-container > div {
+        margin-left: 0 !important;
+    }
+}
+
+.vo-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 860px;
+    max-height: calc(100dvh - 40px);
+    overflow: hidden;
+    border: 1px solid var(--vo-panel-border);
+    border-radius: 16px;
+    background: var(--vo-modal-bg);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.95);
+    animation: voReveal 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes voReveal {
+    from { opacity: 0; transform: scale(0.96) translateY(12px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+:root[data-gs-motion="none"] .vo-card,
+:root[data-gs-motion="none"] .vo-level-badge {
+    animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    :root:not([data-gs-motion]) .vo-card,
+    :root:not([data-gs-motion]) .vo-level-badge {
+        animation: none;
+    }
+}
+
+/* ---- La cabecera: dorada con un escudo, o roja con una calavera ---- */
+.vo-banner {
+    position: relative;
+    padding: 20px 30px 14px;
+    border-bottom: 1px solid var(--vo-panel-border);
+    text-align: center;
+}
+
+.vo-victory .vo-banner {
+    border-top: 4px solid var(--vo-gold);
+    background: radial-gradient(ellipse at 50% 0%, rgba(226, 194, 122, 0.18) 0%, transparent 75%);
+}
+
+.vo-defeat .vo-banner {
+    border-top: 4px solid var(--vo-danger);
+    background: radial-gradient(ellipse at 50% 0%, rgba(140, 58, 54, 0.38) 0%, transparent 75%);
+}
+
+.vo-crest {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 54px;
+    height: 54px;
+    margin-bottom: 6px;
+    border: 2px solid;
+    border-radius: 50%;
+    background: rgba(14, 12, 10, 0.95);
+    font-size: 1.5rem;
+}
+
+.vo-victory .vo-crest {
+    border-color: rgba(214, 180, 106, 0.45);
+    color: var(--vo-gold);
+    box-shadow: 0 0 20px rgba(226, 194, 122, 0.25);
+}
+
+.vo-defeat .vo-crest {
+    border-color: var(--vo-danger-border);
+    color: #fca5a5;
+    box-shadow: 0 0 20px rgba(208, 138, 134, 0.3);
+}
+
+.vo-title {
+    margin: 0;
+    font-family: Georgia, 'Palatino Linotype', serif;
+    font-size: 1.75rem;
+    font-weight: 700;
+    line-height: 1.1;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.vo-victory .vo-title { color: var(--vo-gold-bright); }
+.vo-defeat .vo-title { color: #fca5a5; }
+
+.vo-sub {
+    margin-top: 6px;
+    font-size: 0.84rem;
+    opacity: 0.82;
+}
+
+.vo-close {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    color: inherit;
+    cursor: pointer;
+}
+
+.vo-close:hover,
+.vo-close:focus-visible {
+    border-color: var(--vo-gold);
+    outline: none;
+}
+
+/* ---- El cuerpo: el balance a la izquierda, el botín o el coste a la derecha ---- */
+.vo-body {
+    display: grid;
+    grid-template-columns: 1.2fr 1fr;
+    gap: 16px;
+    min-height: 0;
+    padding: 16px 24px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(214, 180, 106, 0.3) transparent;
+}
+
+.vo-body.vo-body-single {
+    grid-template-columns: 1fr;
+}
+
+.vo-column {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-width: 0;
+}
+
+.vo-block-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    color: var(--vo-gold);
+    font-size: 0.74rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.vo-roster {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.vo-member {
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    border: 1px solid var(--vo-panel-border);
+    border-radius: 10px;
+    background: var(--vo-panel-bg);
+}
+
+.vo-face-wrap {
+    position: relative;
+    width: 44px;
+    height: 44px;
+}
+
+.vo-face {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    background: #1e1e24;
+    font-weight: 700;
+}
+
+.vo-face img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    image-rendering: pixelated;
+}
+
+.vo-state-dead .vo-face,
+.vo-state-down .vo-face {
+    filter: grayscale(0.9);
+    opacity: 0.7;
+}
+
+.vo-level-badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #eab308;
+    color: #111;
+    font-size: 0.62rem;
+    box-shadow: 0 0 8px rgba(234, 179, 8, 0.8);
+    animation: voPulse 1.8s infinite;
+}
+
+@keyframes voPulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.15); opacity: 0.85; }
+}
+
+.vo-member-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+
+.vo-member-name-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 2px 8px;
+}
+
+.vo-member-name {
+    overflow: hidden;
+    font-size: 0.9rem;
+    font-weight: 700;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.vo-member-role {
+    font-size: 0.72rem;
+    opacity: 0.68;
+}
+
+.vo-hp-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.vo-hp-bar {
+    flex: 1;
+    height: 5px;
+    overflow: hidden;
+    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.vo-hp-fill {
+    height: 100%;
+    border-radius: 3px;
+    background: var(--vo-success);
+}
+
+.vo-hp-fill.vo-hp-hurt { background: #c9a227; }
+.vo-hp-fill.vo-hp-low { background: #f59e0b; }
+.vo-hp-fill.vo-hp-fallen { background: var(--vo-danger); }
+
+.vo-hp-text {
+    font-size: 0.72rem;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    opacity: 0.85;
+}
+
+.vo-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.vo-tag {
+    width: fit-content;
+    padding: 2px 6px;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    font-size: 0.68rem;
+}
+
+.vo-deeds {
+    font-size: 0.72rem;
+    opacity: 0.75;
+}
+
+.vo-tag-best {
+    border-color: rgba(226, 194, 122, 0.45);
+    background: rgba(226, 194, 122, 0.14);
+    color: var(--vo-gold-bright);
+}
+
+.vo-tag-ok {
+    border-color: rgba(111, 158, 93, 0.4);
+    background: var(--vo-success-bg);
+    color: #86efac;
+}
+
+.vo-tag-wound {
+    border-color: rgba(245, 158, 11, 0.4);
+    background: rgba(245, 158, 11, 0.15);
+    color: #fde047;
+}
+
+.vo-tag-down {
+    border-color: rgba(208, 138, 134, 0.45);
+    background: rgba(140, 58, 54, 0.18);
+    color: #fdba9a;
+}
+
+.vo-tag-dead {
+    border-color: var(--vo-danger-border);
+    background: var(--vo-danger-bg);
+    color: #fca5a5;
+}
+
+.vo-member-side {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+}
+
+.vo-xp {
+    color: var(--vo-gold-bright);
+    font-size: 0.85rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.vo-level-btn {
+    padding: 3px 8px;
+    border: 1px solid rgba(234, 179, 8, 0.5);
+    border-radius: 4px;
+    background: rgba(234, 179, 8, 0.18);
+    color: #fef08a;
+    font-size: 0.7rem;
+    font-weight: 700;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.vo-level-btn:hover,
+.vo-level-btn:focus-visible {
+    border-color: #fde047;
+    background: rgba(234, 179, 8, 0.35);
+    outline: none;
+}
+
+/* ---- El botín y el coste ---- */
+.vo-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px;
+    border: 1px solid var(--vo-panel-border);
+    border-radius: 10px;
+    background: var(--vo-panel-bg);
+}
+
+.vo-purse {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px 12px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.vo-purse-what {
+    font-size: 0.8rem;
+    opacity: 0.88;
+}
+
+.vo-purse-what .fa-coins { color: var(--vo-gold-bright); }
+.vo-purse-what .fa-hand-holding-dollar { color: #f87171; }
+
+.vo-purse-val {
+    font-size: 1.05rem;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+}
+
+.vo-purse-val.vo-gain { color: var(--vo-gold-bright); }
+.vo-purse-val.vo-loss { color: #fca5a5; }
+
+.vo-loot-head {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    opacity: 0.7;
+}
+
+.vo-loot-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.vo-loot-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 10px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.02);
+    font-size: 0.82rem;
+}
+
+.vo-loot-icon {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.4);
+    color: var(--vo-gold);
+    font-size: 0.85rem;
+}
+
+.vo-loot-icon img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    image-rendering: pixelated;
+}
+
+.vo-loot-name {
+    flex: 1;
+    min-width: 0;
+    font-weight: 600;
+}
+
+.vo-loot-kind {
+    flex-shrink: 0;
+    padding: 1px 6px;
+    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.06);
+    font-size: 0.66rem;
+}
+
+.vo-kind-mision .vo-loot-kind { background: rgba(59, 130, 246, 0.15); color: #93c5fd; }
+.vo-kind-material .vo-loot-kind { background: rgba(163, 120, 70, 0.2); color: #e0b98a; }
+.vo-kind-poco-comun .vo-loot-kind { background: rgba(34, 197, 94, 0.14); color: #86efac; }
+.vo-kind-rara .vo-loot-kind,
+.vo-kind-muy-rara .vo-loot-kind { background: rgba(168, 85, 247, 0.16); color: #d8b4fe; }
+.vo-kind-legendaria .vo-loot-kind { background: rgba(234, 179, 8, 0.18); color: #fde68a; }
+
+.vo-upgrade {
+    font-size: 0.78rem;
+    color: #bae6fd;
+}
+
+.vo-empty {
+    font-size: 0.8rem;
+    opacity: 0.7;
+}
+
+.vo-consequence {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 10px;
+    border: 1px solid rgba(208, 138, 134, 0.25);
+    border-radius: 8px;
+    background: rgba(140, 58, 54, 0.12);
+    font-size: 0.8rem;
+    line-height: 1.4;
+}
+
+.vo-consequence-title {
+    color: #fca5a5;
+}
+
+.vo-hard {
+    padding: 10px 12px;
+    border: 1px solid var(--vo-danger-border);
+    border-radius: 8px;
+    background: var(--vo-danger-bg);
+    color: #fecaca;
+    font-size: 0.82rem;
+    font-weight: 600;
+}
+
+/* ---- El pie: la hora y los botones que tienen sentido ---- */
+.vo-footer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px 12px;
+    padding: 14px 24px;
+    border-top: 1px solid var(--vo-panel-border);
+    background: rgba(14, 12, 10, 0.65);
+}
+
+.vo-note {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    font-size: 0.78rem;
+    opacity: 0.8;
+}
+
+.vo-note .fa-clock { color: var(--vo-gold); }
+.vo-note .fa-triangle-exclamation { color: #f87171; }
+
+.vo-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-left: auto;
+}
+
+.vo-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 40px;
+    padding: 8px 16px;
+    border: 1px solid;
+    border-radius: 8px;
+    font: inherit;
+    font-size: 0.86rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.15s, box-shadow 0.15s, transform 0.15s;
+}
+
+.vo-btn-gold {
+    border-color: var(--vo-gold);
+    background: rgba(214, 180, 106, 0.2);
+    color: var(--vo-gold-bright);
+}
+
+.vo-btn-gold:hover,
+.vo-btn-gold:focus-visible {
+    background: rgba(214, 180, 106, 0.35);
+    box-shadow: 0 0 16px rgba(226, 194, 122, 0.3);
+    outline: none;
+}
+
+.vo-btn-red {
+    border-color: var(--vo-danger);
+    background: #8c3a36;
+    color: #fff;
+}
+
+.vo-btn-red:hover,
+.vo-btn-red:focus-visible {
+    background: #a54540;
+    box-shadow: 0 0 16px rgba(208, 138, 134, 0.35);
+    outline: none;
+}
+
+.vo-btn-subtle {
+    border-color: rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.05);
+    color: inherit;
+}
+
+.vo-btn-subtle:hover,
+.vo-btn-subtle:focus-visible {
+    border-color: rgba(255, 255, 255, 0.3);
+    background: rgba(255, 255, 255, 0.12);
+    outline: none;
+}
+
+/* ---- El teléfono: una columna, que se desliza; los botones, de lado a lado ---- */
+@media (max-width: 700px) {
+    .vs-card.vo-layer {
+        align-items: flex-end;
+        padding: 8px;
+    }
+
+    .vo-card {
+        max-height: calc(100dvh - 16px);
+        border-radius: 14px;
+    }
+
+    .vo-banner {
+        padding: 14px 44px 10px;
+    }
+
+    .vo-crest {
+        width: 42px;
+        height: 42px;
+        font-size: 1.15rem;
+    }
+
+    .vo-title {
+        font-size: 1.35rem;
+    }
+
+    .vo-body {
+        grid-template-columns: 1fr;
+        padding: 12px 14px;
+    }
+
+    .vo-member {
+        grid-template-columns: 40px minmax(0, 1fr) auto;
+        gap: 8px;
+        padding: 8px 10px;
+    }
+
+    .vo-face-wrap {
+        width: 40px;
+        height: 40px;
+    }
+
+    .vo-footer {
+        padding: 10px 14px calc(10px + env(safe-area-inset-bottom, 0px));
+    }
+
+    .vo-actions {
+        width: 100%;
+    }
+
+    .vo-btn {
+        flex: 1 1 auto;
+        justify-content: center;
+        min-height: 44px;
+    }
+}
+
+/* El teléfono tumbado: poco alto, la cabecera más baja. */
+@media (orientation: landscape) and (max-height: 500px) {
+    .vo-banner {
+        padding: 8px 44px 6px;
+    }
+
+    .vo-crest {
+        display: none;
+    }
+
+    .vo-title {
+        font-size: 1.2rem;
+    }
+}
+
+/* ============================ fin de 8. LA PANTALLA DE VICTORIA O DE DERROTA ============================ */

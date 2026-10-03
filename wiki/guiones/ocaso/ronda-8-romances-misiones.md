@@ -72,7 +72,7 @@ confidente:
         - kind: epilogo
           home: "Ilvana vuelve contigo al gremio después de «{ending}». Talla una piedra con una marca torcida en la puerta de vuestro cuarto."
           away: "Ilvana se quedó contigo en las tierras del ocaso después de «{ending}». Cada primavera recorréis las Sendas Viejas reponiendo las piedras."
-          hall: "{heroe} e Ilvana Hojarrubia, {juntos|juntas} desde el día {day}."
+          hall: "{heroe} e Ilvana Hojarrubia, pareja desde el día {day}."
     misionPersonal:
       id: ilvana-caelan
       title: La deuda de Caelan
@@ -210,7 +210,7 @@ confidente:
         - kind: epilogo
           home: "Ruy vuelve contigo al gremio después de «{ending}». Corta la leña de todo el gremio y no deja que nadie le pague."
           away: "Ruy se quedó contigo en las tierras del ocaso después de «{ending}». La casa del hacha tiene dos sillas junto al fuego."
-          hall: "{heroe} y Ruy Zarzal, {juntos|juntas} desde el día {day}."
+          hall: "{heroe} y Ruy Zarzal, pareja desde el día {day}."
     misionPersonal:
       id: ruy-escuadra
       title: La escuadra del robledal
@@ -351,7 +351,7 @@ confidente:
         - kind: epilogo
           home: "Gudrun vuelve contigo al gremio después de «{ending}». Pone una puerta enana en vuestro cuarto, y la abre cada mañana."
           away: "Gudrun se quedó contigo en las tierras del ocaso después de «{ending}». Vuestros dos nombres están grabados en la misma puerta."
-          hall: "{heroe} y Gudrun Hondaroca, {juntos|juntas} desde el día {day}."
+          hall: "{heroe} y Gudrun Hondaroca, pareja desde el día {day}."
     misionPersonal:
       id: gudrun-papel
       title: El papel de la thane
@@ -383,8 +383,8 @@ confidente:
                   check:
                     skill: persuasion
                     dc: 15
-                    success: { reply: { who: Marcos Fullero, mood: enfadado, text: "Seis lingotes. Seis, y me arruinas. {Amigo|Amiga}, eres peor que un recaudador." } }
-                    failure: { reply: { who: Marcos Fullero, text: "Diez, {amigo|amiga}. Diez es diez en todas las casas." } }
+                    success: { reply: { who: Marcos Fullero, mood: enfadado, text: "Seis lingotes. Seis, y me arruinas. Regateas peor que un recaudador, y eso es mucho decir." } }
+                    failure: { reply: { who: Marcos Fullero, text: "Diez lingotes. Diez es diez en todas las casas, por mucho que se regatee." } }
                 - id: de-noche
                   text: "Volver de noche, por la puerta del canal."
                   check:

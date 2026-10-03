@@ -6322,17 +6322,19 @@ try {
         await page.waitForTimeout(600);
         await clearDiceOverlay();
     }
-    await page.waitForSelector('.vs-card', { timeout: 8000 }).catch(() => {});
+    // J12.21: la pantalla de victoria nueva (outcome-screen.js).
+    await page.waitForSelector('.vs-card.vo-layer', { timeout: 8000 }).catch(() => {});
     const victory52 = await page.evaluate(() => ({
-        title: document.querySelector('.vs-title')?.textContent || '',
-        rows: document.querySelectorAll('.vs-row').length,
-        best: document.querySelector('.vs-line')?.textContent || '',
-        loot: document.querySelector('.vs-loot')?.textContent || '',
+        title: document.querySelector('.vs-card .vo-title')?.textContent || '',
+        rows: document.querySelectorAll('.vs-card .vo-member').length,
+        best: document.querySelector('.vs-card .vo-tag-best')?.textContent || '',
+        deeds: document.querySelector('.vs-card .vo-deeds')?.textContent || '',
+        loot: document.querySelector('.vs-card .vo-loot')?.textContent || '',
     }));
     check('al ganar sale la pantalla de victoria: quién hizo qué y qué os lleváis (191)',
-        /Victoria/.test(victory52.title) && victory52.rows >= 1 && /sostuvo el combate/.test(victory52.best) && /Os lleváis/.test(victory52.loot),
+        /Victoria/.test(victory52.title) && victory52.rows >= 1 && /Sostuvo el combate/.test(victory52.best) && /de daño/.test(victory52.deeds) && victory52.loot !== '',
         JSON.stringify(victory52));
-    await page.locator('.vs-card').click().catch(() => {});
+    await page.locator('.vs-card .vo-close').click().catch(() => {});
 
     // --- 22: huir, con el precio dicho antes -----------------------------------------------
     await fightNextTo52(99);
@@ -7712,7 +7714,7 @@ try {
         await clearDiceOverlay();
     }
     await page.waitForTimeout(1500);
-    await page.locator('.vs-card').click().catch(() => {});
+    await page.locator('.vs-card .vo-close').click().catch(() => {});
     const relic56 = await page.evaluate(async () => {
         const meta = window.SillyTavern.getContext().chatMetadata;
         const items = (await import('/scripts/party.js')).getPartyMembersSnapshot().flatMap((/** @type {any} */ m) => m.items || []);

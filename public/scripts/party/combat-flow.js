@@ -97,7 +97,9 @@ import {
     CONTROL_LABELS,
 } from './spell-turn.js';
 import { showCombatDiceRoll } from './combat-log.js';
-import { afterFx, stageTurn } from './combat-fx.js';
+import { stageTurn } from './combat-fx.js';
+// J12.21: la pantalla de victoria o de derrota.
+import { noteBeforeLoot, planOutcome } from './combat-outcome.js';
 import { resolveEnemyAttackOn, resolveEnemyTurnAction } from './enemy-turn.js';
 import { allyBeforeTurn2024, allyInstead2024, allyAfterAttack2024, allyRescue2024 } from './ally-turn-2024.js';
 import {
@@ -1655,6 +1657,9 @@ export function checkScenarioOutcome() {
 export function endCombat(reason = 'ended', { said = '', told = '' } = {}) {
     // J12.7: una pelea sin muertes acaba a su manera: sin botín, sin muertos y de vuelta al pueblo.
     if (endBrawl(reason)) return;
+    // J12.21: perdida con el grupo en pie, lo que dice la misión (para la pantalla de derrota).
+    const lost = reason === 'defeat' ? judgeCurrentScenario() : null;
+    const defeatVerdict = lost?.outcome === 'defeat' ? String(lost.summary ?? '') : '';
     // Tanda 16: ganada sin haber cumplido lo que falta de la misión (que se hace andando): la pelea
     // se acaba, pero el tablero no se da por ganado para el hilo hasta que se cumpla.
     const objectiveLeft = reason === 'victory' ? objectiveLeftNow() : [];
@@ -1706,6 +1711,8 @@ export function endCombat(reason = 'ended', { said = '', told = '' } = {}) {
         }
         // Tanda 16: y a quien sigue desangrándose, quien mejor sabe le estabiliza (Medicina contra 10).
         tendTheFallen();
+        // J12.21: lo de cada uno antes del botín (los PX y los objetos de esta pelea, en la pantalla).
+        noteBeforeLoot();
         loot = awardEncounterLoot(combatEncounter.enemies.filter(e => (e.currentHp || 0) <= 0 && !(/** @type {any} */ (e).fled)));
         // R7: una némesis que cae, se acaba.
         for (const fallen of combatEncounter.enemies.filter(e => /** @type {any} */ (e).nemesis && (e.currentHp || 0) <= 0 && !(/** @type {any} */ (e).fled))) {
@@ -1807,8 +1814,8 @@ export function endCombat(reason = 'ended', { said = '', told = '' } = {}) {
         });
         // Idea 63: lo nuevo, frente a lo que ya lleva quien mas lo aprovecha.
         report.upgrades = (loot?.items ?? []).map(item => bestFor(item, partyMembers)).filter(Boolean);
-        // Tanda 17: después de ver el último golpe y su tirada (la secuencia del combate).
-        afterFx(() => showVictoryScreen(report));
+        // J12.21: la pantalla de victoria sale abajo (`planOutcome`), cuando se ha visto el último golpe.
+        victoryUpgrades = report.upgrades;
         // Idea 34: lo que se recuerda de este combate.
         const where = currentBoardName || currentLocationName;
         for (const row of report.rows.filter(r => r.downed)) {
@@ -1828,6 +1835,16 @@ export function endCombat(reason = 'ended', { said = '', told = '' } = {}) {
         dropBoardKey();
     }
 
+    // J12.21: la pantalla de victoria o de derrota, cuando se haya visto el último golpe (la
+    // secuencia del combate). Sin nadie con vida, ella dice lo de «ha caído todo el grupo» (J9.1).
+    if (reason === 'victory' || reason === 'defeat') {
+        if (reason === 'defeat' && partyHasFallen(partyMembers)) fallenToldFor = chat_metadata;
+        planOutcome({
+            kind: reason, round: Number(combatEncounter.round) || 1, tally: combatEncounter.tally, failed: defeatVerdict,
+            upgrades: reason === 'victory' ? victoryUpgrades : [],
+        });
+    }
+    victoryUpgrades = [];
     setCombatEncounter(createEmptyCombatEncounter());
     setCombatBoardSelection({ tokenId: null, boardName: '', locationName: '' });
     saveCombatState();
@@ -1950,36 +1967,12 @@ export function followAfterFight(next, situation = null) {
 }
 
 /**
- * La pantalla de victoria: quien hizo que, que os lleváis y quien cayo por el camino.
+ * J12.21: lo nuevo del botín frente a lo que ya lleva quien más lo aprovecha (idea 63), para la
+ * pantalla de victoria (combat-outcome.js). La tarjeta de antes (`showVictoryScreen`) ya no está.
  *
- * No tapa la partida: es una tarjeta que se cierra sola o al pulsarla, porque detras
- * sigue el epilogo del narrador, que es lo que importa leer.
- *
- * @param {import('../game-engine/combat/tally.js').VictoryReport} report
+ * @type {string[]}
  */
-function showVictoryScreen(report) {
-    $('.vs-card').remove();
-    const card = $('<div class="vs-card" role="status"></div>');
-    card.append($('<div class="vs-title"></div>').text(`🏆 ${report.title}`));
-    const table = $('<div class="vs-rows"></div>');
-    for (const row of report.rows) {
-        const line = $('<div class="vs-row"></div>').toggleClass('vs-best', row.best);
-        line.append($('<span class="vs-name"></span>').text(`${row.best ? '⭐ ' : ''}${row.name}`));
-        line.append($('<span class="vs-num"></span>').text(`${row.dealt} hecho`));
-        line.append($('<span class="vs-num"></span>').text(`${row.kills} ${row.kills === 1 ? 'tumbado' : 'tumbados'}`));
-        line.append($('<span class="vs-num"></span>').text(`${row.taken} recibido`));
-        table.append(line);
-    }
-    card.append(table);
-    if (report.best) card.append($('<div class="vs-line"></div>').text(report.best));
-    card.append($('<div class="vs-line vs-loot"></div>').text(`Os lleváis: ${report.loot}`));
-    for (const scar of report.scars) card.append($('<div class="vs-line vs-scar"></div>').text(scar));
-    for (const upgrade of report.upgrades ?? []) card.append($('<div class="vs-line vs-upgrade"></div>').text(`⬆️ ${upgrade}`));
-    card.append($('<div class="vs-hint"></div>').text('Pulsa para cerrar'));
-    card.on('click', () => card.remove());
-    $('body').append(card);
-    setTimeout(() => card.remove(), 20000);
-}
+let victoryUpgrades = [];
 
 /**
  * T2: el bando pide tregua. Un aviso con sus dos botones; también `/tregua sí|no`.

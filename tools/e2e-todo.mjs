@@ -52,6 +52,9 @@ const jobs = [
     { name: 'añadir campaña', kind: 'e2e', args: ['tools/e2e-importar-campana.mjs'] },
     // J20.9: la vuelta en un móvil, a toques y sin teclado, de pie y tumbado (puerto 8135).
     { name: 'móvil', kind: 'e2e', args: ['tools/e2e-movil.mjs'] },
+    // D-J62: el modo guiado: sin fila libre ni «Viajar», lo del gremio en su casa, la bodega
+    // hablando, un encargo, y en 1387 volver al cuarto, Giles y el secreto de Los claros (puerto 8580).
+    { name: 'modo guiado', kind: 'e2e', args: ['tools/e2e-modo-guiado.mjs'] },
     ...(QUICK ? [] : /** @type {Job[]} */ ([
         // J19 y J19.10: la magia y la ficha, y la magia fuera de combate (puertos 8137 y 8139).
         { name: 'magia', kind: 'e2e', args: ['tools/e2e-magia.mjs'] },

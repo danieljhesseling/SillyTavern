@@ -70,7 +70,7 @@ hito:
     backdrop: posada
     beats:
       - who: Brígida Cantueso
-        text: "Ya está fuera. Soy Brígida, llevo la posada. Al viejo lo tenéis en la mesa del fondo, y la sopa son dos sueldos."
+        text: "Ya está fuera. Soy Brígida, llevo la posada. Al viejo lo tienes en la mesa del fondo, y la sopa son dos sueldos."
       - who: Rufino Albarda
         mood: alegre
         text: "Primero, gracias. Segundo, me presento: Rufino Albarda, notario del rey. Tercero, gracias otra vez."

@@ -323,7 +323,8 @@ try {
     check('J9.2: tras ganar sale el panel de victoria, y la escena siguiente espera a que se cierre',
         canFight && card && waiting.scene === null && (await meta()).done.includes('el-caliz-ensangrentado'), JSON.stringify(waiting));
     await shoot('victoria');
-    await page.locator('.vs-card').first().click({ timeout: 4000 }).catch(() => {});
+    // J12.21: la pantalla de victoria se cierra con su ✕.
+    await page.locator('.vs-card .vo-close').first().click({ timeout: 4000 }).catch(() => {});
     const escape = await until(async () => (await story())?.id === 'el-precio-del-escape', 15000);
     check('J9.2: al cerrar el panel se abre la escena de la huida', escape, JSON.stringify(await story()));
     await shoot('huida');
@@ -596,7 +597,8 @@ try {
     }
     const pierCard = await until(async () => await page.locator('.vs-card').count() > 0, 8000);
     check('Gremio: se gana en el muelle y sale el panel de victoria, sin escena encima', pierFight && pierCard && (await story()) === null, JSON.stringify({ pierFight, pierCard }));
-    await page.locator('.vs-card').first().click({ timeout: 4000 }).catch(() => {});
+    // J12.21: la pantalla de victoria se cierra con su ✕.
+    await page.locator('.vs-card .vo-close').first().click({ timeout: 4000 }).catch(() => {});
     // Tras la pelea pueden salir antes otras cosas (lo que dice un compañero, un consejo): se espera más.
     const charla = await until(async () => (await story())?.id === 'la-charla', 30000);
     check('Gremio: al cerrar el panel se abre la escena de la charla con Tomás', charla, JSON.stringify(await story()));

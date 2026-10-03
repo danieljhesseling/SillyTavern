@@ -897,7 +897,7 @@
             "kind": "epilogo",
             "home": "Ane deja el faro a Nicasio y se viene contigo al gremio después de «{ending}». Dice que en Puerto Alba hay demasiadas barcas para contarlas, y que por fin no le importa.",
             "away": "Ane y tú os quedáis en el faro de Mareaviva después de «{ending}». Cada noche, al girar la luz, te apunta en su cuaderno.",
-            "hall": "{heroe} y Ane Goikoa, la farera, {juntos|juntas} desde el día {day}."
+            "hall": "{heroe} y Ane Goikoa, la farera: pareja desde el día {day}."
           }
         ]
       },
@@ -1693,7 +1693,7 @@
             "where": "plaza",
             "beats": [
               {
-                "say": "He empezado un cuaderno nuevo. Este no es sobre Mareaviva. Es sobre {nosotros|nosotras}: sobre tú y yo. Lo tengo en la página dos y ya me he puesto colorada.",
+                "say": "He empezado un cuaderno nuevo. Este no es sobre Mareaviva. Es sobre ti y sobre mí. Lo tengo en la página dos y ya me he puesto colorada.",
                 "mood": "alegre",
                 "replies": [
                   {
@@ -1751,8 +1751,8 @@
           {
             "kind": "epilogo",
             "home": "Begoña pide el traslado a la escuela de Puerto Alba para estar contigo después de «{ending}». Sus nuevos alumnos faltan a clase, y ella está encantada.",
-            "away": "Begoña y tú os quedáis en Mareaviva después de «{ending}». Ella da clase por la mañana, y por las tardes escribís {juntos|juntas} lo que pasó.",
-            "hall": "{heroe} y Begoña Larrea, la maestra, {juntos|juntas} desde el día {day}."
+            "away": "Begoña y tú os quedáis en Mareaviva después de «{ending}». Ella da clase por la mañana, y por las tardes escribís lo que pasó, a cuatro manos.",
+            "hall": "{heroe} y Begoña Larrea, la maestra: pareja desde el día {day}."
           }
         ]
       },
@@ -2120,7 +2120,7 @@
           "where": "posada",
           "beats": [
             {
-              "say": "{Patrón|Patrona}, en esta vida todo tiene precio. Un consejo, una moneda. Un buen consejo, dos. Uno que te salve la vida, lo que lleves encima.",
+              "say": "Camarada, en esta vida todo tiene precio. Un consejo, una moneda. Un buen consejo, dos. Uno que te salve la vida, lo que lleves encima.",
               "mood": "alegre"
             },
             {
@@ -2176,7 +2176,7 @@
           "where": "posada",
           "beats": [
             {
-              "say": "Te voy a contar un secreto, {patrón|patrona}. La sal de la Salazón no vale más que otra. Lo que se paga es que viene de Mareaviva. Los de fuera creen que da suerte. Se la echan a los barcos.",
+              "say": "Te voy a contar un secreto, camarada. La sal de la Salazón no vale más que otra. Lo que se paga es que viene de Mareaviva. Los de fuera creen que da suerte. Se la echan a los barcos.",
               "mood": "neutral"
             },
             {
@@ -2210,7 +2210,7 @@
           "where": "muelle",
           "beats": [
             {
-              "say": "Lo que quiero de verdad, {patrón|patrona}, es una barca. Mía, con papeles. Pescar en la bahía como un pescador honrado, con su suerte o sin ella.",
+              "say": "Lo que quiero de verdad, camarada, es una barca. Mía, con papeles. Pescar en la bahía como un pescador honrado, con su suerte o sin ella.",
               "mood": "alegre"
             },
             {
@@ -2238,7 +2238,7 @@
           "where": "muelle",
           "beats": [
             {
-              "say": "He hecho cuentas, {patrón|patrona}. Entre lo que me has pagado, lo que me has salvado y lo que te he cobrado de más, te debo exactamente una vida. La mía.",
+              "say": "He hecho cuentas, camarada. Entre lo que me has pagado, lo que me has salvado y lo que te he cobrado de más, te debo exactamente una vida. La mía.",
               "mood": "neutral"
             },
             {
@@ -2264,7 +2264,7 @@
       "arrivals": [
         {
           "place": "La Cala del Contrabando",
-          "line": "Mi antigua oficina. No toques nada, {patrón|patrona}, que aquí todo tiene dueño."
+          "line": "Mi antigua oficina. No toques nada, camarada, que aquí todo tiene dueño."
         },
         {
           "place": "Arenales",
@@ -2407,7 +2407,7 @@
       "wants": "Que el trato dure para siempre: que firme una mano más joven antes de que alguien mate a la que lo sostiene.",
       "knows": "Todo lo que pasó en el Bajo hace treinta años, porque lo negoció ella.",
       "secret": "Firmó el trato. Fue ella quien ofreció a los muertos del pueblo, y ahora quiere que firme la niña Uxue en la bajamar grande.",
-      "voice": "Suave y educada, nunca levanta la voz. Llama «{hijo|hija}» a todo el mundo y ofrece café antes de amenazar.",
+      "voice": "Suave y educada, nunca levanta la voz. Llama «hijo» o «hija» a todo el mundo y ofrece café antes de amenazar.",
       "service": "",
       "gender": "Mujer",
       "famous": true,
@@ -3615,29 +3615,29 @@
         "#WWWWWWWWWWWWWWWWWW#",
         "#WW##############WW#",
         "#WW#..w.#...k#..#WW#",
-        "#WW#....D....D..#WW#",
+        "#WW#....o....o..#WW#",
         "#WW#ww..#....#.w#WW#",
         "#WW##.######.##.##W#",
         "#WWw......ww......W#",
         "#Ww...c.......c..wW#",
-        "#x.....wwWWWw.....W#",
+        "#......wwWWWw....xW#",
         "####################"
       ],
       "partyStart": [
         {
-          "x": 2,
+          "x": 14,
           "y": 9
         },
         {
-          "x": 3,
+          "x": 15,
           "y": 9
         },
         {
-          "x": 2,
-          "y": 8
+          "x": 16,
+          "y": 9
         },
         {
-          "x": 3,
+          "x": 15,
           "y": 8
         }
       ],
@@ -3659,7 +3659,7 @@
         },
         {
           "name": "Anguila de la bodega",
-          "x": 16,
+          "x": 2,
           "y": 8
         },
         {
@@ -3936,7 +3936,8 @@
           "damage": "1d8",
           "condition": "restrained",
           "spotDC": 12,
-          "disarmDC": 30
+          "disarmDC": 30,
+          "once": true
         }
       ],
       "avoid": [
@@ -4104,19 +4105,19 @@
       ],
       "partyStart": [
         {
-          "x": 1,
+          "x": 8,
           "y": 10
         },
         {
-          "x": 2,
+          "x": 9,
           "y": 10
         },
         {
-          "x": 3,
+          "x": 10,
           "y": 10
         },
         {
-          "x": 4,
+          "x": 11,
           "y": 10
         }
       ],
@@ -4375,19 +4376,19 @@
       ],
       "partyStart": [
         {
-          "x": 1,
+          "x": 8,
           "y": 10
         },
         {
-          "x": 2,
+          "x": 9,
           "y": 10
         },
         {
-          "x": 3,
+          "x": 10,
           "y": 10
         },
         {
-          "x": 4,
+          "x": 11,
           "y": 10
         }
       ],
@@ -7321,6 +7322,111 @@
           ]
         }
       ]
+    },
+    {
+      "id": "ciriaco-la-silla",
+      "speaker": "Ciriaco Etxanobe",
+      "title": "La silla de enea",
+      "start": "inicio",
+      "nodes": [
+        {
+          "id": "inicio",
+          "mood": "triste",
+          "line": "Ciriaco. Treinta años. Diez mil noches. Y esta, otra. ¿Vienes a mirar el agua, o a preguntar lo que nadie pregunta?",
+          "again": [
+            "Otra vez tú. Siéntate en el poste, que la silla es del que vela.",
+            "Hoy el agua está quieta. Mala señal. O buena. Ya no sé."
+          ],
+          "more": [
+            "¿Algo más?",
+            "Pregunta. El mar no tiene prisa."
+          ],
+          "options": [
+            {
+              "id": "quienes",
+              "text": "¿Qué sube por los postes?",
+              "next": "suben"
+            },
+            {
+              "id": "silla",
+              "text": "¿Por qué velas tú casi todas las noches?",
+              "next": "remedios"
+            },
+            {
+              "id": "marcado",
+              "text": "Yo también los oigo. Desde niño los oigo llamar.",
+              "if": {
+                "species": "Marcado"
+              },
+              "tag": "Marcado",
+              "effects": [
+                {
+                  "attitude": 1
+                }
+              ],
+              "next": "marcado"
+            },
+            {
+              "id": "adios",
+              "text": "Te dejo con el agua.",
+              "end": true,
+              "repeat": true
+            }
+          ]
+        },
+        {
+          "id": "suben",
+          "mood": "triste",
+          "line": "Vecinos. Los nuestros. Los que se dieron al agua. Suben despacio, chorreando, y si les hablas se quedan quietos a escuchar. Si te callas, siguen subiendo.",
+          "journal": "Ciriaco dice que los que suben por los postes son los muertos del pueblo, y que si les hablas se paran.",
+          "effects": [
+            {
+              "rumor": "r-remedios"
+            }
+          ],
+          "options": [
+            {
+              "id": "vale",
+              "text": "Entiendo.",
+              "next": "inicio"
+            }
+          ]
+        },
+        {
+          "id": "remedios",
+          "mood": "triste",
+          "line": "Porque mi Remedios sube la tercera, con su pañuelo azul. Murió hace tres años y se la di al agua, como manda la Cofradía. Vengo a hablar con ella. Del tiempo, sobre todo. Le gustaba saber si iba a llover.",
+          "journal": "Ciriaco vela casi todas las noches para hablar con su mujer, Remedios, que sube por los postes.",
+          "options": [
+            {
+              "id": "lo-siento",
+              "text": "Lo siento, Ciriaco.",
+              "effects": [
+                {
+                  "attitude": 1
+                }
+              ],
+              "reply": {
+                "text": "No lo sientas. Mañana va a llover. Se lo diré esta noche.",
+                "mood": "triste"
+              },
+              "next": "inicio"
+            }
+          ]
+        },
+        {
+          "id": "marcado",
+          "mood": "triste",
+          "line": "Lo sé. Lo llevas en el brazo. A los marcados os llaman más fuerte. No les contestes nunca con la boca cerrada: háblales en voz alta, que os oigan.",
+          "options": [
+            {
+              "id": "gracias",
+              "text": "Gracias por el consejo.",
+              "next": "inicio"
+            }
+          ]
+        }
+      ]
     }
   ],
   "plot": {
@@ -7448,33 +7554,15 @@
         "id": "lo-que-no-se-cuenta",
         "act": 1,
         "title": "Lo que no se cuenta",
-        "hint": "Busca lo que el pueblo calla: bajo el embarcadero viejo, en el libro de la iglesia o en las huellas de la playa. Con dos pistas basta.",
-        "scene": "En la posada, la posadera te habla de la Vela: cada noche alguien se sienta en el embarcadero viejo y habla hasta que amanece. El patrón mayor de la Cofradía te ofrece el carro de mañana para que te vayas. Si quieres entender qué pasa, tendrás que mirarlo tú.",
+        "hint": "Ve al Embarcadero Viejo y habla con el pescador viejo que vela casi todas las noches. Por el camino, mira lo que el pueblo calla: el libro de la iglesia, los niños del muelle, las huellas de la playa.",
+        "scene": "En la posada, la posadera te habla de la Vela: cada noche alguien se sienta en el embarcadero viejo y habla hasta que amanece. El patrón mayor de la Cofradía te ofrece el carro de mañana para que te vayas. Si quieres entender qué pasa, tendrás que preguntarle al pescador viejo que vela en el embarcadero.",
         "opens": {
           "kind": "after",
           "milestone": "la-nina-del-muelle"
         },
         "asks": {
-          "kind": "clues",
-          "need": 2,
-          "clues": [
-            {
-              "place": "El Embarcadero Viejo",
-              "skill": "perception"
-            },
-            {
-              "place": "El Embarcadero Viejo",
-              "skill": "perception"
-            },
-            {
-              "place": "Mareaviva",
-              "skill": "investigation"
-            },
-            {
-              "place": "La Playa de las Redes",
-              "skill": "survival"
-            }
-          ]
+          "kind": "talk",
+          "npc": "Ciriaco Etxanobe"
         },
         "changes": {
           "reveal": [],
@@ -7597,7 +7685,8 @@
           },
           {
             "who": "Maite Ugarte",
-            "text": "Si quieres saber lo que aquí no se cuenta, tendrás que mirarlo tú. Debajo del embarcadero viejo. En el libro de la iglesia. En la playa, al amanecer."
+            "text": "Si quieres saber lo que aquí no se cuenta, mira el libro de la iglesia, o a los críos que saltan desde el muelle. Y luego baja al embarcadero viejo y pregúntale a Ciriaco. Lleva treinta años velando.",
+            "presenta": "ciriaco"
           }
         ]
       },
@@ -7631,7 +7720,7 @@
           {
             "who": "Ciriaco Etxanobe",
             "mood": "triste",
-            "text": "Te estaba buscando. Ciriaco me llamo. Treinta años velando. Diez mil noches. Y esta noche no me tengo en pie."
+            "text": "¿Te manda Maite? Ciriaco me llamo. Treinta años velando. Diez mil noches. Y esta noche no me tengo en pie."
           },
           {
             "who": "Ciriaco Etxanobe",
@@ -7908,9 +7997,6 @@
                   {
                     "bond": 1,
                     "who": "Gorka Iturbe"
-                  },
-                  {
-                    "board": "La marea que no baja"
                   }
                 ],
                 "reply": {
@@ -7930,9 +8016,6 @@
                       {
                         "attitude": 1,
                         "who": "Lucio Iturbe"
-                      },
-                      {
-                        "board": "La marea que no baja"
                       }
                     ],
                     "reply": {
@@ -7942,11 +8025,6 @@
                     }
                   },
                   "failure": {
-                    "effects": [
-                      {
-                        "board": "La marea que no baja"
-                      }
-                    ],
                     "reply": {
                       "who": "Lucio Iturbe",
                       "mood": "enfadado",
@@ -7958,11 +8036,6 @@
               {
                 "id": "playa-por-que",
                 "text": "¿Por qué salen solo los niños?",
-                "effects": [
-                  {
-                    "board": "La marea que no baja"
-                  }
-                ],
                 "reply": {
                   "who": "Gorka Iturbe",
                   "mood": "triste",
@@ -8155,16 +8228,7 @@
           {
             "who": "Txomin Etxeberria",
             "mood": "alegre",
-            "text": "Paz, paz, rezadora. Txomin Etxeberria, de Arenales, para servir a quien pague. Velas de cera buena a mitad de precio, patrón.",
-            "alt": [
-              {
-                "if": {
-                  "gender": "Mujer"
-                },
-                "mood": "alegre",
-                "text": "Paz, paz, rezadora. Txomin Etxeberria, de Arenales, para servir a quien pague. Velas de cera buena a mitad de precio, patrona."
-              }
-            ]
+            "text": "Paz, paz, rezadora. Txomin Etxeberria, de Arenales, para servir a quien pague. Velas de cera buena a mitad de precio, camarada."
           },
           {
             "who": "Txomin Etxeberria",
@@ -8187,9 +8251,6 @@
                   },
                   {
                     "rumor": "r-la-cala"
-                  },
-                  {
-                    "board": "La cueva del Gallo"
                   }
                 ],
                 "reply": {
@@ -8204,9 +8265,6 @@
                 "effects": [
                   {
                     "rumor": "r-la-cala"
-                  },
-                  {
-                    "board": "La cueva del Gallo"
                   }
                 ],
                 "reply": {
@@ -8552,9 +8610,6 @@
                   {
                     "bond": 1,
                     "who": "Ane Goikoa"
-                  },
-                  {
-                    "board": "La Esperanza con la marea baja"
                   }
                 ],
                 "reply": {
@@ -8566,11 +8621,6 @@
               {
                 "id": "pecio-solo",
                 "text": "Voy yo. Tú vigila el camino, por si vuelve Lucio.",
-                "effects": [
-                  {
-                    "board": "La Esperanza con la marea baja"
-                  }
-                ],
                 "reply": {
                   "who": "Ane Goikoa",
                   "text": "Vigilar es lo que mejor se me da. Ciento cuarenta y dos escalones de ventaja."
@@ -8636,11 +8686,6 @@
               {
                 "id": "bajamar-correr",
                 "text": "Vamos. Hoy no firma ninguna niña.",
-                "effects": [
-                  {
-                    "board": "La Boca del Bajo en la bajamar grande"
-                  }
-                ],
                 "reply": {
                   "who": "Sebastián Mendia",
                   "mood": "enfadado",
@@ -8653,9 +8698,6 @@
                 "effects": [
                   {
                     "clue": "Según el cuaderno del farero, la Vecina pidió compañía, no muertos. Lo de los muertos lo ofreció Rosalía Arrieta."
-                  },
-                  {
-                    "board": "La Boca del Bajo en la bajamar grande"
                   }
                 ],
                 "reply": {
@@ -8744,11 +8786,6 @@
                 "id": "pared-compania",
                 "text": "Le daremos compañía de vivos: la Vela, para siempre, por turnos.",
                 "irreversible": true,
-                "effects": [
-                  {
-                    "board": "La primera Vela de todos"
-                  }
-                ],
                 "reply": {
                   "who": "Pilar Azkue",
                   "mood": "alegre",
@@ -8759,11 +8796,6 @@
                 "id": "pared-mateo",
                 "text": "Devolveremos a Mateo al agua. Que todo siga como estaba.",
                 "irreversible": true,
-                "effects": [
-                  {
-                    "board": "La tumba de Mateo"
-                  }
-                ],
                 "reply": {
                   "who": "Rosalía Arrieta",
                   "mood": "alegre",
@@ -8978,18 +9010,6 @@
             "text": "Gorka Iturbe aprende a tenerle miedo al mar a los veintitrés años. Dice que es lo mejor que le ha pasado."
           },
           {
-            "who": "Begoña Larrea",
-            "text": "Begoña Larrea escribe lo que pasó en cuarenta páginas y las manda a la ciudad. Nadie se lo cree. Ella se queda en la escuela igual."
-          },
-          {
-            "who": "Hermano Julián",
-            "text": "El hermano Julián entierra por fin a Mateo Iturbe con su nombre, y abre la iglesia cada domingo. Va gente."
-          },
-          {
-            "who": "Txomin Etxeberria",
-            "text": "Txomin Etxeberria vuelve a Arenales, donde ahora pescan igual que en Mareaviva. Cobra menos, y se ríe más."
-          },
-          {
             "who": "Rosalía Arrieta",
             "text": "Rosalía Arrieta cierra la Salazón un mes de luto por los sesenta y un muertos que dio al agua. Después la abre otra vez: el mar sigue dando pescado, aunque menos."
           },
@@ -9000,10 +9020,6 @@
           {
             "who": "Los de Arenales",
             "text": "Los de Arenales vuelven a pescar en la bahía sin que nadie les eche. Ahora los dos pueblos entierran a sus muertos igual."
-          },
-          {
-            "who": "La Cofradía de Mareaviva",
-            "text": "La Cofradía de Mareaviva pierde la suerte y gana el sueño. En la primera tormenta, todos los barcos vuelven antes de tiempo."
           }
         ]
       },
@@ -9016,20 +9032,8 @@
             "text": "Ane Goikoa conserva su mano blanca. La primera noche de cada mes le toca la Vela, y le cuenta a la Vecina las barcas que han entrado."
           },
           {
-            "who": "Gorka Iturbe",
-            "text": "Gorka Iturbe se apunta a la Vela los sábados. Dice que la Vecina se ríe de sus chistes, o eso le parece."
-          },
-          {
-            "who": "Begoña Larrea",
-            "text": "Begoña Larrea enseña a los niños a leer en voz alta en el embarcadero viejo. A la Vecina le gustan los cuentos."
-          },
-          {
             "who": "Hermano Julián",
             "text": "El hermano Julián reza en la última tabla una noche a la semana. Ya no llena cajas de piedras: los muertos se entierran en tierra, con su nombre."
-          },
-          {
-            "who": "Txomin Etxeberria",
-            "text": "Txomin Etxeberria vende velas para la Vela, a precio justo. Por primera vez en su vida, casi."
           },
           {
             "who": "Rosalía Arrieta",
@@ -9042,10 +9046,6 @@
           {
             "who": "Las Rezadoras",
             "text": "Las Rezadoras escriben la lista nueva de la Vela, con todos los nombres del pueblo. Nadie la discute."
-          },
-          {
-            "who": "Los de Arenales",
-            "text": "Los de Arenales miran la Vela desde el cabo, sin entenderla. Algunos, a escondidas, vienen a sentarse también."
           }
         ]
       },
@@ -9060,18 +9060,6 @@
           {
             "who": "Gorka Iturbe",
             "text": "Gorka Iturbe se va con la milicia de costa y no vuelve a Mareaviva. Escribe a su hermano cada mes; Lucio no contesta."
-          },
-          {
-            "who": "Begoña Larrea",
-            "text": "Begoña Larrea pide el traslado a la ciudad. Antes de irse, quema los dibujos de los niños."
-          },
-          {
-            "who": "Hermano Julián",
-            "text": "El hermano Julián vuelve a llenar cajas de piedras. Cada vez reza un poco más bajo."
-          },
-          {
-            "who": "Txomin Etxeberria",
-            "text": "Txomin Etxeberria se queda con la cala. La señora Arrieta le paga bien por callar."
           },
           {
             "who": "Rosalía Arrieta",

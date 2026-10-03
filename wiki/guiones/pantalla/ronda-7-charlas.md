@@ -250,7 +250,7 @@ charla:
         - id: loba-volver
           text: "Entendido."
           next: inicio
-          reply: { text: "¿Entendido? Entendido. Pero no vayas sola la primera vez. Ni solo." }
+          reply: { text: "¿Entendido? Entendido. Pero no vayas {solo|sola} la primera vez." }
 
 ## Las ruinas de la Torre Tres
 

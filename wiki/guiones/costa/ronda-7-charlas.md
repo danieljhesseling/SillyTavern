@@ -606,4 +606,61 @@ charla:
         - id: vale5
           text: 'Vale, vale.'
           next: inicio
+
+charla:
+  id: ciriaco-la-silla
+  speaker: ciriaco
+  title: La silla de enea
+  start: inicio
+  nodes:
+    - id: inicio
+      mood: triste
+      line: 'Ciriaco. Treinta años. Diez mil noches. Y esta, otra. ¿Vienes a mirar el agua, o a preguntar lo que nadie pregunta?'
+      again:
+        - 'Otra vez tú. Siéntate en el poste, que la silla es del que vela.'
+        - 'Hoy el agua está quieta. Mala señal. O buena. Ya no sé.'
+      more: ['¿Algo más?', 'Pregunta. El mar no tiene prisa.']
+      options:
+        - id: quienes
+          text: '¿Qué sube por los postes?'
+          next: suben
+        - id: silla
+          text: '¿Por qué velas tú casi todas las noches?'
+          next: remedios
+        - id: marcado
+          text: 'Yo también los oigo. Desde niño los oigo llamar.'
+          if: { species: Marcado }
+          tag: Marcado
+          effects: [{ attitude: 1 }]
+          next: marcado
+        - id: adios
+          text: 'Te dejo con el agua.'
+          end: true
+          repeat: true
+    - id: suben
+      mood: triste
+      line: 'Vecinos. Los nuestros. Los que se dieron al agua. Suben despacio, chorreando, y si les hablas se quedan quietos a escuchar. Si te callas, siguen subiendo.'
+      journal: 'Ciriaco dice que los que suben por los postes son los muertos del pueblo, y que si les hablas se paran.'
+      effects: [{ rumor: r-remedios }]
+      options:
+        - id: vale
+          text: 'Entiendo.'
+          next: inicio
+    - id: remedios
+      mood: triste
+      line: 'Porque mi Remedios sube la tercera, con su pañuelo azul. Murió hace tres años y se la di al agua, como manda la Cofradía. Vengo a hablar con ella. Del tiempo, sobre todo. Le gustaba saber si iba a llover.'
+      journal: 'Ciriaco vela casi todas las noches para hablar con su mujer, Remedios, que sube por los postes.'
+      options:
+        - id: lo-siento
+          text: 'Lo siento, Ciriaco.'
+          effects: [{ attitude: 1 }]
+          reply: { text: 'No lo sientas. Mañana va a llover. Se lo diré esta noche.', mood: triste }
+          next: inicio
+    - id: marcado
+      mood: triste
+      line: 'Lo sé. Lo llevas en el brazo. A los marcados os llaman más fuerte. No les contestes nunca con la boca cerrada: háblales en voz alta, que os oigan.'
+      options:
+        - id: gracias
+          text: 'Gracias por el consejo.'
+          next: inicio
 ```

@@ -1039,7 +1039,7 @@ try {
     await page.evaluate(() => document.querySelectorAll('#toast-container .toast').forEach(t => t.remove()));
     // La tarjeta de la victoria de la Taberna, si sigue ahí, se cierra como quien la ha leído: cae
     // encima de la palanca.
-    await page.locator('.vs-card').filter({ visible: true }).first().click({ timeout: 2000 }).catch(() => {});
+    await page.locator('.vs-card .vo-close').filter({ visible: true }).first().click({ timeout: 2000 }).catch(() => {});
     const over = await page.evaluate(() => {
         const el = [...document.querySelectorAll('.wm-terrain-lever')].find(e => /** @type {HTMLElement} */ (e).offsetParent !== null);
         const r = el?.getBoundingClientRect();

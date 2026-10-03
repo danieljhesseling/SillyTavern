@@ -68,6 +68,7 @@ Prompt: `Pixel art side-view landscape, 320x180, bright fantasy, clean saturated
 | Localización | Lo que se ve | Dónde va |
 | :--- | :--- | :--- |
 | Brasa | Un pueblo de tejados rojos al borde del Bosque Copiado. En la plaza hay una pared llena de nombres escritos a mano, y en la Posada del Despertar duermen los huéspedes recién llegados. | `escenarios/pantalla/brasa.png` |
+| La Casa de la Acogida | Un caserón de piedra a las afueras de Brasa, con un patio grande y una campanilla en la puerta. Aquí la Acogida da de comer a los recién llegados y guarda la lista de los que deben a Cifra. | `escenarios/pantalla/la-casa-de-la-acogida.png` |
 | El Bosque Copiado | Un bosque donde los árboles se repiten: el mismo roble torcido tres veces seguidas, la misma piedra con el mismo musgo. Por aquí llegan los huéspedes. | `escenarios/pantalla/el-bosque-copiado.png` |
 | La Ermita de las Cuidadoras | Un claustro de piedra blanca con un huerto de hierbas y una biblioteca pequeña. Aquí se cura sin preguntar el nivel. | `escenarios/pantalla/la-ermita-de-las-cuidadoras.png` |
 | Los Molinos | Cuatro molinos de agua sobre un caz rápido y una aldea enharinada. Casi todas las familias deben dinero a la Contaduría. | `escenarios/pantalla/los-molinos.png` |

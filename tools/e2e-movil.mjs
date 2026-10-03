@@ -912,7 +912,9 @@ try {
     }
     await tapDice();
     // La tarjeta de la victoria se cierra tocándola, como quien la ha leído.
-    const victory = page.locator('.vs-card');
+    // J12.21: la pantalla de victoria sale al acabar la secuencia; se cierra con su ✕.
+    await page.waitForSelector('.vs-card.vo-layer', { timeout: 5000 }).catch(() => {});
+    const victory = page.locator('.vs-card .vo-close');
     if (await victory.count() > 0) await victory.first().tap({ timeout: 4000 }).catch(() => {});
     // La historia sigue: en el muelle, Tomás da las gracias (J2.1); antes era el tablón.
     const moved = await until(() => chatHas(/Soy Tomás|apunta tu nombre en el libro del gremio/), 20000);

@@ -194,9 +194,10 @@ export function stageAttack(by, at, style, mark, damageType = '') {
 }
 
 /**
- * La puerta de `showCombatDiceRoll`: una tirada con `stage` va a la secuencia (el golpe, el dado y,
- * si falla, el «Falla»); una sin él, con una secuencia en marcha, saca su ventana de siempre en su
- * sitio (después de lo que ya estaba). Si devuelve `false`, la tirada va como antes.
+ * La puerta de `showCombatDiceRoll`: una tirada con `stage` va a la secuencia (el golpe anunciado,
+ * el dado y, si falla, el «Falla»; tanda 21: quien ataca se lanza una sola vez, después del dado,
+ * `releaseBlow` en combat-vtt/fx.js); una sin él, con una secuencia en marcha, saca su ventana de
+ * siempre en su sitio (después de lo que ya estaba). Si devuelve `false`, la tirada va como antes.
  *
  * @param {{title?: string, subtitle?: string, formula?: string, total?: number, dc?: number|null, natural?: number|null, glyph?: string, stage?: RollStage|null}} payload
  * @param {() => void} showWindow La ventana de dados de siempre, para cuando toque.

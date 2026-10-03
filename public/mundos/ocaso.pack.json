@@ -1016,7 +1016,7 @@
             "kind": "epilogo",
             "home": "Ilvana vuelve contigo al gremio después de «{ending}». Talla una piedra con una marca torcida en la puerta de vuestro cuarto.",
             "away": "Ilvana se quedó contigo en las tierras del ocaso después de «{ending}». Cada primavera recorréis las Sendas Viejas reponiendo las piedras.",
-            "hall": "{heroe} e Ilvana Hojarrubia, {juntos|juntas} desde el día {day}."
+            "hall": "{heroe} e Ilvana Hojarrubia, pareja desde el día {day}."
           }
         ]
       },
@@ -1576,7 +1576,7 @@
             "kind": "epilogo",
             "home": "Ruy vuelve contigo al gremio después de «{ending}». Corta la leña de todo el gremio y no deja que nadie le pague.",
             "away": "Ruy se quedó contigo en las tierras del ocaso después de «{ending}». La casa del hacha tiene dos sillas junto al fuego.",
-            "hall": "{heroe} y Ruy Zarzal, {juntos|juntas} desde el día {day}."
+            "hall": "{heroe} y Ruy Zarzal, pareja desde el día {day}."
           }
         ]
       },
@@ -1956,7 +1956,7 @@
           "where": "posada",
           "beats": [
             {
-              "say": "Pase lo que pase en el paso, mi puerta se abrirá siempre para ti. Aunque llegues de noche, aunque llegues {perseguido|perseguida}.",
+              "say": "Pase lo que pase en el paso, mi puerta se abrirá siempre para ti. Aunque llegues de noche, aunque llegues con medio reino detrás.",
               "mood": "alegre"
             },
             {
@@ -2155,7 +2155,7 @@
             "kind": "epilogo",
             "home": "Gudrun vuelve contigo al gremio después de «{ending}». Pone una puerta enana en vuestro cuarto, y la abre cada mañana.",
             "away": "Gudrun se quedó contigo en las tierras del ocaso después de «{ending}». Vuestros dos nombres están grabados en la misma puerta.",
-            "hall": "{heroe} y Gudrun Hondaroca, {juntos|juntas} desde el día {day}."
+            "hall": "{heroe} y Gudrun Hondaroca, pareja desde el día {day}."
           }
         ]
       },
@@ -2229,13 +2229,13 @@
                         "reply": {
                           "who": "Marcos Fullero",
                           "mood": "enfadado",
-                          "text": "Seis lingotes. Seis, y me arruinas. {Amigo|Amiga}, eres peor que un recaudador."
+                          "text": "Seis lingotes. Seis, y me arruinas. Regateas peor que un recaudador, y eso es mucho decir."
                         }
                       },
                       "failure": {
                         "reply": {
                           "who": "Marcos Fullero",
-                          "text": "Diez, {amigo|amiga}. Diez es diez en todas las casas."
+                          "text": "Diez lingotes. Diez es diez en todas las casas, por mucho que se regatee."
                         }
                       }
                     }
@@ -4366,7 +4366,7 @@
         "#vvvvv^^^^^^^^^^vvvvv#",
         "#vvvvv^........^vvvvv#",
         "#vvvvv^...^^...^vvvvv#",
-        "#vvvvv####DD####vvvvv#",
+        "#vvvvv####oo####vvvvv#",
         "#v..................v#",
         "#v..c....T..T....c..v#",
         "#v.....##....##.....v#",
@@ -5343,7 +5343,7 @@
       "id": "q-enc-atalaya",
       "name": "El fanal de la Atalaya",
       "act": 4,
-      "description": "Acto 4, el final. Para nivel 5, y duro. El guardián de hierro no deja pasar a la plataforma; el capitán espera junto al fanal. Los bordes del patio dan al vacío.",
+      "description": "Acto 4, el final. Para nivel 5, y duro. La puerta enana de la plataforma está abierta, pero el guardián de hierro la guarda; el capitán espera arriba, junto al fanal. Los bordes del patio dan al vacío.",
       "boardId": "enc-atalaya",
       "objectives": [
         {
@@ -7276,7 +7276,7 @@
         "beats": [
           {
             "who": "Brígida Cantueso",
-            "text": "Ya está fuera. Soy Brígida, llevo la posada. Al viejo lo tenéis en la mesa del fondo, y la sopa son dos sueldos."
+            "text": "Ya está fuera. Soy Brígida, llevo la posada. Al viejo lo tienes en la mesa del fondo, y la sopa son dos sueldos."
           },
           {
             "who": "Rufino Albarda",

@@ -7,7 +7,7 @@ author: DanielJHesseling / Claude Opus 5.5
 
 # Ronda 2: el mundo
 
-> Doce localizaciones (nueve a la vista, tres que se descubren), veintiocho rumores, veinticuatro objetos, diecisiete bichos y los tres héroes hechos de la tarjeta del tablón.
+> Trece localizaciones (diez a la vista, tres que se descubren), veintinueve rumores, veinticuatro objetos, diecisiete bichos y los tres héroes hechos de la tarjeta del tablón.
 >
 > **Los secretos**, de tres formas: la Hondonada Gris se oye en Brasa (un rumor); el Archivo Hundido, en Cifra (un rumor); la Torre Cuatro la cuenta Sabina (una persona) y la marca un plano de la Ermita (un objeto).
 
@@ -26,6 +26,14 @@ localidad:
     - { a: molinos, dias: 1 }
     - { a: fielato, dias: 1 }
     - { a: torre-siete, dias: 2, cerrado_hasta: la-oferta }
+    - { a: casa-acogida, dias: 1 }
+
+localidad:
+  id: casa-acogida
+  nombre: La Casa de la Acogida
+  tipo: camp
+  bioma: rural
+  descripcion: "Un caserón de piedra a las afueras de Brasa, con un patio grande y una campanilla en la puerta. Aquí la Acogida da de comer a los recién llegados y guarda la lista de los que deben a Cifra."
 
 localidad:
   id: bosque-copiado
@@ -160,6 +168,13 @@ rumor:
   dicho_por: cualquiera
   donde: brasa
   texto: "Jonás Pradera fue el primero que llevó huéspedes a firmar a Cifra. Hace mucho, pero hay quien no se olvida."
+  verdad: si
+
+rumor:
+  id: r-lista-de-jonas
+  dicho_por: cualquiera
+  donde: casa-acogida
+  texto: "El portavoz de la Acogida lleva una lista con los treinta y un huéspedes de Brasa que deben a Cifra. Dicen que la Contaduría pagaría bien por ella."
   verdad: si
 
 rumor:
@@ -705,9 +720,9 @@ bicho:
 bicho:
   id: contador-mayor
   nombre: El Contador Mayor
-  pg: 66
+  pg: 80
   ca: 15
-  desafio: 4
+  desafio: 5
   perfil: skirmisher
   alcance: 60
   habilidades: [mag-relampago, hab-escudo-arcano, mag-cono-escarcha]

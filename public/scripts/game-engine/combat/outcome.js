@@ -23,6 +23,8 @@
  * Lo pinta `ui/combat-vtt/outcome-screen.js` y lo junta y lo hace `party/combat-flow.js`.
  */
 
+import { gendered } from '../campaign/grammar.js';
+
 /** Lo que cobran por recoger a cada uno de los vuestros que sigue con vida (rescate y curas). */
 export const RESCUE_FEE_EACH = 10;
 
@@ -53,6 +55,10 @@ export const RESCUE_DAYS = 1;
  * @property {boolean} [guest] Un invitado (el mercenario, el escoltado).
  * @property {boolean} [confidant] Uno de los confidentes escritos de la campaña.
  * @property {string} [gender] `m`, `f` o vacío: para «malherido» o «malherida».
+ * @property {number} [dealt] Idea 191: el daño que ha hecho en esta pelea.
+ * @property {number} [kills] A cuántos ha tumbado.
+ * @property {number} [taken] El daño que ha recibido.
+ * @property {boolean} [best] Quien sostuvo el combate (el que más hizo).
  */
 
 /**
@@ -104,6 +110,7 @@ export const RESCUE_DAYS = 1;
  * @property {boolean} [saves] Si se puede cargar una partida guardada.
  * @property {boolean} [home] Si se puede volver al gremio.
  * @property {string} [failed] Derrota sin caer: lo que dice la misión («El ratero ha escapado»).
+ * @property {string[]} [upgrades] Idea 63: lo del botín que mejora lo que lleva alguien.
  */
 
 /** @param {any} value @returns {string} */
@@ -121,10 +128,11 @@ const num = (value) => {
  * @param {number} n
  * @param {string} one
  * @param {string} many
+ * @param {boolean} [fem] Si la palabra es femenina: «una puerta», no «un puerta».
  * @returns {string}
  */
-function counted(n, one, many) {
-    const words = ['', 'un', 'dos', 'tres', 'cuatro', 'cinco'];
+function counted(n, one, many, fem = false) {
+    const words = ['', fem ? 'una' : 'un', 'dos', 'tres', 'cuatro', 'cinco'];
     const said = n < words.length ? words[n] : String(n);
     return `${said} ${n === 1 ? one : many}`;
 }
@@ -149,8 +157,7 @@ function listed(list) {
  * @returns {{label: string, tone: 'ok'|'wound'|'down'|'dead', icon: string}}
  */
 export function memberState(member, { hard = false } = {}) {
-    const female = text(member?.gender).toLowerCase().startsWith('f');
-    const word = (/** @type {string} */ male, /** @type {string} */ fem) => (female ? fem : male);
+    const word = (/** @type {string} */ male, /** @type {string} */ fem) => gendered(member?.gender ?? '', male, fem);
     if (member?.dead) {
         return { label: hard && member.confidant ? word('Muerto para siempre', 'Muerta para siempre') : word('Muerto', 'Muerta'), tone: 'dead', icon: 'fa-skull' };
     }
@@ -245,8 +252,8 @@ export function leftoversLine(leftovers) {
     const clues = Math.max(0, Math.round(num(leftovers?.clues)));
     const parts = [
         chests ? counted(chests, 'cofre', 'cofres') : '',
-        rooms ? counted(rooms, 'puerta', 'puertas') : '',
-        clues ? counted(clues, 'pista', 'pistas') : '',
+        rooms ? counted(rooms, 'puerta', 'puertas', true) : '',
+        clues ? counted(clues, 'pista', 'pistas', true) : '',
     ].filter(Boolean);
     if (parts.length === 0) return '';
     const total = chests + rooms + clues;
@@ -271,6 +278,15 @@ function memberRow(member, { hard = false, victory = true }) {
     const scars = (Array.isArray(member.injuries) ? member.injuries : []).map(injuryLine);
     const xp = Math.max(0, Math.round(num(member.xp)));
     const next = Math.round(num(member.nextLevel));
+    // Idea 191: quién hizo qué, en una línea: «20 de daño · 1 tumbado · 5 recibido».
+    const dealt = Math.max(0, Math.round(num(member.dealt)));
+    const kills = Math.max(0, Math.round(num(member.kills)));
+    const taken = Math.max(0, Math.round(num(member.taken)));
+    const deeds = [
+        dealt ? `${dealt} de daño` : '',
+        kills ? `${kills} ${kills === 1 ? 'tumbado' : 'tumbados'}` : '',
+        taken ? `${taken} recibido` : '',
+    ].filter(Boolean).join(' · ');
     return {
         id: text(member.id),
         name: text(member.name),
@@ -286,6 +302,8 @@ function memberRow(member, { hard = false, victory = true }) {
         // Lo de esta pelea (cayó a 0 PG) y lo que se queda.
         fell: Boolean(member.downed) && !member.dead,
         scars,
+        deeds,
+        best: victory && Boolean(member.best),
         xpText: victory && xp > 0 ? `+${xp} PX` : '',
         levelUp: victory && next > level ? `Subir a nivel ${next}` : '',
         nextLevel: next > level ? next : 0,
@@ -334,6 +352,7 @@ export function outcomeView(input) {
         buttons.push({ id: 'continue', ...main, tone: 'gold', title: text(step?.title) || main.label, main: true });
         return {
             kind: /** @type {'victory'} */ ('victory'),
+            fallen: false,
             title: 'Victoria',
             sub: `Encuentro superado${where ? ` ${where}` : ''} · ronda ${round}`,
             crest: 'fa-shield-halved',
@@ -342,6 +361,7 @@ export function outcomeView(input) {
             lootTitle: 'Botín',
             gold: gold > 0 ? `+${gold} de oro` : '',
             items,
+            upgrades: (Array.isArray(input.upgrades) ? input.upgrades : []).map(text).filter(Boolean),
             emptyLoot: gold > 0 || items.length > 0 ? '' : 'Nada que llevarse.',
             cost: null,
             note: { icon: 'fa-clock', text: [text(input.time), leftovers].filter(Boolean).join(' · ') },
@@ -374,18 +394,19 @@ export function outcomeView(input) {
         if (input.checkpoint) buttons.push({ id: 'back', label: 'Volver al punto guardado', icon: 'fa-clock-rotate-left', tone: 'red', className: 'pf-back', main: true });
         if (input.saves) buttons.push({ id: 'load', label: 'Cargar partida', icon: 'fa-floppy-disk', tone: buttons.length ? 'subtle' : 'red', className: 'pf-load', main: buttons.length === 0 });
         if (input.home) buttons.push({ id: 'home', label: 'Volver al gremio', icon: 'fa-house-flag', tone: buttons.length ? 'subtle' : 'red', className: 'pf-home', main: buttons.length === 0 });
-        if (buttons.length === 0) buttons.push({ id: 'close', label: 'Cerrar', icon: 'fa-xmark', tone: 'red', main: true });
+        if (buttons.length === 0) {
+            note = `${note} Desde la pausa puedes cargar otra partida.`;
+            buttons.push({ id: 'close', label: 'Cerrar', icon: 'fa-xmark', tone: 'red', main: true });
+        }
     } else {
         const rescue = input.rescue ?? null;
         if (rescue) {
             const lines = [
                 { icon: 'fa-hand-holding-medical', title: 'Quién os recoge', text: `${rescue.who}. Os sacan de allí y os curan.` },
-                {
-                    icon: 'fa-coins', title: 'Lo que cobran',
-                    text: rescue.cost >= rescue.wanted
-                        ? `${rescue.cost} de oro, por el rescate y las curas.`
-                        : `Piden ${rescue.wanted} de oro y se quedan con lo que lleváis: ${rescue.cost}.`,
-                },
+                // Lo que cobran ya va arriba, en rojo; aquí solo si no os llega para pagarlo.
+                ...(rescue.cost < rescue.wanted ? [{
+                    icon: 'fa-coins', title: 'Lo que cobran', text: `Piden ${rescue.wanted} de oro y se quedan con lo que lleváis: ${rescue.cost}.`,
+                }] : []),
                 { icon: 'fa-calendar-day', title: 'Tiempo en cama', text: rescue.days === 1 ? 'Un día entero. Despertáis a la mañana siguiente.' : `${rescue.days} días.` },
             ];
             cost = { title: 'El coste', purse: rescue.cost > 0 ? `−${rescue.cost} de oro` : '', lines };
@@ -398,6 +419,8 @@ export function outcomeView(input) {
     }
     return {
         kind: /** @type {'defeat'} */ ('defeat'),
+        // Sin nadie con vida: la tarjeta de «ha caído todo el grupo» (J9.1, `.pf-root`).
+        fallen: allDead && !(text(input.failed) && fellNames.length < (input.members ?? []).length),
         title,
         sub,
         crest: 'fa-skull-crossbones',
@@ -406,6 +429,7 @@ export function outcomeView(input) {
         lootTitle: '',
         gold: '',
         items: /** @type {Array<{name: string, art: string, icon: string, kind: string, label: string}>} */ ([]),
+        upgrades: /** @type {string[]} */ ([]),
         emptyLoot: '',
         cost,
         note: { icon: hard ? 'fa-triangle-exclamation' : 'fa-circle-info', text: [hardNote, note].filter(Boolean).join(' ') },

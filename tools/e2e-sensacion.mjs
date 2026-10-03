@@ -216,7 +216,8 @@ try {
                 hp,
                 banner: (document.querySelector('.vtt-turn-banner, .vfx-banner')?.textContent || '').trim(),
                 scene: document.querySelector('#game-shell')?.getAttribute('data-scene') || '',
-                victory: Boolean(document.querySelector('.vs-card')),
+                // J12.21: la pantalla de victoria de verdad (la escondida, `.vo-pending`, solo hace esperar).
+                victory: Boolean(document.querySelector('.vs-card.vo-layer')),
                 moved: [...document.querySelectorAll('.wm-token')].filter(t => t.getAnimations().some(a => a.playState === 'running')).map(t => String(t.getAttribute('data-token-id'))),
             });
         };
@@ -364,7 +365,8 @@ try {
         await until(async () => !(await busy()), 10000);
         const line = await stopTimeline();
         const fumbleAt = firstAt(line, s => /pifia: falla/.test(s.line));
-        const missAt = firstAt(line, s => s.floats.some(f => /:Falla$/.test(f)));
+        // J12.19: el fallo se dice «¡Falla!».
+        const missAt = firstAt(line, s => s.floats.some(f => /:¡?Falla!?$/.test(f)));
         check('B: un 1 natural: el dado se agrieta en rojo y dice «pifia: falla»; luego, «Falla» en el bandido',
             line.some(s => s.nat1 && s.face === '1') && fumbleAt >= 0 && missAt > fumbleAt, JSON.stringify({ fumbleAt, missAt, line: line.find(s => s.line)?.line }));
     }
@@ -436,7 +438,7 @@ try {
             await page.waitForTimeout(700);
             await clearDice();
         }
-        check('E: ganar con «/combat-end» saca el panel de victoria', await until(() => page.evaluate(() => Boolean(document.querySelector('.vs-card'))), 8000));
+        check('E: ganar con «/combat-end» saca el panel de victoria', await until(() => page.evaluate(() => Boolean(document.querySelector('.vs-card.vo-layer'))), 8000));
         await shoot('e-ganar');
     }
 

@@ -43,7 +43,9 @@ function fightFor(id, level, size = 3) {
 describe('para qué nivel es la campaña', () => {
     test('el tablón de Strahd y el de 1387 dicen su tramo', () => {
         const worlds = read('../public/mundos/mundos.json').worlds.filter(w => w.pack);
-        expect(worlds.map(w => [w.id, readLevelRange(w.levels)])).toEqual([
+        // Tanda 20: las campañas de semilla que ya traen paquete también dicen el suyo.
+        expect(worlds.map(w => [w.id, readLevelRange(w.levels)]).filter(([id]) => ['1387', 'strahd', 'pantalla'].includes(id))).toEqual([
+            ['pantalla', { min: 1, max: 4 }],
             ['1387', { min: 1, max: 4 }],
             // D-J56: la cripta es para nivel 6 a 7, así que Strahd llega hasta el 7.
             ['strahd', { min: 1, max: 7 }],

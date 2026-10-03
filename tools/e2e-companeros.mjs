@@ -306,7 +306,7 @@ try {
             if ((await import('/scripts/party.js')).getCombatEncounter()?.active) (await import('/scripts/party/combat-flow.js')).endCombat('victory');
         });
         await page.waitForTimeout(800);
-        await page.locator('.vs-card').filter({ visible: true }).first().click({ timeout: 2000 }).catch(() => {});
+        await page.locator('.vs-card .vo-close').filter({ visible: true }).first().click({ timeout: 2000 }).catch(() => {});
     };
     /** Un botón de una ventana de las de siempre (`.popup`), por su texto. */
     const popupButton = async (/** @type {RegExp} */ label, ms = 8000) => {

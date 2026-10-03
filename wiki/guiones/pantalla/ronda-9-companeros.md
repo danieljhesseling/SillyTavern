@@ -88,7 +88,7 @@ confidente:
             - say: "Creo que no me sale porque no sé qué somos tú y yo."
               replies:
                 - { text: "Le dices que el último verso lo escribiréis juntos.", bond: 1, romance: avanza, then: "Juntos. Me gusta cómo rima eso.", mood: alegre }
-                - { text: "Le dices que sois lo mejor que tiene cada uno: amigos.", bond: 1, romance: amigos, then: "Amigos. Eso también rima, ¿sabes? Con todo.", mood: alegre }
+                - { text: "Le dices que lo vuestro es amistad, de la buena.", bond: 1, romance: amigos, then: "Amistad. Eso también rima, ¿sabes? Con todo.", mood: alegre }
         - kind: cita
           step: 1
           title: Tres acordes
@@ -118,7 +118,7 @@ confidente:
               mood: alegre
               replies:
                 - { text: "Le coges la mano.", bond: 1, romance: avanza, then: "No me la sueltes hasta que se apague esa luz.", mood: alegre }
-                - { text: "Le dices que la quieres como amiga.", bond: 0, romance: amigos, then: "Ya. Lo sospechaba. Amigos, entonces. De los de verdad.", mood: triste }
+                - { text: "Le dices que la quieres como amiga.", bond: 0, romance: amigos, then: "Ya. Lo sospechaba. Amistad, entonces. De la de verdad.", mood: triste }
         - kind: final
           title: La canción entera
           where: posada
@@ -136,7 +136,7 @@ confidente:
         - kind: epilogo
           home: "Candela vuelve contigo al gremio después de «{ending}». Canta en la sala grande, y la canción que más le piden lleva tu nombre."
           away: "Candela se queda contigo en Brasa después de «{ending}». Cada noche, en la posada, la última canción es la vuestra."
-          hall: "{heroe} y Candela Rima, {juntos|juntas} desde el día {day}. Su canción todavía se canta en Brasa."
+          hall: "{heroe} y Candela Rima: pareja desde el día {day}. Su canción todavía se canta en Brasa."
     misionPersonal:
       id: la-cancion-de-alma
       title: La canción de Alma
@@ -321,7 +321,7 @@ confidente:
               mood: alegre
               replies:
                 - { text: "Le dices que es perfecta.", bond: 1, romance: avanza, then: "Perfecta no. Le falta alguien.", mood: alegre }
-                - { text: "Le dices que la quieres como amiga.", bond: 0, romance: amigos, then: "Entendido. Amiga, entonces. Y vecina, que la casa de al lado está libre.", mood: triste }
+                - { text: "Le dices que la quieres como amiga.", bond: 0, romance: amigos, then: "Entendido. Nos queda la amistad, que no es poco. Y la casa de al lado está libre.", mood: triste }
         - kind: final
           title: Fin del turno
           where: posada
@@ -334,12 +334,12 @@ confidente:
         - kind: pareja
           lines:
             - "Hoy no he mirado mi barra ni una vez. He mirado la tuya, pero eso no cuenta."
-            - "Buen turno, {compañero|compañera}."
+            - "Buen turno, pareja."
             - "Te he guardado la mitad del café malo."
         - kind: epilogo
           home: "Yoli vuelve contigo al gremio después de «{ending}». Monta una enfermería en la planta baja, y la llama «urgencias»."
           away: "Yoli se queda contigo en Brasa después de «{ending}», en la casa de las ventanas. Ya no miráis las barras."
-          hall: "{heroe} y Yolanda Ferrán, {juntos|juntas} desde el día {day}. Siempre llegan."
+          hall: "{heroe} y Yolanda Ferrán: pareja desde el día {day}. Siempre llegan."
     misionPersonal:
       id: la-radio-del-prado
       title: La radio del prado
@@ -609,7 +609,7 @@ confidente:
             mood: triste
             replies:
               - { text: "Le dices que a ti te da igual el número.", bond: 1, then: "Ya lo sé. Por eso te lo enseño a ti.", mood: alegre }
-              - { text: "Le dices que ya lo sospechabas.", bond: 0, then: "{Mentiroso|Mentirosa}. No se nota nada. Lo pinto muy bien.", mood: enfadado }
+              - { text: "Le dices que ya lo sospechabas.", bond: 0, then: "Mentira. No se nota nada. Lo pinto muy bien.", mood: enfadado }
       - rank: 8
         title: Pintar de verdad
         where: plaza

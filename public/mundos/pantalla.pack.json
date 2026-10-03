@@ -97,6 +97,10 @@
           "to": "La Torre Siete",
           "days": 2,
           "closedUntil": "la-oferta"
+        },
+        {
+          "to": "La Casa de la Acogida",
+          "days": 1
         }
       ],
       "sights": [
@@ -111,6 +115,30 @@
           "text": "la campanilla de la Acogida, junto a la puerta de la posada",
           "skill": "insight",
           "found": "La posadera lo explica sin dejar de remover el guiso: «La tocamos cuando alguien sale del bosque. Que nadie despierte solo, criatura.»"
+        }
+      ]
+    },
+    {
+      "name": "La Casa de la Acogida",
+      "type": "camp",
+      "description": "Un caserón de piedra a las afueras de Brasa, con un patio grande y una campanilla en la puerta. Aquí la Acogida da de comer a los recién llegados y guarda la lista de los que deben a Cifra.",
+      "hidden": false,
+      "biome": "rural",
+      "services": [],
+      "factionName": "",
+      "routes": [],
+      "sights": [
+        {
+          "verbo": "mirar",
+          "text": "las mesas largas del comedor de la Acogida",
+          "skill": "perception",
+          "found": "Hay platos para cuarenta y solo comen doce. El portavoz los pone igual: «Por si llega alguien del bosque. ¡Vamos!»"
+        },
+        {
+          "verbo": "leer",
+          "text": "la lista clavada detrás de la puerta",
+          "skill": "investigation",
+          "found": "Treinta y un nombres de huéspedes, con lo que deben y a quién. Al lado de algunos, a lápiz: «ya no se acuerda»."
         }
       ]
     },
@@ -626,10 +654,10 @@
                     "mood": "alegre"
                   },
                   {
-                    "text": "Le dices que sois lo mejor que tiene cada uno: amigos.",
+                    "text": "Le dices que lo vuestro es amistad, de la buena.",
                     "bond": 1,
                     "romance": "amigos",
-                    "then": "Amigos. Eso también rima, ¿sabes? Con todo.",
+                    "then": "Amistad. Eso también rima, ¿sabes? Con todo.",
                     "mood": "alegre"
                   }
                 ]
@@ -709,7 +737,7 @@
                     "text": "Le dices que la quieres como amiga.",
                     "bond": 0,
                     "romance": "amigos",
-                    "then": "Ya. Lo sospechaba. Amigos, entonces. De los de verdad.",
+                    "then": "Ya. Lo sospechaba. Amistad, entonces. De la de verdad.",
                     "mood": "triste"
                   }
                 ]
@@ -753,7 +781,7 @@
             "kind": "epilogo",
             "home": "Candela vuelve contigo al gremio después de «{ending}». Canta en la sala grande, y la canción que más le piden lleva tu nombre.",
             "away": "Candela se queda contigo en Brasa después de «{ending}». Cada noche, en la posada, la última canción es la vuestra.",
-            "hall": "{heroe} y Candela Rima, {juntos|juntas} desde el día {day}. Su canción todavía se canta en Brasa."
+            "hall": "{heroe} y Candela Rima: pareja desde el día {day}. Su canción todavía se canta en Brasa."
           }
         ]
       },
@@ -1206,7 +1234,7 @@
                     "text": "Le dices que la quieres como amiga.",
                     "bond": 0,
                     "romance": "amigos",
-                    "then": "Entendido. Amiga, entonces. Y vecina, que la casa de al lado está libre.",
+                    "then": "Entendido. Nos queda la amistad, que no es poco. Y la casa de al lado está libre.",
                     "mood": "triste"
                   }
                 ]
@@ -1242,7 +1270,7 @@
             "kind": "pareja",
             "lines": [
               "Hoy no he mirado mi barra ni una vez. He mirado la tuya, pero eso no cuenta.",
-              "Buen turno, {compañero|compañera}.",
+              "Buen turno, pareja.",
               "Te he guardado la mitad del café malo."
             ]
           },
@@ -1250,7 +1278,7 @@
             "kind": "epilogo",
             "home": "Yoli vuelve contigo al gremio después de «{ending}». Monta una enfermería en la planta baja, y la llama «urgencias».",
             "away": "Yoli se queda contigo en Brasa después de «{ending}», en la casa de las ventanas. Ya no miráis las barras.",
-            "hall": "{heroe} y Yolanda Ferrán, {juntos|juntas} desde el día {day}. Siempre llegan."
+            "hall": "{heroe} y Yolanda Ferrán: pareja desde el día {day}. Siempre llegan."
           }
         ]
       },
@@ -1849,7 +1877,7 @@
                 {
                   "text": "Le dices que ya lo sospechabas.",
                   "bond": 0,
-                  "then": "{Mentiroso|Mentirosa}. No se nota nada. Lo pinto muy bien.",
+                  "then": "Mentira. No se nota nada. Lo pinto muy bien.",
                   "mood": "enfadado"
                 }
               ]
@@ -2153,7 +2181,7 @@
       "id": "jonas",
       "name": "Jonás Pradera",
       "trade": "Portavoz de la Acogida",
-      "where": "Brasa",
+      "where": "La Casa de la Acogida",
       "wants": "Que ningún huésped más firme un pagaré con la Contaduría.",
       "knows": "Cuántos huéspedes de Brasa deben dinero a Cifra: treinta y uno. Lleva la lista.",
       "secret": "Hace diez años, recién llegado, cobraba una comisión por cada huésped que llevaba a firmar a la lonja.",
@@ -2630,9 +2658,9 @@
     },
     {
       "name": "El Contador Mayor",
-      "hp": 66,
+      "hp": 80,
       "armorClass": 15,
-      "cr": 4,
+      "cr": 5,
       "profile": "skirmisher",
       "attackRangeFeet": 60,
       "abilities": [
@@ -3223,7 +3251,7 @@
       "id": "enc-redada",
       "name": "La redada de la Acogida",
       "mapId": "patio-de-la-acogida",
-      "locationName": "Brasa",
+      "locationName": "La Casa de la Acogida",
       "map": [
         "##################",
         "#^^^..........^^^#",
@@ -3284,7 +3312,7 @@
           "text": "Hacer que el teniente lea su lista en voz alta, delante de todo el patio",
           "dc": 15,
           "success": {
-            "text": "El teniente lee tres nombres, se para en el cuarto y se calla. «Retirada.» Se van sin el Libro de Llegadas.",
+            "text": "El teniente lee tres nombres, se para en el cuarto y se calla. «Retirada.» Se van sin la lista de Jonás.",
             "effects": [
               {
                 "standing": "La Acogida",
@@ -3317,10 +3345,10 @@
           "failure": "«La lista me la sé de memoria.»"
         },
         "engañar": {
-          "text": "Gritar que el Libro de Llegadas ya ha salido por detrás, hacia el bosque",
+          "text": "Gritar que la lista de Jonás ya ha salido por detrás, hacia el bosque",
           "dc": 13,
           "success": "«¡Al bosque!» Los celadores salen corriendo por la puerta que no es.",
-          "failure": "«El libro está en la cocina. Lo huelo desde aquí.»"
+          "failure": "«La lista está en la cocina. La huelo desde aquí.»"
         },
         "no": [
           "entregarse"
@@ -3949,6 +3977,11 @@
           "name": "Cristal de la cuenta",
           "x": 12,
           "y": 3
+        },
+        {
+          "name": "Huésped a sueldo",
+          "x": 8,
+          "y": 9
         }
       ],
       "avoid": [
@@ -4038,13 +4071,23 @@
           "name": "Acogido en armas",
           "x": 14,
           "y": 9
+        },
+        {
+          "name": "Acogido en armas",
+          "x": 4,
+          "y": 10
+        },
+        {
+          "name": "Acogido en armas",
+          "x": 8,
+          "y": 10
         }
       ],
       "avoid": [
         {
           "kind": "hablar",
           "text": "Decirles a los vecinos de Brasa que se vayan a casa: esta noche no gana nadie",
-          "dc": 15,
+          "dc": 17,
           "success": "Jonás baja la pala. «Hoy no.» La Acogida se retira con sus heridos, mirándote como a un desconocido.",
           "failure": "«¡Tú eras de los nuestros!» Levantan las sartenes."
         }
@@ -4325,7 +4368,7 @@
       "id": "q-enc-redada",
       "name": "La redada de la Acogida",
       "act": 2,
-      "description": "Los celadores vienen a por el Libro de Llegadas. Hay que aguantar en el patio cuatro rondas.",
+      "description": "Los celadores vienen a por la lista de Jonás, la de los huéspedes que deben a Cifra. Hay que aguantar en el patio cuatro rondas.",
       "boardId": "enc-redada",
       "objectives": [
         {
@@ -4454,7 +4497,7 @@
         {
           "type": "survive_rounds",
           "label": "Aguantar en la puerta de la torre",
-          "rounds": 5
+          "rounds": 6
         }
       ],
       "levels": [
@@ -4706,12 +4749,12 @@
         "id": "acogida",
         "against": false
       },
-      "where": "Brasa",
+      "where": "La Casa de la Acogida",
       "act": 2,
       "noFight": false,
       "reward": 30,
       "rewardText": "30 monedas de la caja de la Acogida",
-      "twist": "Los celadores no vienen a por deudores: vienen a por el Libro de Llegadas de Remedios.",
+      "twist": "Los celadores no vienen a por deudores: vienen a por la lista de Jonás, la de los treinta y un huéspedes que deben a Cifra. Sin ella, nadie sabe a quién ayudar.",
       "boardId": "enc-redada"
     },
     {
@@ -4819,6 +4862,14 @@
       "by": "",
       "where": "Brasa",
       "text": "Jonás Pradera fue el primero que llevó huéspedes a firmar a Cifra. Hace mucho, pero hay quien no se olvida.",
+      "truth": "si",
+      "leadsTo": ""
+    },
+    {
+      "id": "r-lista-de-jonas",
+      "by": "",
+      "where": "La Casa de la Acogida",
+      "text": "El portavoz de la Acogida lleva una lista con los treinta y un huéspedes de Brasa que deben a Cifra. Dicen que la Contaduría pagaría bien por ella.",
       "truth": "si",
       "leadsTo": ""
     },
@@ -5787,7 +5838,7 @@
               "text": "Entendido.",
               "next": "inicio",
               "reply": {
-                "text": "¿Entendido? Entendido. Pero no vayas sola la primera vez. Ni solo."
+                "text": "¿Entendido? Entendido. Pero no vayas {solo|sola} la primera vez."
               }
             }
           ]
@@ -6434,7 +6485,7 @@
                 "text": "Vamos ahora mismo, antes de que se borre del todo.",
                 "effects": [
                   {
-                    "board": "El claro de los lobos repetidos"
+                    "go": "El Bosque Copiado"
                   }
                 ],
                 "reply": {
@@ -6844,11 +6895,6 @@
               {
                 "id": "registro-medianoche",
                 "text": "Entramos a medianoche, con el cambio de guardia.",
-                "effects": [
-                  {
-                    "board": "La sala del registro"
-                  }
-                ],
                 "reply": {
                   "who": "Pelayo Ojeda",
                   "text": "Medianoche. Ni un minuto antes, que los de la tarde llevan ballesta."
@@ -6858,9 +6904,6 @@
                 "id": "registro-ya",
                 "text": "Entramos ya, antes de que te lo pienses mejor.",
                 "effects": [
-                  {
-                    "board": "La sala del registro"
-                  },
                   {
                     "attitude": -1
                   }
@@ -7262,7 +7305,7 @@
                 "text": "Subimos por la izquierda, pegados al muro.",
                 "effects": [
                   {
-                    "board": "Los cristales de la Torre Tres"
+                    "attitude": 1
                   }
                 ],
                 "reply": {
@@ -7274,11 +7317,6 @@
               {
                 "id": "cristales-frente",
                 "text": "Subimos de frente. Que nos vean venir.",
-                "effects": [
-                  {
-                    "board": "Los cristales de la Torre Tres"
-                  }
-                ],
                 "reply": {
                   "who": "Sabina Torrera",
                   "text": "Valientes o tontos, que en copla rima igual."
@@ -7581,7 +7619,7 @@
                 "text": "Allí estaremos.",
                 "effects": [
                   {
-                    "board": "La escalera de la Torre Siete"
+                    "go": "La Torre Siete"
                   }
                 ],
                 "reply": {
@@ -7658,11 +7696,6 @@
               {
                 "id": "cumbre-subo",
                 "text": "Subo. Que se acabe hoy.",
-                "effects": [
-                  {
-                    "board": "La cumbre de la Torre Siete"
-                  }
-                ],
                 "reply": {
                   "who": "Jonás Pradera",
                   "mood": "alegre",
@@ -7673,9 +7706,6 @@
                 "id": "cumbre-trampilla",
                 "text": "Subo. Cornelio, abre la trampilla.",
                 "effects": [
-                  {
-                    "board": "La cumbre de la Torre Siete"
-                  },
                   {
                     "attitude": 1,
                     "who": "Cornelio Sumas"
@@ -7719,7 +7749,7 @@
           },
           {
             "who": "Leandro Tallada",
-            "text": "Tú estarás en la puerta de la torre. Aguanta hasta que se cansen. Cinco rondas, quizá seis."
+            "text": "Tú estarás en la puerta de la torre. Aguanta hasta que se cansen: seis rondas, más o menos."
           },
           {
             "who": "Valeria Cerrojo",
@@ -7731,7 +7761,7 @@
                 "text": "Iré a la puerta.",
                 "effects": [
                   {
-                    "board": "La puerta de la Torre Siete"
+                    "go": "La Torre Siete"
                   }
                 ],
                 "reply": {
