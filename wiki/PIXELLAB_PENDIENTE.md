@@ -1,6 +1,10 @@
 # Arte pendiente de PixelLab
 
-Lo que hay que dibujar con PixelLab cuando haya créditos. Ahora no se genera nada: Daniel avisa en el chat cuando haya créditos, y entonces se hacen las entradas de esta lista y se borran de aquí.
+Lo que hay que dibujar con PixelLab. Daniel avisa en el chat cuando haya créditos, y entonces se hacen las entradas de esta lista.
+
+**Cómo se hizo la tanda del 2026-10-04 (para repetirlo):** retratos con *Create Image Pro* (`create_image_pro`, 128×160, fondo transparente, 25 generaciones por encargo y 4 candidatos: se mira cada uno y se queda el mejor); escenarios también con *Create Image Pro*, a 320×180 y sin transparencia (25 generaciones, una imagen); bichos, objetos e iconos con *Pro Flash* (`create_image_pro_flash`, 5 generaciones); las piezas del tablero de 48×48 con *Pro* (16 candidatos) y la estatua con gema editando la estatua elegida (`edit_image_pro_flash`). Prompt de retrato, en inglés: `Pixel art RPG character bust portrait, head and shoulders cut at mid-chest, figure centered.` + el aspecto traducido entero + la línea de estilo de la campaña + `three-quarter view, calm expression, detailed shading. No text, no frame, no signature.` Retoques automáticos al copiarlos: la raya lisa que a veces sale en la última fila de un retrato (se copia la fila de arriba) y las franjas lisas de 1 a 6 píxeles a los lados de algunos escenarios (se rellenan en espejo); en `escenarios/pantalla/la-casa-de-la-acogida.png` se borró una firma falsa. Sin gestos: solo la cara neutra (D-J61).
+
+**Estado (2026-10-04):** hecho todo lo de esta lista hasta «El brujo y el hechicero» incluido, más los retratos de quien habla en escena que pedía `node tools/retratos-pendientes.mjs` sin estar aquí (283 archivos; tres son copia de la misma persona: `pantalla/el-contador-mayor` = Leandro Tallada, `costa/anton-el-capataz` = Antón Iriarte, `costa/lucio-con-el-arpon` = Lucio Iturbe). Lo que hizo antes otro agente con pixflux se ha rehecho entero. **Falta** «El paladín y el monje» (al final): llegó cuando ya no quedaban créditos (8 de 5000); con la recarga del 2026-11-04 cuesta unas 180 generaciones (cuatro retratos con Pro y dieciséis iconos con Pro Flash). Las caras (`--alegre`, `--enfadado`, `--triste`) no se han hecho a propósito.
 
 Cada entrada dice:
 
@@ -12,7 +16,7 @@ Cada entrada dice:
 
 Los retratos que faltan de cada campaña los lista `node tools/retratos-pendientes.mjs` (con `--json`, ya con el prompt).
 
-## Retratos
+## Retratos — hecho
 
 ### Furtivo de los Lobos (1387, El valle de Vane)
 
@@ -52,7 +56,7 @@ Prompt: la línea del gremio, `Pixel art bust portrait, 128x160, transparent bac
 | El prestamista | El rescate: en la cantera, con sus cuentas | Hombre de unos cincuenta y cinco, flaco y calvo, de sonrisa fina. Ropa negra de buen paño, anillos en los dedos, una pluma tras la oreja y un libro de cuentas apretado bajo el brazo. | `retratos/mercenarios/el-prestamista.png` |
 | La hermana de la cantera | El rescate: lleva un año picando piedra | Chica de unos dieciséis, flaca y con la cara sucia de polvo de piedra, pelo recogido con un trapo. Camisa basta rota en un hombro y una cuerda atada a la cintura. | `retratos/mercenarios/la-hermana-de-la-cantera.png` |
 
-## El mundo tras la pantalla (pantalla)
+## El mundo tras la pantalla (pantalla) — hecho
 
 Lo que le falta a `public/mundos/pantalla.pack.json` (tanda 20). Estilo de la campaña: isekai luminoso, colores vivos y limpios; los huéspedes llevan algo de nuestro mundo (un chándal, una chaqueta reflectante, una gorra). Las caras de los retratos están apagadas en el juego (D-J61): lo que hace falta es el retrato neutro; si se piden también las caras para más adelante, con las tres frases de arriba y `--alegre`, `--enfadado` y `--triste` al lado de cada archivo.
 
@@ -138,7 +142,7 @@ Prompt: `Pixel art creature sprite, 96x96, transparent background, full body, fa
 
 Después de dibujarlos: `node tools/pixel-manifest.mjs`.
 
-## Las tierras del ocaso (ocaso)
+## Las tierras del ocaso (ocaso) — hecho
 
 Todo lo de la campaña `public/mundos/ocaso.pack.json` (tanda 20, 2026-10-03). Línea de estilo (fantasía épica): `dark fantasy, muted palette with gold accents`. Un reino de montaña a finales de otoño: brezo morado, hayas rojas, piedra gris y la primera nieve.
 
@@ -240,7 +244,7 @@ Todo lo de la campaña `public/mundos/ocaso.pack.json` (tanda 20, 2026-10-03). L
 
 Después de dibujarlos: `node tools/pixel-manifest.mjs`.
 
-## La costa que no duerme (costa)
+## La costa que no duerme (costa) — hecho
 
 Lo que le falta a `public/mundos/costa.pack.json` (tanda 20). Estilo de la campaña: terror, una costa del norte con niebla, sal y madera negra; colores fríos y apagados. Las caras de los retratos están apagadas en el juego (D-J61): lo que hace falta es el retrato neutro; si se piden también las caras para más adelante, con las tres frases de arriba y `--alegre`, `--enfadado` y `--triste` al lado de cada archivo.
 
@@ -358,9 +362,9 @@ Prompt: `Pixel art item icon, 64x64, transparent background, single object cente
 
 Después de dibujarlos: `node tools/pixel-manifest.mjs`.
 
-## El tablero que se usa (E1 de ROADMAP_ENTRETENIDO)
+## El tablero que se usa (E1 de ROADMAP_ENTRETENIDO) — hecho
 
-Lo que piden los tableros nuevos de 1387 y Strahd. Quien se protege en un tablero (un invitado que no pelea) sale con la silueta. El tótem lleva de momento un apaño: `bestias/totem-de-ramas.png` es la maleza seca del tablero (`tablero/dificil-exterior.png`) ampliada a 96×96; el dibujo de verdad lo sustituye.
+Lo que piden los tableros nuevos de 1387 y Strahd. Quien se protege en un tablero (un invitado que no pelea) sale con la silueta. El tótem ya tiene su dibujo de verdad (`bestias/totem-de-ramas.png`, antes la maleza del tablero ampliada).
 
 | Quién o qué | Campaña | Prompt | Tamaño | Dónde va |
 | :--- | :--- | :--- | :--- | :--- |
@@ -372,5 +376,50 @@ Lo que piden los tableros nuevos de 1387 y Strahd. Quien se protege en un tabler
 | Gema en un pedestal (E1.5, `g`) | Strahd · Patio de Argynvostholt | `Pixel art top-down game tile, 48x48, transparent background, dark fantasy, muted palette, no text, no frame. A short stone pedestal seen from above with a faceted blue-green gem on top, glinting.` Ahora sale con colores. | 48×48 | `tablero/gema.png` |
 | Baldosa con runa (E1.5, `1`–`5`) | 1387 · El patio de la ermita | `Pixel art top-down game tile, 48x48, opaque, seamless edges, late medieval, earthy palette, no text, no frame. A square flagstone with a faint carved rune circle in the middle, dim violet glow in the grooves.` El número lo pone el juego encima. Ahora sale con colores. | 48×48 | `tablero/runa.png` |
 | Palanca doble (E1.5, `p`) | 1387 · El gran salón de Vane | `Pixel art top-down game tile, 48x48, transparent background, dark fantasy, muted palette with gold accents, no text, no frame. A heavy iron wall lever on a stone base, with a brass chain running off one edge of the tile, as if linked to another lever far away.` Ahora usa el dibujo de la palanca. | 48×48 | `tablero/palanca-doble.png` |
+
+Después de dibujarlos: `node tools/pixel-manifest.mjs`.
+
+## El brujo y el hechicero (ROADMAP_CONTENIDO_DND, 2026-10-04) — hecho
+
+Las dos clases nuevas de `clases.json`, sus conjuros y sus rasgos. Mientras no estén, el brujo y el hechicero salen con el retrato del mago (`HERO_STAND_IN` de `ui/pixel-art.js`) y sin icono de clase. Los retratos de héroe llevan las tres caras como los demás (`Same character, same clothes, framing and colors; expression:` + alegre, enfadado, triste), aunque hoy el juego enseña la neutra.
+
+| Quién o qué | Campaña | Prompt | Tamaño | Dónde va |
+| :--- | :--- | :--- | :--- | :--- |
+| Icono del Brujo | Cualquiera · la tarjeta de clase al crear | `Pixel art icon, 64x64, transparent background, dark fantasy, muted palette with gold accents, no text, no frame. A small leather pact tome bound with a chain, a violet eye glowing on its cover, wisps of purple smoke.` | 64×64 | `clases/brujo.png` |
+| Icono del Hechicero | Cualquiera · la tarjeta de clase al crear | `Pixel art icon, 64x64, transparent background, dark fantasy, muted palette with gold accents, no text, no frame. An open hand with crackling orange and blue raw magic swirling above the palm, faint dragon-scale pattern on the wrist.` | 64×64 | `clases/hechicero.png` |
+| Brujo (héroe de relleno) | Cualquiera · héroes y mercenarios sin retrato | `Pixel art bust portrait, 128x160, transparent background, dark fantasy, muted palette, no text, no frame. A gaunt human man in his thirties with a short dark beard, hooded black coat with silver clasps, a chained grimoire at his hip and faint violet light in his eyes.` | 128×160 | `retratos/heroes/brujo-hombre.png` |
+| Bruja (héroe de relleno) | Cualquiera · héroes y mercenarios sin retrato | `Pixel art bust portrait, 128x160, transparent background, dark fantasy, muted palette, no text, no frame. A tiefling woman with curled dark horns, long black hair, a deep green hooded cloak, a pale scar on one cheek and a violet glow in her raised palm.` | 128×160 | `retratos/heroes/brujo-mujer.png` |
+| Hechicero (héroe de relleno) | Cualquiera · héroes y mercenarios sin retrato | `Pixel art bust portrait, 128x160, transparent background, dark fantasy, muted palette, no text, no frame. A young half-elf man with messy copper hair, a simple red travelling coat, faint golden dragon scales on his neck and small sparks crackling around his fingers.` | 128×160 | `retratos/heroes/hechicero-hombre.png` |
+| Hechicera (héroe de relleno) | Cualquiera · héroes y mercenarios sin retrato | `Pixel art bust portrait, 128x160, transparent background, dark fantasy, muted palette, no text, no frame. A human woman with short white-streaked dark hair, a blue linen tunic with a spear strap over the shoulder and pale lightning running along her forearm.` | 128×160 | `retratos/heroes/hechicero-mujer.png` |
+| Descarga sobrenatural | Cualquiera · conjuro del brujo | `Pixel art icon, 64x64, transparent background, dark fantasy, no text, no frame. A crackling beam of violet-black force energy shooting diagonally, with a small burst at its tip.` (Evocación, daño de fuerza.) | 64×64 | `conjuros/conj-descarga-sobrenatural.png` |
+| Brazos de Hadar | Cualquiera · conjuro del brujo | `Pixel art icon, 64x64, transparent background, dark fantasy, no text, no frame. Black shadowy tentacles bursting outward in a ring from a central point, green-black necrotic mist.` (Conjuración, necrótico.) | 64×64 | `conjuros/conj-brazos-hadar.png` |
+| Magia innata | Cualquiera · habilidad del hechicero | `Pixel art icon, 64x64, transparent background, dark fantasy, no text, no frame. A glowing orange-gold flame rising from a heart-shaped core of light.` | 64×64 | `habilidades/hab-magia-innata.png` |
+| Conjuro rápido | Cualquiera · Metamagia del hechicero | `Pixel art icon, 64x64, transparent background, dark fantasy, no text, no frame. A small arcane rune circle with a lightning-fast streak and motion lines, blue and gold.` | 64×64 | `habilidades/hab-conjuro-rapido.png` |
+| Conjuro cuidadoso | Cualquiera · Metamagia del hechicero | `Pixel art icon, 64x64, transparent background, dark fantasy, no text, no frame. Two cupped hands holding a small protective bubble of blue light, a burst of fire outside it.` | 64×64 | `habilidades/hab-conjuro-cuidadoso.png` |
+| Luz sanadora | Cualquiera · el brujo del Celestial | `Pixel art icon, 64x64, transparent background, dark fantasy, no text, no frame. A warm golden sunburst of healing light with small white feathers drifting around it.` | 64×64 | `habilidades/hab-luz-sanadora.png` |
+
+Hechos el 2026-10-04 con Pro Flash (6 generaciones el retrato, 5 el icono), porque ya quedaban pocos créditos; casan con los héroes de antes, que son de ese estilo más sencillo. Después de dibujarlos: `node tools/pixel-manifest.mjs`. Con los retratos del brujo y del hechicero ya hechos, `HERO_STAND_IN` puede quedarse: solo se usa si falta el suyo.
+
+## El paladín y el monje (ROADMAP_CONTENIDO_DND, 2026-10-04) — pendiente: sin créditos hasta el 2026-11-04
+
+Las otras dos clases nuevas de `clases.json`, con sus habilidades (`habilidades.json`) y el Castigo divino (`conjuros.json`). Mientras no estén, el paladín sale con el retrato del clérigo (`HERO_STAND_IN`) y el monje con la silueta; los dos, sin icono de clase (sale el de Font Awesome). Los retratos de héroe llevan las tres caras como los demás, aunque hoy el juego enseña la neutra.
+
+| Quién o qué | Campaña | Prompt | Tamaño | Dónde va |
+| :--- | :--- | :--- | :--- | :--- |
+| Icono del Paladín | Cualquiera · la tarjeta de clase al crear | `Pixel art icon, 64x64, transparent background, dark fantasy, muted palette with gold accents, no text, no frame. A longsword pointing down in front of a kite shield with a golden sunburst emblem, soft holy glow.` | 64×64 | `clases/paladin.png` |
+| Icono del Monje | Cualquiera · la tarjeta de clase al crear | `Pixel art icon, 64x64, transparent background, dark fantasy, muted palette with gold accents, no text, no frame. A clenched fist wrapped in cloth bandages in front of a simple wooden prayer-bead string.` | 64×64 | `clases/monje.png` |
+| Paladín (héroe de relleno) | Cualquiera · héroes y mercenarios sin retrato | `Pixel art bust portrait, 128x160, transparent background, dark fantasy, muted palette with gold accents, no text, no frame. A broad-shouldered human man in his thirties, short brown hair and trimmed beard, polished chain mail under a white tabard with a golden sun, a shield strap over the shoulder.` | 128×160 | `retratos/heroes/paladin-hombre.png` |
+| Paladina (héroe de relleno) | Cualquiera · héroes y mercenarios sin retrato | `Pixel art bust portrait, 128x160, transparent background, dark fantasy, muted palette with gold accents, no text, no frame. A dwarf woman with a thick auburn braid, steady eyes, chain mail with a blue tabard and a silver holy symbol, a longsword hilt over the shoulder.` | 128×160 | `retratos/heroes/paladin-mujer.png` |
+| Monje (héroe de relleno) | Cualquiera · héroes y mercenarios sin retrato | `Pixel art bust portrait, 128x160, transparent background, dark fantasy, muted palette, no text, no frame. A lean half-elf man with a shaved head and calm eyes, simple ochre robe tied with a rope belt, forearms wrapped in cloth bandages, no armor.` | 128×160 | `retratos/heroes/monje-hombre.png` |
+| Monja (héroe de relleno) | Cualquiera · héroes y mercenarios sin retrato | `Pixel art bust portrait, 128x160, transparent background, dark fantasy, muted palette, no text, no frame. A human woman with short black hair tied in a small knot, a grey sleeveless tunic, bandaged hands raised in a guard, a string of wooden beads around her neck, no armor.` | 128×160 | `retratos/heroes/monje-mujer.png` |
+| Castigo divino | Cualquiera · conjuro del paladín | `Pixel art icon, 64x64, transparent background, dark fantasy, no text, no frame. A sword blade striking down wreathed in bright golden radiant light, small sparks.` (Evocación, radiante.) | 64×64 | `conjuros/conj-castigo-divino.png` |
+| Imposición de manos | Cualquiera · habilidad del paladín | `Pixel art icon, 64x64, transparent background, dark fantasy, no text, no frame. Two open hands over a wound with warm golden light between them.` | 64×64 | `habilidades/hab-imposicion-manos.png` |
+| Castigo del paladín | Cualquiera · habilidad del paladín | `Pixel art icon, 64x64, transparent background, dark fantasy, no text, no frame. A gauntleted fist holding a sword that glows with white-gold light.` | 64×64 | `habilidades/hab-castigo-paladin.png` |
+| Artes marciales | Cualquiera · habilidad del monje | `Pixel art icon, 64x64, transparent background, dark fantasy, no text, no frame. A bandaged fist punching forward with short motion lines.` | 64×64 | `habilidades/hab-artes-marciales.png` |
+| Ráfaga de golpes | Cualquiera · habilidad del monje | `Pixel art icon, 64x64, transparent background, dark fantasy, no text, no frame. Two blurred fists striking at once, with a small burst of blue ki energy.` | 64×64 | `habilidades/hab-rafaga-golpes.png` |
+| Defensa paciente | Cualquiera · habilidad del monje | `Pixel art icon, 64x64, transparent background, dark fantasy, no text, no frame. A figure leaning aside as an arrow passes by, faint blue afterimage.` | 64×64 | `habilidades/hab-defensa-paciente.png` |
+| Paso del viento | Cualquiera · habilidad del monje | `Pixel art icon, 64x64, transparent background, dark fantasy, no text, no frame. A bare foot in mid-stride surrounded by swirling white wind lines.` | 64×64 | `habilidades/hab-paso-viento.png` |
+| Arma sagrada, Voto de enemistad, Golpe inspirador | Cualquiera · los juramentos del paladín (árbol) | `Pixel art icon, 64x64, transparent background, dark fantasy, no text, no frame.` + (a) `A sword shining with holy white light`; (b) `A glowing red target mark over a dark silhouette`; (c) `A raised sword with golden rays and small hearts of light around it`. | 64×64 | `habilidades/tec-arma-sagrada.png`, `tec-voto-enemistad.png`, `tec-golpe-inspirador.png` |
+| Mano abierta, Paso de sombra, Mano que sana | Cualquiera · las tradiciones del monje (árbol) | `Pixel art icon, 64x64, transparent background, dark fantasy, no text, no frame.` + (a) `An open palm strike knocking a shape off its feet`; (b) `A dark figure stepping into a pool of shadow`; (c) `An open hand glowing with soft green healing light`. | 64×64 | `habilidades/tec-mano-abierta.png`, `tec-paso-sombra.png`, `tec-mano-sana.png` |
 
 Después de dibujarlos: `node tools/pixel-manifest.mjs`.

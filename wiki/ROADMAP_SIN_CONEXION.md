@@ -141,7 +141,7 @@ Casi todo está en commits (el último, c9c41512b); los retoques y las tres camp
 
 **En marcha (2026-10-04, 08:15):**
 - **Contenido de D&D** ([[gemini/ROADMAP_CONTENIDO_DND|ROADMAP_CONTENIDO_DND]]): tres agentes. Paladín y Monje; Brujo y Hechicero; razas (Dracónido, Aasimar, Goliat), armas y pociones que faltan, y 10-15 monstruos icónicos con sus resistencias.
-- El arte de PixelLab, con los modelos buenos ([[PIXELLAB_PENDIENTE]]).
+- ✅ El arte de PixelLab, con los modelos buenos ([[PIXELLAB_PENDIENTE]]): 283 imágenes (retratos de 1387, Strahd, el gremio, la gente de paso, las misiones de mercenarios, pantalla, ocaso y costa; fondos, bichos, objetos, el tablero de E1 y el brujo y el hechicero). Falta el paladín y el monje: sin créditos hasta el 2026-11-04.
 - El narrador que queda en la novela de Strahd (el único bug abierto).
 - ✅ Hechos: [[ROADMAP_MUNDO_SEMIABIERTO_STRAHD]] (el plan: 12 fases, 5 hitos, 14 decisiones para ti) y `GuionEnWord.exe` (el guion en Word por categorías o entero, con doble clic; ver [[TUTORIAL_GUION_WORD]]).
 
@@ -218,7 +218,7 @@ Lo siguiente: [[ROADMAP_ENTRETENIDO]] (terminado; quedan tus decisiones), luego 
    - encargos, compañeros con misión y romance, finales con epílogos y tableros;
    - el informe de densidad en verde y su vuelta con el bot.
 
-   El arte se prepara, pero **no se genera sin créditos de PixelLab**: todo queda en `wiki/PIXELLAB_PENDIENTE.md` (retratos con sus tres caras, fondos, enemigos, objetos e iconos, con su descripción y la carpeta de destino). Cuando haya créditos, avisas en el chat y se generan de una vez. Hoy quedan 116 generaciones de la suscripción, por debajo del margen de 120, y se recargan el 2026-10-04.
+   El arte se prepara, pero **no se genera sin créditos de PixelLab**: todo queda en `wiki/PIXELLAB_PENDIENTE.md` (retratos con sus tres caras, fondos, enemigos, objetos e iconos, con su descripción y la carpeta de destino). Cuando haya créditos, avisas en el chat y se generan de una vez. El 2026-10-04 se generó casi toda la lista con Create Image Pro y Pro Flash; quedan 8 generaciones y se recargan el 2026-11-04.
 2. **Que el juego entretenga más: [[ROADMAP_ENTRETENIDO]]**, ya escrito con las ideas del 2026-10-02:
    - otras victorias además de «matar a todos», empujar donde duele, superficies que reaccionan y puzles;
    - la luz y el riesgo de acampar en la mazmorra;
