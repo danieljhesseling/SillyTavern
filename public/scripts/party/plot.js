@@ -336,8 +336,10 @@ async function applyPlotStep(step, heroNote = '', onQueued = () => {}) {
         recordFinishedCampaign();
         // J4.5: la escena del final, con qué fue de cada uno y lo que se lleva.
         const summary = endingSummary();
-        if (summary?.people.length) lines.push(`Qué fue de la gente: ${summary.people.join(' ')}`);
-        if (summary?.companions.length) lines.push(`Qué fue de cada uno: ${summary.companions.join(' ')}`);
+        // D-J60: sin conexión, qué fue de cada uno se lee en la ventana del final; en el chat no
+        // lo resume nadie (salía en el aviso de fuera de la caja como prosa del narrador).
+        if (summary?.people.length && !offlineGame()) lines.push(`Qué fue de la gente: ${summary.people.join(' ')}`);
+        if (summary?.companions.length && !offlineGame()) lines.push(`Qué fue de cada uno: ${summary.companions.join(' ')}`);
         if (summary) void showEnding(summary);
     }
 

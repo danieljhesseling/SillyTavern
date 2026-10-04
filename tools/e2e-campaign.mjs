@@ -7490,13 +7490,14 @@ try {
     };
 
     // --- 114 y 111: el presagio, y los secretos que no se dicen ------------------------------
-    // Un solo mensaje: el narrador lee la nota [PRESAGIO] y en pantalla sale «El presagio: …»
+    // Un solo mensaje: el narrador lee la nota [PRESAGIO] y en pantalla sale el presagio (sin
+    // conexión lo dice alguien de allí o uno de los tuyos, D-J60)
     // una vez (antes salía dos veces). Con el texto de la ronda 11, que se entiende.
     const omen56 = await page.evaluate(() => {
         const message = (window.SillyTavern.getContext().chat || []).find((/** @type {any} */ m) => String(m.mes || '').includes('[PRESAGIO]'));
-        return { shown: String(message?.extra?.display_text ?? ''), system: Boolean(message?.is_system), count: (window.SillyTavern.getContext().chat || []).filter((/** @type {any} */ m) => /El presagio: «/.test(String(m.extra?.display_text ?? m.mes ?? ''))).length };
+        return { shown: String(message?.extra?.display_text ?? ''), system: Boolean(message?.is_system), count: (window.SillyTavern.getContext().chat || []).filter((/** @type {any} */ m) => /«El oro que no es tuyo/.test(String(m.extra?.display_text ?? m.mes ?? ''))).length };
     });
-    const omenSaid56 = omen56.shown.includes('El presagio: «El oro que no es tuyo te traerá más problemas que la nieve.»') && omen56.count === 1;
+    const omenSaid56 = omen56.shown.includes('«El oro que no es tuyo te traerá más problemas que la nieve.»') && omen56.count === 1;
     const omenModel56 = !omen56.system && Boolean(omen56.shown);
     const journalA56 = await journal56();
     const omens56 = journalA56['El presagio'] ?? [];

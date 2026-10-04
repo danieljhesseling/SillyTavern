@@ -77,6 +77,13 @@ export const VOICE_FALLBACKS = {
     'voz-paces-yo': '{otro} y yo hemos hecho las paces.',
     'voz-paces-tu': 'Me alegro de que {otro} y tú lo hayáis arreglado.',
     'voz-paces-otros': '{a} y {b} han hecho las paces. Ya era hora.',
+    'voz-viaje-ida': '{dias_mayus} de camino, y por fin en {sitio}.',
+    'voz-viaje-vuelta': '{dias_mayus} de camino, y por fin en casa.',
+    'voz-presagio-gente': 'Te cuento lo que se dice por aquí: {presagio}',
+    'voz-presagio-companero': 'Antes de salir me contaron esto de aquí: {presagio}',
+    'voz-gremio-final': '¡Ya nos ha llegado cómo acabó {campana}: «{final}»! La primera ronda corre de nuestra cuenta.',
+    'voz-gremio-brindis': 'Y alzamos el vaso por {caidos}.',
+    'voz-gremio-fama': 'Desde hoy, aquí os conocen como {titulo}.',
 };
 
 /** Las clases de frase de esta capa, en `frases.json`. */
@@ -103,6 +110,8 @@ const KEEPER_ROLES = { tienda: 'El tendero', posada: 'El posadero', herreria: 'E
  * @property {string} [restUnder] Dónde fue el último descanso: `techo`, `cielo` o vacío.
  * @property {string[]} [silent] Tanda 22: quien aún no habla (Grimm, hasta el rango 8, `mute.js`).
  *   No está en `companions` (no cuenta nada); lo suyo lo dice con un gruñido.
+ * @property {VoicePerson[]} [locals] La gente del sitio que sigue viva (el presagio, si no hay
+ *   posadero ni nadie del grupo que lo diga).
  */
 
 /**
@@ -113,6 +122,8 @@ const KEEPER_ROLES = { tienda: 'El tendero', posada: 'El posadero', herreria: 'E
  * @property {string} [mood] Con qué cara (`alegre`, `enfadado`, `triste`), si no es la de siempre.
  * @property {string} [kind] La clase de frase (`voz-tienda-compra`…), para no repetir.
  * @property {string} [before] Un aviso que va antes de la frase: lo de la nota que no le toca decir a quien habla.
+ * @property {boolean} [fact] D-J60: el aviso es un dato corto (`text`) en vez de la nota contada,
+ *   que era prosa del narrador («Salís de Puerto Alba…»).
  */
 
 /**
@@ -186,6 +197,27 @@ function upperFirst(value) {
  */
 function sentencesOf(said) {
     return text(said).split(/(?<=[.!?…])\s+(?=[\p{Lu}¿¡«])/u).map(text).filter(Boolean);
+}
+
+/**
+ * El viaje entre el gremio y una campaña, como lo escribe `journeyLine` (hub.js), en sus partes.
+ *
+ * Ida: «Salís de Puerto Alba hacia Barovia. Vais en carro… Nueve días de camino.»
+ * Vuelta: «Nueve días de camino después, volvéis a Puerto Alba con lo ganado.»
+ *
+ * @param {string} body
+ * @returns {{back: boolean, from: string, to: string, span: string}|null} `from` con su «de»/«del»
+ *   («de Puerto Alba», «del gremio»); `to`, adónde se llega («Barovia», «el gremio»); `span`, en
+ *   minúscula («nueve días»). Nulo si no es uno de esos viajes.
+ */
+function tripOf(body) {
+    const said = text(body);
+    const back = said.match(/^(.+?) de camino después, volvéis (a|al) (.+?) con lo ganado\.$/u);
+    if (back) return { back: true, from: '', to: `${back[2] === 'al' ? 'el ' : ''}${text(back[3])}`, span: lowerFirst(back[1]) };
+    const out = said.match(/^Salís (del?) (.+?) hacia (.+?)\.(?:\s|$)/u);
+    const span = sentencesOf(said).at(-1)?.match(/^(.+?) de camino\.$/u);
+    if (!out || !span) return null;
+    return { back: false, from: `${out[1]} ${text(out[2])}`, to: text(out[3]), span: span[1].toLocaleLowerCase('es') };
 }
 
 /**
@@ -425,6 +457,24 @@ export function voiceNote(note, { told = '', scene = {}, rows = [], seed = '', t
             return line(merc, 'voz-mercenario-entra', { precio: coinWords(m[2]) }, 'alegre');
         }
         if ((m = body.match(/^(.+?) se despide y se queda en el gremio\.$/u))) return line({ name: text(m[1]) }, 'voz-mercenario-sale');
+        // D-J60: la vuelta tras un final (`homecomingScene`, y la fama de `guild-memory.js`): la
+        // noticia la da quien lleva el gremio (o la posada, o uno de los tuyos); sin nadie, el dato.
+        if ((m = body.match(/^En .+? ya se sabe cómo acabó (.+?): (.+?)\. Os reciben con la primera ronda pagada, y en el tablón su papel ya está marcado como terminado\.(?: Se brinda también por (.+?), que no (?:volvió|volvieron)\.)?(?: Desde hoy, .+? os conocen como (.+?)\.)?$/u))) {
+            const [campana, final, caidos, titulo] = [text(m[1]), text(m[2]).replace(/\.$/u, ''), text(m[3]), text(m[4])];
+            const speaker = keeperOf(scene, 'gremio') ?? keeperOf(scene, 'posada') ?? companionOf(scene, `${seed}|${body}`);
+            const said = line(speaker, 'voz-gremio-final', { campana, final });
+            if (said.mode === 'line' && speaker) {
+                const more = [
+                    caidos ? sayAs('voz-gremio-brindis', { solo, caidos }, speaker, input) : '',
+                    titulo ? sayAs('voz-gremio-fama', { solo, titulo }, speaker, input) : '',
+                ].filter(Boolean);
+                return { ...said, text: [said.text, ...more].join(' ') };
+            }
+            return {
+                mode: 'notice', fact: true,
+                text: [`${campana}, terminada: «${final}».`, caidos ? `Se brinda por ${caidos}.` : '', titulo ? `Desde hoy os conocen como ${titulo}.` : ''].filter(Boolean).join(' '),
+            };
+        }
         return notice;
     }
 
@@ -439,6 +489,50 @@ export function voiceNote(note, { told = '', scene = {}, rows = [], seed = '', t
             text: speech.said.join(' '),
             ...(speech.rest.length > 0 ? { before: speech.rest.join(' ') } : {}),
         };
+    }
+
+    // --- Lo que se cuenta por ahí (D-J60) -----------------------------------------------------
+    // Un rumor lo dice quien lo cuenta («el viejo vistani»), con su placa, no el narrador.
+    if (tag === 'RUMOR' && (m = body.match(/^(.+?) cuenta: «(.+)»$/u))) {
+        return { mode: 'line', who: upperFirst(m[1]), mood: '', kind: 'rumor', text: text(m[2]) };
+    }
+    // La pista de cuando el grupo lleva días sin avanzar: alguien del lugar, sin nombre.
+    if (tag === 'PISTA' && (m = body.match(/^El grupo lleva días sin avanzar\. Que les llegue esto por boca de alguien del lugar,[^:]*: (.+)$/u))) {
+        const who = ['Una vecina', 'Un vecino', 'Un viejo del lugar'][hashOf(`${seed}|${m[1]}`) % 3];
+        return { mode: 'line', who, mood: '', kind: 'pista', text: text(m[1]) };
+    }
+    // El atajo ya sale en su aviso («Un atajo»): aquí, solo el dato, sin «De paso, alguien menciona…».
+    // Contado («un día», no «1 día(s)») si llega contado.
+    if (tag === 'ATAJO' && (m = body.match(/^De paso, alguien menciona esto: (.+)$/u))) {
+        const plainTold = text(told).replace(/^(?:\S{0,4}\s*\[[^\]]+\]\s*)?De paso, alguien menciona esto:\s*/u, '');
+        return { mode: 'notice', fact: true, text: upperFirst(plainTold && plainTold !== text(told) ? plainTold : m[1]) };
+    }
+
+    // --- El viaje entre el gremio y una campaña (J4.9, D-J60) ---------------------------------
+    // Al llegar lo dice uno de los tuyos. A solas, un dato corto en el aviso de fuera de la caja:
+    // de dónde a dónde y cuántos días, sin la prosa del narrador («Salís de… Vais en carro…»).
+    if (tag === 'VIAJE') {
+        const trip = tripOf(body);
+        if (!trip) return notice;
+        const speaker = companionOf(scene, `${seed}|${body}`);
+        const said = line(speaker, trip.back ? 'voz-viaje-vuelta' : 'voz-viaje-ida', { sitio: trip.to, dias: trip.span, dias_mayus: upperFirst(trip.span) });
+        if (said.mode === 'line') return said;
+        return {
+            mode: 'notice', fact: true,
+            text: trip.back ? `De vuelta en ${trip.to}, tras ${trip.span} de camino.` : `${upperFirst(trip.from)} a ${trip.to}: ${trip.span} de camino.`,
+        };
+    }
+
+    // --- El presagio, al empezar una campaña (idea 114, D-J60) --------------------------------
+    // Lo dice quien lleva la posada de aquí; si no, uno de los tuyos (que lo oyó por el camino); y
+    // si no, otro de la gente del sitio. Sin nadie, las frases van en el aviso de fuera de la caja.
+    if (tag === 'HILO' && (m = body.match(/^El presagio: («.+»)$/u))) {
+        const keeper = scene?.keepers?.posada?.name ? scene.keepers.posada : null;
+        const mate = keeper ? null : companionOf(scene, `${seed}|presagio`);
+        const local = keeper ?? (mate ? null : (scene?.locals ?? []).find(p => text(p?.name)) ?? null);
+        const said = line(mate ?? local, mate ? 'voz-presagio-companero' : 'voz-presagio-gente', { presagio: m[1] });
+        if (said.mode === 'line') return said;
+        return { mode: 'notice', fact: true, text: `Lo que se cuenta que va a pasar (lo tienes en el Diario): ${m[1]}` };
     }
 
     return notice;

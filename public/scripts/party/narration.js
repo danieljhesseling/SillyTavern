@@ -249,6 +249,8 @@ function voiceScene() {
         silent,
         hero: hero ? person(hero) : null,
         restUnder: lastRestUnder,
+        // D-J60: la gente de aquí, por si no hay nadie más que diga el presagio.
+        locals: /** @type {any[]} */ (lastWorldNpcs).filter(npc => npc?.name && !npc.dead && String(npc.where || '').toLowerCase() === here).map(person),
     };
 }
 
@@ -962,7 +964,8 @@ export async function postForModel(text, options = {}) {
         // se conoce (sale por lo que es: «el posadero»). El modelo sigue leyendo los nombres.
         // Del narrador, solo lo que alguien dice entre comillas («¡Gracias! Soy Tomás…»).
         hearLine(speaker ? { who: speaker, text: told } : { who: '', text: told, quotes: true });
-        const shown = shownText(told, { mask: true });
+        // D-J60: si nadie lo dice y es un dato (el viaje, a solas), en el aviso va el dato, no la prosa.
+        const shown = shownText(voice?.mode === 'notice' && voice.fact ? `${tagOf(seen)}${sayGendered(voice.text)}` : told, { mask: true });
         if (shown !== message.mes) /** @type {any} */ (message.extra).display_text = shown;
         // J13.9: un momento del narrador sin nadie que lo diga, sin conexión, tampoco sale.
         if (quiet || voice?.mode === 'quiet' || (!speaker && quietMoment(options?.moment))) /** @type {any} */ (message.extra).quiet = true;

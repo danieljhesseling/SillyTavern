@@ -343,7 +343,11 @@ try {
     await page.waitForTimeout(1500);
     let now = await state();
     check('empezarla abre su mundo, con Iria dentro', started && now.party.some(m => m.name === 'Iria' && m.world === now.world), JSON.stringify(now));
-    check('antes, el viaje: de Puerto Alba, cinco días', await until(() => chatHas(new RegExp(`Salís de Puerto Alba hacia ${NAME}\\. Cinco días de camino\\.`)), 15000));
+    // D-J60: el viaje queda en el registro (`mes`); lo que se lee lo dice uno de los tuyos, o es un dato corto, sin «Salís…».
+    const tripSaid = () => page.evaluate((source) => (window.SillyTavern.getContext().chat || [])
+        .some((/** @type {any} */ m) => new RegExp(source).test(String(m.mes || '')) && /cinco días/i.test(String(m.extra?.display_text || '')) && !/Salís/.test(String(m.extra?.display_text || ''))),
+    `Salís de Puerto Alba hacia ${NAME}\\. Cinco días de camino\\.`);
+    check('antes, el viaje: de Puerto Alba, cinco días, sin narrador (D-J60)', await until(tripSaid, 15000));
     const meta = await page.evaluate(async () => {
         const ctx = window.SillyTavern.getContext();
         const data = await (await import('/scripts/world-info.js')).loadWorldInfo(String(ctx.chatMetadata?.world_info || ''));
@@ -360,7 +364,10 @@ try {
     await clickChip(/Volver al gremio/);
     await page.locator('.popup-button-ok:visible').first().click({ timeout: 3000 }).catch(() => {});
     const back = await until(async () => (await state()).world === hubWorld, 60000);
-    check('se vuelve al gremio, y la vuelta se cuenta', canGoBack && back && await until(() => chatHas(/Cinco días de camino después, volvéis a Puerto Alba/), 15000),
+    // D-J60: en el registro (`mes`); lo que se lee lo dice uno de los tuyos o es un dato, sin «volvéis…».
+    const tripBack = () => page.evaluate(() => (window.SillyTavern.getContext().chat || [])
+        .some((/** @type {any} */ m) => /Cinco días de camino después, volvéis a Puerto Alba/.test(String(m.mes || '')) && !/volvéis/.test(String(m.extra?.display_text || ''))));
+    check('se vuelve al gremio, y la vuelta se cuenta', canGoBack && back && await until(tripBack, 15000),
         JSON.stringify(await state()));
     await openBoard();
     tiles = await boardTiles();

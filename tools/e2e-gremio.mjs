@@ -948,7 +948,12 @@ try {
     check('la primera escena de Strahd se cuenta', scene);
     const inStrahdScene = await stCharacterUi();
     check('y en Strahd, que tiene su propio narrador, tampoco se ve su ficha (J0.3)', inStrahdScene.length === 0, JSON.stringify(inStrahdScene));
-    check('antes, el viaje: de Puerto Alba a Strahd, nueve días (J4.9)', await chatHas(/Salís de Puerto Alba hacia (La Maldición de Strahd|Barovia)\..*Nueve días de camino/));
+    // D-J60: el viaje queda en el registro (`mes`); lo que se lee lo dice uno de los tuyos (Gerd), sin «Salís…».
+    const trip = await page.evaluate(() => (window.SillyTavern.getContext().chat || [])
+        .filter((/** @type {any} */ m) => /Salís de Puerto Alba hacia (La Maldición de Strahd|Barovia)\..*Nueve días de camino/.test(String(m.mes || '')))
+        .map((/** @type {any} */ m) => ({ who: String(m.name), shown: String(m.extra?.display_text || '') })));
+    check('antes, el viaje: de Puerto Alba a Strahd, nueve días (J4.9), dicho por uno de los tuyos (D-J60)',
+        trip.length === 1 && /nueve días/i.test(trip[0].shown) && !/Salís/.test(trip[0].shown) && trip[0].who !== 'Narrador', JSON.stringify(trip));
     const campaignChips = await chips();
     check('en la campaña se ofrece volver al gremio', campaignChips.some(c => /Volver al gremio/.test(c)), JSON.stringify(campaignChips));
     // J18.7 a J18.10: una campaña del gremio también es sin conexión: se empieza leyendo, sin caja
@@ -1082,7 +1087,10 @@ try {
     await page.waitForTimeout(1000);
     now = await state();
     check('se vuelve al gremio, a su chat, con el grupo entero', home && now.chat === hubChat && now.party.length === 2 && now.party.every(m => m.world === hubWorld), JSON.stringify(now));
-    check('y la vuelta se cuenta (J4.9)', await until(() => chatHas(/Nueve días de camino después, volvéis a Puerto Alba/), 10000));
+    // D-J60: en el registro (`mes`); lo que se lee lo dice uno de los tuyos, sin «volvéis…».
+    const tripBack = () => page.evaluate(() => (window.SillyTavern.getContext().chat || [])
+        .some((/** @type {any} */ m) => /Nueve días de camino después, volvéis a Puerto Alba/.test(String(m.mes || '')) && !/volvéis/.test(String(m.extra?.display_text || ''))));
+    check('y la vuelta se cuenta (J4.9), dicha por uno de los tuyos (D-J60)', await until(tripBack, 10000));
     // H16 (tanda 22): en el gremio han pasado los días de fuera: lo vivido en Strahd y el viaje (nueve de ida y nueve de vuelta).
     const guildDayBack = await page.evaluate(() => Number(window.SillyTavern.getContext().chatMetadata?.calendar?.day) || 1);
     check('H16: al volver, el reloj del gremio ha pasado los días del viaje (al menos 18) y los vividos en Strahd',
@@ -1123,8 +1131,9 @@ try {
     // 7b. J4.5 y J3.9: terminar la campaña. Se abre el último hito y se gana en la cripta con
     // el mismo suceso que daría el juego; sale el final, se vuelve al gremio desde él, y la
     // campaña queda terminada en el tablón y en el salón de la fama.
+    // D-J60: el viaje y la vuelta se miran en el registro (`mes`): lo que se lee lo dice alguien, con sus palabras.
     const chatCount = (/** @type {RegExp} */ pattern) => page.evaluate((source) => (window.SillyTavern.getContext().chat || [])
-        .filter((/** @type {any} */ m) => new RegExp(source).test(String(m.extra?.display_text || m.mes || ''))).length, pattern.source);
+        .filter((/** @type {any} */ m) => new RegExp(source).test(String(m.mes || ''))).length, pattern.source);
     // El chat cambia de nombre antes de que lleguen sus metadatos: se espera a que el hilo de
     // Strahd esté cargado, o lo que se toque aquí se lo lleva la carga.
     await until(() => page.evaluate((world) => {
@@ -1183,7 +1192,7 @@ try {
     await page.waitForTimeout(1000);
     now = await state();
     const told = endingTitle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const homecoming = await until(() => chatHas(new RegExp(`ya se sabe cómo acabó La Maldición de Strahd: ${told}\\.`)), 10000);
+    const homecoming = await until(async () => (await chatCount(new RegExp(`ya se sabe cómo acabó La Maldición de Strahd: ${told}\\.`))) > 0, 10000);
     // En el chat del gremio: el camino de la primera vuelta (paso 6) y el de esta.
     const roads = await chatCount(/Nueve días de camino después/);
     check('«Volver al gremio» desde el final lleva al gremio con el grupo, con el camino y una escena que dice cómo acabó (J4.5)',
