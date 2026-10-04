@@ -596,6 +596,169 @@
       "hands": 1,
       "pattern": "{forma} de {material}",
       "rangeFeet": 60
+    },
+    {
+      "id": "forma-hoz",
+      "name": "Hoz",
+      "gender": "f",
+      "kind": "forma",
+      "itemType": "weapon",
+      "category": "filo",
+      "tags": [
+        "ligera",
+        "humilde",
+        "camino"
+      ],
+      "weight": 7,
+      "kg": 1,
+      "damageDice": "1d4",
+      "damageType": "cortante",
+      "mastery": "nick",
+      "slot": "weapon",
+      "hands": 1,
+      "pattern": "{forma} de {material}"
+    },
+    {
+      "id": "forma-latigo",
+      "name": "Látigo",
+      "gender": "m",
+      "kind": "forma",
+      "itemType": "weapon",
+      "category": "filo",
+      "tags": [
+        "alcance"
+      ],
+      "weight": 5,
+      "kg": 1.5,
+      "damageDice": "1d4",
+      "damageType": "cortante",
+      "mastery": "slow",
+      "slot": "weapon",
+      "hands": 1,
+      "pattern": "{forma} de {material}"
+    },
+    {
+      "id": "forma-lucero-alba",
+      "name": "Lucero del alba",
+      "gender": "m",
+      "kind": "forma",
+      "itemType": "weapon",
+      "category": "contundente",
+      "tags": [
+        "bruta",
+        "militar"
+      ],
+      "weight": 6,
+      "kg": 2,
+      "damageDice": "1d8",
+      "damageType": "perforante",
+      "mastery": "sap",
+      "slot": "weapon",
+      "hands": 1,
+      "pattern": "{forma} de {material}"
+    },
+    {
+      "id": "forma-pico-guerra",
+      "name": "Pico de guerra",
+      "gender": "m",
+      "kind": "forma",
+      "itemType": "weapon",
+      "category": "contundente",
+      "tags": [
+        "bruta",
+        "militar"
+      ],
+      "weight": 6,
+      "kg": 1,
+      "damageDice": "1d8",
+      "damageType": "perforante",
+      "mastery": "sap",
+      "slot": "weapon",
+      "hands": 1,
+      "pattern": "{forma} de {material}"
+    },
+    {
+      "id": "forma-martillo-ligero",
+      "name": "Martillo ligero",
+      "gender": "m",
+      "kind": "forma",
+      "itemType": "weapon",
+      "category": "contundente",
+      "tags": [
+        "ligera",
+        "humilde"
+      ],
+      "weight": 7,
+      "kg": 1,
+      "damageDice": "1d4",
+      "damageType": "contundente",
+      "mastery": "nick",
+      "slot": "weapon",
+      "hands": 1,
+      "pattern": "{forma} de {material}",
+      "rangeFeet": 20
+    },
+    {
+      "id": "forma-gran-clava",
+      "name": "Gran clava",
+      "gender": "f",
+      "kind": "forma",
+      "itemType": "weapon",
+      "category": "contundente",
+      "tags": [
+        "bruta",
+        "humilde"
+      ],
+      "weight": 6,
+      "kg": 5,
+      "damageDice": "1d8",
+      "damageType": "contundente",
+      "mastery": "push",
+      "slot": "weapon",
+      "hands": 2,
+      "pattern": "{forma} de {material}"
+    },
+    {
+      "id": "forma-dardo",
+      "name": "Dardo",
+      "gender": "m",
+      "kind": "forma",
+      "itemType": "weapon",
+      "category": "distancia",
+      "tags": [
+        "oculta",
+        "caza"
+      ],
+      "weight": 6,
+      "kg": 0.1,
+      "damageDice": "1d4",
+      "damageType": "perforante",
+      "mastery": "vex",
+      "slot": "weapon",
+      "hands": 1,
+      "pattern": "{forma} de {material}",
+      "rangeFeet": 60
+    },
+    {
+      "id": "forma-ballesta-pesada",
+      "name": "Ballesta pesada",
+      "gender": "f",
+      "kind": "forma",
+      "itemType": "weapon",
+      "category": "distancia",
+      "tags": [
+        "militar",
+        "lenta"
+      ],
+      "weight": 4,
+      "kg": 8,
+      "damageDice": "1d10",
+      "damageType": "perforante",
+      "mastery": "push",
+      "slot": "weapon",
+      "hands": 2,
+      "pattern": "{forma} de {material}",
+      "rangeFeet": 100
     }
   ]
 }

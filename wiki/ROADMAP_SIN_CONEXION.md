@@ -140,9 +140,9 @@ Casi todo está en commits (el último, c9c41512b); los retoques y las tres camp
 - pruebas unitarias en verde, tipos limpios y las 119 claves de la partida registradas.
 
 **En marcha (2026-10-04, 08:15):**
-- **Contenido de D&D** ([[gemini/ROADMAP_CONTENIDO_DND|ROADMAP_CONTENIDO_DND]]): tres agentes. Paladín y Monje; Brujo y Hechicero; razas (Dracónido, Aasimar, Goliat), armas y pociones que faltan, y 10-15 monstruos icónicos con sus resistencias.
+- ✅ **Contenido de D&D** ([[gemini/ROADMAP_CONTENIDO_DND|ROADMAP_CONTENIDO_DND]]), hecho: Paladín, Monje, Brujo y Hechicero con sus rasgos del 1 al 3 y sus subclases; Dracónido, Aasimar y Goliat; 8 armas con maestría, armaduras de 2024 y pociones; 13 monstruos con resistencias (el trol regenera). Sus decisiones, en ese archivo.
 - ✅ El arte de PixelLab, con los modelos buenos ([[PIXELLAB_PENDIENTE]]): 283 imágenes (retratos de 1387, Strahd, el gremio, la gente de paso, las misiones de mercenarios, pantalla, ocaso y costa; fondos, bichos, objetos, el tablero de E1 y el brujo y el hechicero). Falta el paladín y el monje: sin créditos hasta el 2026-11-04.
-- El narrador que queda en la novela de Strahd (el único bug abierto).
+- ✅ El narrador que quedaba en la novela de Strahd.
 - ✅ Hechos: [[ROADMAP_MUNDO_SEMIABIERTO_STRAHD]] (el plan: 12 fases, 5 hitos, 14 decisiones para ti) y `GuionEnWord.exe` (el guion en Word por categorías o entero, con doble clic; ver [[TUTORIAL_GUION_WORD]]).
 
 Lo siguiente: [[ROADMAP_ENTRETENIDO]] (terminado; quedan tus decisiones), luego [[ROADMAP_APK_ANDROID]] y después [[ROADMAP_MUNDO_SEMIABIERTO_STRAHD]].

@@ -37,6 +37,9 @@
 const CATALOGUE = {
     'Poción de curación': { type: 'gear', category: 'magic', subcategory: 'potion', weight: 0.5, description: 'Recupera 2d4+2 puntos de vida al beberla.' },
     'Poción de curación mayor': { type: 'gear', category: 'magic', subcategory: 'potion', weight: 0.5, description: 'Recupera 4d4+4 puntos de vida al beberla.' },
+    // Las otras dos del SRD (ROADMAP_CONTENIDO_DND, sección 4): `healingPotionOf` ya sabía beberlas.
+    'Poción de curación superior': { type: 'gear', category: 'magic', subcategory: 'potion', weight: 0.5, description: 'Recupera 8d4+8 puntos de vida al beberla.' },
+    'Poción de curación suprema': { type: 'gear', category: 'magic', subcategory: 'potion', weight: 0.5, description: 'Recupera 10d4+20 puntos de vida al beberla.' },
     'Cuerda de seda (15 m)': { type: 'gear', category: 'gear', subcategory: 'tool', weight: 2.5 },
     'Raciones de viaje': { type: 'gear', category: 'gear', subcategory: 'consumable', weight: 1, price: 1, description: 'Comida seca para un día. Para dormir dentro de una mazmorra hace falta una por cabeza.' },
     // E2 de ROADMAP_ENTRETENIDO: lo que pesa en la mazmorra. Siempre en la tienda (`town.js`).

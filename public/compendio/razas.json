@@ -270,6 +270,139 @@
         }
       ],
       "note": "Nació donde había de todo, y se nota en cómo habla y en cómo aguanta el frío."
+    },
+    {
+      "id": "raza-draconido-rojo",
+      "name": "Dracónido rojo",
+      "kind": "raza",
+      "weight": 4,
+      "tags": [
+        "fantasia"
+      ],
+      "effects": [
+        {
+          "stat": "strength",
+          "modifier": 2
+        },
+        {
+          "stat": "charisma",
+          "modifier": 1
+        },
+        {
+          "stat": "dexterity",
+          "modifier": -1
+        }
+      ],
+      "resistances": [
+        "Fire"
+      ],
+      "note": "Sangre de dragón rojo: echan fuego por la boca y el fuego les hace la mitad. Para lo fino son torpes."
+    },
+    {
+      "id": "raza-draconido-azul",
+      "name": "Dracónido azul",
+      "kind": "raza",
+      "weight": 4,
+      "tags": [
+        "fantasia"
+      ],
+      "effects": [
+        {
+          "stat": "strength",
+          "modifier": 2
+        },
+        {
+          "stat": "charisma",
+          "modifier": 1
+        },
+        {
+          "stat": "dexterity",
+          "modifier": -1
+        }
+      ],
+      "resistances": [
+        "Lightning"
+      ],
+      "note": "Sangre de dragón azul: echan un rayo en línea y el rayo les hace la mitad. Para lo fino son torpes."
+    },
+    {
+      "id": "raza-draconido-blanco",
+      "name": "Dracónido blanco",
+      "kind": "raza",
+      "weight": 4,
+      "tags": [
+        "fantasia"
+      ],
+      "effects": [
+        {
+          "stat": "strength",
+          "modifier": 2
+        },
+        {
+          "stat": "charisma",
+          "modifier": 1
+        },
+        {
+          "stat": "dexterity",
+          "modifier": -1
+        }
+      ],
+      "resistances": [
+        "Cold"
+      ],
+      "note": "Sangre de dragón blanco: echan escarcha y el frío les hace la mitad. Para lo fino son torpes."
+    },
+    {
+      "id": "raza-aasimar",
+      "name": "Aasimar",
+      "kind": "raza",
+      "weight": 5,
+      "tags": [
+        "fantasia"
+      ],
+      "effects": [
+        {
+          "stat": "charisma",
+          "modifier": 2
+        },
+        {
+          "stat": "wisdom",
+          "modifier": 1
+        },
+        {
+          "stat": "constitution",
+          "modifier": -1
+        }
+      ],
+      "resistances": [
+        "Necrotic",
+        "Radiant"
+      ],
+      "note": "Llevan dentro algo del cielo: curan con las manos, y la luz y la muerte les hacen la mitad. Se cansan antes que otros."
+    },
+    {
+      "id": "raza-goliat",
+      "name": "Goliat",
+      "kind": "raza",
+      "weight": 5,
+      "tags": [
+        "fantasia"
+      ],
+      "effects": [
+        {
+          "stat": "strength",
+          "modifier": 2
+        },
+        {
+          "stat": "speed",
+          "modifier": 5
+        },
+        {
+          "stat": "dexterity",
+          "modifier": -1
+        }
+      ],
+      "note": "Descienden de gigantes: grandes, fuertes y de paso largo, y tiran al suelo a quien golpean. Lo pequeño y lo fino no es lo suyo."
     }
   ]
 }

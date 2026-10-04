@@ -73,6 +73,12 @@ const CLASSES = [
     { masc: 'druida', fem: 'druida', order: ['wisdom', 'constitution', 'dexterity', 'intelligence', 'charisma', 'strength'] },
     { masc: 'mago', fem: 'maga', order: ['intelligence', 'constitution', 'dexterity', 'wisdom', 'charisma', 'strength'] },
     { masc: 'bardo', fem: 'barda', order: ['charisma', 'dexterity', 'constitution', 'wisdom', 'intelligence', 'strength'] },
+    // Sin retrato suyo aún: llevan el del mago (HERO_STAND_IN de ui/pixel-art.js).
+    { masc: 'brujo', fem: 'bruja', order: ['charisma', 'constitution', 'dexterity', 'wisdom', 'intelligence', 'strength'] },
+    { masc: 'hechicero', fem: 'hechicera', order: ['charisma', 'constitution', 'dexterity', 'wisdom', 'intelligence', 'strength'] },
+    // El paladín lleva la cara del clérigo; el monje, la silueta hasta tener la suya.
+    { masc: 'paladín', fem: 'paladina', order: ['strength', 'charisma', 'constitution', 'wisdom', 'dexterity', 'intelligence'] },
+    { masc: 'monje', fem: 'monja', order: ['dexterity', 'wisdom', 'constitution', 'strength', 'intelligence', 'charisma'] },
 ];
 
 /** La serie estándar de 5e. */
@@ -141,6 +147,10 @@ const INTROS = {
     druida: [['Las plantas y los animales me hacen caso. Y sé curar.', 'Las plantas y los animales me hacen caso. Y sé curar.'], ['Vivía en el bosque hasta que se quedó pequeño.', 'Vivía en el bosque hasta que se quedó pequeña.']],
     mago: [['Estudié magia en la ciudad. Ahora necesito oro para más libros.', 'Estudié magia en la ciudad. Ahora necesito oro para más libros.'], ['Sé lanzar fuego. Lo demás, lo voy aprendiendo.', 'Sé lanzar fuego. Lo demás, lo voy aprendiendo.']],
     bardo: [['Toco el laúd, sé historias y, si hace falta, curo un poco.', 'Toco el laúd, sé historias y, si hace falta, curo un poco.'], ['Busco aventuras para tener algo que cantar.', 'Busco aventuras para tener algo que cantar.']],
+    brujo: [['Hice un trato con alguien de fuera. Me dio esta magia, y aún le debo.', 'Hice un trato con alguien de fuera. Me dio esta magia, y aún le debo.'], ['Lanzo rayos que no se acaban. Lo demás, mejor no preguntes.', 'Lanzo rayos que no se acaban. Lo demás, mejor no preguntes.']],
+    hechicero: [['La magia la llevo en la sangre. No la estudié: nací con ella.', 'La magia la llevo en la sangre. No la estudié: nací con ella.'], ['Sé pocos conjuros, pero sé hacerlos más rápido que nadie.', 'Sé pocos conjuros, pero sé hacerlos más rápido que nadie.']],
+    paladin: [['Hice un juramento: ir delante y no dejar a nadie atrás. Y curo con las manos.', 'Hice un juramento: ir delante y no dejar a nadie atrás. Y curo con las manos.'], ['Mi orden me paga poco. Con la espada y el escudo me gano el resto.', 'Mi orden me paga poco. Con la espada y el escudo me gano el resto.']],
+    monje: [['No llevo armadura ni la necesito. Pego rápido y dos veces.', 'No llevo armadura ni la necesito. Pego rápido y dos veces.'], ['Me crié en un monasterio. Allí aprendí a pelear con las manos.', 'Me crié en un monasterio. Allí aprendí a pelear con las manos.']],
 };
 
 /**

@@ -26,6 +26,7 @@ import { getOrCreatePersonaDescriptor, setPersonaDescription, user_avatar } from
 // Fork: canonical D&D helpers live in dnd-system.js. Kept on its own line so upstream's
 // import list above stays untouched.
 import { normalizeDndEntityType } from './dnd-system.js';
+import { traitsOf } from './game-engine/combat/monster-traits.js';
 
 export const world_info_insertion_strategy = {
     evenly: 0,
@@ -228,6 +229,8 @@ function extractWorldMonsterTemplates(data) {
             ...(d.domable !== undefined && d.domable !== null ? { domable: String(d.domable) } : {}),
             // J19.12: si lanza conjuros de 5e, su bloque (`combat/enemy-spells.js`).
             ...(d.spellcasting && typeof d.spellcasting === 'object' ? { spellcasting: d.spellcasting } : {}),
+            // Lo que resiste, a lo que es inmune, lo que le duele el doble y si se regenera.
+            ...traitsOf(d),
             // Tanda 12: con qué pega (la maestría de su arma), las pociones que lleva y lo que se
             // dice de él (de ahí sale el arma si la ficha no la dice: «usa dagas untadas»).
             ...(String(d.weapon || '').trim() ? { weapon: String(d.weapon).trim() } : {}),

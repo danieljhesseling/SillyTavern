@@ -87,6 +87,10 @@ export const SPELL_CONDITIONS = {
     Ralentizado: { label: 'Ralentizado', effect: 'se mueve 10 pies menos' },
     Acelerado: { label: 'Acelerado', effect: 'el doble de rápido, +2 a la CA y una acción más' },
     'A la carrera': { label: 'A la carrera', effect: 'puede correr con la acción adicional' },
+    // Los del hechicero (rules/sorcery.js): los deja una habilidad suya, no un conjuro.
+    'Magia innata': { label: 'Magia innata', effect: 'sus conjuros: +1 a la CD y ventaja al atacar con ellos' },
+    'Conjuro rápido': { label: 'Conjuro rápido', effect: 'su próximo conjuro de una acción se lanza con la acción adicional' },
+    'Conjuro cuidadoso': { label: 'Conjuro cuidadoso', effect: 'su próximo conjuro de área no toca a los suyos' },
 };
 
 /** Todos los estados que un conjuro puede dejar. */
@@ -112,7 +116,7 @@ export const SPELL_COLUMNS = [
     'id', 'name', 'kind', 'tags', 'weight', 'when', 'aliases', 'note',
     'level', 'school', 'classes', 'castingTime', 'rangeFeet', 'duration', 'concentration', 'ritual', 'combat',
     'target', 'targets', 'rays', 'area', 'save', 'attack', 'onSave', 'affects',
-    'damage', 'damageType', 'addModifier', 'drain', 'healing', 'hpPool', 'maxHpBonus',
+    'damage', 'damageType', 'addModifier', 'addModifierFrom', 'drain', 'healing', 'hpPool', 'maxHpBonus',
     'condition', 'conditionRounds', 'repeatSave', 'removes', 'stabilizes', 'revives',
     'upcast', 'components', 'material',
     'zone', 'summon', 'reaction', 'ac',
@@ -186,6 +190,8 @@ export function durationRounds(value) {
  * @property {string} damage
  * @property {string} damageType
  * @property {boolean} addModifier Suma el modificador de lanzar al daño o a la cura.
+ * @property {number} addModifierFrom Lo suma desde ese nivel de quien lo lanza (0: nunca). La Descarga
+ *   agonizante del brujo, la invocación que casi todos cogen en el nivel 2.
  * @property {boolean} drain Quien lo lanza se cura la mitad del daño que hace.
  * @property {string} healing
  * @property {string} hpPool Duerme o ciega por puntos de vida, de menos a más (Dormir).
@@ -277,6 +283,7 @@ export function normalizeSpell(row) {
         damage: text(source.damage),
         damageType: text(source.damageType),
         addModifier: Boolean(source.addModifier),
+        addModifierFrom: Math.max(0, whole(source.addModifierFrom, 0)),
         drain: Boolean(source.drain),
         healing: text(source.healing),
         hpPool: text(source.hpPool),
@@ -352,7 +359,7 @@ export function validateSpell(row, context = {}) {
 
     const target = text(row.target);
     if (!SPELL_TARGETS.includes(target)) say(`"target" dice "${target}". Vale: ${SPELL_TARGETS.join(', ')}.`);
-    for (const key of ['targets', 'rays', 'teleportFeet', 'pushFeet', 'maxHpBonus', 'conditionRounds']) {
+    for (const key of ['targets', 'rays', 'teleportFeet', 'pushFeet', 'maxHpBonus', 'conditionRounds', 'addModifierFrom']) {
         if (row[key] !== undefined && !(Number.isInteger(Number(row[key])) && Number(row[key]) >= 0)) say(`"${key}" tiene que ser un número entero.`);
     }
     if (row.area !== undefined && !AREA_SHAPES.includes(text(row.area?.shape))) say(`el área dice "${text(row.area?.shape)}". Vale: ${AREA_SHAPES.join(', ')}.`);

@@ -47,6 +47,7 @@ import { generateIntended, budgetFor, threatOf } from '../world-builder/board-in
 import { createSeededRandom } from '../combat/seeded-random.js';
 import { readLevelRange } from '../combat/level-adjust.js';
 import { baselineFor, breedBand, PROFILES } from '../compendio/bestiary.js';
+import { traitsOf } from '../combat/monster-traits.js';
 import { pickWeighted } from '../compendio/compendio.js';
 import { derive, cleanSeed } from './seed.js';
 import { walkable } from './board-draft.js';
@@ -243,6 +244,8 @@ function creatureOf(name, cr, archetype = null) {
         profile: PROFILES.includes(profile) ? profile : 'aggressive',
         attackRangeFeet: Math.max(5, Number(archetype?.rangeFeet) || 5),
         ...(abilities.length > 0 ? { abilities } : {}),
+        // Lo que resiste y si se regenera (`combat/monster-traits.js`).
+        ...traitsOf(archetype),
         description: [text(archetype?.quirk), text(archetype?.weakness)].filter(Boolean).join(' '),
     };
 }
@@ -507,7 +510,11 @@ export function fillPackGaps(raw, { compendium = null, seed = '' } = {}) {
                 const own = plain(row?.name);
                 return own && (wanted === own || new RegExp(`(^|\\s)${own.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(s|es)?(\\s|$)`).test(wanted));
             }) ?? null;
-        const creature = creatureOf(clean, crFor(levelAt(act), leader), archetype);
+        // Un bicho del SRD (`cr` en su fila: el trol, 5) sale con su desafío; si es a quien se va
+        // a buscar, con el del jefe si es mayor. Los demás, con el del nivel del acto.
+        const own = Number(archetype?.cr) > 0 ? Number(archetype.cr) : 0;
+        const byAct = crFor(levelAt(act), leader);
+        const creature = creatureOf(clean, own > 0 ? (leader ? Math.max(own, byAct) : own) : byAct, archetype);
         bestiary.push(creature);
         creatureByName.set(low(clean), creature);
         note('criatura', clean, archetype

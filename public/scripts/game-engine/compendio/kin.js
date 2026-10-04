@@ -39,6 +39,12 @@ export const STAT_LABELS = {
     armorClass: 'Defensa',
 };
 
+/** Los tipos de daño que una raza puede resistir, como se leen en su tarjeta. */
+const RESIST_WORDS = /** @type {Record<string, string>} */ ({
+    fire: 'el fuego', cold: 'el frío', lightning: 'el rayo', acid: 'el ácido', thunder: 'el trueno',
+    poison: 'el veneno', necrotic: 'lo necrótico', radiant: 'lo radiante', psychic: 'lo psíquico', force: 'la fuerza',
+});
+
 /**
  * @param {any} value
  * @returns {string}
@@ -186,6 +192,10 @@ export function describeKin(row) {
     if (!row) return '';
     const said = effectsOf(row)
         .map(effect => `${effect.modifier > 0 ? '+' : ''}${effect.modifier} ${STAT_LABELS[effect.stat]}`);
+    // Lo que su sangre aguanta (el dracónido rojo, el fuego): la mitad del daño.
+    const resists = (Array.isArray(row.resistances) ? row.resistances : [])
+        .map((/** @type {any} */ type) => RESIST_WORDS[text(type).toLowerCase()] ?? '').filter(Boolean);
 
-    return [text(row.hitDie), said.join(', ')].filter(Boolean).join(' · ');
+    return [text(row.hitDie), said.join(', '), resists.length > 0 ? `resiste ${resists.join(' y ')}` : '']
+        .filter(Boolean).join(' · ');
 }

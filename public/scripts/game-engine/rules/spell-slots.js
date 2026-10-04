@@ -23,6 +23,8 @@
  * Ver wiki/ROADMAP_SIN_CONEXION.md, J19.1.
  */
 
+import { describeSorcery, hasCondition, INNATE_SORCERY } from './sorcery.js';
+
 /** Las cuatro formas de progresar en magia, en vocabulario cerrado. */
 export const PROGRESSIONS = ['full', 'half', 'third', 'pact'];
 
@@ -387,7 +389,9 @@ export function spellcastingStats(member, classRow) {
     const modifier = Math.floor(((Number(member?.[ability]) || 10) - 10) / 2);
     // La misma cuenta de competencia que `checks.js`.
     const proficiency = 2 + Math.floor((levelOf(member?.level) - 1) / 4);
-    return { ability, modifier, proficiency, saveDc: 8 + proficiency + modifier, attackBonus: proficiency + modifier };
+    // La Magia innata del hechicero: +1 a la CD mientras dura.
+    const innate = hasCondition(member, INNATE_SORCERY) ? 1 : 0;
+    return { ability, modifier, proficiency, saveDc: 8 + proficiency + modifier + innate, attackBonus: proficiency + modifier };
 }
 
 /**
@@ -403,5 +407,7 @@ export function describeSlots(member, classRow) {
     if (casterOf(classRow)?.ritualsOnly && table.maxLevel > 0) return `Solo rituales, sin espacios: hasta los de ${SLOT_LABELS[/** @type {1} */ (table.maxLevel)]}`;
     if (table.pact) return `Espacios de pacto (${table.pact.level}.º): ${left.pact}/${table.pact.count}`;
     const parts = Object.entries(table.slots).map(([level, max]) => `${level}.º ${left.slots[Number(level)] ?? 0}/${max}`);
-    return parts.length > 0 ? `Espacios: ${parts.join(' · ')}` : '';
+    // El hechicero, con sus puntos detrás.
+    const points = describeSorcery(member);
+    return [parts.length > 0 ? `Espacios: ${parts.join(' · ')}` : '', points].filter(Boolean).join(' · ');
 }

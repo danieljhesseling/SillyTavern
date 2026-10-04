@@ -335,6 +335,8 @@ export function attackEdge({ targetId, targetConditions = [], attackerConditions
     if (has(attackerConditions, 'Debilitado')) down.push('va tocado del último golpe');
     if (has(attackerConditions, 'Bendecido')) up.push('va bendecido');
     if (has(targetConditions, 'Escudado')) down.push('tiene un escudo arcano delante');
+    // La Defensa paciente del monje: esquiva sin gastar la acción.
+    if (has(targetConditions, 'Esquivando')) down.push('está esquivando');
     if (INCAPACITATED.some(c => has(targetConditions, c))) up.push('no puede defenderse');
     if (has(attackerConditions, 'Invisible')) up.push('no se le ve');
     // J19: los estados que dejan los conjuros (`SPELL_CONDITIONS`). Quien brilla por Fuego

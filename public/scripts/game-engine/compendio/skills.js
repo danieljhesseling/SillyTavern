@@ -82,6 +82,10 @@ export function validateAbility(row) {
         errors.push(`${name}: lo que se gasta tiene que decir cuántas veces ("usesPerRest").`);
     }
 
+    if (row?.sorceryCost !== undefined && !(Number.isInteger(Number(row.sorceryCost)) && Number(row.sorceryCost) > 0)) {
+        errors.push(`${name}: "sorceryCost" son los puntos de hechicería que cuesta: un número entero.`);
+    }
+
     // Una salvacion sin CD es una salvacion contra que: el panel escribe «CD undefined».
     if (text(row?.resolution) === 'save' && !(number(row?.saveDc, 0) > 0)) {
         errors.push(`${name}: se salva contra algo, y no dice contra qué CD ("saveDc").`);
@@ -152,6 +156,8 @@ export function asAbility(row) {
     };
 
     if (number(row?.usesPerRest, 0) > 0) ability.usesPerRest = number(row.usesPerRest, 1);
+    // La Metamagia del hechicero: lo que cuesta en puntos de hechicería (rules/sorcery.js).
+    if (number(row?.sorceryCost, 0) > 0) ability.sorceryCost = number(row.sorceryCost, 1);
     // El alcance va siempre, aunque sea cuerpo a cuerpo: `describeAbility` lo escribe, y
     // sin el sale «undefined ft» en la lista de todo el que no sea sobre si mismo.
     ability.rangeFeet = Math.max(0, number(row?.rangeFeet, 5));
@@ -186,24 +192,68 @@ export function asAbility(row) {
  * @param {any} input.compendium
  * @param {string} [input.className]
  * @param {number} [input.level]
+ * @param {string} [input.race] Su raza: las que da la sangre (el aliento del dracónido) solo
+ *   salen con ella (`when.race`). Sin raza, ninguna de esas.
  * @returns {any[]}
  */
-export function abilitiesFor({ compendium, className = '', level = 1 }) {
+export function abilitiesFor({ compendium, className = '', level = 1, race = '' }) {
     if (!compendium?.has?.('habilidades')) return [];
 
     const at = Math.max(1, Math.round(number(level, 1)));
-    const wanted = text(className).toLowerCase();
+    // Sin tildes ni género: «Pícara» aprende lo del «picaro»; «Paladín», lo del «paladin».
+    // Antes, con tilde, una pícara o un bárbaro empezaban sin las habilidades de su clase.
+    const stem = (/** @type {any} */ name) => text(name).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[aoe]$/, '');
+    const wanted = stem(className);
+    const blood = plainWord(race);
 
     return compendium.find('habilidades', { kind: 'habilidad' })
         .filter((/** @type {any} */ row) => {
             // R3: las que solo da el árbol de la clase (idea 48) no se aprenden subiendo.
             if (row.when?.tree === true) return false;
+            // Lo de los bichos (el aliento de un dragón) no lo aprende nadie del grupo.
+            if (row.when?.monster === true) return false;
+            if (!racialMatch(row, blood)) return false;
             if (number(row.level, 1) > at) return false;
-            const classes = (row.when?.class ?? []).map(text).map(c => c.toLowerCase());
+            const classes = (row.when?.class ?? []).map(text).map(c => (c === '*' ? c : stem(c)));
             if (classes.length === 0 || classes.includes('*')) return true;
             return wanted ? classes.includes(wanted) : false;
         })
         .map(asAbility);
+}
+
+/**
+ * @param {any} value
+ * @returns {string} Sin tildes y en minúsculas: «Dracónido rojo» → «draconido rojo».
+ */
+function plainWord(value) {
+    return text(value).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+}
+
+/**
+ * Si una fila que pide raza (`when.race`) vale para esta. Las que no piden raza valen
+ * siempre. La raza se compara por su id sin «raza-» o por su nombre: «draconido-rojo» y
+ * «Dracónido rojo» son la misma.
+ *
+ * @param {any} row
+ * @param {string} blood La raza de quien aprende, ya sin tildes.
+ * @returns {boolean}
+ */
+function racialMatch(row, blood) {
+    const races = (Array.isArray(row?.when?.race) ? row.when.race : []).map(plainWord).filter(Boolean);
+    if (races.length === 0) return true;
+    if (!blood) return false;
+    const said = blood.replace(/^raza-/, '').replace(/-/g, ' ');
+    return races.some((/** @type {string} */ r) => r.replace(/-/g, ' ') === said);
+}
+
+/**
+ * Si una habilidad no la aprende nadie con un maestro: la de una raza o la de un bicho.
+ *
+ * @param {any} row
+ * @returns {boolean}
+ */
+export function bornWith(row) {
+    return row?.when?.monster === true || (Array.isArray(row?.when?.race) && row.when.race.length > 0);
 }
 
 /**

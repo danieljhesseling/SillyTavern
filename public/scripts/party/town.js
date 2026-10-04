@@ -18,7 +18,7 @@ import { createSeededRandom } from '../game-engine/combat/seeded-random.js';
 import { derive } from '../game-engine/campaign/seed.js';
 import { priceFactor, factionWorldOn } from '../game-engine/campaign/factions.js';
 import { marketPressure, warPressure } from '../game-engine/campaign/economy.js';
-import { abilitiesFor, asAbility } from '../game-engine/compendio/skills.js';
+import { abilitiesFor, asAbility, bornWith } from '../game-engine/compendio/skills.js';
 import { rollDiceDetailed, nextRandom } from './combat-rules.js';
 import { weaponOf as heldWeapon } from '../game-engine/rules/equipment.js';
 import { duelTricks } from '../game-engine/rules/field-uses.js';
@@ -628,7 +628,8 @@ export function buildServiceCards() {
             ]);
             // Y las técnicas de otros oficios: un maestro de armas enseña a quien pague.
             const crafts = lastCompendium.find('habilidades', { kind: 'habilidad' })
-                .filter((/** @type {any} */ row) => row.when?.tree !== true && (Number(row.level) || 1) <= level + 2)
+                // Lo de una raza o de un bicho (un aliento de dragón) no se enseña.
+                .filter((/** @type {any} */ row) => row.when?.tree !== true && !bornWith(row) && (Number(row.level) || 1) <= level + 2)
                 .map(asAbility);
             const lessons = lessonsHere({
                 candidates: [

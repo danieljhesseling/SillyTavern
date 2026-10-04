@@ -1,7 +1,7 @@
 {
   "version": 1,
   "domain": "habilidades",
-  "about": "Lo que alguien sabe hacer, y cuánto se gasta. Los cuatro campos que mandan son vocabularios CERRADOS del motor: cost (action, bonus, free), resource (at_will, short_rest, long_rest), target (enemy, ally, self) y resolution (auto, attack, save). Escribir otro valor no da error: degrada en silencio —'per_long_rest' se convierte en 'at_will'— y entonces una habilidad de una vez al día se usa cada turno. Por eso el validador los comprueba. 'usesPerRest' solo tiene sentido si no es 'at_will'. Cada habilidad dice de qué clase es, para que elegir clase signifique algo desde el nivel 1.",
+  "about": "Lo que alguien sabe hacer, y cuánto se gasta. Los cuatro campos que mandan son vocabularios CERRADOS del motor: cost (action, bonus, free), resource (at_will, short_rest, long_rest), target (enemy, ally, self) y resolution (auto, attack, save). Escribir otro valor no da error: degrada en silencio —'per_long_rest' se convierte en 'at_will'— y entonces una habilidad de una vez al día se usa cada turno. Por eso el validador los comprueba. 'usesPerRest' solo tiene sentido si no es 'at_will'. 'sorceryCost' (la Metamagia del hechicero) es lo que cuesta en puntos de hechicería: entonces no gasta usos suyos, sino puntos, que son su nivel desde el 2 y vuelven con el descanso largo. Cada habilidad dice de qué clase es, para que elegir clase signifique algo desde el nivel 1.",
   "rows": [
     {
       "id": "hab-embate", "name": "Embate", "kind": "habilidad", "weight": 10,
@@ -85,6 +85,91 @@
       "when": { "class": ["explorador", "druida"] }, "level": 1,
       "cost": "action", "resource": "at_will", "target": "self", "resolution": "auto",
       "note": "Qué pasó aquí, cuántos eran y hacia dónde fueron."
+    },
+    {
+      "id": "hab-imposicion-manos", "name": "Imposición de manos", "kind": "habilidad", "weight": 10,
+      "when": { "class": ["paladin"] }, "level": 1,
+      "cost": "bonus", "resource": "long_rest", "usesPerRest": 2,
+      "target": "ally", "resolution": "auto", "rangeFeet": 5, "healing": "1d6+2",
+      "note": "Pone las manos sobre la herida y la cierra. Dos veces entre descansos largos."
+    },
+    {
+      "id": "hab-castigo-paladin", "name": "Castigo del paladín", "kind": "habilidad", "weight": 10,
+      "when": { "class": ["paladin"] }, "level": 2,
+      "cost": "bonus", "resource": "long_rest", "usesPerRest": 1,
+      "target": "enemy", "resolution": "attack", "rangeFeet": 5, "damage": "2d8", "damageType": "Radiant",
+      "note": "El Castigo divino sin gastar un espacio de conjuro: un golpe que quema con luz. Una vez entre descansos largos."
+    },
+    {
+      "id": "hab-artes-marciales", "name": "Artes marciales", "kind": "habilidad", "weight": 10,
+      "when": { "class": ["monje"] }, "level": 1,
+      "cost": "bonus", "resource": "at_will", "target": "enemy", "resolution": "attack",
+      "rangeFeet": 5, "damage": "1d6", "damageType": "Bludgeoning",
+      "note": "Un golpe más con la mano o con el pie, después de atacar. Gratis, cada turno."
+    },
+    {
+      "id": "hab-rafaga-golpes", "name": "Ráfaga de golpes", "kind": "habilidad", "weight": 10,
+      "when": { "class": ["monje"] }, "level": 2,
+      "cost": "bonus", "resource": "short_rest", "usesPerRest": 2,
+      "target": "enemy", "resolution": "attack", "rangeFeet": 5, "damage": "2d6", "damageType": "Bludgeoning",
+      "note": "Dos golpes seguidos en vez de uno. Gasta concentración (ki), que vuelve con un descanso corto."
+    },
+    {
+      "id": "hab-defensa-paciente", "name": "Defensa paciente", "kind": "habilidad", "weight": 9,
+      "when": { "class": ["monje"] }, "level": 2,
+      "cost": "bonus", "resource": "short_rest", "usesPerRest": 1,
+      "target": "self", "resolution": "auto", "condition": "Esquivando", "conditionRounds": 1,
+      "note": "Se pone a esquivar sin gastar la acción: hasta su turno, le pegan peor. Gasta concentración (ki)."
+    },
+    {
+      "id": "hab-paso-viento", "name": "Paso del viento", "kind": "habilidad", "weight": 9,
+      "when": { "class": ["monje"] }, "level": 2,
+      "cost": "bonus", "resource": "short_rest", "usesPerRest": 1,
+      "target": "self", "resolution": "auto", "condition": "A la carrera", "conditionRounds": 1,
+      "note": "Corre sin gastar la acción: este turno anda el doble. Gasta concentración (ki)."
+    },
+    {
+      "id": "tec-arma-sagrada", "name": "Arma sagrada", "kind": "habilidad", "weight": 8,
+      "when": { "class": ["paladin"], "tree": true }, "level": 3,
+      "cost": "free", "resource": "long_rest", "usesPerRest": 1,
+      "target": "self", "resolution": "auto", "condition": "Bendecido", "conditionRounds": 10,
+      "note": "Juramento de devoción: el arma brilla y acierta mejor durante la pelea. Una vez entre descansos largos."
+    },
+    {
+      "id": "tec-voto-enemistad", "name": "Voto de enemistad", "kind": "habilidad", "weight": 8,
+      "when": { "class": ["paladin"], "tree": true }, "level": 3,
+      "cost": "bonus", "resource": "long_rest", "usesPerRest": 1,
+      "target": "enemy", "resolution": "auto", "rangeFeet": 30, "condition": "Perfilado", "conditionRounds": 10,
+      "note": "Juramento de venganza: señala a un enemigo y todos le aciertan mejor durante la pelea."
+    },
+    {
+      "id": "tec-golpe-inspirador", "name": "Golpe inspirador", "kind": "habilidad", "weight": 8,
+      "when": { "class": ["paladin"], "tree": true }, "level": 3,
+      "cost": "bonus", "resource": "long_rest", "usesPerRest": 1,
+      "target": "ally", "resolution": "auto", "area": { "shape": "radius", "size": 30 }, "healing": "2d8",
+      "note": "Juramento de gloria: un grito después de un buen golpe, y los de alrededor recobran vida."
+    },
+    {
+      "id": "tec-mano-abierta", "name": "Técnica de la mano abierta", "kind": "habilidad", "weight": 8,
+      "when": { "class": ["monje"], "tree": true }, "level": 3,
+      "cost": "bonus", "resource": "short_rest", "usesPerRest": 2,
+      "target": "enemy", "resolution": "attack", "rangeFeet": 5, "damage": "1d6", "damageType": "Bludgeoning",
+      "condition": "Prone", "conditionRounds": 1,
+      "note": "Guerrero de la mano abierta: un golpe que, si entra, tira al otro al suelo."
+    },
+    {
+      "id": "tec-paso-sombra", "name": "Paso de sombra", "kind": "habilidad", "weight": 8,
+      "when": { "class": ["monje"], "tree": true }, "level": 3,
+      "cost": "bonus", "resource": "short_rest", "usesPerRest": 1,
+      "target": "self", "resolution": "auto", "condition": "Invisible", "conditionRounds": 1,
+      "note": "Guerrero de la sombra: se mete en la penumbra y no se le ve hasta su siguiente turno."
+    },
+    {
+      "id": "tec-mano-sana", "name": "Mano que sana", "kind": "habilidad", "weight": 8,
+      "when": { "class": ["monje"], "tree": true }, "level": 3,
+      "cost": "bonus", "resource": "short_rest", "usesPerRest": 2,
+      "target": "ally", "resolution": "auto", "rangeFeet": 5, "healing": "1d6+2",
+      "note": "Guerrero de la misericordia: un toque en el sitio justo y la herida se cierra."
     },
     {
       "id": "hab-primeros-auxilios", "name": "Primeros auxilios", "kind": "habilidad", "weight": 10,
@@ -465,6 +550,401 @@
       },
       "healing": "1d4",
       "note": "Una canción que todos saben: los que la oyen cierran filas y respiran."
+    },
+    {
+      "id": "hab-magia-innata",
+      "name": "Magia innata",
+      "kind": "habilidad",
+      "weight": 9,
+      "when": { "class": ["hechicero"] },
+      "level": 1,
+      "cost": "bonus",
+      "resource": "long_rest",
+      "usesPerRest": 2,
+      "target": "self",
+      "resolution": "auto",
+      "condition": "Magia innata",
+      "conditionRounds": 10,
+      "note": "Deja salir la magia que lleva dentro: durante un minuto, sus conjuros cuestan más de resistir (+1 a la CD) y aciertan mejor (ventaja)."
+    },
+    {
+      "id": "hab-conjuro-rapido",
+      "name": "Conjuro rápido",
+      "kind": "habilidad",
+      "weight": 9,
+      "when": { "class": ["hechicero"] },
+      "level": 2,
+      "cost": "free",
+      "resource": "long_rest",
+      "usesPerRest": 1,
+      "sorceryCost": 2,
+      "target": "self",
+      "resolution": "auto",
+      "condition": "Conjuro rápido",
+      "conditionRounds": 1,
+      "note": "Metamagia, 2 puntos de hechicería: este turno, su próximo conjuro de una acción lo lanza con la acción adicional."
+    },
+    {
+      "id": "hab-conjuro-cuidadoso",
+      "name": "Conjuro cuidadoso",
+      "kind": "habilidad",
+      "weight": 9,
+      "when": { "class": ["hechicero"] },
+      "level": 2,
+      "cost": "free",
+      "resource": "long_rest",
+      "usesPerRest": 1,
+      "sorceryCost": 1,
+      "target": "self",
+      "resolution": "auto",
+      "condition": "Conjuro cuidadoso",
+      "conditionRounds": 1,
+      "note": "Metamagia, 1 punto de hechicería: este turno, su próximo conjuro de área no toca a los suyos."
+    },
+    {
+      "id": "hab-luz-sanadora",
+      "name": "Luz sanadora",
+      "kind": "habilidad",
+      "weight": 9,
+      "when": { "class": ["brujo"] },
+      "level": 3,
+      "cost": "bonus",
+      "resource": "long_rest",
+      "usesPerRest": 2,
+      "target": "ally",
+      "resolution": "auto",
+      "rangeFeet": 60,
+      "healing": "2d6",
+      "note": "Lo que le dio su patrón, el Celestial: una luz cálida que cierra las heridas de quien la recibe."
+    },
+    {
+      "id": "hab-aliento-fuego",
+      "name": "Aliento de fuego",
+      "kind": "habilidad",
+      "weight": 8,
+      "when": {
+        "race": [
+          "draconido-rojo"
+        ]
+      },
+      "level": 1,
+      "cost": "action",
+      "resource": "long_rest",
+      "usesPerRest": 2,
+      "target": "enemy",
+      "resolution": "save",
+      "rangeFeet": 15,
+      "area": {
+        "shape": "cone",
+        "size": 15
+      },
+      "saveDc": 12,
+      "saveAbility": "dexterity",
+      "damage": "1d10",
+      "damageType": "Fire",
+      "element": "fuego",
+      "note": "El arma de aliento del dracónido rojo: un cono de fuego. Quien salva, recibe la mitad."
+    },
+    {
+      "id": "hab-aliento-rayo",
+      "name": "Aliento de rayo",
+      "kind": "habilidad",
+      "weight": 8,
+      "when": {
+        "race": [
+          "draconido-azul"
+        ]
+      },
+      "level": 1,
+      "cost": "action",
+      "resource": "long_rest",
+      "usesPerRest": 2,
+      "target": "enemy",
+      "resolution": "save",
+      "rangeFeet": 30,
+      "area": {
+        "shape": "line",
+        "size": 30
+      },
+      "saveDc": 12,
+      "saveAbility": "dexterity",
+      "damage": "1d10",
+      "damageType": "Lightning",
+      "note": "El arma de aliento del dracónido azul: una línea de rayo. Quien salva, recibe la mitad."
+    },
+    {
+      "id": "hab-aliento-frio",
+      "name": "Aliento de escarcha",
+      "kind": "habilidad",
+      "weight": 8,
+      "when": {
+        "race": [
+          "draconido-blanco"
+        ]
+      },
+      "level": 1,
+      "cost": "action",
+      "resource": "long_rest",
+      "usesPerRest": 2,
+      "target": "enemy",
+      "resolution": "save",
+      "rangeFeet": 15,
+      "area": {
+        "shape": "cone",
+        "size": 15
+      },
+      "saveDc": 12,
+      "saveAbility": "dexterity",
+      "damage": "1d10",
+      "damageType": "Cold",
+      "element": "frio",
+      "note": "El arma de aliento del dracónido blanco: un cono de frío. Quien salva, recibe la mitad."
+    },
+    {
+      "id": "hab-manos-curativas",
+      "name": "Manos curativas",
+      "kind": "habilidad",
+      "weight": 8,
+      "when": {
+        "race": [
+          "aasimar"
+        ]
+      },
+      "level": 1,
+      "cost": "action",
+      "resource": "long_rest",
+      "usesPerRest": 1,
+      "target": "ally",
+      "resolution": "auto",
+      "rangeFeet": 5,
+      "healing": "2d4",
+      "note": "El aasimar toca a alguien y le cierra las heridas. Una vez por descanso largo."
+    },
+    {
+      "id": "hab-golpe-colinas",
+      "name": "Golpe de las colinas",
+      "kind": "habilidad",
+      "weight": 8,
+      "when": {
+        "race": [
+          "goliat"
+        ]
+      },
+      "level": 1,
+      "cost": "action",
+      "resource": "long_rest",
+      "usesPerRest": 2,
+      "target": "enemy",
+      "resolution": "attack",
+      "rangeFeet": 5,
+      "damage": "1d8",
+      "damageType": "Bludgeoning",
+      "condition": "Prone",
+      "conditionRounds": 1,
+      "note": "La sangre de los gigantes de las colinas: si el golpe entra, lo tira al suelo."
+    },
+    {
+      "id": "bicho-engullir",
+      "name": "Engullir",
+      "kind": "habilidad",
+      "weight": 1,
+      "when": {
+        "monster": true
+      },
+      "level": 1,
+      "cost": "action",
+      "resource": "short_rest",
+      "usesPerRest": 1,
+      "target": "enemy",
+      "resolution": "save",
+      "rangeFeet": 5,
+      "saveDc": 12,
+      "saveAbility": "dexterity",
+      "damage": "3d6",
+      "damageType": "Acid",
+      "condition": "Restrained",
+      "conditionRounds": 1,
+      "note": "El cubo se echa encima: quien no se aparta queda dentro, sujeto y quemándose de ácido."
+    },
+    {
+      "id": "bicho-pegarse",
+      "name": "Pegarse",
+      "kind": "habilidad",
+      "weight": 1,
+      "when": {
+        "monster": true
+      },
+      "level": 1,
+      "cost": "action",
+      "resource": "short_rest",
+      "usesPerRest": 1,
+      "target": "enemy",
+      "resolution": "attack",
+      "rangeFeet": 5,
+      "damage": "1d8",
+      "damageType": "Bludgeoning",
+      "condition": "Grappled",
+      "conditionRounds": 2,
+      "note": "El mímico golpea con un brazo pegajoso y quien recibe se queda pegado."
+    },
+    {
+      "id": "bicho-aguijon",
+      "name": "Aguijón",
+      "kind": "habilidad",
+      "weight": 1,
+      "when": {
+        "monster": true
+      },
+      "level": 1,
+      "cost": "action",
+      "resource": "short_rest",
+      "usesPerRest": 1,
+      "target": "enemy",
+      "resolution": "save",
+      "rangeFeet": 5,
+      "saveDc": 11,
+      "saveAbility": "constitution",
+      "damage": "3d6",
+      "damageType": "Poison",
+      "note": "El diablillo pica con la cola. Quien aguanta con Constitución, recibe la mitad del veneno."
+    },
+    {
+      "id": "bicho-asustar",
+      "name": "Asustar",
+      "kind": "habilidad",
+      "weight": 1,
+      "when": {
+        "monster": true
+      },
+      "level": 1,
+      "cost": "action",
+      "resource": "long_rest",
+      "usesPerRest": 1,
+      "target": "enemy",
+      "resolution": "save",
+      "rangeFeet": 20,
+      "saveDc": 10,
+      "saveAbility": "wisdom",
+      "condition": "Frightened",
+      "conditionRounds": 2,
+      "note": "El quasit enseña lo peor de sí: quien no aguanta con Sabiduría, se asusta."
+    },
+    {
+      "id": "bicho-toque-igneo",
+      "name": "Toque ígneo",
+      "kind": "habilidad",
+      "weight": 1,
+      "when": {
+        "monster": true
+      },
+      "level": 1,
+      "cost": "action",
+      "resource": "at_will",
+      "target": "enemy",
+      "resolution": "attack",
+      "rangeFeet": 5,
+      "damage": "2d6",
+      "damageType": "Fire",
+      "element": "fuego",
+      "note": "El golpe del elemental de fuego quema."
+    },
+    {
+      "id": "bicho-remolino",
+      "name": "Remolino",
+      "kind": "habilidad",
+      "weight": 1,
+      "when": {
+        "monster": true
+      },
+      "level": 1,
+      "cost": "action",
+      "resource": "short_rest",
+      "usesPerRest": 1,
+      "target": "enemy",
+      "resolution": "save",
+      "rangeFeet": 5,
+      "saveDc": 15,
+      "saveAbility": "strength",
+      "damage": "2d8",
+      "damageType": "Bludgeoning",
+      "condition": "Restrained",
+      "conditionRounds": 1,
+      "note": "El elemental de agua envuelve a quien tiene delante y lo aprieta."
+    },
+    {
+      "id": "bicho-torbellino",
+      "name": "Torbellino",
+      "kind": "habilidad",
+      "weight": 1,
+      "when": {
+        "monster": true
+      },
+      "level": 1,
+      "cost": "action",
+      "resource": "short_rest",
+      "usesPerRest": 1,
+      "target": "enemy",
+      "resolution": "save",
+      "rangeFeet": 5,
+      "saveDc": 13,
+      "saveAbility": "strength",
+      "damage": "3d8",
+      "damageType": "Bludgeoning",
+      "condition": "Prone",
+      "conditionRounds": 1,
+      "note": "El elemental de aire levanta a quien pilla y lo tira al suelo."
+    },
+    {
+      "id": "bicho-aliento-dragon-blanco",
+      "name": "Aliento del dragón blanco",
+      "kind": "habilidad",
+      "weight": 1,
+      "when": {
+        "monster": true
+      },
+      "level": 1,
+      "cost": "action",
+      "resource": "long_rest",
+      "usesPerRest": 1,
+      "target": "enemy",
+      "resolution": "save",
+      "rangeFeet": 30,
+      "area": {
+        "shape": "cone",
+        "size": 30
+      },
+      "saveDc": 15,
+      "saveAbility": "constitution",
+      "damage": "10d8",
+      "damageType": "Cold",
+      "element": "frio",
+      "note": "Un cono de hielo de 30 pies. Quien aguanta con Constitución, recibe la mitad."
+    },
+    {
+      "id": "bicho-aliento-dragon-rojo",
+      "name": "Aliento del dragón rojo",
+      "kind": "habilidad",
+      "weight": 1,
+      "when": {
+        "monster": true
+      },
+      "level": 1,
+      "cost": "action",
+      "resource": "long_rest",
+      "usesPerRest": 1,
+      "target": "enemy",
+      "resolution": "save",
+      "rangeFeet": 30,
+      "area": {
+        "shape": "cone",
+        "size": 30
+      },
+      "saveDc": 17,
+      "saveAbility": "dexterity",
+      "damage": "16d6",
+      "damageType": "Fire",
+      "element": "fuego",
+      "note": "Un cono de fuego de 30 pies. Quien se aparta a tiempo (Destreza), recibe la mitad."
     }
   ]
 }

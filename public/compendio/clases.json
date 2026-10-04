@@ -73,6 +73,23 @@
       "note": "Llega antes, ve primero y dispara desde donde no le ven."
     },
     {
+      "id": "paladin", "name": "Paladín", "kind": "clase", "weight": 8,
+      "tags": ["fe", "armas"],
+      "hitDie": "1d10",
+      "kit": ["forma-cota-malla", "forma-espada-larga", "forma-escudo", "forma-jabalina"],
+      "effects": [{ "stat": "strength", "modifier": 2 }, { "stat": "charisma", "modifier": 1 }, { "stat": "dexterity", "modifier": -1 }],
+      "casting": { "progression": "half", "ability": "charisma", "mode": "prepared", "prepares": "half", "focus": "Divine" },
+      "note": "Delante con la espada y el escudo, y con las manos cura. Desde el nivel 2 gasta sus conjuros en golpes de luz (Castigo divino). Es lento: la cota pesa."
+    },
+    {
+      "id": "monje", "name": "Monje", "kind": "clase", "weight": 7,
+      "tags": ["fe", "gente"],
+      "hitDie": "1d8",
+      "kit": ["forma-lanza", "forma-daga", "forma-morral"],
+      "effects": [{ "stat": "dexterity", "modifier": 2 }, { "stat": "wisdom", "modifier": 1 }, { "stat": "strength", "modifier": -1 }],
+      "note": "Pelea con las manos y sin armadura: su defensa es la Destreza y la Sabiduría. Pega dos veces por turno y, desde el nivel 2, corre más que nadie. Un golpe fuerte le hace daño de verdad."
+    },
+    {
       "id": "soldado", "name": "Soldado", "kind": "clase", "weight": 8,
       "tags": ["historico", "armas"],
       "hitDie": "1d10",
@@ -88,6 +105,24 @@
       "effects": [{ "stat": "intelligence", "modifier": 2 }, { "stat": "strength", "modifier": -2 }],
       "casting": { "progression": "full", "ability": "intelligence", "mode": "spellbook", "list": "mago", "spellbook": { "start": 2, "perLevel": 1 }, "rituals": "book", "ritualsOnly": true, "focus": "Arcane" },
       "note": "Lo que sabe es lo único que sirve contra algunas cosas: lanza rituales de su libro, sin espacios de conjuro. Pelear no es lo suyo."
+    },
+    {
+      "id": "brujo", "name": "Brujo", "kind": "clase", "weight": 7,
+      "tags": ["arcano", "terror"],
+      "hitDie": "1d8",
+      "kit": ["forma-jubon", "forma-daga", "forma-bolsa-componentes"],
+      "effects": [{ "stat": "charisma", "modifier": 2 }, { "stat": "wisdom", "modifier": -1 }],
+      "casting": { "progression": "pact", "ability": "charisma", "mode": "known", "cantrips": { "1": 2, "4": 3, "10": 4 }, "known": { "1": 2, "2": 3, "3": 4, "4": 5, "5": 6, "6": 7, "7": 8, "8": 9, "9": 10, "11": 11, "13": 12, "15": 13, "17": 14, "19": 15 }, "focus": "Arcane" },
+      "note": "Su magia se la dio alguien a cambio de algo. Pocos espacios, que vuelven con un descanso corto, y una Descarga sobrenatural que no se acaba nunca."
+    },
+    {
+      "id": "hechicero", "name": "Hechicero", "kind": "clase", "weight": 7,
+      "tags": ["arcano"],
+      "hitDie": "1d6",
+      "kit": ["forma-lanza", "forma-daga", "forma-bolsa-componentes"],
+      "effects": [{ "stat": "charisma", "modifier": 2 }, { "stat": "strength", "modifier": -2 }],
+      "casting": { "progression": "full", "ability": "charisma", "mode": "known", "cantrips": { "1": 4, "4": 5, "10": 6 }, "known": { "1": 2, "2": 4, "3": 6, "4": 7, "5": 9, "6": 10, "7": 11, "8": 12, "9": 14, "10": 15, "11": 16, "13": 17, "15": 18, "17": 19, "18": 20, "19": 21, "20": 22 }, "focus": "Arcane" },
+      "note": "La magia la lleva en la sangre: sabe pocos conjuros, pero los retuerce con sus puntos de hechicería. Con armadura no sabe moverse."
     }
   ]
 }

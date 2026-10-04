@@ -38,7 +38,7 @@ const ROLES = [
     { id: 'frente', words: /guerrer|barbar|paladin|soldad|luchador|monj/, brings: 'Aguanta en primera fila y para los golpes que irían a los de atrás.', lacks: 'nadie aguanta delante' },
     { id: 'explora', words: /explorador|picar[oa]|ladron|batidor/, brings: 'Ve las trampas, abre cerraduras y tira de lejos.', lacks: 'nadie ve las trampas ni abre cerraduras' },
     { id: 'cura', words: /clerig|druid|sanador|bard[oa]/, brings: 'Cura y levanta a quien cae.', lacks: 'nadie cura' },
-    { id: 'magia', words: /\bmag[oa]\b|hechicer|brujo|erudit/, brings: 'Hace magia: fuego, hielo y lo que no se para con una espada.', lacks: 'nadie hace magia' },
+    { id: 'magia', words: /\bmag[oa]\b|hechicer|bruj[oa]|erudit/, brings: 'Hace magia: fuego, hielo y lo que no se para con una espada.', lacks: 'nadie hace magia' },
 ];
 
 /**

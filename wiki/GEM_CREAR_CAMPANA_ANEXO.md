@@ -2,7 +2,7 @@
 title: Anexo del Gem de campañas — el contrato entero y las muestras largas
 tags: [gem, gemini, campanas, contrato, anexo]
 created: 2026-10-02
-updated: 2026-10-03
+updated: 2026-10-04
 author: generado por tools/gem-instructions.mjs
 ---
 
@@ -18,7 +18,7 @@ mandan sobre cualquier cosa de aquí.
 
 # Contrato del paquete de campaña
 
-Versión 1. Generado desde el motor el 2026-10-03.
+Versión 1. Generado desde el motor el 2026-10-04.
 
 Devuelve **solo JSON válido** que cumpla este esquema. Una sección por respuesta si el
 libro es largo; el orden recomendado es: world → locations → confidants → npcs → bestiary → items → boards → quests → heroes → dialogues → plot.
@@ -1627,6 +1627,31 @@ libro es largo; el orden recomendado es: world → locations → confidants → 
           "attackRangeFeet": {
             "type": "integer",
             "description": "5 en cuerpo a cuerpo, 30 a 120 a distancia."
+          },
+          "resistances": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Opcional: los tipos de daño que resiste, como en su ficha de 5e (Fire, Cold, Necrotic…): le hacen la mitad."
+          },
+          "immunities": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Opcional: los tipos de daño a los que es inmune: no le hacen nada."
+          },
+          "vulnerabilities": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Opcional: los tipos de daño que le duelen el doble."
+          },
+          "regeneration": {
+            "type": "integer",
+            "description": "Opcional: los PV que recupera al empezar cada turno (el trol, 10). El fuego o el ácido se lo cortan hasta su siguiente turno."
           },
           "perception": {
             "type": "integer",

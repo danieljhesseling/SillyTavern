@@ -17,6 +17,7 @@ import {
 } from '../campaign/campaign-editor.js';
 import { LOCATION_TYPES, BOARD_LIMITS, ITEM_RARITIES } from '../campaign/campaign-pack-schema.js';
 import { getProfileOptions, DEFAULT_PROFILE } from '../combat/enemy-ai.js';
+import { traitsOf } from '../combat/monster-traits.js';
 
 /** Cómo se lee cada tipo de sitio. Sabor: el motor no cambia ninguna regla por esto. */
 const TYPE_LABELS = {
@@ -680,6 +681,7 @@ export async function openCampaignEditor({
                         name: made.name, hp: made.hp, armorClass: made.armorClass,
                         cr: made.cr, speed: made.speed, attackRangeFeet: made.attackRangeFeet,
                         profile: made.profile,
+                        ...traitsOf(made),
                         description: enemy.description || made.description,
                     });
                     refreshSummary();

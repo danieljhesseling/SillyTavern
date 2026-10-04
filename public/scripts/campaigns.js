@@ -2462,7 +2462,11 @@ async function createStartingHero(worldName, { another = false } = {}) {
             const pieces = kitOf(classRow, String(picked.background ?? ''));
             const items = pieces.map((piece, i) => ({ ...piece, id: `k${i}` }));
             const equippedItems = Object.fromEntries(Object.entries(kitSlots(pieces)).map(([slot, i]) => [slot, `k${i}`]));
-            const worn = armourClassOf({ member: { items, equippedItems }, dexModifier: Math.floor((Number(spec.dex) - 10) / 2) });
+            // Con su clase y sus números: la Defensa sin armadura del monje sale de su Sabiduría.
+            const worn = armourClassOf({
+                member: { items, equippedItems, class: spec.charClass, wisdom: spec.wis, constitution: spec.con },
+                dexModifier: Math.floor((Number(spec.dex) - 10) / 2),
+            });
             return {
                 stats: { strength: spec.str, dexterity: spec.dex, constitution: spec.con, intelligence: spec.int, wisdom: spec.wis, charisma: spec.cha },
                 maxHp: spec.maxHp,
@@ -2493,7 +2497,8 @@ async function createStartingHero(worldName, { another = false } = {}) {
 
     // Lo que sabe hacer por ser de su clase. Sin bateria de habilidades no sabe nada
     // de serie, igual que hasta ahora.
-    const known = abilitiesFor({ compendium, className: answers.className, level: 1 });
+    // Y lo que le da su sangre: el aliento del dracónido, las manos del aasimar.
+    const known = abilitiesFor({ compendium, className: answers.className, level: 1, race: String(pickedBy(razas, answers.race)?.name ?? answers.race ?? '') });
     // R4: y los conjuros de su clase, del grimorio: la magia no está en el compendio.
     const spells = spellsForClass({ className: answers.className, level: 1 });
 

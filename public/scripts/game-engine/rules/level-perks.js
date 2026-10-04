@@ -27,6 +27,7 @@
 import { ARC_PERKS } from '../campaign/companion-arcs.js';
 import { TREE_NODES, nextTreeSteps } from './class-trees.js';
 import { boonBonus } from './epic-boons.js';
+import { classBonus } from './class-features.js';
 
 /** @type {Perk[]} */
 export const PERKS = [
@@ -124,7 +125,9 @@ export function perkBonus(member, kind, skill = '') {
         return sum + (Number(perk.effect[kind]) || 0);
     }, 0)
         // E8.2: los dones épicos, después del nivel 20, suman donde suman las mejoras.
-        + boonBonus(member, kind, skill);
+        + boonBonus(member, kind, skill)
+        // Y lo que da la clase sin elegirlo: el Estilo de combate del paladín (`class-features.js`).
+        + classBonus(member, kind);
 }
 
 /**

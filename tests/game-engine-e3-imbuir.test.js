@@ -18,7 +18,7 @@ const sword = { id: 'w1', name: 'Espada larga', damageDice: '1d8', damageType: '
 const fighter = { id: 'f', name: 'Bran', spellWeapon: null };
 
 describe('E3.3: la fila de Arma elemental', () => {
-    test('existe, es de nivel 3, de concentración, a un aliado tocando, y del explorador (2024)', () => {
+    test('existe, es de nivel 3, de concentración, a un aliado tocando, y del explorador y el paladín (2024)', () => {
         expect(row).toBeTruthy();
         expect(validateSpell(row, { classIds })).toEqual([]);
         expect(spell.level).toBe(3);
@@ -26,7 +26,7 @@ describe('E3.3: la fila de Arma elemental', () => {
         expect(spell.durationRounds).toBe(600);
         expect(spell.target).toBe('ally');
         expect(spell.rangeFeet).toBe(5);
-        expect(spell.classes).toEqual(['explorador']);
+        expect(spell.classes).toEqual(['explorador', 'paladin']);
         expect(spellsOfClass([spell], 'explorador', { level: 3 }).map(s => s.id)).toEqual(['conj-arma-elemental']);
         expect(findSpell([spell], 'conj-arma-elemental')).toBe(spell);
     });

@@ -97,6 +97,8 @@ export function textFormLine(gender) {
  */
 export function classIcon(className) {
     const kind = String(className ?? '').toLowerCase();
+    if (/palad/.test(kind)) return 'fa-sun';
+    if (/monj|monk/.test(kind)) return 'fa-hand-back-fist';
     if (/soldad|guerr|mercen|caballer/.test(kind)) return 'fa-shield-halved';
     if (/erudit|mag[oa]|sabi|escrib/.test(kind)) return 'fa-book-open';
     if (/cl[eé]rig|monj|frail|sacerd/.test(kind)) return 'fa-hands-praying';

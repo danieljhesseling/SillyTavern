@@ -55,7 +55,7 @@ describe('conjuros.json, la comprobación del compendio (J19.11)', () => {
     test('cada clase que lanza tiene conjuros de cada nivel al que llega, del 1 al 5', () => {
         expect(coverageGaps({ classRows: classes, catalogue, levels: [1, 2, 3, 4, 5] })).toEqual([]);
         const casters = classes.filter((/** @type {any} */ c) => casterOf(c));
-        expect(casters.map((/** @type {any} */ c) => c.id).sort()).toEqual(['bardo', 'clerigo', 'druida', 'erudito', 'explorador', 'mago']);
+        expect(casters.map((/** @type {any} */ c) => c.id).sort()).toEqual(['bardo', 'brujo', 'clerigo', 'druida', 'erudito', 'explorador', 'hechicero', 'mago', 'paladin']);
         // D-J27: el erudito solo lanza rituales de la lista del mago; tiene que haber alguno.
         const ritualists = casters.filter((/** @type {any} */ c) => casterOf(c)?.ritualsOnly);
         expect(ritualists.map((/** @type {any} */ c) => c.id)).toEqual(['erudito']);

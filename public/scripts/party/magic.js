@@ -44,6 +44,7 @@ import {
 import { describeLootItem } from '../game-engine/combat/loot-items.js';
 import { normalizeSpell, findSpell } from '../game-engine/rules/spell-catalogue.js';
 import { startingSpells, hasSpellLists } from '../game-engine/rules/spell-picks.js';
+import { afterMetamagic, carefulVictims, withMetamagic } from '../game-engine/rules/sorcery.js';
 import { startConcentration, readConcentration, linkedTo, describeConcentration, endConcentration } from '../game-engine/rules/concentration.js';
 import { zoneFromSpell, placeZone, zoneFlagsAt, resolveZoneEffect, clearZones, endZones, kindOf, ZONE_KINDS } from '../game-engine/board/spell-zones.js';
 import { planSummon, dismissSummons } from '../game-engine/rules/summons.js';
@@ -81,6 +82,7 @@ import { heroPreparation, preparedByRole, roleOf } from '../game-engine/rules/le
 import { brawlRefused } from './brawl.js';
 import { weaponOf } from '../game-engine/rules/equipment.js';
 import { canImbue, imbueTier, bestImbueType, readImbue, planAllyImbue, IMBUE_ICONS } from '../game-engine/rules/elemental-weapon.js';
+import { feltDamage, stopsRegeneration } from '../game-engine/combat/monster-traits.js';
 import { getAttackRangeFeet } from './combat-rules.js';
 import { takeBroth } from '../game-engine/campaign/guild-perks.js';
 
@@ -918,6 +920,20 @@ export async function openAbilitiesEditor() {
 
 /** El catalogo de habilidades del paquete de reglas activo. */
 /**
+ * La fila de razas.json de alguien del grupo, por el nombre de su raza: lo que su sangre
+ * resiste (el dracónido rojo, el fuego). Null si no hay batería o no es una de las escritas.
+ *
+ * @param {any} member
+ * @returns {any|null}
+ */
+function raceRowOf(member) {
+    const race = String(member?.race ?? '').trim().toLowerCase();
+    if (!race || !lastCompendium?.has?.('razas')) return null;
+    return lastCompendium.find('razas', { kind: 'raza' })
+        .find((/** @type {any} */ row) => String(row?.name ?? '').trim().toLowerCase() === race) ?? null;
+}
+
+/**
  * Lo que se puede saber hacer: el paquete del mundo, y debajo las filas del compendio.
  *
  * R3: las habilidades de clase del héroe salían del compendio y se escribían en su ficha,
@@ -1127,13 +1143,14 @@ export function spellAbilitiesOf(member) {
     const others = othersOf(member);
     return [...cantrips, ...spells].filter(spell => spell.castingTime !== 'reaction').map(spell => {
         const verdict = canCastSpell({ member, classRow, spell, inCombat: true, carried: Array.isArray(member.items) ? member.items : [], silenced, others });
-        const ability = spellToAbility(spell, {
+        // El hechicero: con Conjuro rápido, lo de una acción va con la adicional.
+        const ability = withMetamagic(spellToAbility(spell, {
             slotLevel: verdict.ok && verdict.slotLevel > 0 ? verdict.slotLevel : spell.level,
             casterLevel: Number(member.level) || 1,
             modifier: stats.modifier,
             saveDc: stats.saveDc,
             attackBonus: stats.attackBonus,
-        });
+        }), member);
         if (!verdict.ok) ability.blocked = verdict.reason;
         return ability;
     });
@@ -1153,13 +1170,13 @@ export function spellAbilityAt(member, spellId, slotLevel) {
     const spell = spellFor(spellId);
     if (!spell || spell.level < 1 || !casterOf(classRow)) return null;
     const stats = spellcastingStats(member, classRow);
-    return normalizeAbilities([spellToAbility(spell, {
+    return normalizeAbilities([withMetamagic(spellToAbility(spell, {
         slotLevel: Math.max(spell.level, Math.floor(Number(slotLevel) || 0)),
         casterLevel: Number(member.level) || 1,
         modifier: stats.modifier,
         saveDc: stats.saveDc,
         attackBonus: stats.attackBonus,
-    })])[0] ?? null;
+    }), member)])[0] ?? null;
 }
 
 /**
@@ -1533,6 +1550,9 @@ export function useAbility(member, ability, target, slotLevel = 0) {
 
     // R3: a uno o en área, por el mismo camino que los enemigos.
     const lines = [...resolveAbilityOnBoard({ actor: member, side: 'party', ability, subject }), ...paid, ...magicConsequences(ability)];
+    // El hechicero: la Metamagia se gasta con el conjuro que la usa.
+    const keptConditions = afterMetamagic(member, ability);
+    if (keptConditions) member.activeConditions = keptConditions;
 
     saveCombatState();
     savePartyState();
@@ -1593,7 +1613,8 @@ export function abilityVictims(actor, side, ability, subject) {
         ...partyMembers.filter(m => !m.dead && (Number(m.hp) || 0) > 0).map(m => ({ kind: /** @type {'party'} */ ('party'), ref: m, ...boardCellOf(m) })),
     ];
     const friendly = ability.target === 'ally';
-    const victims = creaturesIn(cells, creatures).filter(v => (friendly ? v.kind === side : v.ref !== actor));
+    // Con Conjuro cuidadoso (el hechicero), su área no toca a los suyos.
+    const victims = carefulVictims(actor, side, ability, creaturesIn(cells, creatures).filter(v => (friendly ? v.kind === side : v.ref !== actor)));
     return { cells, victims };
 }
 
@@ -1673,6 +1694,16 @@ export function resolveAbilityOnBoard({ actor, side, ability, subject }) {
                 lines.push(...plan.lines.slice(1));
             } else {
                 lines.push(...plan.lines);
+            }
+            // Lo que resiste quien lo recibe (el trol, el dracónido rojo con el fuego): la mitad,
+            // nada o el doble. Y el fuego o el ácido le cortan la regeneración a un trol.
+            if (plan.damage > 0 && ability.damageType) {
+                const felt = feltDamage({ damage: plan.damage, type: ability.damageType, target, raceRow: victim.kind === 'party' ? raceRowOf(target) : null });
+                if (felt.note) {
+                    lines.push(`🛡️ ${target.name}: ${felt.note} (${felt.damage}).`);
+                    plan.damage = felt.damage;
+                }
+                if (plan.damage > 0 && victim.kind !== 'party' && stopsRegeneration(ability.damageType)) /** @type {any} */ (target).regenBlocked = true;
             }
             lines.push(...applyAbilityPlan({ actor, side, victim, plan }));
             if (ability.drain && victim.kind !== side) drained += plan.damage;

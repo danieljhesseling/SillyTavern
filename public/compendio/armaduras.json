@@ -14,11 +14,11 @@
         "pesada"
       ],
       "weight": 8,
-      "kg": 9,
+      "kg": 25,
       "slot": "body",
       "pattern": "{forma} de {material}",
-      "armorClass": 14,
-      "dexMode": "half"
+      "armorClass": 16,
+      "dexMode": "none"
     },
     {
       "id": "forma-coraza",
@@ -28,14 +28,14 @@
       "itemType": "armor",
       "category": "placa",
       "tags": [
-        "pesada",
+        "media",
         "militar"
       ],
       "weight": 6,
-      "kg": 11,
+      "kg": 9,
       "slot": "body",
       "pattern": "{forma} de {material}",
-      "armorClass": 15,
+      "armorClass": 14,
       "dexMode": "half"
     },
     {
@@ -131,9 +131,9 @@
         "tosca"
       ],
       "weight": 8,
-      "kg": 7,
+      "kg": 5.5,
       "armorClass": 12,
-      "dexMode": "full",
+      "dexMode": "half",
       "slot": "body",
       "pattern": "{forma} de {material}",
       "number": "p"
@@ -177,7 +177,7 @@
       "category": "placa",
       "tags": [],
       "weight": 4,
-      "kg": 20,
+      "kg": 30,
       "armorClass": 18,
       "dexMode": "none",
       "slot": "body",
@@ -259,6 +259,40 @@
       "slot": "feet",
       "pattern": "{forma} de {material}",
       "number": "p"
+    },
+    {
+      "id": "forma-cota-escamas",
+      "name": "Cota de escamas",
+      "gender": "f",
+      "kind": "forma",
+      "itemType": "armor",
+      "category": "malla",
+      "tags": [
+        "media"
+      ],
+      "weight": 7,
+      "kg": 20,
+      "armorClass": 14,
+      "dexMode": "half",
+      "slot": "body",
+      "pattern": "{forma} de {material}"
+    },
+    {
+      "id": "forma-cota-bandas",
+      "name": "Cota de bandas",
+      "gender": "f",
+      "kind": "forma",
+      "itemType": "armor",
+      "category": "placa",
+      "tags": [
+        "pesada"
+      ],
+      "weight": 4,
+      "kg": 27,
+      "armorClass": 17,
+      "dexMode": "none",
+      "slot": "body",
+      "pattern": "{forma} de {material}"
     }
   ]
 }

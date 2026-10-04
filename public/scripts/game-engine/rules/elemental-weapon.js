@@ -51,6 +51,15 @@ const TYPE_ALIASES = {
     lightning: 'Lightning', rayo: 'Lightning', relampago: 'Lightning',
     acid: 'Acid', acido: 'Acid',
     thunder: 'Thunder', trueno: 'Thunder',
+    // Los demás tipos de 5e: no se imbuyen, pero un bicho los resiste (bestiario, razas).
+    poison: 'Poison', veneno: 'Poison',
+    necrotic: 'Necrotic', necrotico: 'Necrotic',
+    radiant: 'Radiant', radiante: 'Radiant',
+    psychic: 'Psychic', psiquico: 'Psychic',
+    force: 'Force',
+    bludgeoning: 'Bludgeoning', contundente: 'Bludgeoning',
+    piercing: 'Piercing', perforante: 'Piercing',
+    slashing: 'Slashing', cortante: 'Slashing',
 };
 
 /** @param {any} value @returns {string} */
@@ -214,7 +223,7 @@ export function imbueFor(member, weapon) {
  * @param {any} value
  * @returns {string[]}
  */
-function typeList(value) {
+export function typeList(value) {
     const raw = Array.isArray(value) ? value : text(value).split(/[,;]/);
     return raw.map(v => /** @type {Record<string, string>} */ (TYPE_ALIASES)[plain(v)] ?? '').filter(Boolean);
 }
@@ -264,7 +273,9 @@ export function bestImbueType({ types = IMBUE_TYPES, enemies = [] } = {}) {
     const list = (Array.isArray(types) && types.length > 0 ? types : IMBUE_TYPES).filter(t => IMBUE_TYPES.includes(t));
     const foes = (Array.isArray(enemies) ? enemies : []).filter(Boolean);
     const WEIGHT = { immune: -4, resist: -2, vulnerable: 3, normal: 0 };
-    let best = { type: list[0] ?? 'Fire', score: 0, why: '' };
+    // Desde menos infinito: el primero también se puntúa. Con 0, el fuego ganaba contra un
+    // elemental de fuego aunque no le hiciera nada, porque nadie lo superaba.
+    let best = { type: list[0] ?? 'Fire', score: -Infinity, why: '' };
     for (const type of list) {
         let score = 0;
         let why = '';

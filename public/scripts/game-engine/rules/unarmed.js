@@ -14,6 +14,7 @@
  */
 
 import { proficiencyBonus } from './checks.js';
+import { featureClassOf, martialArtsDie } from './class-features.js';
 
 /** El alcance, en pies: la casilla de al lado. */
 export const UNARMED_REACH_FEET = 5;
@@ -39,12 +40,36 @@ export function abilityMod(score) {
 }
 
 /**
- * El golpe: 1 más la Fuerza. Nunca menos de 1 (el motor no hace golpes de 0).
+ * Con qué característica pega sin armas: la Fuerza; el monje, la mejor entre Fuerza y
+ * Destreza (Artes marciales).
  *
  * @param {any} member
+ * @returns {number}
+ */
+export function unarmedAbilityMod(member) {
+    const strength = abilityMod(member?.strength);
+    return featureClassOf(member) === 'monk' ? Math.max(strength, abilityMod(member?.dexterity)) : strength;
+}
+
+/**
+ * El golpe: 1 más la Fuerza. Nunca menos de 1 (el motor no hace golpes de 0).
+ *
+ * El monje (Artes marciales, 2024) tira su dado (1d6 al empezar, `martialArtsDie`) más la mejor
+ * entre Fuerza y Destreza. Sin `roll`, la media del dado hacia abajo, como el daño fijo de los
+ * bichos.
+ *
+ * @param {any} member
+ * @param {((formula: string) => number)|null} [roll] Tira un dado y dice lo que sale.
  * @returns {{damage: number, modifier: number, formula: string, damageType: string}}
  */
-export function unarmedDamage(member) {
+export function unarmedDamage(member, roll = null) {
+    if (featureClassOf(member) === 'monk') {
+        const modifier = unarmedAbilityMod(member);
+        const die = martialArtsDie(member?.level);
+        const sides = Number(die.split('d')[1]) || 6;
+        const rolled = roll ? Math.max(1, Math.floor(Number(roll(die)) || 1)) : Math.floor((sides + 1) / 2);
+        return { damage: Math.max(1, rolled + modifier), modifier, formula: `${die}${modifier >= 0 ? '+' : ''}${modifier}`, damageType: 'contundente' };
+    }
     const modifier = abilityMod(member?.strength);
     return { damage: Math.max(1, 1 + modifier), modifier, formula: `1${modifier >= 0 ? '+' : ''}${modifier}`, damageType: 'contundente' };
 }

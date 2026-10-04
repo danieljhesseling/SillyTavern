@@ -64,7 +64,8 @@ describe('combate y compañeros', () => {
     });
 
     test('48: cada oficio tiene tres ramas de tres, y se sube en orden', () => {
-        expect(TREE_NODES).toHaveLength(45);
+        // Siete oficios: los cinco de siempre, y los juramentos del paladín y las tradiciones del monje.
+        expect(TREE_NODES).toHaveLength(63);
         expect(familyOf({ class: 'Guerrero' })).toBe('marcial');
         expect(familyOf({ class: 'Pícaro' })).toBe('astuto');
         expect(familyOf({ class: 'Nadie' })).toBe('');

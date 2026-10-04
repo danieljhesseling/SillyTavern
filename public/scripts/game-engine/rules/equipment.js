@@ -26,6 +26,8 @@
  * Ver wiki/ROADMAP_COMPENDIO.md, B3 y B4.
  */
 
+import { unarmoredDefense } from './class-features.js';
+
 /**
  * La escalera de dados, de menos a mas.
  *
@@ -211,8 +213,15 @@ export function armourClassOf({ member, dexModifier }) {
 
     let armorClass = 10;
     let dexAllowed = dex;
+    // La Defensa sin armadura del monje y del bárbaro (`class-features.js`): sin armadura de
+    // cuerpo, su cuenta manda sobre el 10 de partida, y cuenta como puesta.
+    const unarmored = base > 0 ? null : unarmoredDefense(member, dex, { shield: Boolean(equippedIn(member, 'shield')) });
 
-    if (base > 0) {
+    if (unarmored) {
+        armorClass = unarmored.armorClass;
+        dexAllowed = 0;
+        from.push(...unarmored.from);
+    } else if (base > 0) {
         armorClass = base;
         from.push(`${text(body.name) || 'Armadura'} ${base}`);
         const mode = DEX_MODES.includes(text(body.dexMode)) ? text(body.dexMode) : 'full';
@@ -241,7 +250,7 @@ export function armourClassOf({ member, dexModifier }) {
         from.push(`${text(item.name) || slot} ${plus >= 0 ? '+' : ''}${plus}`);
     }
 
-    return { armorClass, from, worn: base > 0 };
+    return { armorClass, from, worn: base > 0 || Boolean(unarmored) };
 }
 
 /**

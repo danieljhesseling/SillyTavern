@@ -49,6 +49,7 @@ import { getPlot } from './plot.js';
 import { postCombatNarration, postForModel, saverOn } from './narration.js';
 import { speakingNote } from './talk.js';
 import { localMemory } from './town.js';
+import { traitsOf } from '../game-engine/combat/monster-traits.js';
 
 /**
  * Apuntar un hecho, con el dia de hoy.
@@ -196,6 +197,7 @@ export async function exploreHere(name = '') {
             entityType: 'monster', name: monster.name, hp: monster.hp, maxHp: monster.hp,
             armorClass: monster.armorClass, cr: monster.cr, speed: monster.speed,
             profile: monster.profile, attackRangeFeet: monster.attackRangeFeet, abilities: monster.abilities ?? [],
+            ...traitsOf(monster),
             ...(monster.domable !== undefined ? { domable: monster.domable } : {}),
             generated: true,
         };

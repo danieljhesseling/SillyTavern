@@ -423,3 +423,54 @@ Las otras dos clases nuevas de `clases.json`, con sus habilidades (`habilidades.
 | Mano abierta, Paso de sombra, Mano que sana | Cualquiera · las tradiciones del monje (árbol) | `Pixel art icon, 64x64, transparent background, dark fantasy, no text, no frame.` + (a) `An open palm strike knocking a shape off its feet`; (b) `A dark figure stepping into a pool of shadow`; (c) `An open hand glowing with soft green healing light`. | 64×64 | `habilidades/tec-mano-abierta.png`, `tec-paso-sombra.png`, `tec-mano-sana.png` |
 
 Después de dibujarlos: `node tools/pixel-manifest.mjs`.
+
+## Razas, equipo y bestiario del SRD (ROADMAP_CONTENIDO_DND, 2026-10-04) — pendiente: sin créditos
+
+Las razas, armas, armaduras y bichos nuevos de `razas.json`, `armas.json`, `armaduras.json` y `bestiario.json`, y sus habilidades (`habilidades.json`). Mientras no estén, las razas salen con el icono de Font Awesome, las armas y armaduras con el de su clase de cosa, y los bichos con el dibujo de «enemigo sin dibujo».
+
+### Especies (64×64, fondo transparente, la cabeza, como `especies/README.md`)
+
+| Quién o qué | Campaña | Prompt | Tamaño | Dónde va |
+| :--- | :--- | :--- | :--- | :--- |
+| Dracónido rojo | Cualquiera · la tarjeta de especie al crear | `Pixel art icon, 64x64, transparent background, fantasy, no text, no frame. Head of a dragonborn: a proud reptilian humanoid face with deep red scales, short horns swept back, golden eyes and a faint wisp of smoke from the nostrils.` | 64×64 | `especies/raza-draconido-rojo.png` |
+| Dracónido azul | Cualquiera · la tarjeta de especie al crear | `Pixel art icon, 64x64, transparent background, fantasy, no text, no frame. Head of a dragonborn: a reptilian humanoid face with bright blue scales, a single forward horn on the snout, yellow eyes and tiny sparks of lightning around the jaw.` | 64×64 | `especies/raza-draconido-azul.png` |
+| Dracónido blanco | Cualquiera · la tarjeta de especie al crear | `Pixel art icon, 64x64, transparent background, fantasy, no text, no frame. Head of a dragonborn: a reptilian humanoid face with white-silver scales, a spiked crest, pale blue eyes and frost on the scales of the chin.` | 64×64 | `especies/raza-draconido-blanco.png` |
+| Aasimar | Cualquiera · la tarjeta de especie al crear | `Pixel art icon, 64x64, transparent background, fantasy, no text, no frame. Head of an aasimar: a young woman with dark skin, short silver hair, softly glowing white eyes and a faint golden halo of light behind her head.` | 64×64 | `especies/raza-aasimar.png` |
+| Goliat | Cualquiera · la tarjeta de especie al crear | `Pixel art icon, 64x64, transparent background, fantasy, no text, no frame. Head of a goliath: a bald grey-skinned giant-kin man with dark lichen-like markings on the cheeks and forehead, heavy brow and a calm stare.` | 64×64 | `especies/raza-goliat.png` |
+
+### Equipo (64×64, fondo transparente, el objeto solo)
+
+| Quién o qué | Campaña | Prompt | Tamaño | Dónde va |
+| :--- | :--- | :--- | :--- | :--- |
+| Hoz, Látigo, Lucero del alba, Pico de guerra | Cualquiera · botín, tienda y forja | `Pixel art icon, 64x64, transparent background, fantasy item, no text, no frame.` + (a) `A small farming sickle with a curved iron blade and wooden handle`; (b) `A coiled leather whip with a wrapped grip`; (c) `A morningstar: a wooden haft topped with an iron ball covered in spikes`; (d) `A war pick: a short haft with a heavy pointed iron spike head`. | 64×64 | `armas/forma-hoz.png`, `forma-latigo.png`, `forma-lucero-alba.png`, `forma-pico-guerra.png` |
+| Martillo ligero, Gran clava, Dardo, Ballesta pesada | Cualquiera · botín, tienda y forja | `Pixel art icon, 64x64, transparent background, fantasy item, no text, no frame.` + (a) `A small one-handed hammer with an iron head`; (b) `A huge knotted wooden club, thicker at the end, bound with iron bands`; (c) `Three small throwing darts with feathered tails, fanned`; (d) `A large heavy crossbow with a steel bow and a crank on the stock`. | 64×64 | `armas/forma-martillo-ligero.png`, `forma-gran-clava.png`, `forma-dardo.png`, `forma-ballesta-pesada.png` |
+| Cota de escamas, Cota de bandas | Cualquiera · botín, tienda y forja | `Pixel art icon, 64x64, transparent background, fantasy item, no text, no frame.` + (a) `A scale mail coat: overlapping small steel scales on a leather coat`; (b) `A splint armor: vertical metal strips riveted over a padded coat, with pauldrons`. | 64×64 | `armaduras/forma-cota-escamas.png`, `forma-cota-bandas.png` |
+
+### Habilidades (64×64, fondo transparente)
+
+| Quién o qué | Campaña | Prompt | Tamaño | Dónde va |
+| :--- | :--- | :--- | :--- | :--- |
+| Alientos del dracónido | Cualquiera · habilidad de raza | `Pixel art icon, 64x64, transparent background, fantasy, no text, no frame.` + (a) `A cone of red-orange fire breath coming out of a dragon-like mouth`; (b) `A straight line of blue lightning breath from a dragon-like mouth`; (c) `A cone of white frost breath with ice crystals from a dragon-like mouth`. | 64×64 | `habilidades/hab-aliento-fuego.png`, `hab-aliento-rayo.png`, `hab-aliento-frio.png` |
+| Manos curativas, Golpe de las colinas | Cualquiera · habilidad de raza | `Pixel art icon, 64x64, transparent background, fantasy, no text, no frame.` + (a) `Two hands glowing with soft white celestial light, small feathers of light`; (b) `A huge grey fist knocking a small figure off its feet, dust cloud`. | 64×64 | `habilidades/hab-manos-curativas.png`, `hab-golpe-colinas.png` |
+
+### Bichos (96×96, fondo transparente)
+
+Prompt: `Pixel art creature sprite, 96x96, transparent background, full body, facing left, bright fantasy, clean saturated palette, black outline, no text, no frame.` + cómo es.
+
+| Quién o qué | Campaña | Cómo es | Tamaño | Dónde va |
+| :--- | :--- | :--- | :--- | :--- |
+| Orco | Cualquiera · bestiario | `A muscular grey-green orc warrior with tusks, crude hide armor and a big iron greataxe, snarling.` | 96×96 | `bestias/bestia-orco.png` |
+| Hobgoblin | Cualquiera · bestiario | `A disciplined hobgoblin soldier with orange-red skin, a flat nose, banded armor, a round shield and a longsword held in guard.` | 96×96 | `bestias/bestia-hobgoblin.png` |
+| Trol | Cualquiera · bestiario | `A tall lanky green troll with long arms and claws, a hunched back, a big warty nose and messy dark hair; one wound closing with fresh skin.` | 96×96 | `bestias/bestia-trol.png` |
+| Cubo gelatinoso | Cualquiera · bestiario | `A translucent green gelatinous cube filling a corridor, with bones, a sword and coins floating inside it.` | 96×96 | `bestias/bestia-cubo-gelatinoso.png` |
+| Mímico | Cualquiera · bestiario | `A wooden treasure chest that is really a monster: the lid opens into a mouth of sharp teeth with a long sticky tongue.` | 96×96 | `bestias/bestia-mimico.png` |
+| Diablillo | Cualquiera · bestiario | `A tiny red devil imp with bat wings, small horns and a barbed tail stinger, grinning, flying.` | 96×96 | `bestias/bestia-diablillo.png` |
+| Quasit | Cualquiera · bestiario | `A small green demon quasit with long clawed fingers, pointed ears, thin limbs and a sly evil grin, crouching.` | 96×96 | `bestias/bestia-quasit.png` |
+| Elemental de fuego | Cualquiera · bestiario | `A roaring humanoid shape made entirely of orange and yellow flames, no legs, a fiery trail below.` | 96×96 | `bestias/bestia-elemental-fuego.png` |
+| Elemental de agua | Cualquiera · bestiario | `A tall wave of clear blue water rising into a vague humanoid shape with foam and two glowing eyes.` | 96×96 | `bestias/bestia-elemental-agua.png` |
+| Elemental de tierra | Cualquiera · bestiario | `A hulking humanoid of brown rock and soil, boulder fists, crystals in the shoulders and glowing amber eyes.` | 96×96 | `bestias/bestia-elemental-tierra.png` |
+| Elemental de aire | Cualquiera · bestiario | `A swirling grey-white whirlwind with a vague face in the middle, leaves and dust spinning around it.` | 96×96 | `bestias/bestia-elemental-aire.png` |
+| Dragón blanco joven | Cualquiera · bestiario | `A young white dragon with icy white scales, spiked head crest, wings half open and frost breath leaking from its jaws.` | 96×96 | `bestias/bestia-dragon-blanco-joven.png` |
+| Dragón rojo joven | Cualquiera · bestiario | `A young red dragon with crimson scales, swept-back horns, wings spread and fire glowing in its open mouth.` | 96×96 | `bestias/bestia-dragon-rojo-joven.png` |
+
+Después de dibujarlos: `node tools/pixel-manifest.mjs`.

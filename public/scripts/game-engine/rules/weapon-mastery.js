@@ -80,6 +80,15 @@ export const FORM_MASTERY = {
     'forma-ballesta-mano': 'vex',
     'forma-arco-compuesto': 'slow',
     'forma-cerbatana': 'vex',
+    // Las del SRD que faltaban (ROADMAP_CONTENIDO_DND, sección 4).
+    'forma-hoz': 'nick',
+    'forma-latigo': 'slow',
+    'forma-lucero-alba': 'sap',
+    'forma-pico-guerra': 'sap',
+    'forma-martillo-ligero': 'nick',
+    'forma-gran-clava': 'push',
+    'forma-dardo': 'vex',
+    'forma-ballesta-pesada': 'push',
 };
 
 /**
@@ -119,11 +128,16 @@ const NAME_MASTERY = [
     [/tridente|trident/, 'topple'],
     [/lanza|spear/, 'sap'],
     [/hoz|sickle/, 'nick'],
+    [/l[aá]tigo|\bwhip\b/, 'slow'],
+    [/pico de guerra|war ?pick/, 'sap'],
+    [/gran clava|greatclub/, 'push'],
+    [/dardo|\bdarts?\b/, 'vex'],
 ];
 
 /** Las formas ligeras (`tags: ["ligera"]` en armas.json): las que dejan golpear con la otra mano. */
 const LIGHT_FORMS = new Set([
     'forma-daga', 'forma-espada-corta', 'forma-cimitarra', 'forma-cuchillo-monte', 'forma-hacha-mano', 'forma-ballesta-mano',
+    'forma-hoz', 'forma-martillo-ligero',
 ]);
 
 /** Y por el nombre, para lo que no dice su forma. */

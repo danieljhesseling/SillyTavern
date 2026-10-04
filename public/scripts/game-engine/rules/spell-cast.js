@@ -24,9 +24,10 @@
  */
 
 import { casterOf, lowestFreeSlot, slotsLeft, SLOT_LABELS } from './spell-slots.js';
-import { isCastableBy, maxSpellLevel, scaleCantrip } from './spell-prep.js';
+import { cantripMultiplier, isCastableBy, maxSpellLevel, scaleCantrip } from './spell-prep.js';
 import { CASTING_LABELS, CASTING_MINUTES, SPELL_SCHOOLS, DAMAGE_TYPES, ABILITY_NAMES } from './spell-catalogue.js';
 import { describeArea } from './area.js';
+import { hasCondition, QUICKENED } from './sorcery.js';
 
 /** Lo que cuenta como foco de cada tipo, por cómo empieza su nombre (sin acentos). */
 export const FOCUS_WORDS = {
@@ -209,7 +210,13 @@ function withModifier(formula, modifier) {
  */
 export function spellToAbility(spell, { slotLevel = spell.level, casterLevel = 1, modifier = 0, saveDc = 13, attackBonus = 0 } = {}) {
     const up = upcastSpell(spell, slotLevel);
-    const damage = spell.level === 0 ? scaleCantrip(spell.damage, casterLevel) : up.damage;
+    // Un truco de rayos (la Descarga sobrenatural) sube en rayos, no en dados: dos en el 5,
+    // tres en el 11 y cuatro en el 17.
+    const rayCantrip = spell.level === 0 && spell.rays > 0;
+    const damage = spell.level === 0 && !rayCantrip ? scaleCantrip(spell.damage, casterLevel) : up.damage;
+    const rays = rayCantrip ? spell.rays * cantripMultiplier(casterLevel) : up.rays;
+    // La Descarga agonizante: el modificador, desde el nivel que diga la fila.
+    const addsModifier = spell.addModifier || (spell.addModifierFrom > 0 && casterLevel >= spell.addModifierFrom);
     return {
         id: spell.id,
         name: spell.name,
@@ -222,7 +229,7 @@ export function spellToAbility(spell, { slotLevel = spell.level, casterLevel = 1
         resolution: spell.attack ? 'attack' : spell.save ? 'save' : 'auto',
         saveAbility: spell.save || 'dexterity',
         saveDc,
-        damage: spell.addModifier ? withModifier(damage, modifier) : damage,
+        damage: addsModifier ? withModifier(damage, modifier) : damage,
         damageType: spell.damageType,
         healing: spell.addModifier ? withModifier(up.healing, modifier) : up.healing,
         condition: spell.condition,
@@ -238,7 +245,7 @@ export function spellToAbility(spell, { slotLevel = spell.level, casterLevel = 1
         onSave: spell.onSave,
         attackBonus,
         targets: up.targets,
-        rays: up.rays,
+        rays,
         point: spell.target === 'point',
         ...(spell.drain ? { drain: true } : {}),
         ...(spell.combat === false ? { combat: false } : {}),
@@ -483,7 +490,9 @@ export function canCastSpell({
 
     if (inCombat && spell.combat === false) return no('Esto no se usa peleando.');
     if (inCombat && minutes > 0) return no(`${spell.name} lleva ${CASTING_LABELS[/** @type {'minute'} */ (spell.castingTime)]}: en mitad de una pelea no da tiempo.`);
-    if (inCombat && spell.castingTime === 'action' && !hasAction) return no('La acción de este turno ya está gastada.');
+    // Con Conjuro rápido (el hechicero), el de una acción va con la adicional.
+    const quick = spell.castingTime === 'action' && hasBonus && hasCondition(member, QUICKENED);
+    if (inCombat && spell.castingTime === 'action' && !hasAction && !quick) return no('La acción de este turno ya está gastada.');
     if (inCombat && spell.castingTime === 'bonus' && !hasBonus) return no('La acción adicional de este turno ya está gastada.');
     if (inCombat && spell.castingTime === 'reaction' && !hasReaction) return no('La reacción de esta ronda ya está gastada.');
 

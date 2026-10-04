@@ -73,9 +73,11 @@ export const DEFAULT_LOOT_RULES = {
             'Pergamino de Bola de fuego', 'Pergamino de Relámpago', 'Varita de escarcha',
             // J19.9: lo que pide sintonía.
             'Bastón de las llamas',
+            'Poción de curación superior',
         ],
         'Very Rare': [
             'Capa de sombras', 'Hoja del alba', 'Talismán del corazón firme',
+            'Poción de curación suprema',
         ],
     },
 };

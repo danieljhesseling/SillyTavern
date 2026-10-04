@@ -135,6 +135,7 @@ import { raiseFame } from './town.js';
 import { countStat } from './menus.js';
 import { brawlOf } from '../game-engine/combat/brawl.js';
 import { brawlTalk, endBrawl } from './brawl.js';
+import { traitsOf } from '../game-engine/combat/monster-traits.js';
 
 /**
  * La iniciativa de alguien: el d20 y lo que suma. H19 (tanda 22): no sale aún; se apunta en
@@ -1239,6 +1240,8 @@ export function instancesFromPlacements(placements) {
             abilities: /** @type {any} */ (template).abilities,
             // J19.12: la bruja que lanza conjuros de verdad, con sus espacios (`enemy-spells.js`).
             ...(/** @type {any} */ (template).spellcasting ? { spellcasting: /** @type {any} */ (template).spellcasting } : {}),
+            // Lo que resiste y si se regenera (`combat/monster-traits.js`).
+            ...traitsOf(template),
             gridX: placement.x,
             gridY: placement.y,
         });
@@ -1533,6 +1536,8 @@ export function startCombat(template, count, gridWidth = 50, gridHeight = 50) {
             abilities: /** @type {any} */ (template).abilities,
             // J19.12: sus conjuros, si los lanza.
             ...(/** @type {any} */ (template).spellcasting ? { spellcasting: /** @type {any} */ (template).spellcasting } : {}),
+            // Lo que resiste y si se regenera (`combat/monster-traits.js`).
+            ...traitsOf(template),
             gridX: spawnCells[i]?.x ?? 0,
             gridY: spawnCells[i]?.y ?? 0,
         });

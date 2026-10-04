@@ -37,7 +37,8 @@ describe('el equipo inicial por clase (J1.3)', () => {
     test('el guerrero ya no empieza con CA 10: cota de malla, espada y escudo', () => {
         const { pieces, member } = wearing('guerrero');
         expect(pieces.map(p => p.name)).toEqual(['Cota de malla', 'Espada larga', 'Escudo']);
-        expect(armourClassOf({ member, dexModifier: 0 }).armorClass).toBe(16);
+        // La cota de malla de 2024: 16, sin Destreza; con el escudo, 18.
+        expect(armourClassOf({ member, dexModifier: 0 }).armorClass).toBe(18);
     });
 
     test('con un arma a dos manos no se lleva el escudo', () => {

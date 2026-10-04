@@ -16,6 +16,7 @@ import {
 } from './combat-rules.js';
 import { weaponOf as heldWeapon, weaponBonus } from '../game-engine/rules/equipment.js';
 import { imbueFor, imbueDamage, IMBUE_WORDS, IMBUE_ICONS } from '../game-engine/rules/elemental-weapon.js';
+import { feltDamage, stopsRegeneration } from '../game-engine/combat/monster-traits.js';
 import {
     setCell as setTerrainCell, getCoverBonus, cellKey, isPassable, getCell,
 } from '../game-engine/board/terrain.js';
@@ -869,7 +870,11 @@ export function throwItem(kind, targetId) {
     }));
     if (kind === 'aceite') {
         if (hit) {
-            const burn = rollDiceDetailed(spec.damageDice || '2d4', 4).total;
+            // Es fuego: al elemental de fuego no le hace nada, y al trol le corta la regeneración.
+            const felt = feltDamage({ damage: rollDiceDetailed(spec.damageDice || '2d4', 4).total, type: 'Fire', target });
+            const burn = felt.damage;
+            if (felt.note) lines.push(`🛡️ ${target.name}: ${felt.note}.`);
+            if (burn > 0) /** @type {any} */ (target).regenBlocked = true;
             target.currentHp = Math.max(0, (Number(target.currentHp) || 0) - burn);
             combatEncounter.tally = noteDealt(combatEncounter.tally, member.id, burn, target.currentHp === 0);
             floatOnToken(enemyTokenId(target), `-${burn}`, 'damage');
@@ -1572,7 +1577,9 @@ function imbueHit(member, weapon, target, isCrit) {
     if (!imbue || !imbue.dice) return { damage: 0, line: '' };
     const rolled = rollDiceDetailed(imbue.dice, 4).total + (isCrit ? rollDiceDetailed(imbue.dice, 4).total : 0);
     const out = imbueDamage(rolled, imbue.type, target);
-    const word = /** @type {Record<string, string>} */ (IMBUE_WORDS)[imbue.type] ?? 'fuego';
+    // El fuego o el ácido del arma le cortan la regeneración a un trol hasta su turno.
+    if (out.damage > 0 && stopsRegeneration(imbue.type)) target.regenBlocked = true;
+    const word =/** @type {Record<string, string>} */ (IMBUE_WORDS)[imbue.type] ?? 'fuego';
     const icon = /** @type {Record<string, string>} */ (IMBUE_ICONS)[imbue.type] ?? '✨';
     const how = [isCrit ? 'crítico, dados dobles' : '', out.note].filter(Boolean).join('; ');
     // El total del golpe ya lo lleva: se dice qué parte es del arma imbuida.

@@ -2,7 +2,7 @@
 title: Instrucciones para el Gem — el paquete de una campaña
 tags: [gem, gemini, campanas, importar, contrato, seeding]
 created: 2026-09-22
-updated: 2026-10-03
+updated: 2026-10-04
 author: generado por tools/gem-instructions.mjs
 ---
 
@@ -23,7 +23,7 @@ author: generado por tools/gem-instructions.mjs
 | Qué | Dónde va | Tamaño |
 | :--- | :--- | :--- |
 | **Las instrucciones cortas** (la sección 3 de este documento) | En la caja **Instrucciones** del Gem, enteras | 20 mil caracteres |
-| **El anexo**: `wiki/GEM_CREAR_CAMPANA_ANEXO.md` | Se sube **tal cual** como archivo de conocimiento del Gem | 174 mil caracteres |
+| **El anexo**: `wiki/GEM_CREAR_CAMPANA_ANEXO.md` | Se sube **tal cual** como archivo de conocimiento del Gem | 175 mil caracteres |
 
 Las instrucciones cortas dicen quién es el Gem, cómo trabaja, **cómo se escribe hoy** (las reglas de
 las conversaciones, las presentaciones, el grupo de 4, las facciones, los plazos y el aspecto, cada una
@@ -157,7 +157,7 @@ Con asterisco, lo obligatorio. El esquema entero, con lo que significa cada camp
 - `locations`: `name`*, `type`, `description`, `region`, `factionName`, `hidden`, `routes`, `places`, `sights`, `treasure`
 - `confidants`: `name`*, `description`, `id`, `gender`, `className`, `aspecto`, `arcana`, `initialBondPoints`, `arrivals`, `scenes`, `romance`, `misionPersonal`
 - `npcs`: `name`*, `where`*, `trade`, `id`, `gender`, `stranger`, `famous`, `wants`, `knows`, `secret`, `voice`, `aspecto`, `service`
-- `bestiary`: `name`*, `hp`*, `armorClass`*, `cr`*, `profile`*, `attackRangeFeet`, `perception`, `seasons`, `domable`, `abilities`, `description`, `aspecto`
+- `bestiary`: `name`*, `hp`*, `armorClass`*, `cr`*, `profile`*, `attackRangeFeet`, `resistances`, `immunities`, `vulnerabilities`, `regeneration`, `perception`, `seasons`, `domable`, `abilities`, `description`, `aspecto`
 - `items`: `name`*, `type`, `rarity`, `weight`, `damageDice`, `damageType`, `slot`, `description`, `boundTo`
 - `boards`: `id`*, `name`*, `locationName`, `map`, `partyStart`, `enemies`, `waves`, `light`, `ward`, `image`, `grid`, `zones`, `elevation`, `avoid`, `parley`, `traps`
 - `quests`: `id`*, `name`*, `act`, `description`, `boardId`, `locationName`, `enemies`, `levels`, `objectives`*

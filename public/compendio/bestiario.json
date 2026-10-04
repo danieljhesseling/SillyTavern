@@ -729,6 +729,502 @@
       "rangeFeet": 5,
       "weakness": "Si se le acerca alguien, se equivoca de palabra.",
       "quirk": "Guarda las distancias y lanza desde atrás."
+    },
+    {
+      "id": "bestia-orco",
+      "name": "Orco",
+      "kind": "arquetipo",
+      "gender": "m",
+      "profile": "aggressive",
+      "tags": [
+        "gente",
+        "banda",
+        "srd"
+      ],
+      "weight": 7,
+      "cr": 0.5,
+      "when": {
+        "biome": [
+          "montana",
+          "bosque",
+          "cueva",
+          "llanura",
+          "norte"
+        ],
+        "cr": [
+          0.25,
+          3
+        ]
+      },
+      "hpFactor": 1,
+      "acBonus": 2,
+      "speed": 30,
+      "rangeFeet": 5,
+      "weakness": "Carga sin mirar: un muro de escudos o una trampa lo paran en seco.",
+      "quirk": "Corre hacia el más cercano con el hacha en alto, sin esperar a nadie."
+    },
+    {
+      "id": "bestia-hobgoblin",
+      "name": "Hobgoblin",
+      "kind": "arquetipo",
+      "gender": "m",
+      "profile": "guardian",
+      "tags": [
+        "gente",
+        "banda",
+        "militar",
+        "srd"
+      ],
+      "weight": 6,
+      "cr": 0.5,
+      "when": {
+        "biome": [
+          "llanura",
+          "bosque",
+          "ruina",
+          "camino",
+          "montana"
+        ],
+        "cr": [
+          0.25,
+          3
+        ]
+      },
+      "hpFactor": 0.6,
+      "acBonus": 4,
+      "speed": 30,
+      "rangeFeet": 5,
+      "weakness": "Sin su fila se pone nervioso: si se le separa de los suyos, duda.",
+      "quirk": "Pelea hombro con hombro con los suyos y nunca se adelanta solo."
+    },
+    {
+      "id": "bestia-trol",
+      "name": "Trol",
+      "kind": "arquetipo",
+      "gender": "m",
+      "profile": "aggressive",
+      "tags": [
+        "gigante",
+        "bruto",
+        "regenera",
+        "srd"
+      ],
+      "weight": 4,
+      "cr": 5,
+      "regeneration": 10,
+      "when": {
+        "biome": [
+          "pantano",
+          "bosque",
+          "montana",
+          "cueva",
+          "norte"
+        ],
+        "cr": [
+          3,
+          9
+        ]
+      },
+      "hpFactor": 1.25,
+      "acBonus": 2,
+      "speed": 30,
+      "rangeFeet": 10,
+      "weakness": "Se le cierran las heridas cada turno, salvo si le ha dado fuego o ácido.",
+      "quirk": "Va a por el que más sangra y no lo suelta."
+    },
+    {
+      "id": "bestia-cubo-gelatinoso",
+      "name": "Cubo gelatinoso",
+      "kind": "arquetipo",
+      "gender": "m",
+      "profile": "guardian",
+      "tags": [
+        "cieno",
+        "lento",
+        "srd"
+      ],
+      "weight": 4,
+      "cr": 2,
+      "immunities": [
+        "Acid"
+      ],
+      "abilities": [
+        "bicho-engullir"
+      ],
+      "when": {
+        "biome": [
+          "cueva",
+          "ruina",
+          "cripta"
+        ],
+        "cr": [
+          1,
+          5
+        ]
+      },
+      "hpFactor": 1.9,
+      "acBonus": -4,
+      "speed": 15,
+      "rangeFeet": 5,
+      "weakness": "Lento y fácil de acertar: si se le ve venir, se le deja atrás.",
+      "quirk": "Avanza por el pasillo tragándose lo que encuentra, huesos y monedas incluidos."
+    },
+    {
+      "id": "bestia-mimico",
+      "name": "Mímico",
+      "kind": "arquetipo",
+      "gender": "m",
+      "profile": "guardian",
+      "tags": [
+        "cambiaformas",
+        "emboscada",
+        "srd"
+      ],
+      "weight": 4,
+      "cr": 2,
+      "immunities": [
+        "Acid"
+      ],
+      "abilities": [
+        "bicho-pegarse"
+      ],
+      "when": {
+        "biome": [
+          "ruina",
+          "cueva",
+          "cripta",
+          "ciudad"
+        ],
+        "cr": [
+          1,
+          5
+        ]
+      },
+      "hpFactor": 1.75,
+      "acBonus": 0,
+      "speed": 15,
+      "rangeFeet": 5,
+      "weakness": "Es lento: quien no se queda pegado a él puede alejarse.",
+      "quirk": "Se hace pasar por un cofre o una puerta y espera a que alguien lo toque."
+    },
+    {
+      "id": "bestia-diablillo",
+      "name": "Diablillo",
+      "kind": "arquetipo",
+      "gender": "m",
+      "profile": "skirmisher",
+      "tags": [
+        "infernal",
+        "vuelo",
+        "srd"
+      ],
+      "weight": 5,
+      "cr": 1,
+      "resistances": [
+        "Cold"
+      ],
+      "immunities": [
+        "Fire",
+        "Poison"
+      ],
+      "abilities": [
+        "bicho-aguijon"
+      ],
+      "when": {
+        "biome": [
+          "ciudad",
+          "ruina",
+          "cripta"
+        ],
+        "cr": [
+          0.5,
+          4
+        ]
+      },
+      "hpFactor": 1,
+      "acBonus": 2,
+      "speed": 40,
+      "rangeFeet": 5,
+      "weakness": "El fuego no le hace nada: hay que pegarle con otra cosa.",
+      "quirk": "Pica y se aparta volando: le gusta más hacer daño que ganar."
+    },
+    {
+      "id": "bestia-quasit",
+      "name": "Quasit",
+      "kind": "arquetipo",
+      "gender": "m",
+      "profile": "coward",
+      "tags": [
+        "demonio",
+        "cambiaformas",
+        "srd"
+      ],
+      "weight": 5,
+      "cr": 1,
+      "resistances": [
+        "Cold",
+        "Fire",
+        "Lightning"
+      ],
+      "immunities": [
+        "Poison"
+      ],
+      "abilities": [
+        "bicho-asustar"
+      ],
+      "when": {
+        "biome": [
+          "ruina",
+          "cripta",
+          "pantano",
+          "cueva"
+        ],
+        "cr": [
+          0.5,
+          4
+        ]
+      },
+      "hpFactor": 1.1,
+      "acBonus": 2,
+      "speed": 40,
+      "rangeFeet": 5,
+      "weakness": "Es cobarde: en cuanto le hieren de verdad, huye.",
+      "quirk": "Asusta primero y ataca después, siempre al que tiembla."
+    },
+    {
+      "id": "bestia-elemental-fuego",
+      "name": "Elemental de fuego",
+      "kind": "arquetipo",
+      "gender": "m",
+      "profile": "aggressive",
+      "tags": [
+        "elemental",
+        "fuego",
+        "srd"
+      ],
+      "weight": 3,
+      "cr": 5,
+      "immunities": [
+        "Fire",
+        "Poison"
+      ],
+      "abilities": [
+        "bicho-toque-igneo"
+      ],
+      "when": {
+        "biome": [
+          "desierto",
+          "montana",
+          "ruina",
+          "cueva"
+        ],
+        "cr": [
+          3,
+          9
+        ]
+      },
+      "hpFactor": 1.48,
+      "acBonus": 0,
+      "speed": 50,
+      "rangeFeet": 5,
+      "weakness": "El agua lo apaga: le cuesta cruzar un charco.",
+      "quirk": "Prende todo lo que toca, y no mira si son de los suyos."
+    },
+    {
+      "id": "bestia-elemental-agua",
+      "name": "Elemental de agua",
+      "kind": "arquetipo",
+      "gender": "m",
+      "profile": "guardian",
+      "tags": [
+        "elemental",
+        "agua",
+        "srd"
+      ],
+      "weight": 3,
+      "cr": 5,
+      "resistances": [
+        "Acid"
+      ],
+      "immunities": [
+        "Poison"
+      ],
+      "abilities": [
+        "bicho-remolino"
+      ],
+      "when": {
+        "biome": [
+          "costa",
+          "pantano",
+          "ruina"
+        ],
+        "cr": [
+          3,
+          9
+        ]
+      },
+      "hpFactor": 1.55,
+      "acBonus": 1,
+      "speed": 30,
+      "rangeFeet": 5,
+      "weakness": "El frío lo vuelve lento: se le pega el hielo.",
+      "quirk": "Envuelve al que tiene delante y no lo suelta."
+    },
+    {
+      "id": "bestia-elemental-tierra",
+      "name": "Elemental de tierra",
+      "kind": "arquetipo",
+      "gender": "m",
+      "profile": "aggressive",
+      "tags": [
+        "elemental",
+        "piedra",
+        "lento",
+        "srd"
+      ],
+      "weight": 3,
+      "cr": 5,
+      "vulnerabilities": [
+        "Thunder"
+      ],
+      "immunities": [
+        "Poison"
+      ],
+      "when": {
+        "biome": [
+          "montana",
+          "cueva",
+          "ruina"
+        ],
+        "cr": [
+          3,
+          9
+        ]
+      },
+      "hpFactor": 1.25,
+      "acBonus": 2,
+      "speed": 30,
+      "rangeFeet": 5,
+      "weakness": "El trueno lo resquebraja: le duele el doble.",
+      "quirk": "Sale del suelo bajo los pies de quien menos se lo espera."
+    },
+    {
+      "id": "bestia-elemental-aire",
+      "name": "Elemental de aire",
+      "kind": "arquetipo",
+      "gender": "m",
+      "profile": "skirmisher",
+      "tags": [
+        "elemental",
+        "vuelo",
+        "srd"
+      ],
+      "weight": 3,
+      "cr": 5,
+      "resistances": [
+        "Lightning",
+        "Thunder"
+      ],
+      "immunities": [
+        "Poison"
+      ],
+      "abilities": [
+        "bicho-torbellino"
+      ],
+      "when": {
+        "biome": [
+          "montana",
+          "llanura",
+          "costa",
+          "desierto"
+        ],
+        "cr": [
+          3,
+          9
+        ]
+      },
+      "hpFactor": 1.2,
+      "acBonus": 1,
+      "speed": 60,
+      "rangeFeet": 5,
+      "weakness": "En una cueva estrecha no tiene sitio para girar.",
+      "quirk": "Levanta a los que pilla y los tira lejos."
+    },
+    {
+      "id": "bestia-dragon-blanco-joven",
+      "name": "Dragón blanco joven",
+      "kind": "arquetipo",
+      "gender": "m",
+      "profile": "aggressive",
+      "tags": [
+        "dragon",
+        "vuelo",
+        "frio",
+        "srd"
+      ],
+      "weight": 2,
+      "cr": 6,
+      "immunities": [
+        "Cold"
+      ],
+      "abilities": [
+        "bicho-aliento-dragon-blanco"
+      ],
+      "when": {
+        "biome": [
+          "norte",
+          "montana",
+          "cueva"
+        ],
+        "cr": [
+          5,
+          10
+        ]
+      },
+      "hpFactor": 1.4,
+      "acBonus": 1,
+      "speed": 40,
+      "rangeFeet": 10,
+      "weakness": "El fuego le duele de verdad, y lo sabe: se aparta de las antorchas.",
+      "quirk": "Abre la pelea con su aliento helado y luego va a por el que se ha quedado quieto."
+    },
+    {
+      "id": "bestia-dragon-rojo-joven",
+      "name": "Dragón rojo joven",
+      "kind": "arquetipo",
+      "gender": "m",
+      "profile": "aggressive",
+      "tags": [
+        "dragon",
+        "vuelo",
+        "fuego",
+        "srd"
+      ],
+      "weight": 2,
+      "cr": 10,
+      "immunities": [
+        "Fire"
+      ],
+      "abilities": [
+        "bicho-aliento-dragon-rojo"
+      ],
+      "when": {
+        "biome": [
+          "montana",
+          "cueva",
+          "desierto"
+        ],
+        "cr": [
+          7,
+          14
+        ]
+      },
+      "hpFactor": 1.38,
+      "acBonus": 1,
+      "speed": 40,
+      "rangeFeet": 10,
+      "weakness": "Lo que más quiere es su tesoro: si alguien lo toca, deja todo lo demás.",
+      "quirk": "Abre la pelea con su aliento de fuego y luego vuela a por el que más brilla."
     }
   ]
 }

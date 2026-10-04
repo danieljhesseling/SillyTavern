@@ -132,6 +132,48 @@ export const TREES = {
             ]) },
         },
     },
+    // El paladín: sus juramentos de 2024 (wiki/gemini/ROADMAP_CONTENIDO_DND.md).
+    juramento: {
+        label: 'Juramento',
+        branches: {
+            devocion: { label: 'Devoción', nodes: branchOf('juramento', 'devocion', [
+                ['Fe firme', '+1 a la CA.', { armorClass: 1 }],
+                ['Palabra limpia', '+2 a Persuasión.', { skill: 'persuasion', amount: 2 }],
+                ['Arma sagrada', 'Aprende Arma sagrada: el arma brilla y acierta mejor toda la pelea.', { ability: 'tec-arma-sagrada' }],
+            ]) },
+            venganza: { label: 'Venganza', nodes: branchOf('juramento', 'venganza', [
+                ['Brazo justo', '+1 al ataque.', { attack: 1 }],
+                ['Sin descanso', '+2 a la iniciativa.', { initiative: 2 }],
+                ['Voto de enemistad', 'Aprende Voto de enemistad: señala a uno y todos le aciertan mejor.', { ability: 'tec-voto-enemistad' }],
+            ]) },
+            gloria: { label: 'Gloria', nodes: branchOf('juramento', 'gloria', [
+                ['Paso de atleta', '+5 pies de velocidad.', { speed: 5 }],
+                ['Brazos de atleta', '+2 a Atletismo.', { skill: 'athletics', amount: 2 }],
+                ['Golpe inspirador', 'Aprende Golpe inspirador: los de alrededor recobran vida.', { ability: 'tec-golpe-inspirador' }],
+            ]) },
+        },
+    },
+    // El monje: sus tradiciones de 2024.
+    disciplina: {
+        label: 'Disciplina',
+        branches: {
+            abierta: { label: 'Mano abierta', nodes: branchOf('disciplina', 'abierta', [
+                ['Golpe seco', '+1 al ataque.', { attack: 1 }],
+                ['Pies ligeros', '+5 pies de velocidad.', { speed: 5 }],
+                ['Técnica de la mano abierta', 'Aprende Técnica de la mano abierta: un golpe que tira al suelo.', { ability: 'tec-mano-abierta' }],
+            ]) },
+            sombra: { label: 'Sombra', nodes: branchOf('disciplina', 'sombra', [
+                ['Pisada suave', '+2 a Sigilo.', { skill: 'stealth', amount: 2 }],
+                ['Ojos de noche', '+2 a Percepción.', { skill: 'perception', amount: 2 }],
+                ['Paso de sombra', 'Aprende Paso de sombra: no se le ve hasta su turno.', { ability: 'tec-paso-sombra' }],
+            ]) },
+            misericordia: { label: 'Misericordia', nodes: branchOf('disciplina', 'misericordia', [
+                ['Cuerpo templado', '+4 PG máximos.', { maxHp: 4 }],
+                ['Calma', '+2 a Perspicacia.', { skill: 'insight', amount: 2 }],
+                ['Mano que sana', 'Aprende Mano que sana: un toque que cierra una herida.', { ability: 'tec-mano-sana' }],
+            ]) },
+        },
+    },
 };
 
 /** Todos los pasos de todos los árboles. */
@@ -145,7 +187,10 @@ export const TREE_NODES = Object.values(TREES).flatMap(tree => Object.values(tre
  */
 export function familyOf(member) {
     const kind = plain(member?.class ?? member?.charClass ?? member?.className);
-    if (/guerr|soldad|barbar|paladin|fighter|caballer|mercenari/.test(kind)) return 'marcial';
+    // El paladín y el monje, con sus juramentos y sus tradiciones (antes iban con Armas y con Fe).
+    if (/palad/.test(kind)) return 'juramento';
+    if (/^(monj|monk)/.test(kind)) return 'disciplina';
+    if (/guerr|soldad|barbar|fighter|caballer|mercenari/.test(kind)) return 'marcial';
     if (/picar|ladron|bardo|rogue|bard|contraband|asesin/.test(kind)) return 'astuto';
     if (/mago|maga|brujo|bruja|hechicer|wizard|sorcer|warlock|alquim/.test(kind)) return 'arcano';
     if (/cleri|sacerd|monj|druid|curand|acolit/.test(kind)) return 'devoto';

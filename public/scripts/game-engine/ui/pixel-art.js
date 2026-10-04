@@ -354,13 +354,22 @@ const CLASS_STARTS = [
     ['guerrero', /^guerrer/], ['barbaro', /^barbar/], ['picaro', /^picar/], ['clerigo', /^clerig/],
     ['druida', /^druid/], ['mago', /^mag[oa](-|$)/], ['bardo', /^bard[oa](-|$)/], ['explorador', /^explorador/],
     ['soldado', /^soldad/], ['erudito', /^erudit/],
+    ['brujo', /^bruj[oa](-|$)/], ['hechicero', /^hechicer/],
+    ['paladin', /^paladin/], ['monje', /^monj[ea](-|$)/],
 ];
+
+/**
+ * La clase cuyo retrato de relleno sirve mientras una no tiene el suyo dibujado (apuntado en
+ * wiki/PIXELLAB_PENDIENTE.md): el brujo y el hechicero llevan la cara del mago; el paladín, la
+ * del clérigo (armadura y símbolo sagrado). El monje no tiene ninguna parecida: sale con la silueta.
+ */
+const HERO_STAND_IN = { brujo: 'mago', hechicero: 'mago', paladin: 'clerigo' };
 
 /**
  * El id de una clase por cómo se escribe: «Pícara» es `picaro`, «Maga» es `mago`.
  *
  * @param {any} name
- * @returns {string} Vacío si no es ninguna de las diez.
+ * @returns {string} Vacío si no es ninguna de las catorce.
  */
 export function classIdOf(name) {
     const said = slugify(name);
@@ -513,10 +522,13 @@ export function artFor(kind, query = {}, manifest = loaded) {
             // Con su especie, si hay retrato de esa especie y esa clase (`raza-humano-mago-mujer`).
             const race = slugify(query.race);
             const races = race ? [...new Set([race, alias('especies', race), alias('especies', masculine(race)), `raza-${race}`, `raza-${masculine(race)}`])] : [];
-            for (const base of races) add('retratos/heroes', base && `${base}-${cls}-${gender}`);
-            add('retratos/heroes', `${cls}-${gender}`);
-            for (const base of races) add('retratos/heroes', base && `${base}-${cls}-${other}`);
-            add('retratos/heroes', `${cls}-${other}`);
+            const stand = /** @type {Record<string, string>} */ (HERO_STAND_IN)[cls];
+            for (const kind of stand ? [cls, stand] : [cls]) {
+                for (const base of races) add('retratos/heroes', base && `${base}-${kind}-${gender}`);
+                add('retratos/heroes', `${kind}-${gender}`);
+                for (const base of races) add('retratos/heroes', base && `${base}-${kind}-${other}`);
+                add('retratos/heroes', `${kind}-${other}`);
+            }
             break;
         }
         case 'mercenary': {

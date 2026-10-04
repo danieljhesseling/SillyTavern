@@ -26,6 +26,7 @@
 import { CAMPAIGN_PACK_VERSION, OBJECTIVE_FIELDS } from './campaign-pack-schema.js';
 import { ASCII_TERRAIN, getCell } from '../board/terrain.js';
 import { DEFAULT_PROFILE } from '../combat/enemy-ai.js';
+import { traitsOf } from '../combat/monster-traits.js';
 
 /**
  * Del tipo de casilla al carácter que lo dibuja.
@@ -194,6 +195,8 @@ export function buildPackFromWorld({ worldName, metadata, entries, synopsis = ''
                     speed: Number(d.speed) || 30,
                     profile: text(d.profile) || DEFAULT_PROFILE,
                     attackRangeFeet: Number(d.attackRangeFeet) || 5,
+                    // Lo que resiste y si se regenera, para que vuelva igual al importarlo.
+                    ...traitsOf(d),
                 });
                 break;
             case 'npc':

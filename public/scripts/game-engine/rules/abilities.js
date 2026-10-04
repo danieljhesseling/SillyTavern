@@ -25,6 +25,7 @@ import { describeElement } from './tags.js';
 import { chargesLeft, canCast, CIRCLE_LABELS } from './grimoire.js';
 import { statusMarkers, STATUS_ICONS } from '../combat/initiative-tracker.js';
 import { gendered } from '../campaign/grammar.js';
+import { hasCondition, INNATE_SORCERY, sorceryLeft, spendSorcery } from './sorcery.js';
 
 /**
  * Tanda 16: los tipos de daño de 5e en castellano, en una palabra («contundente», «fuego»), como
@@ -112,6 +113,8 @@ export const ABILITY_LABELS = {
  * @property {boolean} [combat] R4: `false` si solo sirve fuera del combate.
  * @property {string[]} [aliases] R4: los ids que tenía cuando era una fila de datos.
  * @property {number} [spellLevel] J19: si es un conjuro de 5e (`spellToAbility`), su nivel (0 = truco).
+ * @property {number} [sorceryCost] La Metamagia del hechicero: lo que cuesta en puntos de hechicería.
+ * @property {boolean} [quickened] Va con Conjuro rápido: la acción adicional en vez de la acción.
  * @property {number} [slotLevel] J19: el espacio con el que sale.
  * @property {boolean} [concentration] J19: si pide concentración.
  * @property {'half'|'none'} [onSave] J19: lo que hace una salvación superada con el daño.
@@ -213,6 +216,9 @@ export function normalizeAbility(raw, index = 0) {
             point: Boolean(source.point),
         } : {}),
         ...(text(source.blocked) ? { blocked: text(source.blocked) } : {}),
+        // El hechicero: lo que cuesta en puntos de hechicería, y si va con Conjuro rápido.
+        ...(Number(source.sorceryCost) > 0 ? { sorceryCost: Math.floor(Number(source.sorceryCost)) } : {}),
+        ...(source.quickened ? { quickened: true } : {}),
     };
 }
 
@@ -256,6 +262,8 @@ export function knownAbilities(member, catalogue) {
 export function usesLeft(member, ability) {
     // R4: un conjuro no tiene usos propios: gasta las cargas de su círculo.
     if (typeof ability?.circle === 'number') return chargesLeft(member, ability.circle);
+    // La Metamagia gasta puntos de hechicería, no usos suyos.
+    if (Number(ability?.sorceryCost) > 0) return Math.floor(sorceryLeft(member) / Number(ability.sorceryCost));
     if (ability.resource === 'at_will') return Infinity;
     const spent = Math.max(0, Math.floor(Number(member?.abilityUses?.[ability.id]) || 0));
     return Math.max(0, ability.usesPerRest - spent);
@@ -294,6 +302,7 @@ export function canUseAbility({
 
     if (usesLeft(member, ability) <= 0) {
         const when = ability.resource === 'short_rest' ? 'un descanso corto' : 'un descanso largo';
+        if (Number(ability.sorceryCost) > 0) return { ok: false, reason: `Le faltan puntos de hechicería (cuesta ${ability.sorceryCost}): vuelven con un descanso largo.` };
         return { ok: false, reason: `Sin usos: vuelve con ${when}.` };
     }
 
@@ -346,13 +355,17 @@ export function planAbilityUse({
     let attackTotal = 0;
 
     if (ability.resolution === 'attack') {
-        const attack = roll('1d20');
+        // La Magia innata del hechicero: ventaja al atacar con sus conjuros.
+        const advantage = typeof ability.spellLevel === 'number' && hasCondition(actor, INNATE_SORCERY);
+        const one = roll('1d20');
+        const two = advantage ? roll('1d20') : null;
+        const attack = two && (Number(two.total) || 0) > (Number(one.total) || 0) ? two : one;
         const total = (Number(attack.total) || 0) + attackModifier;
         attackTotal = total;
         crit = attack.natural === 20;
         // Un 1 en el dado siempre falla, como en el golpe con arma (y en lo que se pronostica).
         hit = crit || (Number(attack.natural ?? attack.total) !== 1 && total >= targetAc);
-        lines.push(`🎲 Ataque: d20(${attack.total}) ${attackModifier >= 0 ? '+' : ''}${attackModifier} = ${total} vs CA ${targetAc}`);
+        lines.push(`🎲 Ataque: ${two ? `d20 con ventaja(${one.total}, ${two.total})` : `d20(${attack.total})`} ${attackModifier >= 0 ? '+' : ''}${attackModifier} = ${total} vs CA ${targetAc}`);
         if (!hit) {
             lines.push('❌ Falla.');
             return { ok: true, hit, saved, crit, damage: 0, healing: 0, condition: '', conditionRounds: 0, attackTotal, lines };
@@ -427,6 +440,7 @@ export function planAbilityUse({
  * @returns {Record<string, number>}
  */
 export function spendAbilityUse(member, ability) {
+    if (Number(ability?.sorceryCost) > 0) return spendSorcery(member, Number(ability.sorceryCost));
     if (ability.resource === 'at_will') return { ...(member?.abilityUses ?? {}) };
     const uses = { ...(member?.abilityUses ?? {}) };
     uses[ability.id] = Math.min(ability.usesPerRest, (Number(uses[ability.id]) || 0) + 1);

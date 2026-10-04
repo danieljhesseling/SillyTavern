@@ -52,7 +52,7 @@ export const GUILD_PERKS = {
 /** Qué oficio da qué: por la clase, sin tildes. */
 const CLASS_PERK = [
     { perk: 'templo', words: /clerig|druid|paladin|sacerdot|monj/ },
-    { perk: 'bolsa', words: /picaro|bardo|explorador|ladron|erudit|brujo|hechicer|mago/ },
+    { perk: 'bolsa', words: /picaro|bardo|explorador|ladron|erudit|bruj[oa]|hechicer|mag[oa]/ },
     { perk: 'armas', words: /guerrer|barbar|soldad|luchador/ },
 ];
 
@@ -60,7 +60,7 @@ const CLASS_PERK = [
 const CLASS_LESSON = [
     { perk: 'piel-dura', words: /guerrer|barbar|soldad|paladin|luchador/ },
     { perk: 'paso-de-gato', words: /picaro|ladron|explorador/ },
-    { perk: 'labia', words: /bardo|brujo|hechicer/ },
+    { perk: 'labia', words: /bardo|bruj[oa]|hechicer/ },
     { perk: 'buen-ojo', words: /clerig|druid|monj|sacerdot|erudit|mago/ },
 ];
 

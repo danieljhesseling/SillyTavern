@@ -40,6 +40,7 @@ import { readSights } from './sights.js';
 import { spellById, magicInData } from '../rules/grimoire.js';
 import { resolveGender } from './grammar.js';
 import { companionStoryRows, hasStories, STORIES_KEY } from './companion-stories.js';
+import { traitsOf } from '../combat/monster-traits.js';
 
 /**
  * @typedef {Object} EntrySpec
@@ -247,6 +248,8 @@ export function buildPackEntries(pack) {
                 // Sin `weapon`, el juego la saca de su descripción («empuña una horca»).
                 ...(text(enemy.weapon) ? { weapon: text(enemy.weapon) } : {}),
                 ...(Number(enemy.potions) > 0 ? { potions: Math.floor(Number(enemy.potions)) } : {}),
+                // Lo que resiste, a lo que es inmune, lo que le duele el doble y si se regenera.
+                ...traitsOf(enemy),
                 // E1.1: lo que oye (su Sabiduría y su Percepción): pasar junto a uno dormido.
                 ...(Number(enemy.wisdom) > 0 ? { wisdom: Math.floor(Number(enemy.wisdom)) } : {}),
                 ...(Number.isFinite(Number(enemy.perception)) && enemy.perception !== undefined && enemy.perception !== null ? { perception: Math.floor(Number(enemy.perception)) } : {}),

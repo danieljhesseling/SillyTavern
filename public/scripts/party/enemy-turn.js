@@ -70,6 +70,7 @@ import {
     concentrationAfterHurt, counterAgainst, enemyWalksZones, hurtSummon, livingSummons, shieldAgainst,
 } from './spell-turn.js';
 import { brawlEnemyTurn, brawlKnockOut } from './brawl.js';
+import { regenerationTurn } from '../game-engine/combat/monster-traits.js';
 
 /**
  * Resuelve un golpe de un enemigo contra alguien del grupo.
@@ -1107,6 +1108,14 @@ export function resolveEnemyTurnAction(turnEntry) {
     const enemy = combatEncounter.enemies.find(e => e.instanceId === turnEntry.id && e.currentHp > 0);
     if (!enemy) {
         return '[COMBAT] El enemigo no puede actuar (derrotado o no encontrado).';
+    }
+    // El trol se regenera al empezar su turno, salvo si le dio fuego o ácido desde el último.
+    const regen = regenerationTurn(enemy);
+    /** @type {any} */ (enemy).regenBlocked = false;
+    if (regen.heal > 0) enemy.currentHp = Math.min(Number(enemy.maxHp) || enemy.currentHp + regen.heal, enemy.currentHp + regen.heal);
+    if (regen.line) {
+        saveCombatState();
+        postCombatNarration(regen.line.replace(/^(\S+) /u, '$1 [COMBAT] '));
     }
     // R3: dormido, aturdido o paralizado, pierde el turno. Antes era una etiqueta.
     const out = cannotAct(enemy.activeConditions);

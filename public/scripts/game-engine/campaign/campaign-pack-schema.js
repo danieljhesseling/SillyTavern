@@ -765,6 +765,10 @@ function buildSectionSchemas() {
                     description: 'Comportamiento táctico. Solo estos. object: lo que se rompe y no actúa (un cristal, un ídolo).',
                 },
                 attackRangeFeet: { type: 'integer', description: '5 en cuerpo a cuerpo, 30 a 120 a distancia.' },
+                resistances: { type: 'array', items: { type: 'string' }, description: 'Opcional: los tipos de daño que resiste, como en su ficha de 5e (Fire, Cold, Necrotic…): le hacen la mitad.' },
+                immunities: { type: 'array', items: { type: 'string' }, description: 'Opcional: los tipos de daño a los que es inmune: no le hacen nada.' },
+                vulnerabilities: { type: 'array', items: { type: 'string' }, description: 'Opcional: los tipos de daño que le duelen el doble.' },
+                regeneration: { type: 'integer', description: 'Opcional: los PV que recupera al empezar cada turno (el trol, 10). El fuego o el ácido se lo cortan hasta su siguiente turno.' },
                 perception: { type: 'integer', description: 'Opcional: lo que suma a Percepción (el +3 de su ficha de 5e). Cuenta si duerme en un tablero (asleep).' },
                 seasons: { type: 'array', items: { type: 'string' }, description: 'Si migra: las estaciones en que anda (primavera, verano, otono, invierno). Fuera de ellas no sale. Sin nada, todo el año.' },
                 domable: {

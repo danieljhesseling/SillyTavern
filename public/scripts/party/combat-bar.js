@@ -12,7 +12,7 @@
  * contra 15, Estudiar, beber o dar una poción, la otra mano, cambiar de arma y tirarse al suelo.
  */
 
-import { getAbilityModifier, consumeItemInInventory } from '../dnd-system.js';
+import { consumeItemInInventory } from '../dnd-system.js';
 import { getCurrentWorldEnemies } from '../world-info.js';
 import { tokenArt } from '../world-map-renderer.js';
 import { firstArt, isPlainFace } from '../game-engine/ui/pixel-art.js';
@@ -35,7 +35,7 @@ import {
     masteryOf, isLightWeapon, isRangedWeapon, isWeaponItem, hasWeaponMastery, turnFlags, markTurn, readTactics,
     noteStudied, combineEdge, hasVex,
 } from '../game-engine/rules/weapon-mastery.js';
-import { unarmedDamage, unarmedDC, escapeSave, freeHand, saveFails, saveLine } from '../game-engine/rules/unarmed.js';
+import { unarmedDamage, unarmedDC, unarmedAbilityMod, escapeSave, freeHand, saveFails, saveLine } from '../game-engine/rules/unarmed.js';
 import {
     ACTIONS_2024, HIDE_DC, canHide2024, studyDC, studyFacts, newFacts, potionsOf, canStand, offHandWeaponOf, judgeOffHand,
 } from '../game-engine/rules/actions-2024.js';
@@ -760,7 +760,8 @@ export function unarmedStrike(mode, targetId) {
     const round = Number(combatEncounter.round) || 1;
 
     if (mode === 'golpe') {
-        const strength = getAbilityModifier(Number(member.strength) || 10);
+        // El monje (Artes marciales), la mejor entre Fuerza y Destreza.
+        const strength = unarmedAbilityMod(member);
         // Con los puños todo el mundo tiene competencia (2024): Fuerza y competencia.
         const attackMod = strength + proficiencyBonus(member.level) + traitBonus(member, target.name) + perkBonus(member, 'attack');
         const distanceFeet = feetBetween(member, target);
@@ -784,7 +785,8 @@ export function unarmedStrike(mode, targetId) {
         lines.push(`👊 ${member.name} le suelta un golpe a ${target.name}.`);
         lines.push(attackLine({ who: member.name, at: target.name, total, ac, hit, natural, modifier: attackMod, cover, edge: describeEdge(edged, edge.mode, edge.reasons) }));
         if (hit) {
-            const damage = unarmedDamage(member).damage;
+            // El monje tira su dado de Artes marciales.
+            const damage = unarmedDamage(member, (formula) => rollDiceDetailed(formula, 6).total).damage;
             target.currentHp = Math.max(0, (Number(target.currentHp) || 0) - damage);
             combatEncounter.tally = noteDealt(combatEncounter.tally, member.id, damage, target.currentHp === 0);
             floatOnToken(enemyTokenId(target), `-${damage}`, 'damage');

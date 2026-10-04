@@ -52,6 +52,12 @@ export const STATUS_ICONS = {
     // Tanda 10: Correr (la acción de 2024) y Debilitar (la maestría de una maza o una espada larga).
     corriendo: { icon: 'fa-person-running', label: 'Corriendo', effect: 'anda el doble este turno' },
     debilitado: { icon: 'fa-heart-crack', label: 'Debilitado', effect: 'su siguiente ataque va con desventaja' },
+    // La Defensa paciente del monje (habilidades.json): esquivar sin gastar la acción.
+    esquivando: { icon: 'fa-person-running', label: 'Esquivando', effect: 'se le ataca con desventaja hasta su turno' },
+    // El hechicero (rules/sorcery.js): la Magia innata y su Metamagia.
+    'magia innata': { icon: 'fa-fire-flame-curved', label: 'Con magia innata', effect: 'sus conjuros: +1 a la CD y ventaja al atacar con ellos' },
+    'conjuro rápido': { icon: 'fa-bolt-lightning', label: 'Con conjuro rápido listo', effect: 'su próximo conjuro de una acción va con la acción adicional' },
+    'conjuro cuidadoso': { icon: 'fa-hand-holding-heart', label: 'Con conjuro cuidadoso listo', effect: 'su próximo conjuro de área no toca a los suyos' },
 };
 
 /** Shown for a condition the rule pack has but this table does not. */

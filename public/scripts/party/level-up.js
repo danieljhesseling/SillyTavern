@@ -34,6 +34,9 @@ import { classRowOf, spellRows, spellFor, ensureSpellsOf } from './magic.js';
 import { renderLocationMapsPreview } from './board-view.js';
 import { campaign } from './time.js';
 import { postCombatNarration } from './narration.js';
+import { lastCompendium } from './world.js';
+import { abilitiesFor } from '../game-engine/compendio/skills.js';
+import { classLevelPatch } from '../game-engine/rules/class-features.js';
 import { savePartyState, renderPartyMembers, payFromParty } from './roster.js';
 
 /**
@@ -258,10 +261,13 @@ const ABILITY_LABELS = {
  */
 function writeLevelUp({ member, plan, picks, perkId, perkLabel, spellPick, classRow }) {
     const beforeStats = Object.fromEntries(INJURABLE_STATS.map(stat => [stat, Number(member[stat]) || 0]));
+    const fromLevel = Number(member.level) || 1;
     Object.assign(member, buildLevelUpPatch(member, plan, picks));
     // Idea 46: lo elegido, que se nota jugando.
     const perkPatch = perkId ? takePerk(member, perkId) : null;
     if (perkPatch) Object.assign(member, perkPatch);
+    // Lo que da la clase sola al subir: el Movimiento sin armadura del monje (`class-features.js`).
+    Object.assign(member, classLevelPatch(member, fromLevel, Number(member.level) || 1));
     // Con una herida encima, lo ganado va también a sus números de antes de la herida:
     // si no, al curarse (o al pasar el día) volvería el máximo de vida del nivel anterior.
     keepGainsUnderInjuries(member, beforeStats);
@@ -278,6 +284,17 @@ function writeLevelUp({ member, plan, picks, perkId, perkLabel, spellPick, class
     if (learned.length > 0) {
         member.abilities = [...before, ...learned];
         postCombatNarration(`📖 [NIVEL] ${member.name} aprende: ${learned.map(id => spellById(id)?.name ?? id).join(', ')}.`);
+    }
+    // Y lo que su clase aprende a este nivel (habilidades.json): la Ráfaga de golpes del monje,
+    // el Castigo del paladín… Antes solo se aprendía pagando a un maestro.
+    const had = new Set((Array.isArray(member.abilities) ? member.abilities : []).map(String));
+    const taught = lastCompendium?.has?.('habilidades')
+        ? abilitiesFor({ compendium: lastCompendium, className: String(member.class ?? ''), level: Number(member.level) || 1, race: String(member.race ?? '') })
+            .filter((/** @type {any} */ a) => !had.has(String(a.id)))
+        : [];
+    if (taught.length > 0) {
+        member.abilities = [...had, ...taught.map((/** @type {any} */ a) => String(a.id))];
+        postCombatNarration(`📖 [NIVEL] ${member.name} aprende: ${taught.map((/** @type {any} */ a) => String(a.name)).join(', ')}.`);
     }
     savePartyState();
     renderPartyMembers();

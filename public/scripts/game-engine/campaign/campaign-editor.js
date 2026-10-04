@@ -19,6 +19,7 @@
 import { LOCATION_TYPES, BOARD_LIMITS } from './campaign-pack-schema.js';
 import { terrainFromAsciiMap } from '../board/terrain.js';
 import { DEFAULT_PROFILE, getProfileOptions } from '../combat/enemy-ai.js';
+import { traitsOf } from '../combat/monster-traits.js';
 
 /** Lo que mide una localidad sin tableros, igual que en el importador. */
 const DEFAULT_LOCATION_GRID = 50;
@@ -728,6 +729,8 @@ export function planEntryChanges(entries, model) {
             attackRangeFeet: enemy.attackRangeFeet,
             profile: text(enemy.profile) || DEFAULT_PROFILE,
             ...(Array.isArray(enemy.abilities) ? { abilities: enemy.abilities } : {}),
+            // Lo que resiste y si se regenera, si al criarlo salió con ello.
+            ...traitsOf(enemy),
         });
     }
 

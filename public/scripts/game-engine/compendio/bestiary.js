@@ -21,6 +21,7 @@
  */
 
 import { fillPattern } from './names.js';
+import { traitsOf } from '../combat/monster-traits.js';
 
 /** Los cuatro que el motor sabe jugar. Cualquier otro seria un bicho que no se mueve. */
 export const PROFILES = ['aggressive', 'skirmisher', 'guardian', 'coward'];
@@ -133,9 +134,13 @@ export function breedMonster({ compendium, random = Math.random, cr = 0.5, biome
     if (text(biome)) ask.biome = text(biome);
     // Quien no dice estación sale siempre; quien la dice, solo en ella.
     if (text(season)) ask.season = text(season);
+    // Los bichos del SRD dicen entre qué desafíos salen (`when.cr`, de-a): un trol no sale en
+    // una pelea de CR 1/2, ni un dragón joven en la primera cueva. Los que no lo dicen, siempre.
+    const level0 = number(cr, 0.5);
 
     // Un bioma sin bichos escritos no puede dejar el tablero vacio: se prueba sin el.
-    const archetype = compendium.pick('bestiario', { where: ask, random })
+    const archetype = compendium.pick('bestiario', { where: { ...ask, cr: level0 }, random })
+        ?? compendium.pick('bestiario', { where: { kind: 'arquetipo', cr: level0 }, random })
         ?? compendium.pick('bestiario', { where: { kind: 'arquetipo' }, random });
     if (!archetype) return null;
 
@@ -183,6 +188,9 @@ export function breedMonster({ compendium, random = Math.random, cr = 0.5, biome
         profile: PROFILES.includes(profile) ? profile : 'aggressive',
         abilities: [...abilities],
         description,
+        // Lo que resiste, a lo que es inmune, lo que le duele el doble y si se regenera: solo
+        // si su fila lo dice (`combat/monster-traits.js`).
+        ...traitsOf(archetype),
         // T6: si se doma, y en qué, lo dice su fila; las plantillas no lo cambian.
         ...(archetype.domable !== undefined ? { domable: text(archetype.domable) } : {}),
         from: { arquetipo: text(archetype.id), plantillas: stack.map((/** @type {any} */ t) => text(t.id)) },
