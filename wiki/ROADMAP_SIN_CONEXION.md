@@ -139,6 +139,12 @@ Casi todo está en commits (el último, c9c41512b); los retoques y las tres camp
 - ProbarCampañas: las cuatro vueltas llegan a un final, sin silencios ni atascos;
 - pruebas unitarias en verde, tipos limpios y las 119 claves de la partida registradas.
 
+**En marcha (2026-10-04, 08:15):**
+- **Contenido de D&D** ([[gemini/ROADMAP_CONTENIDO_DND|ROADMAP_CONTENIDO_DND]]): tres agentes. Paladín y Monje; Brujo y Hechicero; razas (Dracónido, Aasimar, Goliat), armas y pociones que faltan, y 10-15 monstruos icónicos con sus resistencias.
+- El arte de PixelLab, con los modelos buenos ([[PIXELLAB_PENDIENTE]]).
+- El narrador que queda en la novela de Strahd (el único bug abierto).
+- [[ROADMAP_MUNDO_SEMIABIERTO_STRAHD]] (el plan) y GuionEnWord.exe (el guion en Word por categorías, con doble clic).
+
 Lo siguiente: [[ROADMAP_ENTRETENIDO]] (terminado; quedan tus decisiones), luego [[ROADMAP_APK_ANDROID]] y después [[ROADMAP_MUNDO_SEMIABIERTO_STRAHD]].
 
 **Retoques que he decidido, con la libertad que me diste** (✅ todos hechos; ver «Terminado hoy»):
