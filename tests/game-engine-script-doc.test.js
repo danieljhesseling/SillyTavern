@@ -401,3 +401,76 @@ describe('tools/guion-word.mjs', () => {
         expect(fs.readFileSync(path.join(folder, 'original.json'), 'utf8')).toBe(original);
     });
 });
+
+describe('tools/guion-word.mjs por categorías (GuionEnWord.exe)', () => {
+    const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1')), '..');
+
+    test('cada línea va a su categoría; por partes sale solo lo pedido, y al volver solo cuenta y se guarda eso', () => {
+        expect(tool.parseCategories('todo')).toBeNull();
+        expect(tool.parseCategories('')).toBeNull();
+        expect(tool.parseCategories('charlas, historia')).toEqual(['historia', 'charlas']);
+        expect(() => tool.parseCategories('historia,bichos')).toThrow(/bichos/);
+
+        const dir = tempDir();
+        const packFile = path.join(dir, 'prueba.json');
+        fs.writeFileSync(packFile, `${JSON.stringify(PACK, null, 4)}\n`);
+        const whole = tool.exportScript(packFile, { out: path.join(dir, 'todo.docx'), compendio: false });
+        const cats = tool.categoriesIn(whole.script);
+        expect(cats.map(c => c.id)).toEqual(['historia', 'conversaciones', 'peleas', 'misiones', 'finales', 'sitios', 'gente', 'rumores', 'mundo']);
+        expect(cats.reduce((n, c) => n + c.lines, 0)).toBe(whole.script.counts.lines);
+
+        const part = tool.exportScript(packFile, { out: path.join(dir, 'parte.docx'), compendio: false, categories: ['historia', 'rumores'] });
+        const wanted = [...linesOf(whole.script).values()].filter(b => ['historia', 'rumores'].includes(tool.categoryOf(b))).map(b => b.id);
+        expect([...linesOf(part.script).keys()]).toEqual(wanted);
+        expect(part.script.counts.lines).toBe(wanted.length);
+        expect(part.script.blocks.some(b => b.type === 'nota' && /^Este guion trae solo: La historia, Rumores y sucesos\./.test(b.text))).toBe(true);
+
+        // Sin tocar nada: nada cambia, no falta nada de lo que trae y no hay notas para el Gem.
+        const same = tool.importScript(part.file, packFile, { compendio: false });
+        expect(same.ready).toEqual([]);
+        expect(same.review.missing).toEqual([]);
+        expect(same.review.notes).toEqual([]);
+        expect(same.present).toEqual(['historia', 'rumores']);
+
+        // El Word entero con una línea de cada; se guarda solo la historia, con copia de antes.
+        const edited = path.join(dir, 'corregido.docx');
+        editDocx(whole.file, edited, whole.script, { 'E:primero/2': () => '¡Ojo con el pozo!', 'R:r-pozo': () => 'Dicen que en el pozo vive algo.' });
+        const before = fs.readFileSync(packFile, 'utf8');
+        const backup = path.join(dir, 'copia');
+        const result = tool.importScript(edited, packFile, { apply: true, compendio: false, categories: ['historia'], backup });
+        expect(result.ready.flatMap(e => e.changes).map(c => c.id)).toEqual(['E:primero/2']);
+        expect(result.skipped.map(c => c.id)).toEqual(['R:r-pozo']);
+        expect(result.byCategory.find(r => r.id === 'rumores')).toMatchObject({ changed: 0, skipped: 1 });
+        expect(result.byCategory.find(r => r.id === 'historia')).toMatchObject({ changed: 1 });
+        const after = JSON.parse(fs.readFileSync(packFile, 'utf8'));
+        expect(after.plot.milestones[1].beats[1].text).toBe('¡Ojo con el pozo!');
+        expect(after.rumors[0].text).toBe(PACK.rumors[0].text);
+        expect(fs.readFileSync(path.join(backup, 'prueba.json'), 'utf8')).toBe(before);
+        const report = tool.describeImport(result, { file: edited, which: 'prueba', apply: true });
+        expect(report).toMatch(/Por categorías:/);
+        expect(report).toMatch(/de categorías que no has marcado/);
+        expect(report).toMatch(/Lo de antes, copiado en/);
+    });
+
+    test('una experimental (ocaso): lo corregido va a una ronda nueva y el paquete cambia solo en esas líneas', () => {
+        const root = tempDir();
+        for (const rel of ['wiki/guiones/ocaso', 'public/mundos/ocaso.pack.json', 'public/compendio/habilidades.json']) {
+            fs.cpSync(path.join(ROOT, rel), path.join(root, rel), { recursive: true });
+        }
+        const { file, script } = tool.exportScript('ocaso', { out: path.join(root, 'ocaso.docx'), root, compendio: false, categories: ['rumores'] });
+        const rumor = [...linesOf(script).values()].find(b => /^rumors\.\d+\.text$/.test(b.src.path.join('.')));
+        const edited = path.join(root, 'ocaso-corregido.docx');
+        editDocx(file, edited, script, { [rumor.id]: () => 'Dicen que la torre se ve desde el río.' });
+        const packFile = path.join(root, 'public/mundos/ocaso.pack.json');
+        const before = fs.readFileSync(packFile, 'utf8');
+        const result = tool.importScript(edited, 'ocaso', { apply: true, root, compendio: false, backup: path.join(root, 'copia') });
+        expect(result.undone).toBe(false);
+        expect(path.basename(result.round)).toMatch(/^ronda-\d+-correcciones\.md$/);
+        expect(fs.readFileSync(result.round, 'utf8')).toMatch(/\nrumor:\n(?: {2}#.*\n)* {2}id: '[^']+'\n {2}texto: 'Dicen que la torre se ve desde el río\.'\n/);
+        const after = fs.readFileSync(packFile, 'utf8');
+        expect(valueAt(JSON.parse(after), rumor.src.path)).toBe('Dicen que la torre se ve desde el río.');
+        const changedRows = after.split('\n').filter((row, i) => row !== before.split('\n')[i]);
+        expect(changedRows).toHaveLength(1);
+        expect(fs.readFileSync(path.join(root, 'copia/public/mundos/ocaso.pack.json'), 'utf8')).toBe(before);
+    });
+});

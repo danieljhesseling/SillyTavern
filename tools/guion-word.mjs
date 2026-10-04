@@ -34,21 +34,25 @@
  * Usa fflate (ya en package.json) para el zip del .docx.
  */
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, copyFileSync, rmSync } from 'node:fs';
 import { dirname, join, resolve, basename, extname, relative } from 'node:path';
 import { homedir } from 'node:os';
+import { isDeepStrictEqual } from 'node:util';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { zipSync, unzipSync, strToU8, strFromU8 } from 'fflate';
+import yaml from 'js-yaml';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const engine = (/** @type {string} */ path) => import(pathToFileURL(join(ROOT, 'public/scripts/game-engine', path)).href);
 
-const { buildScript, reviewScript, blockParts, COMPENDIO_DOCS } = await engine('campaign/script-doc.js');
+const { buildScript, reviewScript, blockParts, readParagraph, normalizeText, COMPENDIO_DOCS } = await engine('campaign/script-doc.js');
 const { scriptToDocx, docxBlocks } = await engine('campaign/script-docx.js');
 const { validatePack } = await engine('campaign/campaign-pack.js');
 const { checkWorldDensity } = await engine('campaign/world-density.js');
 const { cleanGemText } = await engine('campaign/campaign-import.js');
+const { convertGuion, isRoundFile } = await engine('campaign/guion-pack.js');
+const { correctionsRound } = await engine('campaign/guion-round.js');
 
 /** Las campañas del juego, por su id. */
 const CAMPAIGNS = ['gremio', '1387', 'strahd'];
@@ -91,6 +95,7 @@ const showPath = (/** @type {Array<string|number>} */ path) => path.map((k, i) =
  * @property {Record<string, any>} compendio Los archivos del compendio leídos, por nombre.
  * @property {Record<string, string>} compendioFiles
  * @property {string} root
+ * @property {string} rounds La carpeta de sus rondas si sale de ellas (las experimentales); si no, vacío.
  */
 
 /**
@@ -101,10 +106,11 @@ const showPath = (/** @type {Array<string|number>} */ path) => path.map((k, i) =
  * @returns {Campaign}
  */
 export function loadCampaign(which, { root = ROOT, compendio = true } = {}) {
-    const known = CAMPAIGNS.includes(String(which));
-    const packFile = known ? join(root, 'public', 'mundos', `${which}.pack.json`) : resolve(String(which));
+    // Por su nombre: las del juego y cualquier paquete de public/mundos (`ocaso`, `costa`…).
+    const named = /^[\w-]+$/.test(String(which)) && existsSync(join(root, 'public', 'mundos', `${which}.pack.json`));
+    const packFile = named ? join(root, 'public', 'mundos', `${which}.pack.json`) : resolve(String(which));
     if (!existsSync(packFile)) throw new Error(`No encuentro ${packFile}.`);
-    const id = known ? String(which) : (/^(gremio|1387|strahd)\.pack\.json$/.exec(basename(packFile))?.[1] ?? '');
+    const id = CAMPAIGNS.includes(String(which)) ? String(which) : (/^(gremio|1387|strahd)\.pack\.json$/.exec(basename(packFile))?.[1] ?? '');
     /** @type {Record<string, any>} */
     const docs = {};
     /** @type {Record<string, string>} */
@@ -117,7 +123,29 @@ export function loadCampaign(which, { root = ROOT, compendio = true } = {}) {
             files[doc] = file;
         }
     }
-    return { id, packFile, pack: readJson(packFile), compendio: docs, compendioFiles: files, root };
+    return { id, packFile, pack: readJson(packFile), compendio: docs, compendioFiles: files, root, rounds: roundsFolder(packFile, id, root) };
+}
+
+/**
+ * Las experimentales (ocaso, costa, pantalla) salen de las rondas de su guion, en
+ * `wiki/guiones/<nombre>`: su paquete no se corrige a mano, se corrige con una ronda más (J5.10).
+ * El gremio, 1387 y Strahd no (D-J37: su fuente es su paquete o sus capas).
+ *
+ * @param {string} packFile
+ * @param {string} id
+ * @param {string} root
+ * @returns {string} La carpeta de sus rondas, o vacío.
+ */
+function roundsFolder(packFile, id, root) {
+    if (id) return '';
+    const name = /^([\w-]+)\.pack\.json$/.exec(basename(packFile))?.[1] ?? '';
+    if (!name || resolve(dirname(packFile)) !== resolve(join(root, 'public', 'mundos'))) return '';
+    const folder = join(root, 'wiki', 'guiones', name);
+    try {
+        return readdirSync(folder).some(file => isRoundFile(file)) ? folder : '';
+    } catch {
+        return '';
+    }
 }
 
 /** La fecha de hoy, dicha: «2 de octubre de 2026». */
@@ -137,13 +165,214 @@ export function scriptOf(campaign) {
 }
 
 // ---------------------------------------------------------------------------------------------
+// Las categorías: sacar solo una parte del guion
+// ---------------------------------------------------------------------------------------------
+
+/**
+ * Las categorías del guion, por de dónde sale cada línea: `sections`, las listas del paquete
+ * (`plot.endings` antes que `plot`); `docs`, los archivos del compendio. Lo que no cae en
+ * ninguna va a «Lo demás».
+ *
+ * @type {Array<{id: string, name: string, about: string, sections?: string[], docs?: string[]}>}
+ */
+export const CATEGORIES = [
+    { id: 'historia', name: 'La historia', about: 'Los capítulos y los hitos: sus escenas, lo que dice la gente en ellas y tus opciones.', sections: ['plot'] },
+    { id: 'conversaciones', name: 'Conversaciones', about: 'Las conversaciones con la gente, con todas sus ramas.', sections: ['dialogues'] },
+    { id: 'peleas', name: 'Tableros y peleas', about: 'Lo que se dice al empezar, durante y al acabar cada pelea, y sus salidas habladas.', sections: ['boards'] },
+    { id: 'misiones', name: 'Misiones y encargos', about: 'El nombre, la descripción y los objetivos de las misiones, y los encargos del tablón.', sections: ['quests', 'contracts'] },
+    { id: 'finales', name: 'Los finales', about: 'Los finales, lo que fue de cada uno (los epílogos) y los presagios.', sections: ['plot.endings', 'plot.omens'] },
+    { id: 'sitios', name: 'Los sitios', about: 'Lo que se ve al mirar cada sitio y lo que te ofrecen allí.', sections: ['locations'] },
+    { id: 'gente', name: 'La gente', about: 'Quién es cada uno, lo que sabe, sus secretos y sus saludos.', sections: ['npcs'], docs: ['frases'] },
+    { id: 'rumores', name: 'Rumores y sucesos', about: 'Lo que se oye por ahí y lo que pasa de repente (las tarjetas de sucesos).', sections: ['rumors', 'sucesos'] },
+    { id: 'charlas', name: 'Charlas', about: 'Las charlas sueltas con la gente y con los tuyos, con sus ramas.', docs: ['charlas'] },
+    { id: 'companeros', name: 'Los compañeros', about: 'Cómo se presentan, sus escenas de vínculo, lo que dicen al llegar a cada sitio y sus misiones personales.', sections: ['confidants'], docs: ['companeros', 'personales'] },
+    { id: 'quedadas', name: 'Quedadas, noches y romance', about: 'Las quedadas con los tuyos, las noches en la posada y las escenas de romance.', docs: ['quedadas', 'noches', 'romances'] },
+    { id: 'mundo', name: 'La presentación', about: 'De qué va la campaña: lo que se lee antes de empezar.', sections: ['world'] },
+    { id: 'otros', name: 'Lo demás', about: 'Lo que no cabe en las otras (lo que traiga una campaña nueva).' },
+];
+
+/** El nombre de cada categoría, por su id. */
+const CATEGORY_NAME = new Map(CATEGORIES.map(c => [c.id, c.name]));
+
+/**
+ * La categoría de una línea, por de dónde sale su texto.
+ *
+ * @param {any} block Una línea del guion (con `src`).
+ * @returns {string}
+ */
+export function categoryOf(block) {
+    const doc = String(block?.src?.doc ?? '');
+    const path = Array.isArray(block?.src?.path) ? block.src.path : [];
+    if (doc && doc !== 'pack') return CATEGORIES.find(c => c.docs?.includes(doc))?.id ?? 'otros';
+    const section = String(path[0] ?? '');
+    const sub = section === 'plot' ? `plot.${path[1]}` : '';
+    return CATEGORIES.find(c => sub && c.sections?.includes(sub))?.id
+        ?? CATEGORIES.find(c => c.sections?.includes(section))?.id
+        ?? 'otros';
+}
+
+/**
+ * Las categorías que tiene un guion, en su orden, con cuántas líneas trae cada una.
+ *
+ * @param {any} script
+ * @returns {Array<{id: string, name: string, about: string, lines: number}>}
+ */
+export function categoriesIn(script) {
+    /** @type {Map<string, number>} */
+    const count = new Map();
+    for (const block of script.blocks) {
+        if (!block.id) continue;
+        const id = categoryOf(block);
+        count.set(id, (count.get(id) ?? 0) + 1);
+    }
+    return CATEGORIES.filter(c => count.has(c.id)).map(({ id, name, about }) => ({ id, name, about, lines: count.get(id) ?? 0 }));
+}
+
+/**
+ * Las categorías pedidas, en limpio: `historia,charlas` o una lista. Vacío o «todo»: null (todas).
+ * Una que no existe es un error, dicho con las que hay.
+ *
+ * @param {string|string[]|null|undefined} value
+ * @returns {string[]|null}
+ */
+export function parseCategories(value) {
+    const asked = (Array.isArray(value) ? value : String(value ?? '').split(/[\s,;]+/)).map(v => String(v).trim().toLowerCase()).filter(Boolean);
+    if (asked.length === 0 || asked.includes('todo') || asked.includes('todas')) return null;
+    const wrong = asked.filter(id => !CATEGORY_NAME.has(id));
+    if (wrong.length > 0) throw new Error(`No hay ninguna categoría «${wrong.join('», «')}». Las que hay: ${CATEGORIES.map(c => c.id).join(', ')} (o «todo»).`);
+    return CATEGORIES.map(c => c.id).filter(id => asked.includes(id));
+}
+
+/** Las notas que pone el guion por partes al principio: no son notas tuyas para el Gem. */
+const ONLY_NOTE = 'Este guion trae solo: ';
+const COUNT_NOTE = /^\d+ líneas?: \d+ dichas? por alguien/;
+
+/** Cómo de alto es un título: la parte manda sobre el capítulo, y así. */
+const DEPTH = /** @type {Record<string, number>} */ ({ parte: 1, capitulo: 2, seccion: 3, apartado: 4 });
+
+/**
+ * El guion con solo las líneas de unas categorías. Se quedan los títulos que tienen debajo
+ * alguna línea que sale, para saber dónde se está; un título que se puede corregir pero es de
+ * otra categoría sale sin su marca (solo para leer). La portada y la ayuda se quedan siempre.
+ *
+ * @param {any} script
+ * @param {string[]|null} categories Null: el guion entero, tal cual.
+ * @returns {any}
+ */
+export function filterScript(script, categories) {
+    if (!categories) return script;
+    const wanted = new Set(categories);
+    /** @type {any[]} */
+    const blocks = script.blocks;
+    const first = blocks.findIndex(b => b.type === 'parte');
+    const intro = first < 0 ? blocks.length : first;
+    const keepLine = (/** @type {any} */ b) => Boolean(b?.id) && wanted.has(categoryOf(b));
+    const heading = (/** @type {any} */ b) => Boolean(b && DEPTH[b.type]);
+    /** @type {any[]} */
+    const out = [];
+    for (let i = 0; i < blocks.length; i++) {
+        const b = blocks[i];
+        if (i < intro) {
+            if (!b.id || keepLine(b)) out.push(b);
+            continue;
+        }
+        if (!heading(b)) {
+            if (b.id) {
+                if (keepLine(b)) out.push(b);
+                continue;
+            }
+            // Una nota sin marca va con la línea de su lado: la de después o, si no hay, la de antes.
+            let near = null;
+            for (let j = i + 1; j < blocks.length && !heading(blocks[j]); j++) if (blocks[j].id) { near = blocks[j]; break; }
+            for (let j = i - 1; !near && j >= intro && !heading(blocks[j]); j--) if (blocks[j].id) near = blocks[j];
+            if (near && keepLine(near)) out.push(b);
+            continue;
+        }
+        // Un título sale si debajo (hasta el siguiente igual o más alto) sale alguna línea.
+        let has = keepLine(b);
+        for (let j = i + 1; !has && j < blocks.length; j++) {
+            if (heading(blocks[j]) && DEPTH[blocks[j].type] <= DEPTH[b.type]) break;
+            if (keepLine(blocks[j])) has = true;
+        }
+        if (!has) continue;
+        if (!b.id || keepLine(b)) out.push(b);
+        else out.push({ type: b.type, text: b.text, label: b.label, ...(b.depth ? { depth: b.depth } : {}) });
+    }
+    const lines = out.filter(b => b.id);
+    const counts = {
+        lines: lines.length,
+        said: lines.filter(b => b.kind === 'linea').length,
+        choices: lines.filter(b => b.kind === 'tu').length,
+        narrator: lines.filter(b => b.kind === 'narrador').length,
+    };
+    const names = CATEGORIES.filter(c => wanted.has(c.id)).map(c => c.name);
+    const notes = [
+        {
+            type: 'nota', text: `${counts.lines} líneas: ${counts.said} dichas por alguien, ${counts.choices} tuyas, `
+                + `${counts.lines - counts.said - counts.choices - counts.narrator} escritas en pantalla y ${counts.narrator} sin nadie que las diga (Narrador).`,
+        },
+        { type: 'nota', text: `${ONLY_NOTE}${names.join(', ')}. Lo demás no sale, y al importarlo no se toca.` },
+    ];
+    const at = out.findIndex(b => b.type === 'nota' && COUNT_NOTE.test(String(b.text)));
+    if (at >= 0) out.splice(at, 1, ...notes);
+    else out.splice(Math.min(out.length, 2), 0, ...notes);
+    return { ...script, blocks: out, counts, categories: [...wanted] };
+}
+
+// ---------------------------------------------------------------------------------------------
 // Exportar
 // ---------------------------------------------------------------------------------------------
 
-/** Dónde se guardan los guiones si no se dice: Documentos\Guiones, o guiones/ en el repositorio. */
-function defaultFolder() {
-    const documents = join(homedir(), 'Documents');
+/**
+ * Dónde se guardan los guiones si no se dice: Documentos\Guiones, o guiones/ en el repositorio.
+ * `GUION_DOCUMENTOS` dice dónde está Documentos (el lanzador del .exe lo pasa: puede estar en
+ * OneDrive).
+ */
+export function defaultFolder() {
+    const documents = documentsFolder();
     return existsSync(documents) ? join(documents, 'Guiones') : join(ROOT, 'guiones');
+}
+
+/** @type {string} */
+let documentsCache = '';
+
+/**
+ * La carpeta Documentos de verdad, la que enseña el Explorador: puede estar en OneDrive
+ * («Documentos»), y eso lo dice el registro (como en ProbarCampañas). Antes del 2026-10-04 los
+ * guiones iban a `%USERPROFILE%\Documents\Guiones` (`OLD_FOLDER`).
+ *
+ * @returns {string}
+ */
+function documentsFolder() {
+    const given = process.env.GUION_DOCUMENTOS;
+    if (given && existsSync(given)) return given;
+    if (documentsCache) return documentsCache;
+    documentsCache = join(homedir(), 'Documents');
+    if (process.platform === 'win32') {
+        try {
+            const said = spawnSync('reg', ['query', 'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Shell Folders', '/v', 'Personal'], { encoding: 'utf8', windowsHide: true });
+            const found = /Personal\s+REG_\w+\s+(.+)/.exec(String(said.stdout ?? ''))?.[1]?.trim();
+            if (found && existsSync(found)) documentsCache = found;
+        } catch { /* sin registro: la de siempre */ }
+    }
+    return documentsCache;
+}
+
+/** Donde se guardaban los guiones antes (si Documentos está en OneDrive, es otra carpeta). */
+const OLD_FOLDER = join(homedir(), 'Documents', 'Guiones');
+
+/**
+ * El nombre del Word de una campaña: `1387-guion.docx`, o con sus categorías si no va entero
+ * (`1387-guion-historia-charlas.docx`; con más de tres, `1387-guion-por-partes.docx`).
+ *
+ * @param {Campaign} campaign
+ * @param {string[]|null} [categories]
+ * @returns {string}
+ */
+export function defaultName(campaign, categories = null) {
+    const name = campaign.id || basename(campaign.packFile, extname(campaign.packFile)).replace(/\.pack$/, '');
+    if (!categories) return `${name}-guion.docx`;
+    return `${name}-guion-${categories.length <= 3 ? categories.join('-') : 'por-partes'}.docx`;
 }
 
 /**
@@ -173,15 +402,16 @@ export function scriptToMarkdown(script) {
 /**
  * Exportar el guion de una campaña a Word.
  *
+ * Con `categories`, solo esas (`filterScript`); sin ellas, el guion entero.
+ *
  * @param {string} which
- * @param {{out?: string, md?: boolean, root?: string, compendio?: boolean}} [input]
+ * @param {{out?: string, md?: boolean, root?: string, compendio?: boolean, categories?: string[]|null}} [input]
  * @returns {{file: string, md: string, script: any}}
  */
-export function exportScript(which, { out = '', md = false, root = ROOT, compendio = true } = {}) {
+export function exportScript(which, { out = '', md = false, root = ROOT, compendio = true, categories = null } = {}) {
     const campaign = loadCampaign(which, { root, compendio });
-    const script = scriptOf(campaign);
-    const name = campaign.id || basename(campaign.packFile, extname(campaign.packFile)).replace(/\.pack$/, '');
-    const file = resolve(out || join(defaultFolder(), `${name}-guion.docx`));
+    const script = filterScript(scriptOf(campaign), categories);
+    const file = resolve(out || join(defaultFolder(), defaultName(campaign, categories)));
     mkdirSync(dirname(file), { recursive: true });
     const parts = scriptToDocx(script, { when: new Date().toISOString().replace(/\.\d+Z$/, 'Z') });
     /** @type {Record<string, Uint8Array>} */
@@ -530,6 +760,8 @@ function planFor(campaign, block, said, layers) {
         return { file, target: `${doc}:${showPath(path)}`, edit: { op: 'replace', path, expect: valueAt(campaign.compendio[doc], path), value: said } };
     }
     if (campaign.id === 'strahd') return strahdPlan(campaign.pack, path, said, layers);
+    // Las experimentales: a una ronda nueva de su guion (`applyRound`).
+    if (campaign.rounds) return { file: campaign.rounds, target: `pack:${showPath(path)}`, edit: { op: 'round', path, expect: valueAt(campaign.pack, path), value: said } };
     return { file: campaign.packFile, target: `pack:${showPath(path)}`, edit: { op: 'replace', path, expect: valueAt(campaign.pack, path), value: said } };
 }
 
@@ -598,26 +830,70 @@ function mergePlans(planned) {
  * @property {string[]} written Los archivos escritos (con `apply`).
  * @property {string[]} checks Lo que dijeron los validadores.
  * @property {boolean} undone Si se deshizo por empeorar algo.
+ * @property {string[]} present Las categorías que trae el Word (las de sus marcas).
+ * @property {string[]|null} only Las que se pidió guardar (null: todas las que trae).
+ * @property {any[]} skipped Líneas cambiadas de categorías que no se pidió guardar: no se tocan.
+ * @property {Array<{id: string, name: string, lines: number, changed: number, refused: number, skipped: number, newer: number, conflicts: number, missing: number}>} byCategory
+ * @property {string} backup La carpeta con la copia de lo que había antes de guardar.
+ * @property {string} round Las experimentales: la ronda escrita.
  */
+
+/**
+ * Los párrafos del Word sin las notas que pone el guion por partes (la cuenta y «Este guion trae
+ * solo…»): no son notas tuyas para el Gem.
+ *
+ * @param {Array<{text: string, style: string}>} paragraphs
+ */
+function withoutOwnNotes(paragraphs) {
+    return paragraphs.filter(p => {
+        const said = normalizeText(p.text);
+        return !said.startsWith(ONLY_NOTE) && !COUNT_NOTE.test(said);
+    });
+}
 
 /**
  * Comparar un guion corregido con el juego y, si se pide, guardar lo cambiado.
  *
  * @param {string} file El .docx (o .txt, .md).
  * @param {string} which La campaña.
- * @param {{apply?: boolean, root?: string, compendio?: boolean, regenerate?: (root: string) => {ok: boolean, output: string}}} [input]
+ * Un Word por partes (de unas categorías) solo cuenta como «no está en el Word» lo de esas. Con
+ * `categories`, solo se guarda lo de esas; lo demás que cambió se dice aparte y no se toca. Con
+ * `backup`, antes de escribir se copia ahí cada archivo que se va a tocar.
+ *
+ * @param {{apply?: boolean, root?: string, compendio?: boolean, categories?: string[]|null, backup?: string,
+ *   regenerate?: (root: string) => {ok: boolean, output: string}}} [input]
  * @returns {ImportResult}
  */
-export function importScript(file, which, { apply = false, root = ROOT, compendio = true, regenerate = regenerateStrahd } = {}) {
+export function importScript(file, which, { apply = false, root = ROOT, compendio = true, categories = null, backup = '', regenerate = regenerateStrahd } = {}) {
     const campaign = loadCampaign(which, { root, compendio });
     const script = scriptOf(campaign);
-    const review = reviewScript(script, readParagraphs(file));
+    const paragraphs = withoutOwnNotes(readParagraphs(file));
+    const review = reviewScript(script, paragraphs);
+    /** @type {Map<string, any>} */
+    const byId = new Map(script.blocks.filter((/** @type {any} */ b) => b.id).map((/** @type {any} */ b) => [b.id, b]));
+    const catOfId = (/** @type {string} */ id) => (byId.has(id) ? categoryOf(byId.get(id)) : '');
+    // Las categorías del Word: las de las marcas que trae.
+    /** @type {Map<string, number>} */
+    const inWord = new Map();
+    for (const paragraph of paragraphs) {
+        const read = readParagraph(normalizeText(paragraph.text));
+        const cat = read ? catOfId(read.id) : '';
+        if (cat) inWord.set(cat, (inWord.get(cat) ?? 0) + 1);
+    }
+    review.missing = review.missing.filter((/** @type {string} */ id) => inWord.has(catOfId(id)));
+    const only = categories ? new Set(categories) : null;
+    /** @type {any[]} */
+    const skipped = [];
     const layers = campaign.id === 'strahd' ? strahdLayers(root) : null;
     /** @type {Array<{change: any, plan: Plan}>} */
     const planned = [];
     /** @type {Array<{change: any, error: string}>} */
     const refused = [];
     for (const change of review.changed) {
+        if (only && !only.has(categoryOf(change.block))) {
+            skipped.push(change);
+            continue;
+        }
         if (change.errors.length > 0) {
             refused.push({ change, error: change.errors.join('; ') });
             continue;
@@ -639,10 +915,85 @@ export function importScript(file, which, { apply = false, root = ROOT, compendi
     const ready = mergePlans(planned.filter(entry => !clashing.includes(entry)));
 
     /** @type {ImportResult} */
-    const result = { title: script.title, root, review, ready, refused, written: [], checks: [], undone: false };
+    const result = {
+        title: script.title, root, review, ready, refused, written: [], checks: [], undone: false,
+        present: CATEGORIES.map(c => c.id).filter(id => inWord.has(id)), only: categories, skipped, byCategory: [], backup: '', round: '',
+    };
+    tallyCategories(result, inWord, catOfId);
     if (!apply || ready.length === 0) return result;
-    applyPlans(campaign, ready, result, regenerate);
+    if (campaign.rounds) applyRound(campaign, ready, result, backup);
+    else applyPlans(campaign, ready, result, regenerate, backup);
+    tallyCategories(result, inWord, catOfId);
     return result;
+}
+
+/**
+ * La cuenta por categorías: cuántas líneas trae el Word de cada una y qué pasa con ellas.
+ *
+ * @param {ImportResult} result
+ * @param {Map<string, number>} inWord
+ * @param {(id: string) => string} catOfId
+ */
+function tallyCategories(result, inWord, catOfId) {
+    const { review } = result;
+    result.byCategory = [];
+    const row = (/** @type {string} */ id) => {
+        let found = result.byCategory.find(r => r.id === id);
+        if (!found) {
+            found = { id, name: CATEGORY_NAME.get(id) ?? id, lines: inWord.get(id) ?? 0, changed: 0, refused: 0, skipped: 0, newer: 0, conflicts: 0, missing: 0 };
+            result.byCategory.push(found);
+        }
+        return found;
+    };
+    for (const id of result.present) row(id);
+    for (const entry of result.ready) for (const change of entry.changes) row(categoryOf(change.block)).changed++;
+    for (const { change } of result.refused) row(categoryOf(change.block)).refused++;
+    for (const change of result.skipped) row(categoryOf(change.block)).skipped++;
+    for (const { id } of review.newer) row(catOfId(id) || 'otros').newer++;
+    for (const { id } of review.conflicts) row(catOfId(id) || 'otros').conflicts++;
+    for (const id of review.missing) row(catOfId(id) || 'otros').missing++;
+    const order = CATEGORIES.map(c => c.id);
+    result.byCategory.sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
+}
+
+/**
+ * Antes de guardar: una copia de cada archivo que se va a tocar, en `folder`, con su ruta
+ * dentro del juego (`public/mundos/1387.pack.json`). Los de fuera del juego, por su nombre.
+ *
+ * @param {string[]} files
+ * @param {string} folder
+ * @param {string} [root]
+ * @returns {string[]} Las copias.
+ */
+export function backupFiles(files, folder, root = ROOT) {
+    /** @type {string[]} */
+    const made = [];
+    for (const file of new Set(files)) {
+        if (!existsSync(file)) continue;
+        const inside = relative(root, file);
+        const target = join(folder, !inside || inside.startsWith('..') || resolve(inside) === inside ? basename(file) : inside);
+        mkdirSync(dirname(target), { recursive: true });
+        copyFileSync(file, target);
+        made.push(target);
+    }
+    return made;
+}
+
+/**
+ * La carpeta de una copia nueva: `<base>/2026-10-04_18-05-12_1387`.
+ *
+ * @param {string} base
+ * @param {string} name
+ * @returns {string}
+ */
+export function backupFolder(base, name) {
+    const d = new Date();
+    const two = (/** @type {number} */ n) => String(n).padStart(2, '0');
+    const stamp = `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())}_${two(d.getHours())}-${two(d.getMinutes())}-${two(d.getSeconds())}`;
+    const tag = String(name).replace(/[^\w-]+/g, '-');
+    let folder = join(base, `${stamp}_${tag}`);
+    for (let i = 2; existsSync(folder); i++) folder = join(base, `${stamp}_${tag}-${i}`);
+    return folder;
 }
 
 /**
@@ -670,12 +1021,17 @@ function regenerateStrahd(/** @type {string} */ root) {
  * @param {Array<{changes: any[], plan: Plan}>} ready
  * @param {ImportResult} result
  * @param {(root: string) => {ok: boolean, output: string}} regenerate
+ * @param {string} [backup] Dónde copiar antes lo que se va a tocar.
  */
-function applyPlans(campaign, ready, result, regenerate) {
+function applyPlans(campaign, ready, result, regenerate, backup = '') {
     const before = packHealth(campaign.pack);
     /** @type {Map<string, JsonEdit[]>} */
     const byFile = new Map();
     for (const { plan } of ready) byFile.set(plan.file, [...(byFile.get(plan.file) ?? []), plan.edit]);
+    if (backup) {
+        backupFiles([...byFile.keys(), campaign.packFile], backup, campaign.root);
+        result.backup = backup;
+    }
     /** @type {Map<string, string>} */
     const previous = new Map();
     const undo = () => {
@@ -719,6 +1075,116 @@ function applyPlans(campaign, ready, result, regenerate) {
     result.checks.push(`La densidad del mundo: ${after.density === 0 ? 'sin errores' : `${after.density} avisos del listón, como antes`}.`);
 }
 
+/**
+ * Los textos que cambian de un JSON a otro, como cambios de `editJson`. Null si cambia algo más
+ * que textos (una lista más larga, un número).
+ *
+ * @param {any} before
+ * @param {any} after
+ * @param {Array<string|number>} [path]
+ * @param {JsonEdit[]} [out]
+ * @returns {JsonEdit[]|null}
+ */
+function textEdits(before, after, path = [], out = []) {
+    if (typeof before === 'string' && typeof after === 'string') {
+        if (before !== after) out.push({ op: 'replace', path, expect: before, value: after });
+        return out;
+    }
+    if (Array.isArray(before) && Array.isArray(after)) {
+        if (before.length !== after.length) return null;
+        for (let i = 0; i < before.length; i++) if (!textEdits(before[i], after[i], [...path, i], out)) return null;
+        return out;
+    }
+    if (before && after && typeof before === 'object' && typeof after === 'object' && !Array.isArray(before) && !Array.isArray(after)) {
+        const keys = Object.keys(before);
+        if (keys.length !== Object.keys(after).length || keys.some(k => !(k in after))) return null;
+        for (const key of keys) if (!textEdits(before[key], after[key], [...path, key], out)) return null;
+        return out;
+    }
+    return isDeepStrictEqual(before, after) ? out : null;
+}
+
+/**
+ * Las experimentales: lo corregido va a una ronda nueva de su guion (`ronda-N-correcciones.md`,
+ * J5.10) y el paquete se vuelve a hacer de las rondas, como `tools/guion-a-paquete.mjs`. Antes se
+ * comprueba que el paquete de ahora es el que sale de ellas (si no, se pisaría algo hecho a mano).
+ * Si el paquete nuevo no trae los cambios o queda peor, se quita la ronda y se deja como estaba.
+ *
+ * @param {Campaign} campaign
+ * @param {Array<{changes: any[], plan: Plan}>} ready
+ * @param {ImportResult} result
+ * @param {string} backup
+ */
+function applyRound(campaign, ready, result, backup) {
+    const abilityRows = readJson(join(campaign.root, 'public', 'compendio', 'habilidades.json')).rows ?? [];
+    const convert = (/** @type {any[]} */ rounds) => convertGuion(rounds, { parseYaml: yaml.load, abilityRows });
+    const rounds = readdirSync(campaign.rounds).filter(name => isRoundFile(name)).map(name => ({ name, text: readFileSync(join(campaign.rounds, name), 'utf8') }));
+    const base = convert(rounds);
+    const where = relative(campaign.root, campaign.rounds).replace(/\\/g, '/');
+    if (base.stage !== 'hecho' || !isDeepStrictEqual(JSON.parse(JSON.stringify(base.pack)), campaign.pack)) {
+        result.checks.push(`El paquete no es el que sale de las rondas de ${where} (alguien lo cambió a mano, o faltan rondas): no se toca nada.`);
+        result.undone = true;
+        return;
+    }
+    const all = ready.flatMap(entry => entry.changes);
+    const changes = all.map(change => ({ path: change.block.src.path, before: String(valueAt(campaign.pack, change.block.src.path) ?? ''), after: change.after }));
+    const round = correctionsRound({
+        changes, pack: base.pack, byKind: base.byKind, files: base.files ?? rounds.map(r => r.name),
+        title: base.pack?.world?.name ?? result.title, date: new Date().toISOString().slice(0, 10),
+    });
+    // Lo que la ronda no puede poner en un bloque no entra en el juego (se dice por qué).
+    const lost = new Set(round.unplaced.map((/** @type {any} */ c) => showPath(c.path)));
+    const kept = (/** @type {any} */ change) => !lost.has(showPath(change.block.src.path));
+    for (const change of all.filter(c => !kept(c))) result.refused.push({ change, error: 'no sale de ningún bloque de las rondas del guion' });
+    result.ready = ready.map(entry => ({ ...entry, changes: entry.changes.filter(kept) })).filter(entry => entry.changes.length > 0);
+    if (round.placed === 0) {
+        result.checks.push('Ninguna línea cambiada sale de un bloque de las rondas: no se ha escrito nada.');
+        return;
+    }
+    if (backup) {
+        backupFiles([campaign.packFile], backup, campaign.root);
+        result.backup = backup;
+    }
+    const roundFile = join(campaign.rounds, round.name);
+    const packBefore = readFileSync(campaign.packFile, 'utf8');
+    const undo = (/** @type {string} */ why) => {
+        rmSync(roundFile, { force: true });
+        writeFileSync(campaign.packFile, packBefore);
+        result.checks.push(why);
+        result.written = [];
+        result.undone = true;
+    };
+    // Solo lo que entra va en la ronda: se rehace sin lo perdido, para no dejar texto suelto.
+    const placedOnly = lost.size === 0 ? round : correctionsRound({
+        changes: changes.filter(c => !lost.has(showPath(c.path))), pack: base.pack, byKind: base.byKind, files: base.files ?? rounds.map(r => r.name),
+        title: base.pack?.world?.name ?? result.title, date: new Date().toISOString().slice(0, 10),
+    });
+    writeFileSync(roundFile, placedOnly.text.replace('desde el taller de campañas del juego', 'con GuionEnWord (tools/guion-word.mjs)'));
+    const again = convert([...rounds, { name: round.name, text: readFileSync(roundFile, 'utf8') }]);
+    if (again.stage !== 'hecho' || !again.pack) return undo('Con la ronda nueva, el guion no se convierte: se ha quitado.');
+    for (const change of result.ready.flatMap(entry => entry.changes)) {
+        if (valueAt(again.pack, change.block.src.path) !== change.after) return undo(`El paquete nuevo no trae el cambio de ${change.id}: se ha quitado la ronda.`);
+    }
+    const before = packHealth(campaign.pack);
+    const after = packHealth(again.pack);
+    if (after.errors > before.errors || after.density > before.density) {
+        const fresh = after.messages.filter(m => !before.messages.includes(m));
+        return undo(`Con los cambios, el paquete tiene más errores que antes:\n  ${fresh.join('\n  ')}`);
+    }
+    // En el paquete se cambian solo los textos que cambian (como al corregir a mano): el resto del
+    // archivo se queda igual. Si cambiara algo más que textos, se escribe entero.
+    const fresh = JSON.parse(JSON.stringify(again.pack));
+    const edits = textEdits(campaign.pack, fresh);
+    let written = edits ? editJson(packBefore, edits) : '';
+    if (!written || !isDeepStrictEqual(JSON.parse(written), fresh)) written = `${JSON.stringify(fresh, null, 2)}\n`;
+    writeFileSync(campaign.packFile, written);
+    result.written = [roundFile, campaign.packFile];
+    result.round = roundFile;
+    result.checks.push(placedOnly.said);
+    result.checks.push(`El validador de paquetes: ${after.errors === 0 ? 'sin errores' : `${after.errors} errores, como antes`}.`);
+    result.checks.push(`La densidad del mundo: ${after.density === 0 ? 'sin errores' : `${after.density} avisos del listón, como antes`}.`);
+}
+
 // ---------------------------------------------------------------------------------------------
 // El informe, en castellano llano
 // ---------------------------------------------------------------------------------------------
@@ -734,10 +1200,27 @@ export function describeImport(result, { file, which, apply }) {
     const count = (/** @type {number} */ n, /** @type {string} */ one, /** @type {string} */ many) => `${n} ${n === 1 ? one : many}`;
     const changes = ready.flatMap(entry => entry.changes);
     out.push(`El guion de «${result.title || which}», leído de ${file}`);
+    const byCategory = result.byCategory ?? [];
+    if (byCategory.length > 0) {
+        out.push('');
+        out.push('Por categorías:');
+        for (const row of byCategory) {
+            const bits = [
+                row.changed ? count(row.changed, 'cambiada', 'cambiadas') : '',
+                row.refused ? count(row.refused, 'que no se guarda', 'que no se guardan') : '',
+                row.skipped ? count(row.skipped, 'cambiada sin marcar (no se toca)', 'cambiadas sin marcar (no se tocan)') : '',
+                row.newer ? count(row.newer, 'que cambió el juego', 'que cambió el juego') : '',
+                row.conflicts ? count(row.conflicts, 'que cambiasteis los dos', 'que cambiasteis los dos') : '',
+            ].filter(Boolean);
+            out.push(`  ${row.name}: ${count(row.lines, 'línea', 'líneas')} en el Word${bits.length ? `; ${bits.join(', ')}` : ', sin cambios'}.`);
+        }
+    }
     out.push('');
     out.push(`${count(changes.length, 'línea cambiada', 'líneas cambiadas')}${changes.length > 0 ? ':' : '.'}`);
     for (const { changes: group, plan } of ready) {
-        const where = `${relative(result.root || ROOT, plan.file).replace(/\\/g, '/')}${plan.edit.op === 'replace' ? '' : ' (encima de lo que viene del original, marcado «propio:»)'}`;
+        const shortFile = relative(result.root || ROOT, plan.file).replace(/\\/g, '/');
+        const where = plan.edit.op === 'round' ? `${shortFile} (una ronda nueva con lo corregido, y el paquete se rehace de las rondas)`
+            : `${shortFile}${plan.edit.op === 'replace' ? '' : ' (encima de lo que viene del original, marcado «propio:»)'}`;
         for (const change of group) {
             out.push(`  ${change.id} · ${change.block.label}`);
             out.push(`    antes: ${change.before}`);
@@ -754,6 +1237,12 @@ export function describeImport(result, { file, which, apply }) {
             out.push(`    ahora: ${change.after}`);
             out.push(`    por qué: ${error}`);
         }
+    }
+    const skipped = result.skipped ?? [];
+    if (skipped.length > 0) {
+        out.push('');
+        out.push(`${count(skipped.length, 'línea cambiada', 'líneas cambiadas')} de categorías que no has marcado (no se tocan):`);
+        for (const change of skipped) out.push(`  ${change.id} · ${change.block.label}: ${change.after}`);
     }
     if (review.newer.length > 0) {
         out.push('');
@@ -790,8 +1279,9 @@ export function describeImport(result, { file, which, apply }) {
     out.push(`${count(review.same, 'línea sigue igual', 'líneas siguen igual')}.`);
     out.push('');
     if (!apply) {
+        const only = result.only ? ` --categorias ${result.only.join(',')}` : '';
         out.push(changes.length > 0
-            ? `No se ha cambiado nada. Para guardarlo: node tools/guion-word.mjs import "${file}" ${which} --aplicar`
+            ? `No se ha cambiado nada. Para guardarlo: node tools/guion-word.mjs import "${file}" ${which}${only} --aplicar`
             : 'No hay nada que guardar.');
     } else if (result.undone) {
         out.push('No se ha guardado nada:');
@@ -799,8 +1289,10 @@ export function describeImport(result, { file, which, apply }) {
     } else if (result.written.length > 0) {
         out.push(`Guardado en ${result.written.map(path => relative(result.root || ROOT, path).replace(/\\/g, '/')).join(', ')}.`);
         for (const check of result.checks) out.push(`  ${check}`);
+        if (result.backup) out.push(`  Lo de antes, copiado en ${result.backup}.`);
     } else {
         out.push('No había nada que guardar.');
+        for (const check of result.checks) out.push(`  ${check}`);
     }
     return out.join('\n');
 }
@@ -809,6 +1301,20 @@ export function describeImport(result, { file, which, apply }) {
 // La línea de órdenes
 // ---------------------------------------------------------------------------------------------
 
+/**
+ * Las notas para el Gem (lo escrito sin marca), al lado del Word y listas para pegar.
+ *
+ * @param {string} file El Word.
+ * @param {ImportResult} result
+ * @returns {string} El archivo de notas, o vacío si no hay.
+ */
+export function writeGemNotes(file, result) {
+    if (result.review.notes.length === 0) return '';
+    const notes = file.replace(/\.(docx|txt|md)$/i, '') + '-notas-para-el-gem.txt';
+    writeFileSync(notes, result.review.notes.map((/** @type {any} */ n) => `${n.after ? `[después de ${n.after}] ` : ''}${n.text}`).join('\n') + '\n');
+    return notes;
+}
+
 function main() {
     const args = process.argv.slice(2);
     const flag = (/** @type {string} */ name) => args.includes(name);
@@ -816,14 +1322,30 @@ function main() {
         const at = args.indexOf(name);
         return at >= 0 ? args[at + 1] ?? '' : '';
     };
-    const plain = args.filter((arg, i) => !arg.startsWith('--') && args[i - 1] !== '--salida');
+    const plain = args.filter((arg, i) => !arg.startsWith('--') && args[i - 1] !== '--salida' && args[i - 1] !== '--categorias');
     const [command, first, second] = plain;
-    const usage = 'Uso:\n  node tools/guion-word.mjs export <gremio|1387|strahd|paquete.json> [--salida guion.docx] [--md]\n'
-        + '  node tools/guion-word.mjs import <guion.docx> <gremio|1387|strahd|paquete.json> [--aplicar]';
+    const usage = 'Uso:\n  node tools/guion-word.mjs export <campaña|paquete.json> [--categorias historia,charlas] [--salida guion.docx] [--md]\n'
+        + '  node tools/guion-word.mjs import <guion.docx> <campaña|paquete.json> [--categorias historia,charlas] [--aplicar]\n'
+        + '  node tools/guion-word.mjs categorias <campaña|paquete.json>\n'
+        + `La campaña: gremio, 1387, strahd o cualquier paquete de public/mundos (ocaso, costa, pantalla…). Las categorías: ${CATEGORIES.map(c => c.id).join(', ')} (o todo).`;
+    /** @type {string[]|null} */
+    let categories = null;
+    try {
+        categories = parseCategories(option('--categorias'));
+    } catch (error) {
+        console.error(/** @type {Error} */ (error).message);
+        return 2;
+    }
+    if (command === 'categorias' && first) {
+        const script = scriptOf(loadCampaign(first));
+        console.log(`Las categorías del guion de «${script.title}»:`);
+        for (const c of categoriesIn(script)) console.log(`  ${c.id.padEnd(15)} ${String(c.lines).padStart(5)} líneas  ${c.name}: ${c.about}`);
+        return 0;
+    }
     if (command === 'export' && first) {
-        const { file, md, script } = exportScript(first, { out: option('--salida'), md: flag('--md'), compendio: !flag('--sin-compendio') });
+        const { file, md, script } = exportScript(first, { out: option('--salida'), md: flag('--md'), compendio: !flag('--sin-compendio'), categories });
         const c = script.counts;
-        console.log(`El guion de «${script.title}»: ${c.lines} líneas (${c.said} dichas por alguien, ${c.choices} tuyas, ${c.narrator} sin nadie que las diga).`);
+        console.log(`El guion de «${script.title}»${categories ? ` (solo ${categories.join(', ')})` : ''}: ${c.lines} líneas (${c.said} dichas por alguien, ${c.choices} tuyas, ${c.narrator} sin nadie que las diga).`);
         console.log(`Word: ${file}`);
         if (md) console.log(`Texto: ${md}`);
         return 0;
@@ -831,19 +1353,18 @@ function main() {
     if (command === 'import' && first && second) {
         const apply = flag('--aplicar');
         // Sin ruta, se busca donde los deja exportar.
-        const file = existsSync(resolve(first)) || !existsSync(join(defaultFolder(), first)) ? resolve(first) : join(defaultFolder(), first);
+        const file = existsSync(resolve(first)) ? resolve(first)
+            : [defaultFolder(), OLD_FOLDER].map(folder => join(folder, first)).find(path => existsSync(path)) ?? resolve(first);
         if (!existsSync(file)) {
             console.error(`No encuentro ${file}.`);
             return 2;
         }
-        const result = importScript(file, second, { apply, compendio: !flag('--sin-compendio') });
+        // Al guardar, antes se copia lo que se va a tocar (en Documentos\Guiones\copias).
+        const backup = apply ? backupFolder(join(defaultFolder(), 'copias'), basename(second).replace(/\.json$/i, '')) : '';
+        const result = importScript(file, second, { apply, compendio: !flag('--sin-compendio'), categories, backup });
         console.log(describeImport(result, { file, which: second, apply }));
-        // Las notas para el Gem, al lado del Word, listas para pegar.
-        if (result.review.notes.length > 0) {
-            const notes = file.replace(/\.(docx|txt|md)$/i, '') + '-notas-para-el-gem.txt';
-            writeFileSync(notes, result.review.notes.map((/** @type {any} */ n) => `${n.after ? `[después de ${n.after}] ` : ''}${n.text}`).join('\n') + '\n');
-            console.log(`\nLas notas para el Gem, en ${notes}`);
-        }
+        const notes = writeGemNotes(file, result);
+        if (notes) console.log(`\nLas notas para el Gem, en ${notes}`);
         return result.undone ? 1 : 0;
     }
     console.error(usage);

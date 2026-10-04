@@ -1,0 +1,512 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>El guion en Word</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='3' y='3' width='26' height='26' rx='6' fill='%232b5cab'/%3E%3Cg stroke='white' stroke-width='2.5' stroke-linecap='round'%3E%3Cpath d='M9 10h14M9 14.5h14M9 19h14M9 23.5h9'/%3E%3C/g%3E%3C/svg%3E">
+<!--
+  GuionEnWord: la ventana. La sirve tools/guion-en-word/servidor.mjs; todo va aquí dentro, sin
+  nada de internet. El trabajo lo hace tools/guion-word.mjs.
+-->
+<style>
+:root {
+    color-scheme: light dark;
+    --bg: #f4f5f7;
+    --panel: #ffffff;
+    --ink: #1d2330;
+    --muted: #5d6676;
+    --line: #dde1e8;
+    --accent: #2b5cab;
+    --accent-ink: #ffffff;
+    --soft: #edf2fb;
+    --ok: #1f8a4c;
+    --ok-bg: #e5f5ec;
+    --meh: #a86400;
+    --meh-bg: #fdf1dc;
+    --bad: #c23a3a;
+    --bad-bg: #fbe7e7;
+    --shadow: 0 1px 2px rgba(20, 30, 50, .06), 0 2px 8px rgba(20, 30, 50, .05);
+}
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+        --bg: #14171d; --panel: #1d2129; --ink: #e7eaf0; --muted: #9aa3b2; --line: #2f3542; --accent: #7aa2f0; --accent-ink: #0d1424;
+        --soft: #222a3a; --ok: #5fd08f; --ok-bg: #173325; --meh: #f2b45a; --meh-bg: #3a2c14; --bad: #ff8080; --bad-bg: #3d1d1f;
+        --shadow: 0 1px 2px rgba(0, 0, 0, .3);
+    }
+}
+:root[data-theme="dark"] {
+    --bg: #14171d; --panel: #1d2129; --ink: #e7eaf0; --muted: #9aa3b2; --line: #2f3542; --accent: #7aa2f0; --accent-ink: #0d1424;
+    --soft: #222a3a; --ok: #5fd08f; --ok-bg: #173325; --meh: #f2b45a; --meh-bg: #3a2c14; --bad: #ff8080; --bad-bg: #3d1d1f;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .3);
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--ink); font: 15px/1.45 "Segoe UI", system-ui, sans-serif; min-height: 100vh; }
+button, select, input { font: inherit; color: inherit; }
+h1, h2, h3 { margin: 0; line-height: 1.2; }
+.top { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding: 16px 20px; border-bottom: 1px solid var(--line); background: var(--panel); }
+.top svg { width: 34px; height: 34px; flex: none; }
+.top h1 { font-size: 21px; }
+.top p { margin: 2px 0 0; color: var(--muted); font-size: 14px; }
+main { padding: 18px 20px 10px; display: grid; gap: 18px; max-width: 1280px; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; box-shadow: var(--shadow); min-width: 0; }
+.panel h2 { font-size: 17px; margin-bottom: 4px; }
+.panel .sub { color: var(--muted); font-size: 13.5px; margin: 0 0 14px; }
+.cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); gap: 18px; align-items: start; }
+@media (max-width: 900px) { .cols { grid-template-columns: minmax(0, 1fr); } main { padding: 16px; } }
+.camp { display: grid; grid-template-columns: minmax(220px, 420px) minmax(0, 1fr); gap: 6px 16px; align-items: center; }
+@media (max-width: 700px) { .camp { grid-template-columns: minmax(0, 1fr); } }
+.camp label { font-weight: 600; font-size: 14px; }
+select { width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); }
+.note { color: var(--muted); font-size: 13.5px; margin: 0; }
+.picker { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 10px 0 0; }
+.path { color: var(--muted); font-size: 13px; overflow-wrap: anywhere; font-family: Consolas, "Cascadia Mono", monospace; }
+.btn { border: 1px solid var(--line); background: var(--panel); border-radius: 8px; padding: 7px 12px; cursor: pointer; }
+.btn:hover:not(:disabled) { border-color: var(--accent); }
+.btn:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; width: 100%; padding: 10px 14px; font-size: 16px; }
+.btn.small { padding: 4px 9px; font-size: 13px; }
+.btn.danger { border-color: var(--bad); color: var(--bad); }
+fieldset { border: 0; padding: 0; margin: 0 0 14px; min-width: 0; }
+legend { font-weight: 600; font-size: 14px; margin-bottom: 8px; padding: 0; }
+.cats { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 6px; }
+.cat { display: grid; grid-template-columns: auto 1fr auto; gap: 1px 8px; align-items: start; padding: 7px 10px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; }
+.cat:has(input:checked) { border-color: var(--accent); background: var(--soft); }
+.cat input { margin: 3px 0 0; }
+.cat b { font-weight: 600; font-size: 14px; }
+.cat .n { color: var(--muted); font-size: 12.5px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.cat small { grid-column: 2 / 4; color: var(--muted); font-size: 12px; line-height: 1.35; }
+.cat.all { margin-bottom: 6px; }
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+.check { display: flex; gap: 8px; align-items: center; font-size: 14px; margin-bottom: 14px; cursor: pointer; }
+.msg { border-radius: 8px; padding: 10px 12px; margin-top: 12px; font-size: 14px; }
+.msg p { margin: 0 0 8px; overflow-wrap: anywhere; }
+.msg p:last-child { margin-bottom: 0; }
+.msg.ok { background: var(--ok-bg); color: var(--ink); border-left: 4px solid var(--ok); }
+.msg.bad { background: var(--bad-bg); color: var(--ink); border-left: 4px solid var(--bad); }
+.msg.warn { background: var(--meh-bg); color: var(--ink); border-left: 4px solid var(--meh); }
+.msg .btns { display: flex; gap: 8px; flex-wrap: wrap; }
+.busy { color: var(--muted); font-size: 14px; margin: 10px 0 0; }
+table.sum { border-collapse: collapse; width: 100%; font-size: 13.5px; margin-bottom: 12px; }
+table.sum th, table.sum td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+table.sum th { font-size: 12.5px; color: var(--muted); font-weight: 600; }
+table.sum td.num, table.sum th.num { text-align: right; font-variant-numeric: tabular-nums; }
+table.sum td.hot { font-weight: 700; color: var(--accent); }
+table.sum td.warn { font-weight: 700; color: var(--meh); }
+table.sum label { display: flex; gap: 8px; align-items: center; cursor: pointer; }
+.table-wrap { overflow-x: auto; }
+.facts { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+.pill { font-size: 12.5px; padding: 2px 9px; border-radius: 99px; background: var(--soft); color: var(--muted); }
+.pill.warn { background: var(--meh-bg); color: var(--meh); }
+.pill.bad { background: var(--bad-bg); color: var(--bad); }
+details { border-top: 1px solid var(--line); padding: 8px 0; }
+details > summary { cursor: pointer; font-weight: 600; font-size: 14px; }
+ul.lines { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 8px; max-height: 420px; overflow: auto; }
+ul.lines li { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font-size: 13.5px; }
+ul.lines .who { font-weight: 600; }
+ul.lines .where { color: var(--muted); font-size: 12px; }
+ul.lines .was { color: var(--muted); text-decoration: line-through; margin-top: 3px; }
+ul.lines .now { margin-top: 2px; }
+ul.lines .why { color: var(--bad); margin-top: 3px; }
+ul.lines .warn { color: var(--meh); margin-top: 3px; }
+pre { margin: 8px 0 0; max-height: 360px; overflow: auto; font: 12px/1.4 Consolas, "Cascadia Mono", monospace; white-space: pre-wrap; overflow-wrap: anywhere; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 8px; }
+.foot { padding: 6px 20px 22px; color: var(--muted); font-size: 13px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.foot code { font-size: 12.5px; overflow-wrap: anywhere; }
+dialog { border: 1px solid var(--line); border-radius: 10px; padding: 18px; background: var(--panel); color: var(--ink); max-width: min(92vw, 520px); box-shadow: 0 10px 40px rgba(0, 0, 0, .35); }
+dialog::backdrop { background: rgba(10, 14, 22, .55); }
+dialog h3 { font-size: 17px; margin-bottom: 10px; }
+dialog p { margin: 0 0 10px; font-size: 14px; overflow-wrap: anywhere; }
+dialog .btns { display: flex; gap: 8px; justify-content: flex-end; margin-top: 14px; }
+dialog .btns .btn.primary { width: auto; font-size: 15px; padding: 8px 14px; }
+</style>
+</head>
+<body>
+<header class="top">
+    <svg viewBox="0 0 32 32" aria-hidden="true"><rect x="3" y="3" width="26" height="26" rx="6" fill="#2b5cab"/><g stroke="#fff" stroke-width="2.5" stroke-linecap="round"><path d="M9 10h14M9 14.5h14M9 19h14M9 23.5h9"/></g></svg>
+    <div>
+        <h1>El guion en Word</h1>
+        <p>Saca a Word lo que se dice en una campaña, corrígelo con calma y devuélveselo al juego.</p>
+    </div>
+</header>
+
+<main>
+    <section class="panel" aria-labelledby="camp-title">
+        <div class="camp">
+            <label for="campaign" id="camp-title">Campaña</label>
+            <p class="note" id="campaign-note"></p>
+            <select id="campaign"></select>
+            <p class="note" id="campaign-size"></p>
+        </div>
+        <div class="picker" id="json-row" hidden>
+            <button class="btn" type="button" id="pick-json">Elegir el .json…</button>
+            <span class="path" id="json-path">Ningún archivo elegido</span>
+        </div>
+    </section>
+
+    <div class="cols">
+        <section class="panel" aria-labelledby="exp-title">
+            <h2 id="exp-title">1. Sacar el guion</h2>
+            <p class="sub">Elige qué texto quieres. Sale en orden de lectura, con quién lo dice.</p>
+            <fieldset id="exp-cats">
+                <legend>Qué texto sale</legend>
+                <label class="cat all"><input type="checkbox" id="exp-all" checked><b>Todo el guion</b><span class="n" id="exp-all-n"></span><small>Todas las categorías de abajo, en un solo Word.</small></label>
+                <div class="cats" id="exp-list"></div>
+            </fieldset>
+            <div class="row">
+                <span class="note">Se guarda en:</span>
+                <span class="path" id="exp-out"></span>
+                <button class="btn small" type="button" id="exp-change">Cambiar…</button>
+            </div>
+            <label class="check"><input type="checkbox" id="exp-md"> También en texto (.md), para pegárselo a un Gem</label>
+            <button class="btn primary" type="button" id="exp-go">Sacar el guion en Word</button>
+            <p class="busy" id="exp-busy" hidden>Escribiendo el Word…</p>
+            <div id="exp-msg"></div>
+        </section>
+
+        <section class="panel" aria-labelledby="imp-title">
+            <h2 id="imp-title">2. Devolverlo al juego</h2>
+            <p class="sub">Elige el Word corregido. Primero ves qué cambiaría; no se guarda nada hasta que lo digas.</p>
+            <div class="row">
+                <button class="btn" type="button" id="imp-pick">Elegir el Word corregido…</button>
+                <button class="btn small" type="button" id="imp-again" hidden>Volver a mirar</button>
+            </div>
+            <p class="path" id="imp-path"></p>
+            <p class="busy" id="imp-busy" hidden>Leyendo el Word y comparándolo con el juego…</p>
+            <div id="imp-review" hidden>
+                <div class="facts" id="imp-facts"></div>
+                <div class="table-wrap">
+                    <table class="sum">
+                        <thead><tr><th>Guardar</th><th class="num">En el Word</th><th class="num">Cambian</th><th class="num">No se guardan</th></tr></thead>
+                        <tbody id="imp-table"></tbody>
+                    </table>
+                </div>
+                <details id="imp-changes-box"><summary id="imp-changes-title">Las líneas que cambian</summary><ul class="lines" id="imp-changes"></ul></details>
+                <details id="imp-refused-box"><summary id="imp-refused-title">Las que no se guardan</summary><ul class="lines" id="imp-refused"></ul></details>
+                <details><summary>El informe entero</summary><pre id="imp-report"></pre></details>
+                <button class="btn primary" type="button" id="imp-go" style="margin-top: 12px">Guardar en el juego</button>
+            </div>
+            <div id="imp-msg"></div>
+        </section>
+    </div>
+</main>
+
+<footer class="foot">
+    <span>Los guiones se guardan en <code id="folder"></code>; las copias de antes de guardar, en <code id="backups"></code>.</span>
+    <button class="btn small" type="button" id="open-folder">Abrir la carpeta</button>
+    <button class="btn small" type="button" id="desk" hidden>Poner en el escritorio</button>
+    <span id="desk-msg"></span>
+</footer>
+
+<dialog id="confirm">
+    <h3>¿Guardar en el juego?</h3>
+    <p id="confirm-text"></p>
+    <p class="note" id="confirm-note"></p>
+    <div class="btns">
+        <button class="btn" type="button" id="confirm-no">No, todavía no</button>
+        <button class="btn primary" type="button" id="confirm-yes">Sí, guardar</button>
+    </div>
+</dialog>
+
+<script>
+'use strict';
+const $ = (id) => document.getElementById(id);
+const state = { campaigns: [], folder: '', backups: '', cats: [], out: '', outTouched: false, json: '', word: '', review: null, busy: false };
+
+async function api(path, data) {
+    const res = await fetch(path, data === undefined ? { cache: 'no-store' } : { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+    return res.json();
+}
+const el = (tag, props = {}, ...kids) => {
+    const node = document.createElement(tag);
+    for (const [k, v] of Object.entries(props)) {
+        if (k === 'class') node.className = v;
+        else if (k === 'text') node.textContent = v;
+        else if (k.startsWith('on')) node.addEventListener(k.slice(2), v);
+        else node.setAttribute(k, v);
+    }
+    for (const kid of kids) if (kid != null) node.append(kid);
+    return node;
+};
+const plural = (n, one, many) => `${n.toLocaleString('es-ES')} ${n === 1 ? one : many}`;
+const current = () => state.campaigns.find(c => c.id === $('campaign').value);
+const campaignInput = () => ({ campaign: $('campaign').value, json: state.json });
+function message(box, kind, lines, buttons = []) {
+    const node = $(box);
+    node.replaceChildren();
+    if (!lines) return;
+    const div = el('div', { class: `msg ${kind}` }, ...lines.map(line => el('p', { text: line })));
+    if (buttons.length) div.append(el('div', { class: 'btns' }, ...buttons));
+    node.append(div);
+}
+const showButton = (label, path, how) => el('button', { class: 'btn small', type: 'button', text: label, onclick: () => api('/api/ensenar', { path, how }) });
+
+// ------------------------------------------------------------------ la campaña
+
+async function loadState() {
+    const s = await api('/api/estado');
+    state.campaigns = s.campaigns;
+    state.folder = s.folder;
+    state.backups = s.backups;
+    $('folder').textContent = s.folder;
+    $('backups').textContent = s.backups;
+    $('desk').hidden = !s.exe;
+    const select = $('campaign');
+    select.replaceChildren();
+    const groups = new Map();
+    for (const c of s.campaigns) {
+        if (!groups.has(c.group)) groups.set(c.group, el('optgroup', { label: c.group }));
+        groups.get(c.group).append(el('option', { value: c.id, text: c.name }));
+    }
+    select.append(...groups.values());
+    let saved = '';
+    try { saved = localStorage.getItem('guion-campana') || ''; } catch { saved = ''; }
+    if (saved && s.campaigns.some(c => c.id === saved && c.id !== 'json')) select.value = saved;
+    await campaignChanged();
+}
+
+async function campaignChanged() {
+    const c = current();
+    try { localStorage.setItem('guion-campana', c.id); } catch { /* nada */ }
+    $('campaign-note').textContent = c.note;
+    $('json-row').hidden = !c.json;
+    state.cats = [];
+    state.review = null;
+    state.outTouched = false;
+    $('imp-review').hidden = true;
+    message('exp-msg');
+    message('imp-msg');
+    $('exp-list').replaceChildren();
+    $('campaign-size').textContent = '';
+    if (c.json && !state.json) {
+        $('campaign-size').textContent = 'Elige el archivo .json.';
+        updateExport();
+        return;
+    }
+    $('campaign-size').textContent = 'Leyendo el guion…';
+    const r = await api('/api/categorias', campaignInput());
+    if (!r.ok) {
+        $('campaign-size').textContent = '';
+        message('exp-msg', 'bad', [r.error]);
+        updateExport();
+        return;
+    }
+    $('campaign-size').textContent = `«${r.title}»: ${plural(r.lines, 'línea', 'líneas')} en ${plural(r.categories.length, 'categoría', 'categorías')}.`;
+    state.cats = r.categories;
+    state.suggested = r.suggested;
+    $('exp-all-n').textContent = plural(r.lines, 'línea', 'líneas');
+    for (const cat of r.categories) {
+        const box = el('input', { type: 'checkbox', value: cat.id });
+        box.checked = $('exp-all').checked;
+        box.addEventListener('change', () => {
+            $('exp-all').checked = [...document.querySelectorAll('#exp-list input')].every(i => i.checked);
+            updateExport();
+        });
+        $('exp-list').append(el('label', { class: 'cat' }, box, el('b', { text: cat.name }), el('span', { class: 'n', text: plural(cat.lines, 'línea', 'líneas') }), el('small', { text: cat.about })));
+    }
+    updateExport();
+    if (state.word) review();
+}
+
+$('campaign').addEventListener('change', campaignChanged);
+$('pick-json').addEventListener('click', async () => {
+    const r = await api('/api/elegir', { kind: 'json', start: state.json });
+    if (!r.file) return;
+    state.json = r.file;
+    $('json-path').textContent = r.file;
+    campaignChanged();
+});
+
+// ------------------------------------------------------------------ exportar
+
+const chosen = () => [...document.querySelectorAll('#exp-list input')].filter(i => i.checked).map(i => i.value);
+const allChosen = () => chosen().length === state.cats.length;
+
+/** El nombre que tendría el Word, como lo pone guion-word.mjs. */
+function suggestedOut() {
+    if (!state.suggested) return '';
+    const ids = chosen();
+    if (allChosen()) return state.suggested;
+    return state.suggested.replace(/\.docx$/i, `-${ids.length <= 3 ? ids.join('-') : 'por-partes'}.docx`);
+}
+
+function updateExport() {
+    const ids = chosen();
+    if (!state.outTouched) state.out = suggestedOut();
+    $('exp-out').textContent = state.out || '—';
+    const lines = state.cats.filter(c => ids.includes(c.id)).reduce((n, c) => n + c.lines, 0);
+    $('exp-go').disabled = state.busy || ids.length === 0 || !state.out;
+    $('exp-go').textContent = ids.length === 0 ? 'Marca al menos una categoría'
+        : allChosen() ? `Sacar el guion entero en Word (${plural(lines, 'línea', 'líneas')})` : `Sacar en Word ${plural(lines, 'línea', 'líneas')} de ${plural(ids.length, 'categoría', 'categorías')}`;
+}
+
+$('exp-all').addEventListener('change', () => {
+    for (const box of document.querySelectorAll('#exp-list input')) box.checked = $('exp-all').checked;
+    updateExport();
+});
+$('exp-change').addEventListener('click', async () => {
+    const r = await api('/api/elegir', { kind: 'guardar', start: state.out });
+    if (!r.file) return;
+    state.out = r.file;
+    state.outTouched = true;
+    updateExport();
+});
+$('exp-go').addEventListener('click', async () => {
+    state.busy = true;
+    updateExport();
+    $('exp-busy').hidden = false;
+    message('exp-msg');
+    try {
+        const r = await api('/api/exportar', { ...campaignInput(), categories: allChosen() ? 'todo' : chosen(), out: state.out, md: $('exp-md').checked });
+        if (!r.ok) return message('exp-msg', 'bad', [r.error]);
+        const what = r.categories ? `${plural(r.lines, 'línea', 'líneas')} de: ${state.cats.filter(c => r.categories.includes(c.id)).map(c => c.name).join(', ')}` : `el guion entero (${plural(r.lines, 'línea', 'líneas')})`;
+        message('exp-msg', 'ok', [`Hecho: ${what}.`, r.file, ...(r.md ? [`Y en texto: ${r.md}`] : [])],
+            [showButton('Abrir el Word', r.file, 'archivo'), showButton('Enseñarlo en la carpeta', r.file, 'carpeta')]);
+        state.lastExport = r.file;
+        if (!state.word) $('imp-path').textContent = 'Cuando lo corrijas, elígelo aquí.';
+    } finally {
+        state.busy = false;
+        $('exp-busy').hidden = true;
+        updateExport();
+    }
+});
+
+// ------------------------------------------------------------------ importar
+
+$('imp-pick').addEventListener('click', async () => {
+    const r = await api('/api/elegir', { kind: 'word', start: state.word || state.lastExport || state.folder });
+    if (!r.file) return;
+    state.word = r.file;
+    review();
+});
+$('imp-again').addEventListener('click', () => review());
+
+const toSave = () => [...document.querySelectorAll('#imp-table input')].filter(i => i.checked).map(i => i.value);
+
+function renderLines(list, items) {
+    $(list).replaceChildren(...items.map(item => el('li', {},
+        el('div', {}, el('span', { class: 'who', text: item.label }), el('span', { class: 'where', text: ` · ${item.categoryName} · ${item.id}` })),
+        el('div', { class: 'was', text: item.before }),
+        el('div', { class: 'now', text: item.after }),
+        ...(item.warnings || []).map(w => el('div', { class: 'warn', text: `Aviso: ${w}` })),
+        item.error ? el('div', { class: 'why', text: `Por qué no: ${item.error}` }) : null,
+    )));
+}
+
+function updateImport() {
+    const r = state.review;
+    if (!r) return;
+    const ids = toSave();
+    const n = r.changes.filter(c => ids.includes(c.category)).length;
+    $('imp-go').disabled = state.busy || n === 0;
+    $('imp-go').textContent = n === 0 ? (r.changes.length === 0 ? 'No hay nada que guardar' : 'Marca al menos una categoría con cambios') : `Guardar en el juego ${plural(n, 'línea', 'líneas')}`;
+}
+
+async function review() {
+    if (!state.word) return;
+    $('imp-path').textContent = state.word;
+    $('imp-again').hidden = false;
+    $('imp-review').hidden = true;
+    $('imp-busy').hidden = false;
+    message('imp-msg');
+    try {
+        const r = await api('/api/revisar', { ...campaignInput(), file: state.word });
+        if (!r.ok) return message('imp-msg', 'bad', [r.error]);
+        state.review = r;
+        const facts = [
+            el('span', { class: 'pill', text: plural(r.same, 'línea igual', 'líneas iguales') }),
+            r.changes.length ? el('span', { class: 'pill', text: plural(r.changes.length, 'cambiada', 'cambiadas') }) : null,
+            r.refused.length ? el('span', { class: 'pill bad', text: plural(r.refused.length, 'que no se guarda', 'que no se guardan') }) : null,
+            r.conflicts ? el('span', { class: 'pill warn', text: plural(r.conflicts, 'que cambiasteis el juego y tú', 'que cambiasteis el juego y tú') }) : null,
+            r.newer ? el('span', { class: 'pill', text: plural(r.newer, 'que cambió el juego después', 'que cambió el juego después') }) : null,
+            r.unknown ? el('span', { class: 'pill warn', text: plural(r.unknown, 'marca que no encuentro', 'marcas que no encuentro') }) : null,
+            r.broken ? el('span', { class: 'pill warn', text: plural(r.broken, 'línea sin los dos puntos', 'líneas sin los dos puntos') }) : null,
+            r.notes ? el('span', { class: 'pill', text: plural(r.notes, 'línea nueva para el Gem', 'líneas nuevas para el Gem') }) : null,
+        ];
+        $('imp-facts').replaceChildren(...facts.filter(Boolean));
+        $('imp-table').replaceChildren(...r.byCategory.map(row => {
+            const box = el('input', { type: 'checkbox', value: row.id });
+            box.checked = row.changed > 0;
+            box.disabled = row.changed === 0;
+            box.addEventListener('change', updateImport);
+            return el('tr', {},
+                el('td', {}, el('label', {}, box, el('span', { text: row.name }))),
+                el('td', { class: 'num', text: String(row.lines) }),
+                el('td', { class: `num${row.changed ? ' hot' : ''}`, text: String(row.changed) }),
+                el('td', { class: `num${row.refused ? ' warn' : ''}`, text: String(row.refused) }));
+        }));
+        renderLines('imp-changes', r.changes);
+        renderLines('imp-refused', r.refused);
+        $('imp-changes-title').textContent = `Las líneas que cambian (${r.changes.length})`;
+        $('imp-refused-title').textContent = `Las que no se guardan (${r.refused.length})`;
+        $('imp-changes-box').hidden = r.changes.length === 0;
+        $('imp-refused-box').hidden = r.refused.length === 0;
+        $('imp-changes-box').open = r.changes.length > 0 && r.changes.length <= 30;
+        $('imp-report').textContent = r.report;
+        $('imp-review').hidden = false;
+        const extra = [];
+        if (r.conflicts) extra.push('Hay líneas que cambiasteis el juego y tú: esas no se tocan. Vuelve a sacar el guion y corrígelas otra vez.');
+        if (r.notesFile) extra.push(`Lo que escribiste sin marca no entra en el juego: está en ${r.notesFile}, para pasárselo a tu Gem.`);
+        if (extra.length) message('imp-msg', 'warn', extra, r.notesFile ? [showButton('Enseñar las notas', r.notesFile, 'carpeta')] : []);
+        updateImport();
+    } finally {
+        $('imp-busy').hidden = true;
+    }
+}
+
+$('imp-go').addEventListener('click', () => {
+    const r = state.review;
+    const ids = toSave();
+    const n = r.changes.filter(c => ids.includes(c.category)).length;
+    const names = r.byCategory.filter(row => ids.includes(row.id)).map(row => row.name);
+    $('confirm-text').textContent = `Se van a cambiar ${plural(n, 'línea', 'líneas')} de «${r.title}», de: ${names.join(', ')}.`;
+    $('confirm-note').textContent = `Antes se hace una copia de lo que hay ahora, en ${state.backups}. Si con los cambios la campaña queda peor, se deshace solo.`;
+    $('confirm').showModal();
+});
+$('confirm-no').addEventListener('click', () => $('confirm').close());
+$('confirm-yes').addEventListener('click', async () => {
+    $('confirm').close();
+    state.busy = true;
+    updateImport();
+    $('imp-busy').hidden = false;
+    $('imp-busy').textContent = 'Guardando y comprobando la campaña…';
+    try {
+        const r = await api('/api/guardar', { ...campaignInput(), file: state.word, categories: toSave() });
+        $('imp-busy').hidden = true;
+        if (!r.ok) return message('imp-msg', 'bad', [r.error]);
+        const buttons = r.backup ? [showButton('Abrir la copia de antes', r.backup, 'carpeta')] : [];
+        if (r.undone) {
+            message('imp-msg', 'bad', ['No se ha guardado nada.', ...r.checks], buttons);
+        } else if (r.written.length === 0) {
+            message('imp-msg', 'warn', ['No había nada que guardar.', ...r.checks], buttons);
+        } else {
+            const done = r.changes.length;
+            message('imp-msg', 'ok', [`Guardado: ${plural(done, 'línea', 'líneas')} en ${r.written.join(', ')}.`, ...r.checks,
+                ...(r.refused.length ? [`${plural(r.refused.length, 'línea no se ha guardado', 'líneas no se han guardado')}: mira «Las que no se guardan».`] : [])], buttons);
+            state.review = null;
+            $('imp-review').hidden = true;
+        }
+    } finally {
+        state.busy = false;
+        $('imp-busy').textContent = 'Leyendo el Word y comparándolo con el juego…';
+        $('imp-busy').hidden = true;
+        updateImport();
+    }
+});
+
+// ------------------------------------------------------------------ el pie
+
+$('open-folder').addEventListener('click', () => api('/api/ensenar', { path: state.folder, how: 'carpeta' }));
+$('desk').addEventListener('click', async () => {
+    const r = await api('/api/escritorio', {});
+    $('desk-msg').textContent = r.ok ? 'Hecho: está en el escritorio.' : r.error;
+});
+
+// Mientras la ventana esté abierta, el servidor sigue encendido.
+new EventSource('/api/eventos');
+loadState().catch(error => message('exp-msg', 'bad', [`No he podido leer las campañas: ${error}`]));
+</script>
+</body>
+</html>
