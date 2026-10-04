@@ -22,6 +22,7 @@ import {
 import { duePersonalQuests, personalQuestFor, describePersonalAsk } from '../game-engine/campaign/personal-quests.js';
 import { waitsForVeteran } from '../game-engine/campaign/weekly-mercenaries.js';
 import { ensureMercQuests, grudgeLines, mercQuestInfo, mercQuestRows } from './roce.js';
+import { describePrep } from '../game-engine/campaign/guild-perks.js';
 import { readBench, whereHired } from '../game-engine/campaign/bench.js';
 import { judgeDepartures, describeWarning, describeLeaving } from '../game-engine/campaign/departures.js';
 import { shiftAttitude, describeAttitude, readAttitudes } from '../game-engine/campaign/attitudes.js';
@@ -753,6 +754,32 @@ async function questStage() {
 }
 
 /**
+ * E4.3: las caras de la escena de una misión para quien no tiene retrato con su nombre: los del
+ * grupo, con el de relleno de su clase (un mercenario de los dormitorios, Iria), y la gente que
+ * el paso dice (`faces`: nombre → un retrato de `retratos/mercenarios/`, como el prestamista,
+ * o si no, un dibujo de `bestias/`, como el salteador).
+ *
+ * @param {any} step
+ * @returns {Record<string, string>}
+ */
+function questSceneFaces(step) {
+    /** @type {Record<string, string>} */
+    const faces = {};
+    for (const member of partyMembers) {
+        const name = String(member?.name ?? '');
+        const art = name ? firstArt('mercenary', { name })
+            || firstArt('hero', { className: String(member.class ?? ''), gender: String(member.gender ?? ''), race: String(member.race ?? ''), name }) : '';
+        if (art) faces[name] = art;
+    }
+    const said = step?.raw?.faces && typeof step.raw.faces === 'object' ? step.raw.faces : {};
+    for (const [name, id] of Object.entries(said)) {
+        const art = firstArt('mercenary', { name: String(id) }) || firstArt('creature', { id: String(id) });
+        if (art) faces[name] = art;
+    }
+    return faces;
+}
+
+/**
  * Jugar la misión personal de alguien desde donde vaya: empezarla (si su vínculo la abrió y no
  * hay otra a medias) o seguirla. Cada paso a su manera: el camino (sus días), una escena del hilo
  * en su ventana, una pelea en su tablero (sigue sola al acabar) y el final, con lo que cambia.
@@ -823,6 +850,7 @@ export async function playPersonalQuest(rowId) {
                 // Pasa lejos de aquí: sin el escenario de Puerto Alba detrás; el suyo, si lo dice el paso.
                 town: '',
                 night: storyNight(),
+                faces: questSceneFaces(step),
             });
             if (!result.finished) return '';
             state = afterScene(state, row, result.choices);
@@ -1178,6 +1206,8 @@ export function openCompanionCard(memberId) {
     }
     // E4.1: si está molesto (no hace ataques en pareja) y lo que cobra de más.
     for (const line of grudgeLines(member)) root.append($('<div class="cc-grudge"></div>').text(line));
+    // E5.1: lo que le prepararon en casa para esta salida (el temple, el caldo o el guiso).
+    for (const line of describePrep(member)) root.append($('<div class="cc-prep"></div>').text(line));
     const earned = [
         member.nickname ? `Le llaman «${member.nickname}»` : '',
         ...traitsOf(member).map(t => t.label),

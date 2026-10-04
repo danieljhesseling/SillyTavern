@@ -26,6 +26,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { entrarEnLaPelea } from './e2e-entrar-pelea.mjs';
+import { apagarModoGuiado, buscarEnElPueblo, salirDelSitio } from './e2e-guiado.mjs';
 
 const ROOT = new URL('..', import.meta.url).pathname.replace(/^[/]([A-Za-z]:)/, '$1');
 const argAfter = (/** @type {string} */ flag) => (process.argv.includes(flag) ? process.argv[process.argv.indexOf(flag) + 1] : '');
@@ -467,17 +468,24 @@ try {
         lines: [...document.querySelectorAll('.lu-card .lu-spell-line')].map(l => l.textContent || ''),
         pickers: [...document.querySelectorAll('.lu-card .sp-picker')].map(p => `${p.getAttribute('data-picker')}:${p.querySelector('.sp-count')?.textContent}`),
         perks: document.querySelectorAll('.lu-card .lu-perk').length,
+        // E7.4: los conjuros de su papel salen ya marcados, y lo recomendado se dice y está a un toque.
+        chosen: document.querySelectorAll('.lu-card .sp-picker[data-picker="conjuros"] .sp-option.chosen').length,
+        advice: (document.querySelector('.lu-card .lu-advice')?.textContent || '').trim(),
+        recommend: document.querySelectorAll('.lu-card .lu-recommend').length,
+        // Sin la mejora elegida, aún no se puede subir.
         off: /** @type {HTMLButtonElement|null} */ (document.querySelector('.lu-card .lu-confirm'))?.disabled ?? null,
     }));
     const upClassArt = await drawn('.lu-card .lu-class-art');
     const upSpellArt = await drawn('.lu-card .sp-art');
-    check('la tarjeta de nivel: el icono de la clase, lo que trae y los conjuros nuevos con su dibujo (J19.2)',
-        /nivel 1 → 2/.test(upCard.title) && upClassArt.length === 1 && upCard.pickers.some(p => /^conjuros:0 de 2$/.test(p)) && upSpellArt.length >= 2 && upCard.off === true,
+    check('la tarjeta de nivel: el icono de la clase, lo que trae y los conjuros nuevos con su dibujo, los de su papel ya marcados (J19.2, E7.4)',
+        /nivel 1 → 2/.test(upCard.title) && upClassArt.length === 1 && upCard.pickers.some(p => /^conjuros:2 de 2$/.test(p)) && upCard.chosen === 2
+        && upCard.advice.length > 0 && upCard.recommend === 1 && upSpellArt.length >= 2 && (upCard.perks === 0 || upCard.off === true),
         JSON.stringify({ upCard, upClassArt, upSpellArt: upSpellArt.length }));
     if (shot('8-nivel')) await page.screenshot({ path: shot('8-nivel') });
     if (upCard.perks > 0) await page.locator('.lu-card .lu-perk').first().click();
     const spellsInCard = page.locator('.lu-card .sp-picker[data-picker="conjuros"] .sp-option:not(.chosen):not([disabled])');
-    for (let i = 0; i < 2; i++) await spellsInCard.first().click().catch(() => {});
+    // Ya vienen marcados (E7.4); si faltara alguno, se completa a mano.
+    for (let i = upCard.chosen; i < 2; i++) await spellsInCard.first().click().catch(() => {});
     const bookBefore = (lia?.spellbook ?? []).length;
     await page.locator('.lu-card .lu-confirm').click();
     await page.waitForTimeout(900);
@@ -588,10 +596,16 @@ try {
     await page.waitForTimeout(500);
     const afterChips = await allChips();
     check('con la Luz ya encendida, la fila deja de ofrecerla', !afterChips.some(c => c.id === 'field-magic' && /Luz/.test(c.label)), JSON.stringify(afterChips.map(c => c.label)));
-    // Examinar algo de aquí, a la luz: la tirada suma +2 y lo dice.
-    const look = afterChips.find(c => /^look:/.test(c.id) && /fa-magnifying-glass|fa-binoculars/.test(c.icon));
+    // Examinar algo de aquí, a la luz: la tirada suma +2 y lo dice. D-J62, el modo guiado: sin la
+    // fila, lo de mirar está dentro del sitio del pueblo al que pertenece; mejor uno al raso (las
+    // barcas, en el muelle), que la tienda o la posada ya tienen luz (D-J51) y allí la Luz no suma.
+    const looks = afterChips.filter(c => /^look:/.test(c.id) && /fa-magnifying-glass|fa-binoculars/.test(c.icon));
+    const look = looks.find(c => /muelle|barca/i.test(c.label)) ?? looks[0];
     const logBefore = await page.evaluate(() => (window.SillyTavern.getContext().chat || []).length);
-    if (look) await pressChip(new RegExp(`^${look.label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`), look.id);
+    if (look && !(await pressChip(new RegExp(`^${look.label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`), look.id))) {
+        const inTown = await buscarEnElPueblo(page, act => act.id === look.id);
+        if (inTown) await page.locator(`#game-shell .gs-town-scene .gs-town-act[data-action="${inTown.id}"]`).first().click({ timeout: 5000 }).catch(() => {});
+    }
     await page.waitForTimeout(1200);
     await clearDice();
     const lookLog = await page.evaluate((from) => (window.SillyTavern.getContext().chat || []).slice(from)
@@ -599,8 +613,9 @@ try {
     check('examinar a la luz, de noche: la tirada suma «+2 por la Luz»', Boolean(look) && /\+2 por la Luz/.test(lookLog),
         JSON.stringify({ look, lookLog: lookLog.slice(0, 400) }));
     await dropToasts();
-    // Lo que cuenta la tirada se lee en la caja; «Continuar» vuelve al pueblo.
+    // Lo que cuenta la tirada se lee en la caja; «Continuar» vuelve al pueblo, y de allí a la plaza.
     await carryOn('exploration');
+    await salirDelSitio(page);
 
     // 8c. D-J53 y D-J50: con una clériga en el grupo. Lía, herida, llega a un sitio: la novela
     // pregunta si curarla con magia. Y un asesinato abierto: el muerto contesta una vez, y hasta
@@ -636,11 +651,13 @@ try {
     const asked = await page.waitForSelector('dialog.vq-dialog[open] .vq-question', { timeout: 15000 }).then(() => true).catch(() => false);
     const question = await page.evaluate(() => ({
         text: (document.querySelector('dialog.vq-dialog[open] .qd-text')?.textContent || '').replace(/\s+/g, ' ').trim(),
+        // D-J60: cómo llega cada uno no lo dice nadie: va en el aviso de fuera de la caja.
+        aside: (document.querySelector('dialog.vq-dialog[open] .vn-aside')?.textContent || '').replace(/\s+/g, ' ').trim(),
         plate: (document.querySelector('dialog.vq-dialog[open] .qd-nameplate')?.textContent || '').trim(),
         answers: [...document.querySelectorAll('dialog.vq-dialog[open] .qd-chip')].map(b => (b.textContent || '').trim()),
     }));
     check('D-J53: al llegar con alguien herido, la novela pregunta «¿Curar a Lía con magia? (gasta un espacio de nivel 1)», con Sí y No',
-        asked && /¿Curar a Lía con magia\? \(gasta un espacio de nivel 1\)/.test(question.text) && /Lía llega herida/.test(question.text)
+        asked && /¿Curar a Lía con magia\? \(gasta un espacio de nivel 1\)/.test(question.text) && /Lía llega herida/.test(question.aside)
         && question.plate === 'Irena' && question.answers.some(a => /Sí/.test(a)) && question.answers.some(a => /No/.test(a)), JSON.stringify(question));
     if (shot('11b-curar-al-llegar')) await page.screenshot({ path: shot('11b-curar-al-llegar') });
     const hpBefore = Number((await hero())?.hp);
@@ -776,7 +793,10 @@ try {
         noArt.sheet === 'L' && /hsl|rgb/.test(noArt.sheetColor) && noArt.strip === 'L' && noArt.broken === 0, JSON.stringify(noArt));
     if (shot('12-iniciales')) await page.screenshot({ path: shot('12-iniciales') });
     await closeTopPopup();
-    // Y en el tablero: al muelle, su ficha con sus iniciales.
+    // Y en el tablero: al muelle, su ficha con sus iniciales. D-J62: el modo guiado esconde
+    // «Entrar en…» (los tableros de aquí, wiki/LO_OCULTO.md); para volver al muelle, se apaga.
+    await apagarModoGuiado(page);
+    await page.waitForTimeout(400);
     const boards = await allChips();
     const dock = boards.find(c => /^enter:/.test(c.id) && /muelle/i.test(c.label));
     if (dock) await pressChip(new RegExp(`^${dock.label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`), dock.id);

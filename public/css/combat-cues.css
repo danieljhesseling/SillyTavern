@@ -1396,6 +1396,22 @@
     font-size: 0.9em;
 }
 
+/* E5.1: lo preparado en casa para la salida (el temple de la forja, la ración de la cocina). */
+.ch-prep,
+.cc-prep {
+    margin: 4px 0 8px;
+    padding: 4px 8px;
+    border-left: 3px solid #8fa36a;
+    background: rgba(143, 163, 106, 0.12);
+    border-radius: 4px;
+    font-size: 0.9em;
+}
+
+.ch-prep-title {
+    font-weight: bold;
+    margin-bottom: 2px;
+}
+
 /* Idea 62: los juegos de equipo. */
 .ch-sets {
     display: flex;

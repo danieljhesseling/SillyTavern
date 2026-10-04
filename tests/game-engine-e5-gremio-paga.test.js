@@ -4,7 +4,7 @@ import {
     prepOf, prepBonus, takeBroth, describePrep, prepOffers, prepareFor, TEMPER,
     readBooks, writeBook, bookOffers, bookFactsFor,
     fatigueInjury, homecomingFatigue, infirmaryDays, restRoster, restDetail, OUTING_MIN_DAYS,
-    dispatchReport, reportScene,
+    dispatchReport, reportScene, forgeMixOffers,
 } from '../public/scripts/game-engine/campaign/guild-perks.js';
 import { applyInjury, healInjuries, readInjuries } from '../public/scripts/game-engine/rules/injuries.js';
 import { getHitDice } from '../public/scripts/game-engine/rules/rest.js';
@@ -179,5 +179,47 @@ describe('E5.3 · la tarjeta de informe la cuentan los que vuelven', () => {
         const lost = reportScene(dispatchReport({ dispatch: alone, result: { success: false, reward: 0, hurt: '', dead: 'p2' }, random: () => 0.5 }));
         expect(lost.beats[0].who).toBe('Un mensajero del gremio');
         expect(lost.beats[0].text).toMatch(/Bran no vuelve/);
+    });
+});
+
+// Los flecos de E5.1: mezclar materiales en la forja del gremio, y lo preparado en la ficha.
+describe('E5.1 · mezclar materiales en la forja del gremio', () => {
+    const sword = { id: 'w1', name: 'Espada larga', type: 'weapon', damageDice: '1d8' };
+    const hunter = (items = []) => tessa({ items: [mail, sword, ...items], equippedItems: { weapon: 'w1' } });
+    const skin = (id) => ({ id, name: 'Piel de lobo' });
+    const fang = { id: 'f1', name: 'Colmillo de lobo' };
+
+    test('sin forja no se mezcla nada', () => {
+        expect(forgeMixOffers({ guild: guild(), party: [hunter([skin('s1'), skin('s2')])], purse: 500 }).offers).toEqual([]);
+    });
+
+    test('sin nada de caza, dice qué traer', () => {
+        const mix = forgeMixOffers({ guild: guild({ forge: 1 }), party: [hunter()], purse: 500 });
+        expect(mix.empty).toMatch(/pieles, colmillos/);
+    });
+
+    test('dos pieles hacen la capa y algo duro deja el arma a +1, con lo que se gasta', () => {
+        const mix = forgeMixOffers({ guild: guild({ forge: 1 }), party: [hunter([skin('s1'), skin('s2'), fang])], purse: 500 });
+        const cloak = mix.offers.find(o => o.recipe === 'capa');
+        const upgrade = mix.offers.find(o => o.recipe === 'mejora');
+        expect(cloak).toMatchObject({ ok: true, memberId: 'p1', cost: 10 });
+        expect(cloak.use.map(u => u.itemId)).toEqual(['s1', 's2']);
+        expect(upgrade).toMatchObject({ ok: true, cost: 80 });
+        expect(upgrade.label).toMatch(/Espada larga a \+1/);
+        expect(upgrade.use.map(u => u.itemId)).toEqual(['f1']);
+    });
+
+    test('se paga del arca y de las bolsas juntas; si no llega, lo dice', () => {
+        const poor = hunter([fang]);
+        poor.gold = 30;
+        expect(forgeMixOffers({ guild: guild({ forge: 1 }), party: [poor], purse: 30 }).offers.find(o => o.recipe === 'mejora'))
+            .toMatchObject({ ok: false, why: expect.stringContaining('No llega el oro') });
+        expect(forgeMixOffers({ guild: guild({ forge: 1 }, 60), party: [poor], purse: 30 }).offers.find(o => o.recipe === 'mejora').ok).toBe(true);
+    });
+
+    test('la ficha dice lo preparado en casa: el temple y la ración', () => {
+        const lines = describePrep({ guildPrep: { temper: 1, ration: 'caldo' } });
+        expect(lines[0]).toMatch(/\+1 a la CA/);
+        expect(lines[1]).toMatch(/Caldo fuerte/);
     });
 });

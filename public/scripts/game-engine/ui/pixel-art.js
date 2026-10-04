@@ -505,7 +505,8 @@ export function artFor(kind, query = {}, manifest = loaded) {
             break;
         }
         case 'hero': {
-            const cls = slugify(query.classId) || classIdOf(query.className);
+            // La clase en femenino («picara», «Clériga») busca el retrato de la de siempre (`picaro`).
+            const cls = classIdOf(query.classId) || slugify(query.classId) || classIdOf(query.className);
             if (!cls) break;
             const gender = genderFileOf(query.gender, query.name);
             const other = gender === 'mujer' ? 'hombre' : 'mujer';

@@ -14,6 +14,7 @@
 import { buildCharacterSheet, describeSheet } from './shell/character-sheet.js';
 import { firstArt, loadPixelManifest } from './pixel-art.js';
 import { faceElement } from './hero-face.js';
+import { describePrep } from '../campaign/guild-perks.js';
 
 /**
  * Un icono en pixel, o nada: quien llama pone el suyo de siempre si no hay dibujo.
@@ -213,6 +214,14 @@ export async function openCharacterPanel({
     defence.append(box('Iniciativa', `${sheet.defence.initiative >= 0 ? '+' : ''}${sheet.defence.initiative}`));
     defence.append(box('Oro', sheet.gold));
     root.append(defence);
+    // E5.1: lo preparado en casa para esta salida (el temple suma a la CA en la pelea).
+    const prepared = describePrep(member);
+    if (prepared.length > 0) {
+        const prep = $('<div class="ch-prep"></div>');
+        prep.append($('<div class="ch-prep-title"></div>').text('Preparado en el gremio'));
+        for (const line of prepared) prep.append($('<div></div>').text(line));
+        root.append(prep);
+    }
 
     // ---- Lo que lleva puesto ----------------------------------------------
     root.append($('<div class="ch-title-row"></div>').text('Equipo'));

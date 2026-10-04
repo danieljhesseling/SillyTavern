@@ -73,7 +73,9 @@ function lostPortraits(manifest, pack) {
 }
 
 /**
- * La gente de un paquete con retrato a la que le falta un gesto (o no se le encuentra por su nombre).
+ * La gente de un paquete con gestos a la que le falta alguno (o no se le encuentra por su nombre).
+ * Desde el 2026-10-04 los retratos nuevos son solo la cara normal (Daniel; los gestos están
+ * apagados, D-J61): quien no tiene ningún gesto no cuenta.
  *
  * @param {import('../public/scripts/game-engine/ui/pixel-art.js').PixelManifest} manifest
  * @param {string} pack
@@ -84,8 +86,9 @@ function missingMoods(manifest, pack) {
     const people = [...(data.npcs ?? []), ...(data.confidants ?? [])];
     return people.flatMap(p => {
         const base = [slugify(p.id), slugify(p.name)].find(b => b && manifest.files.has(`retratos/${pack}/${b}.png`));
-        if (!base) return [];
-        return ['alegre', 'enfadado', 'triste']
+        const moods = ['alegre', 'enfadado', 'triste'];
+        if (!base || !moods.some(mood => manifest.files.has(`retratos/${pack}/${base}--${mood}.png`))) return [];
+        return moods
             .filter(mood => firstArt('portrait', { name: p.name, pack, mood }, manifest) !== `${PIXEL_BASE}retratos/${pack}/${base}--${mood}.png`)
             .map(mood => `${pack}: ${p.name} (${mood})`);
     });
@@ -299,7 +302,7 @@ describe('el índice', () => {
         expect(gamePacks(manifest).flatMap(pack => lostPortraits(manifest, pack))).toEqual([]);
     });
 
-    test('quien tiene retrato en un paquete tiene también sus tres gestos, y se encuentran por su nombre', () => {
+    test('quien tiene algún gesto en un paquete tiene los tres, y se encuentran por su nombre', () => {
         const manifest = readManifest(JSON.parse(readFileSync(join(PIXEL_DIR, 'manifest.json'), 'utf8')));
         expect(gamePacks(manifest).flatMap(pack => missingMoods(manifest, pack))).toEqual([]);
     });

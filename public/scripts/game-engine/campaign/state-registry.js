@@ -73,6 +73,10 @@ export const STATE_KEYS = [
     { key: 'dispatches', kind: 'juego', owner: 'party.js', what: 'Quién está fuera haciendo un encargo sin el héroe' },
     // E5.3: los guarda `party/guild-pay.js`; se cuentan en cuanto la pantalla está libre.
     { key: 'dispatchReports', kind: 'juego', owner: 'party/guild-pay.js', what: 'Lo que tienen que contar los que volvieron de un encargo' },
+    { key: 'misionesMercenarios', kind: 'juego', owner: 'party/roce.js', what: 'Las misiones de los mercenarios con vínculo 3: cuál le tocó a cada uno y por qué paso va (E4.3)' },
+    { key: 'rencillas', kind: 'juego', owner: 'party/roce.js', what: 'Los disgustos de las dos últimas semanas, las subidas de paga y quién se fue (E4.1)' },
+    { key: 'papeles_noche', kind: 'juego', owner: 'party/road-choices.js', what: 'Quién cocina, quién vigila y quién estudia en el campamento (E6.2)' },
+    { key: 'upkeepAwayDays', kind: 'juego', owner: 'party/time.js', what: 'Los días de la semana pasados fuera (camino o al raso), que no pagan comida ni posada' },
     { key: 'cases', kind: 'juego', owner: 'party.js', what: 'El caso abierto, sus pistas encontradas y los ya cerrados' },
     { key: 'duels', kind: 'juego', owner: 'party.js', what: 'Con quién se habló ya hoy (un duelo de palabras por persona y día)' },
     { key: 'visited', kind: 'juego', owner: 'party.js', what: 'Dónde habéis estado' },

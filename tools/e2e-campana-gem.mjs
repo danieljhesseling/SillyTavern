@@ -261,7 +261,10 @@ try {
 
     /** La escena del hilo abierta en su ventana, si hay una. */
     const story = () => page.evaluate(() => {
-        const root = document.querySelector('dialog.ps-dialog[open] .ps-root');
+        // La decisión de pelear o no (`dialog.ev-avoid`) no es una escena: la atiende
+        // `entrarEnLaPelea` («Pelear»). Leída aquí, su primera opción no se pulsaba (va por
+        // `data-exit`) y el bucle se quedaba minutos delante de ella.
+        const root = document.querySelector('dialog.ps-dialog[open]:not(.ev-avoid) .ps-root');
         if (!root) return null;
         return {
             id: root.getAttribute('data-scene') || '',
@@ -287,8 +290,8 @@ try {
                 read.push(now.text);
                 plates.push(now.plate);
             }
-            if (now.options.length > 0) await page.locator(`dialog.ps-dialog[open] .dw-option[data-option="${now.options[0]}"]`).click({ timeout: 4000 }).catch(() => {});
-            else await page.locator('dialog.ps-dialog[open] .ps-next, dialog.ps-dialog[open] .ps-finish').first().click({ timeout: 4000 }).catch(() => {});
+            if (now.options.length > 0) await page.locator(`dialog.ps-dialog[open]:not(.ev-avoid) .dw-option[data-option="${now.options[0]}"]`).click({ timeout: 4000 }).catch(() => {});
+            else await page.locator('dialog.ps-dialog[open]:not(.ev-avoid) .ps-next, dialog.ps-dialog[open]:not(.ev-avoid) .ps-finish').first().click({ timeout: 4000 }).catch(() => {});
             await page.waitForTimeout(250);
         }
     };
@@ -575,14 +578,14 @@ try {
     check('la trampa sin casilla la pone el juego en el camino, y lo dice (traps)', /1 trampa puesta en el camino: El sótano/.test(drawnReport), drawnReport.slice(0, 900));
     if (SHOT) await page.screenshot({ path: `${SHOT}.dibujo-informe.png` });
     // E2.1: el sótano está a oscuras; sin luz, la trampa no se ve al lado y se pisa. Iria baja con
-    // antorchas (como quien las compra en el gremio): la primera se enciende sola al entrar.
-    await page.evaluate(async () => {
+    // las antorchas con las que empezó (Daniel, 2026-10-03: todos empiezan con 5): la primera se
+    // enciende sola al entrar. No se le dan aquí: si no las trae de la creación, la trampa se pisa.
+    const torchesAtStart = await page.evaluate(async () => {
         const { partyMembers } = await import('/scripts/party/state.js');
-        const hero = partyMembers[0];
-        if (!hero) return;
-        hero.items = [...(Array.isArray(hero.items) ? hero.items : []), { name: 'Antorcha', quantity: 3 }];
-        (await import('/scripts/party/roster.js')).savePartyState();
+        const torch = (partyMembers[0]?.items ?? []).find((/** @type {any} */ i) => /^Antorcha$/i.test(String(i?.name ?? '')));
+        return torch ? Math.max(1, Number(torch.quantity) || 1) : 0;
     });
+    check('Iria lleva las antorchas con las que empezó (E2.1)', torchesAtStart >= 1, `antorchas: ${torchesAtStart}`);
     await page.locator(`.hb-root [data-campaign="${DRAWN_ID}"]`).click();
     const drawnStarted = await until(async () => (await state()).world.includes(DRAWN_NAME), 120000);
     await page.waitForTimeout(2500);

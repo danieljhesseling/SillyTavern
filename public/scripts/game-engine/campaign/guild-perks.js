@@ -27,6 +27,8 @@ import { payPlan } from './guild-chest.js';
 import { gendered } from './grammar.js';
 import { readInjuries } from '../rules/injuries.js';
 import { studyFacts } from '../rules/actions-2024.js';
+import { weaponOf } from '../rules/equipment.js';
+import { RECIPES, canCraft, materialsOf } from './trophies.js';
 
 /** En los metadatos: los libros de bichos de la biblioteca (de la partida entera). */
 export const GUILD_BOOKS_KEY = 'guildBooks';
@@ -233,6 +235,67 @@ export function prepareFor({ member, kind, guild, purse }) {
         guildPrep: { ...prep, ration: /** @type {'caldo'|'guiso'} */ (kind) },
         line: `En la cocina del gremio le preparan a ${name} ${ration.label.toLowerCase()}: ${ration.what}. ${offer.cost} de oro.`,
     };
+}
+
+// ---- Mezclar materiales en la forja ---------------------------------------------------------
+
+/**
+ * @typedef {Object} MixOffer
+ * @property {'capa'|'mejora'} recipe
+ * @property {string} memberId Para quién es (la capa, para el primero del grupo).
+ * @property {string} memberName
+ * @property {string} label
+ * @property {string} button
+ * @property {number} cost
+ * @property {boolean} ok
+ * @property {string} why Por qué no, si no se puede.
+ * @property {Array<{memberId: string, itemId: string, name: string}>} use Lo que se gasta.
+ */
+
+/**
+ * E5.1: la forja del gremio mezcla los materiales de caza (`trophies.js`, ideas 120 y 121): dos
+ * pieles hacen una capa que abriga, y algo duro (colmillo, garra, escama, cuerna) deja el arma
+ * que empuña alguien a +1. Las mismas recetas y precios que la herrería de un pueblo; aquí se
+ * paga del arca y, lo que falte, de las bolsas. Pide la forja construida.
+ *
+ * @param {Object} input
+ * @param {any} input.guild
+ * @param {any[]} input.party
+ * @param {number} input.purse
+ * @returns {{forge: number, offers: MixOffer[], empty: string}} `empty`: qué traer, si no hay nada.
+ */
+export function forgeMixOffers({ guild, party, purse }) {
+    const forge = levelIn(guild, 'forge');
+    const people = living(party);
+    if (forge <= 0 || people.length === 0) return { forge, offers: [], empty: '' };
+    const funds = whole(readGuild(guild).gold) + whole(purse);
+    const have = materialsOf(people);
+    const empty = have.piel.length === 0 && have.duro.length === 0
+        ? 'Traed de caza pieles, colmillos, garras o escamas, y aquí se mezclan: dos pieles hacen una capa; algo duro deja un arma a +1.'
+        : '';
+
+    /** @type {MixOffer[]} */
+    const offers = [];
+    const first = people[0];
+    const cloak = canCraft({ recipe: 'capa', party: people, purse: funds });
+    offers.push({
+        recipe: 'capa', memberId: text(first.id), memberName: text(first.name),
+        label: `Capa de pieles para ${text(first.name)}: ${RECIPES.capa.note}`,
+        button: `Hacerla (${RECIPES.capa.gold} de oro y dos pieles)`,
+        cost: RECIPES.capa.gold, ok: cloak.ok, why: cloak.reason, use: cloak.use,
+    });
+    for (const member of people) {
+        const weapon = weaponOf(member);
+        if (!weapon) continue;
+        const upgrade = canCraft({ recipe: 'mejora', party: people, purse: funds, weapon });
+        offers.push({
+            recipe: 'mejora', memberId: text(member.id), memberName: text(member.name),
+            label: `${text(member.name)}: ${text(weapon.name)} a +1 (${RECIPES.mejora.note})`,
+            button: `Mejorarla (${RECIPES.mejora.gold} de oro y algo duro)`,
+            cost: RECIPES.mejora.gold, ok: upgrade.ok, why: upgrade.reason, use: upgrade.use,
+        });
+    }
+    return { forge, offers, empty };
 }
 
 // ---- Los libros de bichos -----------------------------------------------------------------

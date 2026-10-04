@@ -39,6 +39,19 @@ Prompt: la línea de estilo de su campaña + cómo es. Gremio: `Pixel art bust p
 | El viajero | Cualquier campaña · la noche del viajero, en la posada | Hombre de unos cincuenta, cara cansada y ojos que no paran de mirar a la puerta, barba corta gris, capa de viaje oscura con la capucha echada atrás. | `retratos/mercenarios/el-viajero.png` (vale para todas) |
 | La madre | Cualquier campaña · la noche de la familia, en la posada | Mujer de unos treinta, delgada y agotada, pañuelo de lana en la cabeza, toquilla raída sobre los hombros y la cara sucia del camino. | `retratos/mercenarios/la-madre.png` (vale para todas) |
 
+### La gente de las misiones de los mercenarios (E4.3 de ROADMAP_ENTRETENIDO)
+
+Cada mercenario con vínculo 3 tiene su misión (`campaign/merc-quests.js`), y en su escena habla gente con un nombre distinto en cada partida. Por eso su retrato no va por nombre: la escena dice cuál le toca (`faces`), y en cuanto el archivo exista, sale solo. El salteador de la venganza ya sale con el bandido del camino (`bestias/bandido-del-camino.png`) y el hermano de la cantera, con el campesino (`bestias/campesino-desesperado.png`). Estos no tienen ninguno y salen con la silueta.
+
+Prompt: la línea del gremio, `Pixel art bust portrait, 128x160, transparent background, dark fantasy, muted palette with gold accents, no text, no frame.` + cómo es. Tamaño 128×160. Caras (para más adelante, D-J61): las tres frases de arriba, como `<archivo>--alegre.png`, `--enfadado.png` y `--triste.png`.
+
+| Quién | Escena | Cómo es | Dónde va |
+| :--- | :--- | :--- | :--- |
+| El primo | La herencia: se ha metido en la casa del tío | Hombre de unos treinta y cinco, rollizo y bien afeitado, con cara de pocos amigos. Jubón de paño bueno algo estrecho, un manojo de llaves al cinto y los brazos cruzados en la puerta. | `retratos/mercenarios/el-primo.png` |
+| La prima | La herencia (si es ella) | Mujer de unos treinta y cinco, de mandíbula firme y moño apretado. Vestido de paño oscuro con delantal limpio, un manojo de llaves al cinto y los brazos cruzados en la puerta. | `retratos/mercenarios/la-prima.png` |
+| El prestamista | El rescate: en la cantera, con sus cuentas | Hombre de unos cincuenta y cinco, flaco y calvo, de sonrisa fina. Ropa negra de buen paño, anillos en los dedos, una pluma tras la oreja y un libro de cuentas apretado bajo el brazo. | `retratos/mercenarios/el-prestamista.png` |
+| La hermana de la cantera | El rescate: lleva un año picando piedra | Chica de unos dieciséis, flaca y con la cara sucia de polvo de piedra, pelo recogido con un trapo. Camisa basta rota en un hombro y una cuerda atada a la cintura. | `retratos/mercenarios/la-hermana-de-la-cantera.png` |
+
 ## El mundo tras la pantalla (pantalla)
 
 Lo que le falta a `public/mundos/pantalla.pack.json` (tanda 20). Estilo de la campaña: isekai luminoso, colores vivos y limpios; los huéspedes llevan algo de nuestro mundo (un chándal, una chaqueta reflectante, una gorra). Las caras de los retratos están apagadas en el juego (D-J61): lo que hace falta es el retrato neutro; si se piden también las caras para más adelante, con las tres frases de arriba y `--alegre`, `--enfadado` y `--triste` al lado de cada archivo.

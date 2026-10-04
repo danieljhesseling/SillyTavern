@@ -1072,16 +1072,9 @@ async function depthRound(page) {
     const above = await lastLine(/ataca desde arriba/);
     check('B1: desde arriba se ataca con ventaja, y la tirada lo dice', Boolean(above), JSON.stringify({ placed, above: above.slice(0, 160) }));
 
-    // B2: todos en una salida, y salen.
-    await toPlayer();
-    const out = await paint('exit', 'all');
-    for (const name of out || []) {
-        await slash(`/salir ${name}`);
-        await clearDice();
-    }
-    const left = await lastLine(/^🚪 \[COMBAT\] /);
-    const fled = await lastLine(/Os vais de .+ sin ganar el tablero/);
-    check('B2: salen por la salida y la pelea acaba en huida', /el último/.test(left) && Boolean(fled) && await whoseTurn() === 'over', JSON.stringify({ out, left, fled: fled.slice(0, 120) }));
+    // B1 deja la pelea abierta: se abandona (B2, la huida, va al final: saca del tablero).
+    await slash('/combat-stop');
+    await page.locator('.vo-layer .vo-close').first().click({ timeout: 1500 }).catch(() => {});
 
     // H2: «Cómo se juega».
     await clearToasts();
@@ -1094,6 +1087,7 @@ async function depthRound(page) {
     // T1 y B3: en combate, una palanca y una barricada junto a quien tiene el turno, y una
     // reja cerrada con llave. Cada cosa gasta la acción, así que entre una y otra se cierra el turno.
     await clearToasts();
+    await page.locator('.vo-layer .vo-close').first().click({ timeout: 1500 }).catch(() => {});
     await slash('/fight Guardia de Montesclaros 1');
     await clearDice();
     await toPlayer();
@@ -1362,4 +1356,34 @@ async function depthRound(page) {
     check('R6: un cofre al lado del héroe se abre pulsándolo: oro y a veces algo más',
         Boolean(opened), JSON.stringify({ hero, chestAt, chestCell, clickChest, opened: opened.slice(0, 200) }));
     await page.locator('#game-shell .gs-scene-btn[data-scene="dialogue"]').click({ timeout: 5000 }).catch(() => {});
+
+    // B2: todos en una salida, y salen. La misión del cuarto de la posada es justo salir por la
+    // ventana (tanda 16): salir ahí la gana. Para probar la huida se le quita la misión un momento.
+    if (await whoseTurn() === 'over') {
+        await slash('/fight Guardia de Montesclaros 1');
+        await clearDice();
+    }
+    await toPlayer();
+    const boardMission = (/** @type {any} */ objectives) => page.evaluate(async (put) => {
+        const wi = await import('/scripts/world-info.js');
+        const ctx = window.SillyTavern.getContext();
+        const place = wi.getCurrentWorldLocationMaps().find((/** @type {any} */ l) => l.name === ctx.chatMetadata.currentLocation);
+        const board = (place?.boards || []).find((/** @type {any} */ b) => b.name === ctx.chatMetadata.currentBoard);
+        if (!board) return null;
+        const was = board.objectives ?? null;
+        board.objectives = put ?? undefined;
+        return was;
+    }, objectives);
+    const savedMission = await boardMission([]);
+    const out = await paint('exit', 'all');
+    for (const name of out || []) {
+        await slash(`/salir ${name}`);
+        await clearDice();
+    }
+    await boardMission(savedMission);
+    // J12.21: si sale una pantalla de final (victoria o derrota), su ✕, que tapa el tablero.
+    await page.locator('.vo-layer .vo-close').first().click({ timeout: 2000 }).catch(() => {});
+    const left = await lastLine(/^🚪 \[COMBAT\] /);
+    const fled = await lastLine(/Os vais de .+ sin ganar el tablero/);
+    check('B2: salen por la salida y la pelea acaba en huida', /el último/.test(left) && Boolean(fled) && await whoseTurn() === 'over', JSON.stringify({ out, left, fled: fled.slice(0, 120) }));
 }

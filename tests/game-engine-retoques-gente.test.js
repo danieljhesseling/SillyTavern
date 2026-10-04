@@ -123,9 +123,9 @@ describe('quien habla en una quedada sin ser de los tuyos, con la cara de la mis
         // En el gremio, la noche de la posada: quien la lleva aquí (Tomás).
         expect(guestPortrait('El tabernero', { pack: 'gremio', standIns: { 'el tabernero': 'Tomás' } }, manifest)).toBe(`${base}retratos/gremio/tomas.png`);
         expect(guestPortrait('Un bandido', { pack: '1387' }, manifest)).toMatch(/^img\/game-engine\/pixel\/bestias\/.*bandido.*\.png$/);
-        // Quien tiene el suyo, el suyo; sin nada, la silueta (y a PIXELLAB_PENDIENTE.md).
+        // Quien tiene el suyo, el suyo (el mercenario borracho ya tiene el de PixelLab, 2026-10-04).
         expect(guestPortrait('Brunilda', { pack: 'gremio' }, manifest)).toBe(`${base}retratos/gremio/brunilda.png`);
-        expect(guestPortrait('Un mercenario borracho', { pack: '1387' }, manifest)).toBe('');
+        expect(guestPortrait('Un mercenario borracho', { pack: '1387' }, manifest)).toBe(`${base}retratos/1387/un-mercenario-borracho.png`);
     });
 
     test('los que siguen sin cara están apuntados en PIXELLAB_PENDIENTE.md', () => {

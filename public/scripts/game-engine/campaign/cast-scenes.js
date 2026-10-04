@@ -180,14 +180,20 @@ export function bindCast({ row, kind, slots, hero = null, party = [], cards = []
         ...(Array.isArray(extras) ? extras : []),
     ];
     const named = [...new Set(beats.flatMap(b => [b.who, ...b.replies.map(r => r.who)]).filter(Boolean))];
-    const cast = [...new Map([...people, ...named.map(name => ({ name }))]
-        .filter(p => text(p?.name))
-        .map(p => [keyOf(p.name), {
+    // El primero que sale manda: la ficha del hueco (con su clase, para el retrato de relleno)
+    // antes que el mismo nombre suelto de quien habla, que no trae nada más.
+    /** @type {Map<string, {name: string, short: string, className: string, gender: string}>} */
+    const byKey = new Map();
+    for (const p of [...people, ...named.map(name => ({ name }))]) {
+        if (!text(p?.name) || byKey.has(keyOf(p.name))) continue;
+        byKey.set(keyOf(p.name), {
             name: text(p.name),
             short: shortOf(cards, p),
             className: text(p.className || p.class || p.charClass),
             gender: text(p.gender),
-        }])).values()];
+        });
+    }
+    const cast = [...byKey.values()];
     const first = beats.find(b => b.who)?.who || cast[0]?.name || '';
     return {
         id: text(row?.id),

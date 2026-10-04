@@ -1078,4 +1078,91 @@ export function showBond(step) {
         token.appendChild(banner);
         setTimeout(() => banner.remove(), 2400);
     }
+    keepBondInside(token);
+}
+
+/**
+ * @typedef {{left: number, top: number, right: number, bottom: number}} Box
+ */
+
+/**
+ * E3.2: dónde va el rótulo del vínculo para que no se corte. Sale centrado debajo de la ficha; si
+ * por abajo se sale del tablero, va encima, y si se sale por un lado, se corre hacia dentro.
+ * Todo en píxeles de pantalla; `dx` se devuelve en los de la ficha (sin el zum del tablero).
+ *
+ * @param {Object} input
+ * @param {Box} input.token La ficha en pantalla.
+ * @param {Box} input.area Lo que se ve del tablero.
+ * @param {number} input.width El rótulo, de ancho (en pantalla).
+ * @param {number} input.height Y de alto.
+ * @param {number} [input.scale] El zum del tablero (1, sin zum).
+ * @param {number} [input.pad] El margen con el borde.
+ * @returns {{dx: number, up: boolean}}
+ */
+export function bondBannerFit({ token, area, width, height, scale = 1, pad = 4 }) {
+    const zoom = Number(scale) > 0 ? Number(scale) : 1;
+    const tall = token.bottom - token.top;
+    const center = (token.left + token.right) / 2;
+    const left = center - width / 2;
+    let dx = 0;
+    if (left + width > area.right - pad) dx = area.right - pad - (left + width);
+    if (left + dx < area.left + pad) dx = area.left + pad - left;
+    // Debajo (top: 104 %), salvo que no quepa y encima sí.
+    const below = token.top + tall * 1.04 + height;
+    const above = token.bottom - tall * 1.04 - height;
+    const up = below > area.bottom - pad && above >= area.top + pad;
+    return { dx: Math.round(dx / zoom), up };
+}
+
+/**
+ * Lo que se ve del tablero alrededor de una ficha: el tablero, recortado por su marco.
+ *
+ * @param {HTMLElement} token
+ * @returns {Box|null}
+ */
+function boardBoxOf(token) {
+    const boxes = [token.closest('.wm-tokens-layer'), token.closest('.wm-container')]
+        .filter(node => node instanceof HTMLElement)
+        .map(node => /** @type {HTMLElement} */ (node).getBoundingClientRect())
+        .filter(r => r.width > 0 && r.height > 0);
+    if (boxes.length === 0) return null;
+    return {
+        left: Math.max(...boxes.map(r => r.left)),
+        top: Math.max(...boxes.map(r => r.top)),
+        right: Math.min(...boxes.map(r => r.right)),
+        bottom: Math.min(...boxes.map(r => r.bottom)),
+    };
+}
+
+/**
+ * Coloca el rótulo y el bocadillo de la frase dentro del tablero (`bondBannerFit`): junto a un
+ * lado, los dos se corren hacia dentro; si el rótulo sube encima de la ficha, el bocadillo sube
+ * también, para no taparse.
+ *
+ * @param {HTMLElement} token
+ */
+function keepBondInside(token) {
+    const area = boardBoxOf(token);
+    if (!area) return;
+    const box = token.getBoundingClientRect();
+    const scale = token.offsetWidth > 0 ? box.width / token.offsetWidth : 1;
+    const fitOf = (/** @type {HTMLElement} */ node) => bondBannerFit({
+        token: box, area, scale,
+        width: node.offsetWidth * scale,
+        height: node.offsetHeight * scale,
+    });
+    // Los de ahora: los últimos que se han puesto.
+    const last = (/** @type {string} */ selector) => /** @type {HTMLElement|null} */ ([...token.querySelectorAll(selector)].pop() ?? null);
+    const banner = last(':scope > .wm-bond-banner');
+    const bubble = last(':scope > .wm-bark-bond');
+    if (bubble) {
+        const dx = fitOf(bubble).dx;
+        if (dx) bubble.style.setProperty('--bark-dx', `${dx}px`);
+    }
+    if (!banner) return;
+    const fit = fitOf(banner);
+    if (fit.dx) banner.style.setProperty('--bond-dx', `${fit.dx}px`);
+    if (!fit.up) return;
+    banner.classList.add('wm-bond-banner-up');
+    if (bubble) bubble.style.bottom = `calc(110% + ${banner.offsetHeight + 4}px)`;
 }

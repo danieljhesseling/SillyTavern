@@ -41,10 +41,10 @@ author: DanielJHesseling / Claude Opus 5.5
 
 ---
 
-## 📍 Cómo va (2026-10-03, noche)
+## 📍 Cómo va (2026-10-04, mañana)
 
 **Avance, sobre 160 filas activas** (sin lo aparcado ni las decisiones):
-- **99 % jugable** (159 filas).
+- **100 % jugable** (160 filas): el modo guiado (D-J62) terminó el 2026-10-04 con todas sus pruebas en verde.
 - **100 % construido** (160 filas).
 
 Casi todo está en commits (el último, c9c41512b); los retoques y las tres campañas terminadas esperan al commit de cierre.
@@ -134,14 +134,12 @@ Casi todo está en commits (el último, c9c41512b); los retoques y las tres camp
   - aspecto para los enemigos que hablan;
   - pasan los días al volver al gremio (H16).
 
-**En marcha ahora (2026-10-04, 07:10): dos agentes.** Todo lo hecho está en el commit 5344ba2fb («pre beta V2.0»).
+**Terminado (2026-10-04).** El modo guiado pasó con todo junto:
+- e2e-quick 43 de 43, e2e-gremio 109 de 109 y la campaña del Gem entera 23 de 23;
+- ProbarCampañas: las cuatro vueltas llegan a un final, sin silencios ni atascos;
+- pruebas unitarias en verde, tipos limpios y las 119 claves de la partida registradas.
 
-| Tarea | % aprox. |
-| :--- | :---: |
-| Modo guiado (D-J62): repetir la vuelta de la campaña del Gem (se cortó en la ermita) y arreglar dos fallos de e2e-quick: la capa de victoria tapa la palanca y la barricada, y la salida no acaba en huida. Luego probar-campanas, jest entero, lint y tipos | ~92 % |
-| Ajustes de E2 en [[ROADMAP_ENTRETENIDO]] (ganzúas y antorchas): el código está; faltan sus pruebas | ~70 % |
-
-Al acabar el modo guiado este roadmap queda **al 100 %** de lo que no está aparcado.
+Lo siguiente: [[ROADMAP_ENTRETENIDO]] (terminado; quedan tus decisiones), luego [[ROADMAP_APK_ANDROID]] y después [[ROADMAP_MUNDO_SEMIABIERTO_STRAHD]].
 
 **Retoques que he decidido, con la libertad que me diste** (✅ todos hechos; ver «Terminado hoy»):
 - **Los enemigos también suman su bonificador de competencia** al atacar, como en D&D, y un 1 natural siempre les falla. Después se vuelve a pasar la simulación.
@@ -200,7 +198,8 @@ Al acabar el modo guiado este roadmap queda **al 100 %** de lo que no está apar
 | A veces no sale la escena del principio de Strahd (H15), la puerta de la taberna aparece antes de «Empezar» (H17) y «Volver al gremio» falla a veces (H13) | ✅ Arreglado |
 | Al volver al gremio no pasa el tiempo y se arrastra el cansancio de Barovia (H16) | ✅ Arreglado |
 | En la campaña del Gem, la trampa del sótano se pisa sin verla: el sótano sale «A oscuras» por la luz de la mazmorra nueva (E2.1) | ✅ Arreglado: los héroes empiezan con 5 antorchas (Daniel, 2026-10-03); al bajar se enciende una sola y la trampa se ve. La prueba ya no le da antorchas a mano |
-| `e2e-campana-gem` se queda parada tras ganar en «El camino del monte»: no llega a ir a La ermita (pasó dos veces, el 2026-10-03 y el 04) | Abierto |
+| En la caja de la novela de Strahd aún salen líneas de narrador («Salís de Puerto Alba…», «El presagio…»), contra D-J60 | Abierto |
+| `e2e-campana-gem` se queda parada tras ganar en «El camino del monte»: no llega a ir a La ermita (pasó dos veces, el 2026-10-03 y el 04) | ✅ Arreglado: era la prueba, que leía la ventana de pelear como una escena |
 | En `e2e-magia` fallan la tarjeta de subir de nivel, el «+2 por la Luz» al examinar de noche, la pregunta de curar al llegar y las iniciales en el tablero (salió al cruzarse los cambios de entretenido) | ✅ Arreglado: el juego estaba bien; la prueba se quedó vieja con E7.4 (conjuros ya marcados), el modo guiado (lo de mirar dentro del sitio; los tableros de aquí, ocultos) y D-J60 (cómo llega cada uno, en el aviso de fuera de la caja). Puesta al día; sale entera bien |
 | Al pasar una semana viajando o acampando, el oro del grupo se queda en 0 (la cuenta semanal cobraba comida y posada en los días de camino, y si no llegaba vaciaba el bolsillo aunque los mercenarios se quedaran sin cobrar; `upkeep.js`) | ✅ Arreglado |
 | El rótulo «Vínculo 3 · …» se corta cuando la ficha está pegada al borde del tablero | ✅ Arreglado |
@@ -233,6 +232,7 @@ Al acabar el modo guiado este roadmap queda **al 100 %** de lo que no está apar
    - la lectura de las cartas de Tarokka;
    - más encuentros y misiones.
 5. **El modo mundo semiabierto.**
+   - **Los puntos 4 y 5 van juntos: [[ROADMAP_MUNDO_SEMIABIERTO_STRAHD]]** (fases S0–S11, al 0 %): el mundo semiabierto se construye a la vez que Barovia entera, como motor y editor que sirvan para otras campañas grandes. Empieza cuando acabe [[ROADMAP_APK_ANDROID]].
 
 **Para el modo mundo semiabierto, más adelante (D-J55):** [[ROADMAP_AUTOMATIZAR]] reúne lo que el juego podría hacer solo, sin IA:
 - la gente habla sola con conversaciones de novela visual;

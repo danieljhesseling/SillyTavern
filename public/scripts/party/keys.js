@@ -69,6 +69,9 @@ export const LEVEL_SAID_KEY = 'levelAdjustSaid';
 /** Donde se apunta el dia en que vence la proxima cuenta. */
 export const BILL_DUE_KEY = 'upkeepDueDay';
 
+/** Los días de esta semana fuera (de camino o acampando): no se pagan comida ni posada. */
+export const AWAY_DAYS_KEY = 'upkeepAwayDays';
+
 /** El gremio y su tablon viven en la partida, no en la sesion. */
 export const GUILD_KEY = 'guild';
 export const BOARD_KEY = 'contractBoard';

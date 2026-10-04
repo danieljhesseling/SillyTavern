@@ -18,8 +18,11 @@ import { chat_metadata, saveMetadata } from '../../script.js';
 import { getCurrentWorldEnemies, loadWorldInfo, METADATA_KEY } from '../world-info.js';
 import {
     prepOffers, prepareFor, describePrep, readBooks, writeBook, bookOffers, bookFactsFor, GUILD_BOOKS_KEY,
-    homecomingFatigue, outingsOf, HOME_REST_DAYS, restRoster, restDetail, reportScene,
+    homecomingFatigue, outingsOf, HOME_REST_DAYS, restRoster, restDetail, reportScene, forgeMixOffers,
 } from '../game-engine/campaign/guild-perks.js';
+import { cloakItem, upgradedWeapon } from '../game-engine/campaign/trophies.js';
+import { weaponOf } from '../game-engine/rules/equipment.js';
+import { addItemToInventory, removeItemFromInventory, createItem } from '../dnd-system.js';
 import { payPlan, spendFromChest } from '../game-engine/campaign/guild-chest.js';
 import { readBench, benchMember, callFromBench } from '../game-engine/campaign/bench.js';
 import { canDispatch, dispatchOdds, dispatchDays } from '../game-engine/campaign/dispatch.js';
@@ -117,7 +120,60 @@ export function drawGuildPrep(inside, redraw) {
     for (const offer of offers.rations) {
         box.append(houseRow(`${offer.memberName}: ${offer.label}`, `Pedirlo (${offer.cost} de oro)`, offer, apply(offer, 'La cocina')));
     }
+    drawForgeMix(box, redraw);
     inside.append(box);
+}
+
+/**
+ * E5.1: mezclar materiales en la forja del gremio (lo cazado: una capa de pieles o un arma a +1).
+ *
+ * @param {JQuery<HTMLElement>} box
+ * @param {() => void} redraw
+ */
+function drawForgeMix(box, redraw) {
+    const mix = forgeMixOffers({ guild: getGuild(), party: partyMembers, purse: partyPurse() });
+    if (mix.forge === 0) return;
+    box.append($('<div class="vt-section hb-section"></div>').text('Mezclar materiales en la forja'));
+    if (mix.empty) {
+        box.append($('<p class="hb-empty"></p>').text(mix.empty));
+        return;
+    }
+    for (const offer of mix.offers) {
+        box.append(houseRow(offer.label, offer.button, offer, () => {
+            // Se vuelve a mirar al pulsar: entre dibujar y pulsar puede haber cambiado algo.
+            const now = forgeMixOffers({ guild: getGuild(), party: partyMembers, purse: partyPurse() }).offers
+                .find(o => o.recipe === offer.recipe && o.memberId === offer.memberId);
+            const member = partyMembers.find(m => String(m.id) === offer.memberId);
+            if (!now?.ok || !member) {
+                toastr.warning(now?.why || 'Ya no se puede.', 'La forja');
+                redraw();
+                return;
+            }
+            if (!payHouse(now.cost, 'La forja')) {
+                redraw();
+                return;
+            }
+            for (const used of now.use) {
+                const owner = partyMembers.find(m => String(m.id) === used.memberId);
+                if (owner) removeItemFromInventory(/** @type {any} */ (owner), used.itemId);
+            }
+            const spent = now.use.map(u => u.name).join(', ');
+            let line = '';
+            if (now.recipe === 'capa') {
+                addItemToInventory(/** @type {any} */ (member), createItem(/** @type {any} */ (cloakItem())));
+                line = `En la forja del gremio cosen una capa de pieles para ${member.name} (${now.cost} de oro, ${spent}).`;
+            } else {
+                const weapon = weaponOf(member);
+                if (weapon) Object.assign(weapon, upgradedWeapon(weapon));
+                line = `En la forja del gremio mejoran el arma de ${member.name}: ahora es ${weapon?.name ?? 'su arma'} (${now.cost} de oro, ${spent}).`;
+            }
+            savePartyState();
+            renderPartyMembers();
+            postCombatNarration(`⚒️ [GREMIO] ${line}`);
+            toastr.success(line, 'La forja');
+            redraw();
+        }));
+    }
 }
 
 /** Las campañas del tablón con su bestiario, leídas una vez. @type {Promise<any[]>|null} */

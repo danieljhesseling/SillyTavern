@@ -46,7 +46,7 @@ import { renderCampaignPanel } from '../game-engine/ui/campaign-panel.js';
 import { getActiveRuleset } from '../game-engine/rules/ruleset.js';
 import { isShellOpen, refreshGameShell } from '../game-engine/ui/shell/game-shell.js';
 import {
-    ATTITUDES_KEY, BENCH_KEY, BILL_DUE_KEY, BOARD_KEY, CASES_KEY, CLIMATE_KEY, DEBT_KEY, DISPATCHES_KEY, FAME_KEY, GONE_KEY,
+    ATTITUDES_KEY, AWAY_DAYS_KEY, BENCH_KEY, BILL_DUE_KEY, BOARD_KEY, CASES_KEY, CLIMATE_KEY, DEBT_KEY, DISPATCHES_KEY, FAME_KEY, GONE_KEY,
     HINTS_KEY, MOUNTS_KEY, PLOT_STATE_KEY, TAKEN_KEY, TIPS_SEEN_KEY, WANTED_KEY, WEEK_TABLE_AUTO_KEY,
     WEEK_TABLE_KEY, localFlag,
 } from './keys.js';
@@ -128,6 +128,27 @@ export function currentUpkeepRules() {
         upkeepWithBuildings(getActiveRuleset()?.upkeep ?? null, lastHubHome ? null : getGuild()),
         currentMarket(),
     );
+}
+
+/**
+ * La cuenta de esta semana, con los días que se han pasado fuera (de camino o acampando): esos
+ * días no se paga comida ni posada, porque se come de las raciones y se duerme al raso.
+ *
+ * @returns {import('../game-engine/rules/upkeep.js').UpkeepBill}
+ */
+function billNow() {
+    return weeklyBill(partyMembers, { rules: currentUpkeepRules(), away: Number(chat_metadata?.[AWAY_DAYS_KEY]) || 0 });
+}
+
+/**
+ * Un día fuera más esta semana: un día de camino o una noche acampando. Se llama antes de que
+ * pase el día, para que la cuenta que vence ese día ya lo cuente.
+ *
+ * @param {number} [days]
+ */
+export function noteDayAway(days = 1) {
+    if (!chat_metadata) return;
+    chat_metadata[AWAY_DAYS_KEY] = (Number(chat_metadata[AWAY_DAYS_KEY]) || 0) + Math.max(0, Math.floor(Number(days) || 0));
 }
 
 /**
@@ -270,7 +291,7 @@ export async function openWeekTable() {
     if (!chat_metadata) return;
     const today = Math.max(1, campaignDay());
     const state = chat_metadata[WEEK_TABLE_KEY] ?? {};
-    const bill = partyMembers.length > 0 ? weeklyBill(partyMembers, { rules: currentUpkeepRules() }) : null;
+    const bill = partyMembers.length > 0 ? billNow() : null;
     const due = Number(chat_metadata[BILL_DUE_KEY]) || 0;
     const body = $('<div class="wt-root gs-panel"></div>');
     body.append($('<h3 class="gs-popup-title"></h3>').text(`Semana ${weekNumber(today)} · ${describeSeason(today, lastWorldSeason || undefined)}`));
@@ -372,6 +393,8 @@ function settleWeeks(today) {
     const week = Math.max(1, Number(currentUpkeepRules().weekLength) || 7);
     const { weeks, nextDue } = weeksDue(today, Number(chat_metadata[BILL_DUE_KEY]), week);
     for (let i = 0; i < weeks; i++) chargeWeek();
+    // Aunque la cuenta esté apagada en este modo, los días fuera son de la semana que acaba.
+    if (weeks > 0) delete chat_metadata[AWAY_DAYS_KEY];
     chat_metadata[BILL_DUE_KEY] = nextDue;
     saveMetadata();
 }
@@ -518,16 +541,20 @@ function chargeWeek() {
 function chargeBill() {
     // H1: la primera cuenta dice qué es (solo llega en los modos que la tienen).
     showTip('bill');
-    let bill = weeklyBill(partyMembers, { rules: currentUpkeepRules() });
+    let bill = billNow();
     // Si no llega, alguien pone lo que falta. Una vez: es para romper la espiral, no para
     // que la cuenta deje de importar.
     if (bill.total > bill.purse && takePatronage(bill.total - bill.purse)) {
-        bill = weeklyBill(partyMembers, { rules: currentUpkeepRules() });
+        bill = billNow();
     }
     const week = settleWeek(partyMembers, bill);
 
-    // Se cobra por cabeza, empezando por quien mas lleva: el oro es del grupo.
-    let owed = Math.min(bill.total, bill.purse);
+    // Los días fuera ya han contado en esta cuenta: la siguiente empieza de cero.
+    if (chat_metadata) delete chat_metadata[AWAY_DAYS_KEY];
+
+    // Se cobra por cabeza, empezando por quien mas lleva: el oro es del grupo. Solo lo que se
+    // paga de verdad: un sueldo que no llega entero se queda en el bolsillo (`settleWeek`).
+    let owed = Math.min(week.taken, bill.purse);
     for (const member of [...partyMembers].sort((a, b) => (Number(b.gold) || 0) - (Number(a.gold) || 0))) {
         if (owed <= 0) break;
         const has = Math.max(0, Number(member.gold) || 0);
@@ -588,7 +615,7 @@ function chargeBill() {
  * @returns {import('../game-engine/campaign/upcoming.js').Upcoming[]}
  */
 export function whatComes(today) {
-    const bill = partyMembers.length > 0 ? weeklyBill(partyMembers, { rules: currentUpkeepRules() }) : null;
+    const bill = partyMembers.length > 0 ? billNow() : null;
     // R1: lo apagado no sale.
     return keepOn(upcoming({
         today,
@@ -771,6 +798,8 @@ export function passGuildDays(days, { back = 0 } = {}) {
     if (due > 0 && due <= calendar.day) {
         chat_metadata[BILL_DUE_KEY] = weeksDue(calendar.day, due, Math.max(1, Number(currentUpkeepRules().weekLength) || 7)).nextDue;
     }
+    // Los días fuera eran de la campaña de allí: la cuenta de casa empieza de cero.
+    delete chat_metadata[AWAY_DAYS_KEY];
     saveMetadata();
     renderCampaignTab();
     if (isShellOpen()) refreshGameShell();
@@ -820,6 +849,8 @@ export async function takeRest(kind, { under = '' } = {}) {
     // J14.7: antes de dormir, lo que pase esta noche (en la posada, alguien que llega o una
     // ronda; con dos de los tuyos, a veces una charla entre ellos). Una por noche como mucho.
     if (kind === 'largo' && !combatEncounter.active) await playNight();
+    // Una noche al raso es un día fuera: esa noche no se paga posada ni cena (la cuenta semanal).
+    if (kind === 'largo' && under === 'cielo') noteDayAway();
     const before = getCampaignCalendar();
     restingUnder = under;
     const result = await campaign.rest(kind).finally(() => { restingUnder = ''; });
@@ -879,7 +910,7 @@ export function renderCampaignTab() {
         party: partyMembers,
         // Sin nadie en el grupo no hay cuenta que pasar, y un panel de ceros estorba.
         // R1: sin la cuenta (letra b) no hay cuenta que enseñar.
-        bill: partyMembers.length > 0 && hasLetter(survivalNow(), 'b') ? weeklyBill(partyMembers, { rules: currentUpkeepRules() }) : null,
+        bill: partyMembers.length > 0 && hasLetter(survivalNow(), 'b') ? billNow() : null,
         daysToBill: Number.isFinite(due) ? Math.max(0, due - today) : 0,
         // Una cuenta que sube sin decir por que es un impuesto; una que dice «han cerrado
         // el paso del norte» es una razon para ir a abrirlo.
@@ -919,7 +950,7 @@ export function showWeeklyBill() {
     }
     // Los mismos precios que se cobran el viernes: con el gremio y el mercado encima. Leer
     // los de la campana a pelo ensenaba una cuenta y cobraba otra.
-    const bill = weeklyBill(partyMembers, { rules: currentUpkeepRules() });
+    const bill = billNow();
 
     const today = Math.max(1, Math.floor(Number(getCampaignCalendar()?.day) || 1));
     const due = Number(chat_metadata?.[BILL_DUE_KEY]);

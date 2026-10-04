@@ -4641,7 +4641,17 @@ dialog.vs-card.vo-layer::backdrop {
     color: #3b0a24;
     border: 1px solid rgba(219, 39, 119, 0.7);
     font-weight: 600;
+    /* `--bark-dx`: lo que se corre hacia dentro junto al borde del tablero (fx.js, keepBondInside). */
+    transform: translateX(calc(-50% + var(--bark-dx, 0px)));
+    animation-name: wm-bark-bond-fade;
     animation-duration: 2.8s;
+}
+
+@keyframes wm-bark-bond-fade {
+    0% { opacity: 0; transform: translate(calc(-50% + var(--bark-dx, 0px)), 4px); }
+    10% { opacity: 1; transform: translate(calc(-50% + var(--bark-dx, 0px)), 0); }
+    80% { opacity: 1; }
+    100% { opacity: 0; }
 }
 
 /* El rótulo: «Vínculo 7 · Yunque y martillo», debajo de la ficha. */
@@ -4649,7 +4659,8 @@ dialog.vs-card.vo-layer::backdrop {
     position: absolute;
     top: 104%;
     left: 50%;
-    transform: translateX(-50%);
+    /* `--bond-dx`: lo que se corre hacia dentro junto al borde del tablero (fx.js, keepBannerInside). */
+    transform: translateX(calc(-50% + var(--bond-dx, 0px)));
     width: max-content;
     max-width: 220px;
     padding: 2px 8px;
@@ -4667,10 +4678,16 @@ dialog.vs-card.vo-layer::backdrop {
 }
 
 @keyframes wm-bond-banner {
-    0% { opacity: 0; transform: translate(-50%, -4px) scale(0.9); }
-    12% { opacity: 1; transform: translate(-50%, 0) scale(1); }
+    0% { opacity: 0; transform: translate(calc(-50% + var(--bond-dx, 0px)), -4px) scale(0.9); }
+    12% { opacity: 1; transform: translate(calc(-50% + var(--bond-dx, 0px)), 0) scale(1); }
     80% { opacity: 1; }
     100% { opacity: 0; }
+}
+
+/* Junto al borde de abajo del tablero, encima de la ficha. */
+.wm-bond-banner.wm-bond-banner-up {
+    top: auto;
+    bottom: 104%;
 }
 
 :root[data-gs-motion="none"] .wm-token.wm-token-bond {

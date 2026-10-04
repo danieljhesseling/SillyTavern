@@ -72,7 +72,7 @@ import {
 } from './world.js';
 import { friendlyFactions, getCurrentWorldFactions, rulerOf } from './factions.js';
 import {
-    advanceCampaignDay, campaignDay, getCampaignCalendar, getCurrentSlotLabel, recordCampaignBondEvent, spendDayPart,
+    advanceCampaignDay, campaignDay, getCampaignCalendar, getCurrentSlotLabel, noteDayAway, recordCampaignBondEvent, spendDayPart,
     takeRest,
 } from './time.js';
 import { afterArrival } from './social.js';
@@ -871,6 +871,8 @@ export async function travelWithTime(name, options = {}) {
         rested();
         // E6.1: y se come: lo que trae el cazador o una ración por cabeza (`road-choices.js`).
         eatenOnRoad += feedOnTheRoad(roles.fed);
+        // Y ese día no se paga cena ni posada en la cuenta de la semana.
+        noteDayAway();
         advanceCampaignDay();
         rested();
     }

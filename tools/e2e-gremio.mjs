@@ -776,9 +776,11 @@ try {
     check('en la Casa del Gremio también se ofrece contratar (D-J62)', await enElGremio(page, 'hub-hire'));
     const hire = await page.waitForSelector('.hb-root [data-hireling]', { timeout: 15000 }).then(() => true).catch(() => false);
     const offers = await page.evaluate(() => [...document.querySelectorAll('.hb-root [data-hireling]')].map(c => c.getAttribute('aria-label')));
-    check('se ofrecen los tres mercenarios del gremio con su precio', hire && offers.length === 3 && offers.every(o => /40 de oro/.test(String(o))), JSON.stringify(offers));
+    // Los mercenarios de la semana (weekly-mercenaries.js) se suman a los tres del gremio: los tres,
+    // con su precio, siguen ahí.
+    check('se ofrecen los tres mercenarios del gremio con su precio', hire && ['Gerd el Mellado', 'Nella Tresflechas', 'Osric Mediapaga'].every(n => offers.some(o => String(o).includes(n) && /40 de oro/.test(String(o)))), JSON.stringify(offers));
     const hireArt = await page.evaluate(() => [...document.querySelectorAll('.hb-root [data-hireling] img.hb-pixel')].map(i => (i.getAttribute('src') || '').split('/').pop()));
-    check('y cada uno con su retrato (arte en pixel)', hireArt.length === 3 && hireArt.includes('gerd-el-mellado.png'), JSON.stringify(hireArt));
+    check('y cada uno con su retrato (arte en pixel)', hireArt.length === offers.length && hireArt.includes('gerd-el-mellado.png'), JSON.stringify(hireArt));
     if (SHOT) await page.screenshot({ path: `${SHOT}.mercenarios.png` });
     const purse = (await state()).party.reduce((sum, m) => sum + m.gold, 0);
     await page.locator('.hb-root [data-hireling="Gerd el Mellado"]').click();
@@ -922,7 +924,7 @@ try {
     });
     check('el tablón de campañas está, en la Casa del Gremio (D-J62)', await enElGremio(page, 'hub-board'));
     await page.waitForSelector('.hb-root [data-campaign]', { timeout: 15000 }).catch(() => {});
-    const board = await page.evaluate(() => [...document.querySelectorAll('.hb-root [data-campaign]')].map(c => ({ id: c.getAttribute('data-campaign'), text: (c.textContent || '').replace(/\s+/g, ' ').slice(0, 120) })));
+    const board = await page.evaluate(() => [...document.querySelectorAll('.hb-root [data-campaign]')].map(c => ({ id: c.getAttribute('data-campaign'), text: (c.textContent || '').replace(/\s+/g, ' ').slice(0, 260) })));
     check('en el tablón están 1387 y La Maldición de Strahd, sin empezar', board.some(c => c.id === '1387') && board.some(c => c.id === 'strahd' && /Sin empezar/.test(c.text)), JSON.stringify(board));
     check('el tablón dice lo lejos que queda cada campaña (J4.9)', board.some(c => c.id === 'strahd' && /A nueve días de camino/.test(c.text)), JSON.stringify(board));
     if (SHOT) await page.screenshot({ path: `${SHOT}.tablon.png` });

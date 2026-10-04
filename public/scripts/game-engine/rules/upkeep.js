@@ -77,30 +77,48 @@ export function readUpkeepRules(rules) {
  * paga, y eso es exactamente lo que hace que tener amigos salga barato y tener una
  * compañía salga caro.
  *
+ * Los días fuera (de camino o acampando) no se pagan comida ni posada: por el camino se come
+ * de las raciones o de lo que se caza (E6.1) y se duerme al raso. Antes se cobraban igual, y
+ * una semana de viaje pagaba la cena dos veces (la ración y el oro) y dejaba el bolsillo en 0.
+ *
  * @param {any[]} party
  * @param {any} [rules]
+ * @param {number} [away] Días de la semana fuera, de camino o acampando.
  * @returns {Array<{name: string, food: number, lodging: number, tax: number, wage: number, total: number, paid: boolean}>}
  */
-export function upkeepPerHead(party, rules = null) {
+export function upkeepPerHead(party, rules = null, away = 0) {
     const prices = readUpkeepRules(rules);
     const people = Array.isArray(party) ? party : [];
+    const home = prices.weekLength - awayDays(away, prices.weekLength);
 
     return people.map((member) => {
         const paid = motiveOf(member) === 'coin';
-        const food = prices.foodPerDay * prices.weekLength;
+        const food = prices.foodPerDay * home;
+        const lodging = Math.round(prices.lodgingPerWeek * home / prices.weekLength);
         // E4.1: lo que se le subió el sueldo cuando pidió más paga.
         const wage = paid ? prices.wagePerWeek + Math.max(0, Math.floor(Number(member?.wageRaise) || 0)) : 0;
 
         return {
             name: String(member?.name ?? 'Alguien'),
             food,
-            lodging: prices.lodgingPerWeek,
+            lodging,
             tax: prices.taxPerWeek,
             wage,
-            total: food + prices.lodgingPerWeek + prices.taxPerWeek + wage,
+            total: food + lodging + prices.taxPerWeek + wage,
             paid,
         };
     });
+}
+
+/**
+ * Los días fuera que cuentan esta semana: enteros, y nunca más que la semana.
+ *
+ * @param {any} away
+ * @param {number} weekLength
+ * @returns {number}
+ */
+function awayDays(away, weekLength) {
+    return Math.min(weekLength, Math.max(0, Math.floor(number(away))));
 }
 
 /**
@@ -116,6 +134,8 @@ export function upkeepPerHead(party, rules = null) {
  * @property {boolean} covered  Si llega.
  * @property {number} missing   Cuánto falta.
  * @property {Array<{name: string, days: number, gold: number, permanent: number}>} wounded
+ * @property {Array<{name: string, wage: number}>} payroll Quién cobra sueldo, y cuánto.
+ * @property {number} away      Días de la semana fuera (sin comida ni posada que pagar).
  */
 
 /**
@@ -128,11 +148,13 @@ export function upkeepPerHead(party, rules = null) {
  * @param {Object} [options]
  * @param {any} [options.rules]
  * @param {number} [options.purse] Lo que hay. Si no se dice, se suma el oro del grupo.
+ * @param {number} [options.away] Días de la semana fuera, de camino o acampando.
  * @returns {UpkeepBill}
  */
 export function weeklyBill(party, options = {}) {
     const prices = readUpkeepRules(options.rules);
-    const heads = upkeepPerHead(party, options.rules);
+    const away = awayDays(options.away, prices.weekLength);
+    const heads = upkeepPerHead(party, options.rules, away);
     const people = Array.isArray(party) ? party : [];
 
     const food = heads.reduce((sum, head) => sum + head.food, 0);
@@ -174,6 +196,8 @@ export function weeklyBill(party, options = {}) {
         covered: purse >= total,
         missing: Math.max(0, total - purse),
         wounded,
+        payroll: heads.filter(head => head.paid).map(head => ({ name: head.name, wage: head.wage })),
+        away,
     };
 }
 
@@ -184,28 +208,52 @@ export function weeklyBill(party, options = {}) {
  * quien vino por dinero **empieza a irse**, y quien no ha comido pega peor. Las dos cosas
  * se notan en la partida siguiente, que es donde tienen que notarse.
  *
+ * Se paga en orden y solo lo que llega: la comida, la posada y las tasas, y después los
+ * sueldos enteros, uno a uno. A quien no le llega el suyo no cobra nada, y ese oro se queda en
+ * el bolsillo. Antes se vaciaba el bolsillo entero y además los mercenarios contaban como sin
+ * cobrar: se perdía el oro y la lealtad a la vez.
+ *
  * @param {any[]} party
  * @param {UpkeepBill} bill
- * @returns {{paid: boolean, unpaid: string[], hungry: string[], lines: string[]}}
+ * @returns {{paid: boolean, unpaid: string[], hungry: string[], lines: string[], taken: number}}
+ *   `taken`: lo que hay que quitar del bolsillo.
  */
 export function settleWeek(party, bill) {
     const people = Array.isArray(party) ? party : [];
     if (bill.covered) {
-        return { paid: true, unpaid: [], hungry: [], lines: [`Pagado: ${bill.total} de oro.`] };
+        return { paid: true, unpaid: [], hungry: [], lines: [`Pagado: ${bill.total} de oro.`], taken: bill.total };
     }
 
     // Se paga lo que se puede, y primero la comida: nadie discute la cena.
-    const afterFood = bill.purse - bill.food;
-    const hungry = afterFood < 0 ? people.map(m => String(m?.name ?? 'Alguien')) : [];
-    const unpaid = people
-        .filter(member => motiveOf(member) === 'coin')
-        .map(member => String(member?.name ?? 'Alguien'));
+    let left = Math.max(0, number(bill.purse));
+    const food = Math.min(left, bill.food);
+    left -= food;
+    const hungry = food < bill.food ? people.map(m => String(m?.name ?? 'Alguien')) : [];
+    const keep = Math.min(left, bill.lodging + bill.tax);
+    left -= keep;
+
+    // Los sueldos, enteros: medio sueldo no es cobrar.
+    const payroll = Array.isArray(bill.payroll)
+        ? bill.payroll
+        : people.filter(member => motiveOf(member) === 'coin').map(member => ({ name: String(member?.name ?? 'Alguien'), wage: Infinity }));
+    /** @type {string[]} */
+    const unpaid = [];
+    let wages = 0;
+    for (const head of payroll) {
+        const wage = Math.max(0, number(head.wage, Infinity));
+        if (wage <= left) {
+            left -= wage;
+            wages += wage;
+        } else {
+            unpaid.push(String(head.name));
+        }
+    }
 
     const lines = [`Faltan ${bill.missing} de oro.`];
     if (hungry.length > 0) lines.push('No ha comido nadie: todos empiezan la semana cansados.');
     if (unpaid.length > 0) lines.push(`Sin cobrar: ${unpaid.join(', ')}. La lealtad baja.`);
 
-    return { paid: false, unpaid, hungry, lines };
+    return { paid: false, unpaid, hungry, lines, taken: food + keep + wages };
 }
 
 /**

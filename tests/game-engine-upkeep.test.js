@@ -162,3 +162,60 @@ describe('las dos copias de los precios', () => {
         expect(DEFAULT_RULESET.upkeep).toEqual(DEFAULT_UPKEEP);
     });
 });
+
+// El fallo: tras una semana de viaje o acampando, el oro del grupo se quedaba en 0. La semana
+// cobraba la cena en oro aunque se comiera de las raciones, y la posada aunque se durmiera al
+// raso; y si no llegaba, se vaciaba el bolsillo entero y los mercenarios quedaban sin cobrar.
+describe('una semana fuera (el oro que se quedaba en 0)', () => {
+    /** Mira con 120 de oro y tres mercenarios, como en la prueba del camino (E6). */
+    const company = () => ([
+        { name: 'Mira', gold: 120 },
+        { name: 'Gerd', motive: 'coin', gold: 0 },
+        { name: 'Nella', motive: 'coin', gold: 0 },
+        { name: 'Osric', motive: 'coin', gold: 0, wageRaise: 10 },
+    ]);
+
+    test('los días de camino no se paga cena ni posada; tasas y sueldos, sí', () => {
+        const bill = weeklyBill(company(), { away: 7 });
+        expect(bill.food).toBe(0);
+        expect(bill.lodging).toBe(0);
+        expect(bill.tax).toBe(12);
+        expect(bill.wages).toBe(70);
+        expect(bill.total).toBe(82);
+        expect(bill.covered).toBe(true);
+        expect(settleWeek(company(), bill).taken).toBe(82);
+    });
+
+    test('media semana fuera paga la mitad de comida y de posada', () => {
+        const bill = weeklyBill(party(), { away: 3 });
+        // 3 bocas × 2 × 4 días = 24; posada 7 × 4/7 = 4 por cabeza.
+        expect(bill.food).toBe(24);
+        expect(bill.lodging).toBe(12);
+        expect(bill.away).toBe(3);
+    });
+
+    test('más días fuera que la semana cuentan como la semana', () => {
+        expect(weeklyBill(party(), { away: 30 }).food).toBe(0);
+        expect(weeklyBill(party(), { away: -2 }).food).toBe(42);
+    });
+
+    test('si no llega, se paga en orden y el sueldo que no llega entero se queda en el bolsillo', () => {
+        const people = company();
+        // Una semana entera en la ciudad: 96 de comida, posada y tasas, y 70 de sueldos.
+        const bill = weeklyBill(people);
+        expect(bill.total).toBe(166);
+        const week = settleWeek(people, bill);
+        // 120 − 96 = 24: llega para Gerd (20), no para Nella (20) ni para Osric (30).
+        expect(week.taken).toBe(116);
+        expect(week.unpaid).toEqual(['Nella', 'Osric']);
+        expect(week.hungry).toEqual([]);
+    });
+
+    test('sin oro para la cena, se paga lo que hay y no cobra nadie', () => {
+        const people = party();
+        const week = settleWeek(people, weeklyBill(people, { purse: 10 }));
+        expect(week.taken).toBe(10);
+        expect(week.unpaid).toEqual(['Brand']);
+        expect(week.hungry).toHaveLength(3);
+    });
+});

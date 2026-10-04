@@ -31,10 +31,13 @@ export const MERC_QUEST_RANK = 3;
 /** @param {any} value @returns {string} */
 const text = (value) => String(value ?? '').trim();
 
-/** Nombres para la gente de la misión. */
+/**
+ * Nombres para la gente de la misión. Ninguno es de alguien con retrato (Elvira, del gremio, o
+ * Brígida, de 1387): saldría con su cara.
+ */
 const NAMES = {
     m: ['Anselmo', 'Baltasar', 'Crispín', 'Damián', 'Eusebio', 'Fermín', 'Gaspar', 'Hilario', 'Leandro', 'Marcial', 'Nicasio', 'Rufino', 'Tadeo', 'Valerio'],
-    f: ['Adela', 'Brígida', 'Casilda', 'Dorotea', 'Elvira', 'Felisa', 'Genoveva', 'Inés', 'Leocadia', 'Remedios', 'Sabina', 'Tomasa'],
+    f: ['Adela', 'Benita', 'Casilda', 'Dorotea', 'Eulalia', 'Felisa', 'Genoveva', 'Inés', 'Leocadia', 'Remedios', 'Sabina', 'Tomasa'],
 };
 
 /** Las aldeas lejanas adonde se va: están a días de Puerto Alba. */
@@ -164,6 +167,8 @@ export function mercQuestFor({ member, wants, random, heroName = '', size = 3 })
             ida(`A ${village}. Ahí se esconde ${villain}, el que mató a mi ${sibling}. No pienso volver sin verle la cara.`),
             {
                 id: 'escena', kind: 'escena', title: `La posada de ${village}`, backdrop: 'posada',
+                // Su cara: el dibujo del bandido del camino (`bestias/`), que no tiene retrato propio.
+                faces: { [villain]: 'bandido-del-camino' },
                 beats: [
                     { who: name, text: `Ese de la mesa del fondo es ${villain}. Ha engordado. Mi ${sibling} no tuvo esa suerte.` },
                     { who: villain, text: '¿Me buscas a mí? No me acuerdo de todas las caras.' },
@@ -220,6 +225,10 @@ export function mercQuestFor({ member, wants, random, heroName = '', size = 3 })
             ida(`A ${village}. Mi ${sibling}, ${relName}, lleva un año picando piedra por una deuda que ya está pagada. Me ${it} llevo a casa.`),
             {
                 id: 'escena', kind: 'escena', title: `La cantera de ${village}`, backdrop: 'plaza',
+                // El hermano que pica piedra, con el campesino del bestiario. La hermana y el
+                // prestamista, con los suyos de `retratos/mercenarios/` cuando estén dibujados
+                // (wiki/PIXELLAB_PENDIENTE.md); hasta entonces, la silueta.
+                faces: { [relName]: relFemale ? 'la-hermana-de-la-cantera' : 'campesino-desesperado', [villain]: 'el-prestamista' },
                 beats: [
                     { who: name, text: `Ahí, ${relFemale ? 'la' : 'el'} de la cuerda en la cintura. Es ${relName}. Está en los huesos.` },
                     { who: relName, mood: 'triste', text: `¿${short}? ¿Eres tú? No puedo irme. Dice que aún debemos treinta monedas.` },
@@ -278,6 +287,8 @@ export function mercQuestFor({ member, wants, random, heroName = '', size = 3 })
         ida(`A ${village}. ${MyUncle} me lo dejó todo, y mi ${cousin} se lo ha quedado. Voy a por lo que es mío.`),
         {
             id: 'escena', kind: 'escena', title: village, backdrop: 'plaza',
+            // El primo o la prima, con el suyo de `retratos/mercenarios/` cuando esté dibujado.
+            faces: { [otherName]: otherFemale ? 'la-prima' : 'el-primo' },
             beats: [
                 { who: name, text: `Ahí está la casa de ${myUncle}. Y ${otherFemale ? 'esa' : 'ese'} de la puerta, con cara de ${otherFemale ? 'dueña' : 'dueño'}, es mi ${cousin}.` },
                 { who: otherName, mood: 'enfadado', text: `¿${short}? Aquí no hay nada tuyo. ${relFemale ? 'La vieja' : 'El viejo'} me lo dejó todo a mí.` },
