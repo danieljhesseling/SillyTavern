@@ -21,14 +21,14 @@ created: 2026-10-02
 - 🟡 existe a medias o sin contenido que lo use;
 - ⬜ no existe.
 
-## 📍 Cómo va (2026-10-04, 07:10)
+## 📍 Cómo va (2026-10-04, 07:45)
 
-**Avance: ~97 %.** Las 32 ideas están escritas y cada una se ha probado en el navegador por su agente. Todo el código está en tu commit 5344ba2fb («pre beta V2.0»). Falta pasar la batería entera con todo junto (hay fallos sueltos que salen al cruzarse los cambios, ver abajo). Sigue trabajando el agente de los ajustes de E2 (ganzúas y antorchas): le faltan las pruebas.
+**Avance: ~99 %: terminado.** Las 32 ideas están escritas y probadas en el navegador, y los fallos que salieron al cruzarse los cambios están arreglados. El código de ayer está en tu commit 5344ba2fb («pre beta V2.0»); los arreglos de hoy, en el siguiente. **Solo quedan tus decisiones** (abajo): cifras y reglas de cosecha propia. El arte que falta lo está haciendo el agente de PixelLab ([[PIXELLAB_PENDIENTE]]).
 
 | Bloque | Hecho | Prueba en el navegador |
 | :--- | :--- | :--- |
 | E1 · El tablero que se usa | Todo: E1.4 la columna que se derriba (Comedor del Conde, mina), E1.5 estatua con gema, runas en orden y palancas dobles (Argynvostholt, ermita, salón de Vane) | ✅ |
-| E2 · La mazmorra que pesa | Todo; los ajustes de tus decisiones, en sus pruebas | ✅ |
+| E2 · La mazmorra que pesa | Todo, con tus decisiones: forzar cerraduras pide ganzúas y los héroes empiezan con 5 antorchas (5 de 5) | ✅ |
 | E3 · El grupo y sus combos | Todo; E3.2 combos para cualquier pareja con vínculo 3 (13 de 13), E3.3 Arma elemental (11 de 11) | ✅ |
 | E4 · Compañeros con roce | Todo: el mercenario molesto no ataca en pareja y pide más paga (o se va), discusiones junto al fuego en las que das la razón, misiones de 2-3 pasos para cualquier mercenario con vínculo 3 (13 de 13). Sus decisiones, en «Por decidir (E4)» | ✅ |
 | E5 · El gremio que paga | Todo: temple y raciones para la salida, libros de bichos, «Quién está para salir», cansancio del camino, mandar a alguien a un encargo con su informe (12 de 12) | ✅ |
@@ -36,17 +36,24 @@ created: 2026-10-02
 | E7 · Sin fricción aburrida | Todo, también el cuadro de preparar del héroe ya marcado | ✅ |
 | E8 · La larga vida | Todo | ✅ |
 
-**En marcha (2026-10-04, 07:15): cuatro agentes cierran lo que queda**: los fallos de abajo, los flecos de E5 (la ficha enseña el temple y la ración; mezclar materiales en la forja), las caras de las misiones de mercenarios, y probar en el navegador lo que solo tenía pruebas de código (el compañero que lanza Arma elemental, los veteranos al volver de una campaña, la columna del comedor del Conde).
+**Hecho hoy (2026-10-04):** la ficha enseña lo preparado en el gremio (temple y ración) y la forja de la Casa del Gremio mezcla materiales (dos pieles: una capa; un colmillo, garra o escama: el arma a +1). Las misiones de mercenarios usan caras que ya había.
 
-**Fallos que han salido al cruzarse los cambios** (los mira la batería final; también en la tabla de bugs de [[ROADMAP_SIN_CONEXION]]):
-- En `e2e-magia`: la tarjeta de subir de nivel, el «+2 por la Luz» al examinar de noche, la pregunta de curar al llegar y las iniciales en el tablero.
-- Al pasar una semana viajando o acampando, el oro del grupo se queda en 0 (seguramente la paga semanal de los mercenarios).
-- El rótulo «Vínculo 3 · …» se corta cuando la ficha está pegada al borde del tablero.
-- Las clases en femenino («pícara») no encuentran su retrato genérico («pícaro») y salen con silueta.
+**Probado ya en el navegador (2026-10-04)** lo que solo tenía pruebas de código, y va bien sin tocar nada:
+- **E3.3:** una exploradora que lleva el juego lanza Arma elemental sola, en una pelea larga, sobre el guerrero de cuerpo a cuerpo que tiene al lado. Gasta su espacio de 3.º, se concentra, y la tarjeta del arma de él enseña «+1d4 fuego» y «+1 de Arma elemental».
+- **E8.6:** un mercenario con dos salidas va a Strahd desde el tablón y vuelve con «Volver al gremio». Al llegar es veterano: apodo, rasgo, su charla, la línea en el registro y la insignia en «Contratar».
+- **E1.4:** en el Comedor del Conde, tras elegir «Pelear», la ventana se cierra y nada tapa las dos columnas, ni al colocarse ni en la pelea. Con el ratón se tira una sobre un engendro: daño contundente y escombros.
+
+**Fallos que han salido al cruzarse los cambios** (todos arreglados; también en la tabla de bugs de [[ROADMAP_SIN_CONEXION]]):
+- ✅ arreglado: en `e2e-magia`, la tarjeta de subir de nivel, el «+2 por la Luz» al examinar de noche, la pregunta de curar al llegar y las iniciales en el tablero. El juego estaba bien; la prueba se había quedado vieja (E7.4, el modo guiado, D-J60) y ya sale entera bien.
+- ✅ arreglado: al pasar una semana viajando o acampando, el oro del grupo se quedaba en 0. La cuenta de la semana cobraba en oro la comida y la posada de los días de camino (cuando ya se comía de las raciones y se dormía al raso), y si no llegaba vaciaba el bolsillo entero aunque los mercenarios se quedaran igual sin cobrar. Ahora los días fuera no pagan comida ni posada, y si no llega se paga en orden (comida, posada y tasas, y los sueldos enteros, uno a uno): el sueldo que no llega se queda en el bolsillo. En el navegador, 120 de oro con tres mercenarios: tras 10 días de camino quedan 44 (antes, 0).
+- ✅ arreglado: el rótulo «Vínculo 3 · …» se cortaba con la ficha pegada al borde del tablero. Ahora se queda dentro: junto a un lado se corre hacia dentro, y en la fila de abajo sale encima de la ficha (y el bocadillo de la frase, encima de él). El bocadillo tampoco se corta ya por los lados. En el navegador, con la ficha abajo, a la izquierda y a la derecha (`combat-vtt/fx.js`, `combat-vtt.css`).
+- ✅ arreglado: Iria Salitre y los demás reclutas de los dormitorios salían con silueta en las charlas y en su misión. No era el femenino («pícara» sí encontraba el retrato de «pícaro»): al montar la charla, el nombre suelto de quien habla pisaba su ficha y se perdía su clase (`cast-scenes.js`). Además, la clase en femenino se busca bien también por su id (`pixel-art.js`).
 
 **Decisiones abiertas para Daniel (de E1, E5 y E6):**
+- **La forja (nuevo):** ya había «Mejorar» (el arma a +1 por 150 de oro); ahora también con 80 y un colmillo. ¿Se quedan los dos caminos? Las sedas y plumas aún no tienen receta.
+- **La Luz en el pueblo:** con el modo guiado, cosas que se miran al aire libre (los avisos de la lonja) salen dentro de la tienda, donde ya hay luz y la Luz no suma (D-J51). ¿Lo cambiamos?
 - **E1:** las reglas de la columna son mías (Atletismo CD 10 para derribarla, 1d10 contundente, Destreza CD 12 para la mitad, deja escombros) y el chispazo de 1d4 de la runa equivocada también. ¿Valen? El camino automático pisa las runas que cruza: ¿que las rodee solo? ¿Hacemos la «palanca con plazo» (abrir el mecanismo antes de la ronda N) con las palancas dobles? El dibujo de columna, estatua, gema, runa y palanca doble está en `PIXELLAB_PENDIENTE.md`.
-- **E5 (cosecha propia):** temple 40 de oro; caldo 15 y guiso 20 (5 menos por nivel de cocina); libro de bichos 60 (15 menos por nivel de biblioteca); el cansancio llega desde dos salidas seguidas y una semana en casa lo borra; se puede mandar a un herido (baja la probabilidad). ¿Valen? Falta «mezclar materiales» en la forja, y la ficha aún no enseña el temple ni la ración.
+- **E5 (cosecha propia):** temple 40 de oro; caldo 15 y guiso 20 (5 menos por nivel de cocina); libro de bichos 60 (15 menos por nivel de biblioteca); el cansancio llega desde dos salidas seguidas y una semana en casa lo borra; se puede mandar a un herido (baja la probabilidad). ¿Valen? «Mezclar materiales» en la forja usa las recetas que ya tenía el herrero de los pueblos (dos pieles: una capa que abriga, 10 de oro; algo duro, como un colmillo o una garra: el arma a +1, 80 de oro). Así la casa tiene dos caminos al +1: la forja sola (150 de oro) o con material de caza (80 de oro). ¿Te vale así?
 - **E6:** se come una ración por cabeza y día de viaje. Copiar conjuros es gratis (en 2024 cuesta 50 po por nivel y 2 horas): ¿se cobra? ¿Más tarjetas de viaje (vado crecido, viajero herido)? La cena que repone sale de la dote Chef: ¿añadimos su 1d8 en los descansos cortos?
 
 **Decisiones abiertas para Daniel (de E8, la larga vida):**
@@ -65,9 +72,9 @@ created: 2026-10-02
 **Decidido por Daniel (E7): el cuadro de preparar del héroe sale ya marcado con lo de su papel (hecho).**
 - Tras dormir, los compañeros preparan solos según su papel (la clériga, curas primero). A tu héroe le sale su cuadro de preparar ya marcado igual, con la línea «Marcado lo de su papel: curar. Cámbialo si quieres.», y lo cambia antes de aceptar.
 
-**Decididas por Daniel (2026-10-03), un agente las está metiendo:**
-- **Forzar cerraduras requiere herramientas de ladrón** (E2.2), como en 5e. Se quita la vía «con maña».
-- **Los héroes empiezan con antorchas**, y también se compran en las tiendas (E2.1). Los tableros escritos aún no usan el campo `light`.
+**Decididas por Daniel (2026-10-03), ya hechas:**
+- **Forzar cerraduras requiere herramientas de ladrón** (E2.2), como en 5e. Ya no hay vía «con maña»: sin ganzúas el botón no sale y lo dice uno del grupo. El pícaro y el criminal empiezan con ganzúas, y se venden en las tiendas.
+- **Los héroes empiezan con 5 antorchas** (también los héroes hechos de una campaña), y se venden en las tiendas (E2.1). Los mercenarios no llevan mochila: tiran de las del grupo. Los tableros escritos aún no usan el campo `light`.
 
 ---
 
@@ -117,7 +124,7 @@ Las relaciones son el foco de D-J58.
 - **Quién se va.** Hoy solo se va del gremio un mercenario que pide más paga y no le convences. Que un compañero harto se vaya sin más sigue tras el interruptor de la pausa («Se van»), y nunca un contratado. ¿Lo dejamos así?
 - **Cuánto pide.** Pide 10 de oro más a la semana; sin cuenta semanal, una paga extra de 15 + 5 por nivel. Persuasión CD 13. Molesto con −2 y pide paga con −3, contando las dos últimas semanas. Son de cosecha propia.
 - **Las misiones de los veteranos (E8.6)** siguen siendo un encargo suelto del tablón. ¿Les ponemos también una misión de tres pasos?
-- **Caras.** La gente de estas misiones (el primo, el salteador, el prestamista) sale sin retrato. Iria Salitre y los demás reclutas de los dormitorios salen con silueta en las escenas, porque «pícara» no encuentra el retrato de «pícaro». ¿Ponemos retratos genéricos en PixelLab y arreglo el femenino de las clases?
+- **Caras (hecho en parte, 2026-10-04).** En la escena de su misión, el mercenario sale con su retrato (el de relleno de su clase si no tiene uno propio), el salteador de la venganza con el bandido del camino y el hermano de la cantera con el campesino. El primo o la prima, el prestamista y la hermana de la cantera siguen con silueta: están en `PIXELLAB_PENDIENTE.md` y salen solos en cuanto se dibujen. Los nombres de esta gente ya no coinciden con nadie que tenga retrato (Elvira, Brígida).
 
 ## E5 · El gremio que paga
 
@@ -129,7 +136,7 @@ Que la base dé ventajas reales en el campo.
 | E5.2 | **El banquillo se usa:** heridas que tardan días en la enfermería (`injuries.js` ya cura por días, D-J12) y cansancio de expedición, para que roten los compañeros. | ✅ | Sí: agotamiento; el resto, a la manera de *Darkest Dungeon* | M |
 | E5.3 | **Mandar compañeros a encargos:** `dispatch.js` manda a gente del banquillo a encargos menores mientras juegas la historia, y vuelven días después con oro, fama o heridas. Comprobar que se puede jugar y que se ve. Al volver, te esperan en el gremio con una tarjeta de informe contada por ellos: lo que ganaron, un mapa o una anécdota. | ✅ | — | S |
 
-> **Hecho (2026-10-03):** en la Casa del Gremio, «Los edificios» ofrece templar la armadura (+1 CA hasta volver), el caldo fuerte (ventaja en la primera salvación) o el guiso de camino (un dado de golpe más) y los libros de bichos de cada campaña del tablón, que salen en la tarjeta del enemigo. En «Tu gente», «Quién está para salir»: cada uno dice cómo está; quien encadena salidas vuelve *cansado del camino* (una herida de días) y la enfermería cura el doble a quien se queda en casa. Desde ahí, o desde «Encargos del tablón», se manda a alguien de casa a un encargo menor; al volver lo cuenta en una escena corta (el oro, un camino nuevo en el mapa o lo que pasó). Falta «mezclar materiales» en la forja. Lo decide Daniel: los números del temple, las raciones y el cansancio (cosecha propia).
+> **Hecho (2026-10-03):** en la Casa del Gremio, «Los edificios» ofrece templar la armadura (+1 CA hasta volver), el caldo fuerte (ventaja en la primera salvación) o el guiso de camino (un dado de golpe más) y los libros de bichos de cada campaña del tablón, que salen en la tarjeta del enemigo. En «Tu gente», «Quién está para salir»: cada uno dice cómo está; quien encadena salidas vuelve *cansado del camino* (una herida de días) y la enfermería cura el doble a quien se queda en casa. Desde ahí, o desde «Encargos del tablón», se manda a alguien de casa a un encargo menor; al volver lo cuenta en una escena corta (el oro, un camino nuevo en el mapa o lo que pasó). **Hecho (2026-10-04):** en la casa, «Mezclar materiales en la forja» convierte lo cazado en una capa de pieles o en el arma a +1 (las recetas del herrero de los pueblos, pagadas del arca), y la ficha del héroe y la tarjeta de cada compañero dicen lo preparado en casa (el temple y el caldo o el guiso). Lo decide Daniel: los números del temple, las raciones y el cansancio (cosecha propia).
 
 ## E6 · El camino entre campañas
 

@@ -200,10 +200,10 @@ Al acabar el modo guiado este roadmap queda **al 100 %** de lo que no está apar
 | A veces no sale la escena del principio de Strahd (H15), la puerta de la taberna aparece antes de «Empezar» (H17) y «Volver al gremio» falla a veces (H13) | ✅ Arreglado |
 | Al volver al gremio no pasa el tiempo y se arrastra el cansancio de Barovia (H16) | ✅ Arreglado |
 | En la campaña del Gem, la trampa del sótano se pisa sin verla: el sótano sale «A oscuras» por la luz de la mazmorra nueva (E2.1) | Abierto: lo mira el agente del modo guiado |
-| En `e2e-magia` fallan la tarjeta de subir de nivel, el «+2 por la Luz» al examinar de noche, la pregunta de curar al llegar y las iniciales en el tablero (salió al cruzarse los cambios de entretenido) | Abierto: lo mira la batería final |
-| Al pasar una semana viajando o acampando, el oro del grupo se queda en 0 (seguramente la paga semanal de los mercenarios) | Abierto |
-| El rótulo «Vínculo 3 · …» se corta cuando la ficha está pegada al borde del tablero | Abierto |
-| Las clases en femenino («pícara») no encuentran su retrato genérico («pícaro») y salen con silueta | Abierto |
+| En `e2e-magia` fallan la tarjeta de subir de nivel, el «+2 por la Luz» al examinar de noche, la pregunta de curar al llegar y las iniciales en el tablero (salió al cruzarse los cambios de entretenido) | ✅ Arreglado: el juego estaba bien; la prueba se quedó vieja con E7.4 (conjuros ya marcados), el modo guiado (lo de mirar dentro del sitio; los tableros de aquí, ocultos) y D-J60 (cómo llega cada uno, en el aviso de fuera de la caja). Puesta al día; sale entera bien |
+| Al pasar una semana viajando o acampando, el oro del grupo se queda en 0 (la cuenta semanal cobraba comida y posada en los días de camino, y si no llegaba vaciaba el bolsillo aunque los mercenarios se quedaran sin cobrar; `upkeep.js`) | ✅ Arreglado |
+| El rótulo «Vínculo 3 · …» se corta cuando la ficha está pegada al borde del tablero | ✅ Arreglado |
+| Las clases en femenino («pícara») no encuentran su retrato genérico («pícaro») y salen con silueta | ✅ Arreglado |
 
 **Después de este roadmap, en este orden** (lo dijiste el 2026-10-02):
 1. **Escribir bien las tres campañas experimentales**, con la calidad de 1387 y Strahd: *El mundo tras la pantalla* (isekai), *Las tierras del ocaso* (fantasía épica) y *La costa que no duerme* (terror). Cada una tendrá:
