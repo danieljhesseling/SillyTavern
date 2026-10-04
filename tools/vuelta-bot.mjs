@@ -1315,7 +1315,7 @@ export function createBot(page, { fast = true, log = console.log, prefer = [] } 
             const hit = TAG.exec(seen);
             if (hit) odd('crudo', seen.slice(Math.max(0, hit.index - 20), hit.index + 60), `se lee «${seen.slice(Math.max(0, hit.index - 20), hit.index + 140)}»`);
         }
-        // La portada («DnD Coin», Jugar sin conexión…) a la vista con una partida ya empezada: al
+        // La portada («Dnd Master», Jugar sin conexión…) a la vista con una partida ya empezada: al
         // cargar una campaña desde el tablón se veía un momento.
         if (v.scene === 'title' && v.world && v.menu.length > 0) {
             odd('portada', v.world, `se ve la portada (${v.menu.slice(0, 3).join(', ')}…) con la partida ya empezada (${v.world})`);

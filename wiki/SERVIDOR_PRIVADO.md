@@ -129,7 +129,7 @@ Al acabar, cierra la ventana del túnel.
 
 ### Añadir a la pantalla de inicio
 
-Así el juego tiene su icono, **DnD Coin**, como una app más. Abre antes el juego con `/?juego` al final: el icono entrará directo en la portada.
+Así el juego tiene su icono, **Dnd Master**, como una app más. Abre antes el juego con `/?juego` al final: el icono entrará directo en la portada.
 
 **Android (Chrome):**
 1. Toca el menú **⋮** (arriba a la derecha).

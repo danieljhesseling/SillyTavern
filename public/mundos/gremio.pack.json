@@ -1439,7 +1439,7 @@
         "backdrop": "muelle",
         "beats": [
           { "who": "Tomás", "mood": "enfadado", "text": "¡Al ladrón! ¡Ese desgraciado me ha quitado la bolsa!" },
-          { "who": "Ratero del muelle", "mood": "enfadado", "text": "¡Atrás todos! ¡Al primero que se acerque le meto el cuchillo!" },
+          { "who": "Ratero del muelle", "mood": "enfadado", "text": "¡Atrás todos! ¡Al primero que se acerque lo apuñalo!" },
           {
             "who": "Tomás", "mood": "triste", "text": "¡Eh, tú, {el|la} de la barca del correo! ¡Ahí dentro va la paga de toda la semana! ¡Sin ella no pago ni al panadero!",
             "options": [

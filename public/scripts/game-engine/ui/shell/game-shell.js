@@ -1961,6 +1961,7 @@ function renderExploration(panel, view) {
         cards: allCards,
         chips: options?.getChips?.() ?? [],
         data: options?.getTown?.() ?? null,
+        purse: typeof options?.getTown?.()?.purse === 'number' ? options.getTown().purse : undefined,
         onService: (/** @type {string} */ id) => runPlaceAction(id),
         onChip: (/** @type {any} */ chip) => options?.onChip?.(chip),
         refresh: () => refreshGameShell(),
@@ -2406,7 +2407,7 @@ export function openGameShell(shellOptions) {
     // La pantalla de titulo no se construye: ya existe. La bienvenida con las tarjetas de
     // campana se dibuja dentro de `#chat`, que viaja con `#sheld`, asi que basta con
     // ensenar la misma seccion con otro rotulo y sin el ruido de una conversacion.
-    dialogue.appendChild(el('div', 'gs-title', 'DnD Coin'));
+    dialogue.appendChild(el('div', 'gs-title', 'Dnd Master'));
     dialogue.appendChild(el('div', 'gs-menu'));
     // J18.3: la historia como una novela visual. Quien habla, grande; el texto, en una caja
     // ancha abajo, con su nombre en una placa y las fichas dentro. Fuera de la escena de

@@ -1,10 +1,10 @@
 ---
-title: Roadmap — DnD Coin como APK de Android, sin servidor y sin conexión
+title: Roadmap — Dnd Master como APK de Android, sin servidor y sin conexión
 tags: [roadmap, android, apk, capacitor, sin-servidor, sin-conexion, indexeddb, movil]
 created: 2026-10-03
 ---
 
-# 📱 DnD Coin en una APK de Android
+# 📱 Dnd Master en una APK de Android
 
 > **Qué es:** el plan para que el juego sea **una app de Android** que instalas en tu móvil y juegas sin nada más: **sin el PC encendido, sin servidor, sin internet y sin publicar nada en ninguna web**. Lo pediste el 2026-10-03: solo Android, nada de Apple, nada de GitHub Pages; el repo sigue privado.
 > **De dónde sale:**
@@ -31,7 +31,7 @@ created: 2026-10-03
 1. A0 (tu PC) y A1 (la copia del juego para la app).
 2. A2 (el servidor de bolsillo) y A3 (apagar lo que no se usa), a la vez: son trozos distintos.
 3. A4: el juego entero, probado sin servidor en el navegador del PC. **Hasta aquí no hace falta Android.**
-4. A5: la primera APK. **Primer hito: abres DnD Coin en tu móvil y llegas al título.**
+4. A5: la primera APK. **Primer hito: abres Dnd Master en tu móvil y llegas al título.**
 5. A6 (copias de seguridad) y A7 (campañas del Gem), a la vez.
 6. A8: un solo comando que hace la APK firmada.
 7. A9: una tarde entera jugando en el móvil. **Hito final.**
@@ -42,7 +42,7 @@ created: 2026-10-03
 
 | Qué | Dónde | Sirve para la APK |
 | :--- | :--- | :--- |
-| **El nombre «DnD Coin»** (provisional, D-J9) y su descripción | `APP_INFO` en `public/scripts/game-engine/ui/app-mode.js` | El nombre bajo el icono |
+| **El nombre «Dnd Master»** (provisional, D-J9) y su descripción | `APP_INFO` en `public/scripts/game-engine/ui/app-mode.js` | El nombre bajo el icono |
 | **El icono** (el escudo con la espada, de PixelLab): 192, 512 y la versión «maskable» para los Android que recortan en círculo | `public/img/game-engine/pixel/app/` | Los iconos de Android salen de aquí (A5) |
 | **El manifiesto** `public/juego.webmanifest` y la herramienta que lo escribe | `tools/app-movil.mjs` (J20.7), con su `--check` | La APK no lo usa, pero la herramienta ya sabe leer y escalar PNG píxel a píxel, sin suavizar: se amplía para los iconos de Android |
 | **Entrar directo al juego** al abrir desde el icono (`/?juego`) y dejar sitio a la muesca (`html.gs-app`) | `app-mode.js` y `css/movil-app.css` | Lo mismo en la app |
@@ -228,7 +228,7 @@ Con `SIN_SERVIDOR` encendido, y apuntado en [[LO_OCULTO]]:
 
 ### A5 · La app con Capacitor
 
-- `npx cap init` con el nombre **DnD Coin** y **el identificador de la app** (ver decisiones), y `npx cap add android`. `webDir` = `www`.
+- `npx cap init` con el nombre **Dnd Master** y **el identificador de la app** (ver decisiones), y `npx cap add android`. `webDir` = `www`.
 - **El origen no cambia nunca**: `https://localhost` (el de Capacitor por defecto). Si cambiara, la app no encontraría las partidas guardadas.
 - **Iconos**: `tools/app-movil.mjs` aprende a escribir los de Android (las carpetas `mipmap-*` y el icono adaptable, con el escudo dentro del círculo) desde `pixel/app/`, **píxel a píxel**: las herramientas de iconos de siempre suavizan y el pixel art sale borroso.
 - **Pantalla de carga** con el fondo del icono (`#1a181b`), como el manifiesto.
@@ -243,8 +243,8 @@ Con `SIN_SERVIDOR` encendido, y apuntado en [[LO_OCULTO]]:
 
 - **Exportar**: dentro de la app, el enlace de descarga de hoy (`saveFile` en `guardar-partida.js`) no hace nada: el WebView de Android no descarga `blob:`. En modo `SIN_SERVIDOR`, el archivo se escribe con `@capacitor/filesystem` y se abre la hoja de **compartir** de Android (`@capacitor/share`): «Guardar en Drive», «Archivos», mandártelo por correo…
 - **Importar**: el selector de archivos ya funciona en la app. Pero Android filtra por tipo, y un `.partida.json` bajado de Drive puede salir en gris: en la app el selector acepta cualquier archivo y el juego dice si no es una partida (ya lo hace).
-- **Copia sola cada noche**: al dormir en el gremio (cuando ya se guarda, J3.3), además se deja una copia en `Documentos/DnD Coin/`, guardando las 3 últimas. Esa carpeta se ve con la app «Archivos» y **sobrevive aunque desinstales la app**.
-- **Recuperar después de reinstalar**: «Importar partida» y elegir la copia de `Documentos/DnD Coin/`.
+- **Copia sola cada noche**: al dormir en el gremio (cuando ya se guarda, J3.3), además se deja una copia en `Documentos/Dnd Master/`, guardando las 3 últimas. Esa carpeta se ve con la app «Archivos» y **sobrevive aunque desinstales la app**.
+- **Recuperar después de reinstalar**: «Importar partida» y elegir la copia de `Documentos/Dnd Master/`.
 - En el menú, una línea: «Tus partidas ocupan X MB en el móvil».
 
 **Hecho cuando** exportas en el móvil, borras los datos de la app, importas y sigues en el mismo día, y una partida del PC pasa al móvil y al revés.
@@ -263,7 +263,7 @@ Las campañas que hace el juego (1387, Strahd, las tres nuevas) van dentro de la
 
 **Hecho cuando** `e2e-importar-campana` pasa sin servidor y, en tu móvil, pegas una campaña del Gem y la empiezas.
 
-**Más adelante, si quieres:** «Abrir con DnD Coin» desde Drive o desde el correo, para no tener que pasar por el tablón.
+**Más adelante, si quieres:** «Abrir con Dnd Master» desde Drive o desde el correo, para no tener que pasar por el tablón.
 
 ### A8 · Un comando para sacar versión
 
@@ -312,7 +312,7 @@ Sin Play Store. Dos maneras:
 ## 7. Las partidas al actualizar la APK
 
 - **Al instalar una versión nueva encima, las partidas se quedan**, siempre que sean la **misma app** (el mismo identificador), **firmada con la misma llave** y con **el mismo origen** (`https://localhost`). Los tres se fijan en A5 y no se tocan nunca.
-- **Si desinstalas la app o le das a «Borrar datos»**, Android borra sus partidas. Para eso está la copia de cada noche en `Documentos/DnD Coin/` (A6).
+- **Si desinstalas la app o le das a «Borrar datos»**, Android borra sus partidas. Para eso está la copia de cada noche en `Documentos/Dnd Master/` (A6).
 - **Si una versión nueva cambia cómo se guarda algo**, pasa lo mismo que en el PC: el juego lee las partidas viejas y pone lo de por defecto donde falta una clave (la lista de claves está en `state-registry.js`). Si un cambio rompiera eso, esa versión trae su paso para poner al día las partidas; el archivo de partida ya lleva su número de formato (`ARCHIVE_VERSION` en `game-archive.js`). Y antes de instalar una versión grande, se exporta la partida por si acaso.
 - **No se puede volver a una versión más vieja** instalándola encima (Android no deja). Para eso: desinstalar, instalar la vieja e importar una copia.
 
@@ -337,10 +337,10 @@ Sin Play Store. Dos maneras:
 ## 9. Decisiones para Daniel
 
 1. **Capacitor** como envoltorio (sección 2). ¿Vale?
-2. **El identificador de la app** (no se ve, pero **no se puede cambiar nunca** sin perder las partidas). Propuesta: `com.dndcoin.juego`. El nombre que se ve, «DnD Coin», sí se puede cambiar cuando quieras (D-J9).
+2. **El identificador de la app** (no se ve, pero **no se puede cambiar nunca** sin perder las partidas). Propuesta: `com.dndcoin.juego`. El nombre que se ve, «Dnd Master», sí se puede cambiar cuando quieras (D-J9).
 3. **La llave para firmar**: APK de publicación firmada con tu llave desde la primera versión. ¿Dónde guardas la copia de la llave y su contraseña? Propuesta: una carpeta fuera del repo en el PC, más una copia en un USB o en tu Drive privado.
 4. **Cómo instalas**: ¿por cable con un comando (recomendado), o pasándote el archivo?
-5. **La copia de cada noche** en `Documentos/DnD Coin/` (las 3 últimas). ¿Sí? ¿Cuántas?
+5. **La copia de cada noche** en `Documentos/Dnd Master/` (las 3 últimas). ¿Sí? ¿Cuántas?
 6. **Girar la pantalla**: ¿vertical y horizontal (como ahora en el navegador), o fijo en horizontal?
 7. **Mirar los errores desde el PC** (`chrome://inspect` con el móvil enchufado): ¿encendido en tu APK? Ayuda mucho a arreglar cosas; para ti no cambia nada.
 8. **¿La APK es solo para ti, o también para amigos?** Si se la pasas, la instalan igual; cada uno juega lo suyo (jugar juntos, J6, sigue aparcado).

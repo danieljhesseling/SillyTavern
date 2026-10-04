@@ -124,7 +124,7 @@ El juego de rol añadido en la rama `my-silly`: **255 módulos en `game-engine/`
   Parte de un repaso del código. Desde el 2026-09-29, también **la cara del juego** (J18): elegir personaje, crearlo en su pantalla y la historia contada como una novela visual.
 
   Trae diez decisiones (D-J1 a D-J10; quedan el nombre del juego y jugar con amigos, aparcado), diecinueve fases (J0–J18), seis hitos jugables (M1–M6) y un marcador.
-- **[[ROADMAP_APK_ANDROID]]** 📱 **DnD Coin como APK de Android (2026-10-03).** El juego dentro de una app que juegas en el móvil sin PC, sin servidor y sin internet: un «servidor de bolsillo» guarda en el teléfono, con copias de seguridad en un archivo. Fases A0–A9, al 0 %; empieza cuando acabe [[ROADMAP_ENTRETENIDO]].
+- **[[ROADMAP_APK_ANDROID]]** 📱 **Dnd Master como APK de Android (2026-10-03).** El juego dentro de una app que juegas en el móvil sin PC, sin servidor y sin internet: un «servidor de bolsillo» guarda en el teléfono, con copias de seguridad en un archivo. Fases A0–A9, al 0 %; empieza cuando acabe [[ROADMAP_ENTRETENIDO]].
 - **[[ROADMAP_MUNDO_SEMIABIERTO_STRAHD]]** 🗺️ **El mundo semiabierto, construido con Strahd (2026-10-04).** Barovia entera (de la Casa de la Muerte a Ravenloft, con el Templo de Ámbar, Tsolenka y la lectura de Tarokka) hecha a la vez que un motor y un editor de mundos semiabiertos que sirvan para otras campañas grandes. Fases S0–S11, al 0 %; empieza cuando acabe [[ROADMAP_APK_ANDROID]].
 - Los planes anteriores (el acta de las fases A–H, el maestro, el pegamento, la profundidad, sin tokens y el compendio) están cerrados y en el archivo (sección 6).
 

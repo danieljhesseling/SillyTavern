@@ -416,7 +416,7 @@ try {
     const coarse = await page.evaluate(() => window.matchMedia('(pointer: coarse)').matches);
     check('el navegador se presenta como un teléfono táctil: (pointer: coarse)', coarse);
     // J20.7 y J20.8: con `?juego`, la página es la app: marcada (`html.gs-app`) y con su manifiesto
-    // («DnD Coin», que entra por `?juego`), que es lo que el móvil usa al añadirla a la pantalla de inicio.
+    // («Dnd Master», que entra por `?juego`), que es lo que el móvil usa al añadirla a la pantalla de inicio.
     const app = await until(() => page.evaluate(() => document.documentElement.classList.contains('gs-app')), 20000)
         .then(() => page.evaluate(async () => {
             const href = document.querySelector('link[rel="manifest"]')?.getAttribute('href') ?? '';
@@ -429,7 +429,7 @@ try {
             };
         }));
     check('la dirección de la guía del móvil (con «?juego») abre el juego como app, con su nombre para la pantalla de inicio (J20.7, J20.8)',
-        app.marked && app.name === 'DnD Coin' && app.apple === 'DnD Coin' && /[?&]juego\b/.test(app.start), JSON.stringify(app));
+        app.marked && app.name === 'Dnd Master' && app.apple === 'Dnd Master' && /[?&]juego\b/.test(app.start), JSON.stringify(app));
     // J20.6: jQuery recuerda todos los selectores de los toques (`widenSelectorCache`): con los
     // 50 suyos, cada toque los volvía a traducir todos.
     const selectors = await page.evaluate(() => {

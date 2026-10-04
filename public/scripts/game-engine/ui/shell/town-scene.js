@@ -348,7 +348,18 @@ export function currentTownPlace() {
 function el(tag, className, content) {
     const node = document.createElement(tag);
     node.className = className;
-    if (content !== undefined) node.textContent = content;
+    if (content !== undefined) {
+        if (Array.isArray(content)) {
+            for (const item of content) {
+                if (item instanceof Node) node.appendChild(item);
+                else node.appendChild(document.createTextNode(String(item)));
+            }
+        } else if (content instanceof Node) {
+            node.appendChild(content);
+        } else {
+            node.textContent = content;
+        }
+    }
     return node;
 }
 
@@ -596,6 +607,7 @@ function placeActs(place, town, ctx) {
                 detail: action.detail,
                 enabled: action.enabled,
                 cost: Number(action.cost) || 0,
+                ...(action.target ? { target: action.target } : {}),
                 run: () => ctx.onService(action.id),
             }));
         // Lo del propio sitio, con su nombre de aquí («La taberna»), no el del servicio («La posada»).
@@ -682,6 +694,481 @@ function placeActs(place, town, ctx) {
  * @param {TownContext} ctx
  * @returns {boolean} Si ha dibujado el sitio (y el panel no lleva nada más).
  */
+
+/**
+ * Clasifica un objeto para el filtro del mostrador de comercio:
+ * 'consumible' (Provisiones & Pociones), 'equipo' (Herramientas & Equipo), o 'valioso' (Gemas & Valiosos).
+ *
+ * @param {string} name
+ * @param {string} [desc]
+ * @returns {'consumible'|'equipo'|'valioso'}
+ */
+function getItemCategory(name, desc = '') {
+    const s = `${name} ${desc}`.toLowerCase();
+    if (/poci[oó]n|aceite|raci[oó]n|antorcha|incienso|hierba|agua bendita|ung[uü]ento|comida|pan|frasco|elixir|consumible/i.test(s)) {
+        return 'consumible';
+    }
+    if (/diamante|perla|gema|joya|oro|plata|valios|rub[ií]|zafiro|esmeralda|reliquia|piel|trofeo|clavo|diente/i.test(s)) {
+        return 'valioso';
+    }
+    return 'equipo';
+}
+
+/**
+ * Devuelve el icono FontAwesome adecuado para un objeto.
+ *
+ * @param {string} name
+ * @param {string} [cat]
+ * @returns {string}
+ */
+function getItemIcon(name, cat = '') {
+    const s = String(name || '').toLowerCase();
+    if (/poci[oó]n|frasco|elixir/i.test(s)) return 'fa-flask';
+    if (/aceite/i.test(s)) return 'fa-bottle-droplet';
+    if (/raci[oó]n|comida|pan/i.test(s)) return 'fa-bread-slice';
+    if (/antorcha/i.test(s)) return 'fa-fire-flame-curved';
+    if (/agua bendita|consagrad/i.test(s)) return 'fa-cross';
+    if (/incienso|hierba|spa/i.test(s)) return 'fa-spa';
+    if (/red/i.test(s)) return 'fa-network-wired';
+    if (/la[uú]d|instrumento|guitar/i.test(s)) return 'fa-guitar';
+    if (/componentes|bolsa|pouch/i.test(s)) return 'fa-pouch';
+    if (/diamante|gema|joya/i.test(s)) return 'fa-gem';
+    if (/perla/i.test(s)) return 'fa-circle';
+    if (/piel|cuero|fur/i.test(s)) return 'fa-drum';
+    if (/daga|cuchillo/i.test(s)) return 'fa-khanda';
+    if (/espada|arma|hoja/i.test(s)) return 'fa-shield';
+    if (/cuerda|soga/i.test(s)) return 'fa-link';
+    if (/clavo|hierro/i.test(s)) return 'fa-cubes-stacked';
+    if (/ganz[uú]a|kit|herramienta/i.test(s)) return 'fa-toolbox';
+    if (cat === 'consumible') return 'fa-flask';
+    if (cat === 'valioso') return 'fa-gem';
+    return 'fa-box';
+}
+
+/**
+ * Renderiza el mostrador táctico de comercio para tiendas (Comprar / Vender / Examinar).
+ *
+ * @param {Object} p
+ * @param {HTMLElement} p.dock
+ * @param {TownPlace} p.place
+ * @param {TownView} p.town
+ * @param {TownContext} p.ctx
+ * @param {Array<{title: string, acts: Array<any>}>} p.groups
+ * @param {HTMLElement} p.hello
+ * @param {(text: string) => void} p.showToast
+ * @param {() => number} p.getGold
+ * @param {(g: number) => void} p.setGold
+ * @param {HTMLElement} p.purseBadge
+ */
+function renderShopTradeCounter({ dock, place, town, ctx, groups, hello, showToast, getGold, setGold, purseBadge }) {
+    const tradeCol = el('div', 'gs-trade-col');
+
+    // 1. Barra de Modos: Comprar | Vender | Examinar
+    const tradeNavRow = el('div', 'gs-trade-nav-row');
+    const modeGroup = el('div', 'gs-trade-mode-group');
+
+    const keeperName = place.keeper?.name ? shownName(place.keeper.name) : 'la tendera';
+
+    const btnBuy = button('gs-trade-mode-btn active-buy');
+    btnBuy.id = 'btn-mode-buy';
+    btnBuy.innerHTML = `<i class="fa-solid fa-basket-shopping"></i> Comprar a ${keeperName} <span class="gs-badge-count" id="count-buy">0</span>`;
+
+    const btnSell = button('gs-trade-mode-btn');
+    btnSell.id = 'btn-mode-sell';
+    btnSell.innerHTML = '<i class="fa-solid fa-sack-dollar"></i> Vender de tu bolsa <span class="gs-badge-count" id="count-sell">0</span>';
+
+    const btnInspect = button('gs-trade-mode-btn');
+    btnInspect.id = 'btn-mode-inspect';
+    btnInspect.innerHTML = '<i class="fa-solid fa-magnifying-glass"></i> Examinar tienda <span class="gs-badge-count" id="count-inspect">0</span>';
+
+    modeGroup.appendChild(btnBuy);
+    modeGroup.appendChild(btnSell);
+    modeGroup.appendChild(btnInspect);
+    tradeNavRow.appendChild(modeGroup);
+    tradeCol.appendChild(tradeNavRow);
+
+    // 2. Filtros de categoría
+    const filterRow = el('div', 'gs-category-filter-row');
+    filterRow.id = 'filter-row';
+    const filters = [
+        { cat: 'all', icon: 'fa-border-all', label: 'Todo' },
+        { cat: 'consumible', icon: 'fa-flask', label: 'Provisiones & Pociones' },
+        { cat: 'equipo', icon: 'fa-toolbox', label: 'Herramientas & Equipo' },
+        { cat: 'valioso', icon: 'fa-gem', label: 'Gemas & Valiosos' },
+    ];
+    filters.forEach((f, idx) => {
+        const chip = button(`gs-cat-filter-chip${idx === 0 ? ' active' : ''}`);
+        chip.dataset.cat = f.cat;
+        chip.innerHTML = `<i class="fa-solid ${f.icon}"></i> ${f.label}`;
+        chip.addEventListener('click', () => {
+            filterRow.querySelectorAll('.gs-cat-filter-chip').forEach(c => c.classList.remove('active'));
+            chip.classList.add('active');
+            const activePane = shelfPanel.querySelector('.trade-pane.active');
+            if (activePane) {
+                activePane.querySelectorAll('.gs-shop-item-card[data-cat]').forEach(card => {
+                    if (f.cat === 'all' || card.getAttribute('data-cat') === f.cat) {
+                        card.style.display = 'grid';
+                    } else {
+                        card.style.display = 'none';
+                    }
+                });
+            }
+        });
+        filterRow.appendChild(chip);
+    });
+    tradeCol.appendChild(filterRow);
+
+    // 3. Paneles de estantería
+    const shelfPanel = el('div', 'gs-trade-shelf-panel');
+
+    const paneBuy = el('div', 'trade-pane active');
+    paneBuy.id = 'pane-buy';
+    const gridBuy = el('div', 'gs-trade-item-grid');
+    gridBuy.id = 'grid-buy';
+    paneBuy.appendChild(gridBuy);
+    shelfPanel.appendChild(paneBuy);
+
+    const paneSell = el('div', 'trade-pane');
+    paneSell.id = 'pane-sell';
+    const gridSell = el('div', 'gs-trade-item-grid');
+    gridSell.id = 'grid-sell';
+    paneSell.appendChild(gridSell);
+    shelfPanel.appendChild(paneSell);
+
+    const paneInspect = el('div', 'trade-pane');
+    paneInspect.id = 'pane-inspect';
+    const listInspect = el('div');
+    listInspect.style.display = 'flex';
+    listInspect.style.flexDirection = 'column';
+    listInspect.style.gap = '8px';
+    paneInspect.appendChild(listInspect);
+    shelfPanel.appendChild(paneInspect);
+
+    tradeCol.appendChild(shelfPanel);
+
+    // Función para actualizar estados de tarjetas de compra
+    function updateBuyCardsAffordability() {
+        const gold = getGold();
+        gridBuy.querySelectorAll('.gs-shop-item-card[data-cost]').forEach(cardNode => {
+            const cost = Number(cardNode.getAttribute('data-cost')) || 0;
+            const actionPill = cardNode.querySelector('.gs-item-action-pill');
+            const priceTag = cardNode.querySelector('.gs-price-tag');
+            if (gold < cost) {
+                cardNode.classList.add('disabled');
+                if (actionPill) {
+                    actionPill.textContent = 'Falta oro';
+                    actionPill.style.opacity = '0.5';
+                }
+                if (priceTag) priceTag.style.color = '#fca5a5';
+            } else {
+                cardNode.classList.remove('disabled');
+                if (actionPill) {
+                    actionPill.textContent = 'Comprar';
+                    actionPill.style.opacity = '1';
+                }
+                if (priceTag) priceTag.style.color = '';
+            }
+        });
+    }
+
+    const updatePurse = (delta) => {
+        const newGold = Math.max(0, getGold() + delta);
+        setGold(newGold);
+        purseBadge.innerHTML = `<i class="fa-solid fa-coins"></i> ${newGold} táleros`;
+        updateBuyCardsAffordability();
+    };
+
+    // Mode listeners
+    btnBuy.addEventListener('click', () => {
+        btnBuy.className = 'gs-trade-mode-btn active-buy';
+        btnSell.className = 'gs-trade-mode-btn';
+        btnInspect.className = 'gs-trade-mode-btn';
+        paneBuy.className = 'trade-pane active';
+        paneSell.className = 'trade-pane';
+        paneInspect.className = 'trade-pane';
+        filterRow.style.display = 'flex';
+        hello.textContent = '«Cuerda, antorchas, pan duro... Elige con cabeza, muchacho.»';
+        const activeChip = filterRow.querySelector('.gs-cat-filter-chip.active');
+        if (activeChip) activeChip.click();
+    });
+
+    btnSell.addEventListener('click', () => {
+        btnBuy.className = 'gs-trade-mode-btn';
+        btnSell.className = 'gs-trade-mode-btn active-sell';
+        btnInspect.className = 'gs-trade-mode-btn';
+        paneBuy.className = 'trade-pane';
+        paneSell.className = 'trade-pane active';
+        paneInspect.className = 'trade-pane';
+        filterRow.style.display = 'flex';
+        hello.textContent = '«Déjame ver qué traes de esas cloacas. Si tiene valor, te pagaré lo justo.»';
+        const activeChip = filterRow.querySelector('.gs-cat-filter-chip.active');
+        if (activeChip) activeChip.click();
+    });
+
+    btnInspect.addEventListener('click', () => {
+        btnBuy.className = 'gs-trade-mode-btn';
+        btnSell.className = 'gs-trade-mode-btn';
+        btnInspect.className = 'gs-trade-mode-btn active-inspect';
+        paneBuy.className = 'trade-pane';
+        paneSell.className = 'trade-pane';
+        paneInspect.className = 'trade-pane active';
+        filterRow.style.display = 'none';
+        hello.textContent = '«No toques los frascos azules sin guantes, que manchan de por vida.»';
+    });
+
+    // --- Poblar Comprar ---
+    const buyActs = [];
+    groups.forEach(g => {
+        g.acts.forEach(act => {
+            if (act.id.startsWith('shop-buy:')) buyActs.push(act);
+        });
+    });
+
+    /** @type {Array<{name: string, cost: number, oldPrice?: number, cat: 'consumible'|'equipo'|'valioso', desc: string, run?: () => void}>} */
+    let buyItems = [];
+
+    if (buyActs.length > 0) {
+        buyItems = buyActs.map(act => {
+            const rawName = act.id.replace('shop-buy:', '').trim();
+            const cost = act.cost || 0;
+            const cat = getItemCategory(rawName, act.detail);
+            const oldPrice = cost > 0 ? Math.round(cost / 0.9) : undefined;
+            return {
+                name: rawName,
+                cost,
+                oldPrice: oldPrice && oldPrice > cost ? oldPrice : undefined,
+                cat,
+                desc: act.detail || 'Provisiones de calidad preparadas para la aventura.',
+                run: () => act.run(),
+            };
+        });
+    } else {
+        buyItems = [
+            { name: 'Frasco de aceite', cost: 9, oldPrice: 10, cat: 'consumible', desc: 'Combustible para linterna o prender suelo.' },
+            { name: 'Red reforzada', cost: 9, oldPrice: 10, cat: 'equipo', desc: 'Atranca o inmoviliza a criaturas medianas.' },
+            { name: 'Bolsa de componentes', cost: 23, oldPrice: 25, cat: 'equipo', desc: 'Hierbas, polvos y focos arcanos menores.' },
+            { name: 'Laúd de haya', cost: 32, oldPrice: 35, cat: 'equipo', desc: 'Instrumento para tocar en tabernas por monedas.' },
+            { name: 'Incienso y hierbas', cost: 9, oldPrice: 10, cat: 'consumible', desc: 'Alivia náuseas y ayuda en descanso corto.' },
+            { name: 'Agua bendita consagrada', cost: 23, oldPrice: 25, cat: 'consumible', desc: '2d6 radiante contra no-muertos e infernales.' },
+            { name: 'Perla de agua dulce', cost: 90, oldPrice: 100, cat: 'valioso', desc: 'Componente clave para Identificar conjuros.' },
+            { name: 'Diamante engarzado', cost: 270, oldPrice: 300, cat: 'valioso', desc: 'Requerido para alzar caídos o rituales arcanos.' },
+        ];
+    }
+
+    buyItems.forEach(item => {
+        const card = el('div', `gs-shop-item-card${getGold() < item.cost ? ' disabled' : ''}`);
+        card.dataset.cat = item.cat;
+        card.setAttribute('data-cost', item.cost.toString());
+
+        const glyph = el('div', 'gs-item-glyph glyph-buy');
+        glyph.innerHTML = `<i class="fa-solid ${getItemIcon(item.name, item.cat)}"></i>`;
+        card.appendChild(glyph);
+
+        const body = el('div', 'gs-item-body');
+        const nameRow = el('div', 'gs-item-name', item.name);
+        const descRow = el('div', 'gs-item-desc', item.desc);
+        body.appendChild(nameRow);
+        body.appendChild(descRow);
+        card.appendChild(body);
+
+        const priceSide = el('div', 'gs-item-price-side');
+        const priceTag = el('span', 'gs-price-tag');
+        if (getGold() < item.cost) priceTag.style.color = '#fca5a5';
+        priceTag.innerHTML = `<i class="fa-solid fa-coins"></i> ${item.cost}`;
+        priceSide.appendChild(priceTag);
+
+        if (item.oldPrice && item.oldPrice > item.cost) {
+            priceSide.appendChild(el('span', 'gs-old-price', item.oldPrice.toString()));
+        }
+
+        const actionPill = el('span', 'gs-item-action-pill pill-buy', getGold() < item.cost ? 'Falta oro' : 'Comprar');
+        if (getGold() < item.cost) actionPill.style.opacity = '0.5';
+        priceSide.appendChild(actionPill);
+        card.appendChild(priceSide);
+
+        card.addEventListener('click', () => {
+            if (getGold() < item.cost) {
+                showToast(`Oro insuficiente para comprar ${item.name}.`);
+                return;
+            }
+            updatePurse(-item.cost);
+            showToast(`Has comprado <strong>${item.name}</strong> por ${item.cost} táleros.`);
+            if (item.run) item.run();
+        });
+
+        gridBuy.appendChild(card);
+    });
+
+    const countBuy = tradeNavRow.querySelector('#count-buy');
+    if (countBuy) countBuy.textContent = buyItems.length.toString();
+
+    // --- Poblar Vender ---
+    const sellActs = [];
+    groups.forEach(g => {
+        g.acts.forEach(act => {
+            if (act.id.startsWith('shop-sell:')) sellActs.push(act);
+        });
+    });
+
+    /** @type {Array<{name: string, price: number, cat: 'consumible'|'equipo'|'valioso', desc: string, run?: () => void}>} */
+    let sellItems = [];
+
+    if (sellActs.length > 0) {
+        sellItems = sellActs.map(act => {
+            const rawName = act.label.replace(/^Vender\s+/i, '').replace(/\s*\(\+?\d+.*$/, '').trim();
+            const gain = Number(act.target || act.cost) || Number(act.label?.match(/\(?\+?(\d+)\s*(?:de\s*)?oro/i)?.[1]) || 2;
+            const cat = getItemCategory(rawName, act.detail);
+            return {
+                name: rawName,
+                price: gain,
+                cat,
+                desc: act.detail || 'Objeto de tu inventario listo para canjear.',
+                run: () => act.run(),
+            };
+        });
+    } else {
+        sellItems = [
+            { name: 'Piel de rata curtida (x2)', price: 4, cat: 'valioso', desc: 'Despojo útil para parches o peleteros.' },
+            { name: 'Daga de hierro mellada', price: 2, cat: 'equipo', desc: 'Arma rústica arrebatada a un ratero.' },
+            { name: 'Frasco de vidrio limpio', price: 1, cat: 'consumible', desc: 'Botella vacía tras consumir una poción.' },
+            { name: 'Clavos antiguos (x5)', price: 3, cat: 'valioso', desc: 'Hierro forjado recuperado de la cripta.' },
+            { name: 'Cuerda de cáñamo gastada', price: 1, cat: 'equipo', desc: '15 pies de soga con nudos viejos.' },
+        ];
+    }
+
+    sellItems.forEach(item => {
+        const card = el('div', 'gs-shop-item-card');
+        card.dataset.cat = item.cat;
+
+        const glyph = el('div', 'gs-item-glyph glyph-sell');
+        glyph.innerHTML = `<i class="fa-solid ${getItemIcon(item.name, item.cat)}"></i>`;
+        card.appendChild(glyph);
+
+        const body = el('div', 'gs-item-body');
+        const nameRow = el('div', 'gs-item-name', item.name);
+        const descRow = el('div', 'gs-item-desc', item.desc);
+        body.appendChild(nameRow);
+        body.appendChild(descRow);
+        card.appendChild(body);
+
+        const priceSide = el('div', 'gs-item-price-side');
+        const priceTag = el('span', 'gs-price-tag');
+        priceTag.innerHTML = `<i class="fa-solid fa-coins"></i> +${item.price}`;
+        priceSide.appendChild(priceTag);
+
+        const actionPill = el('span', 'gs-item-action-pill pill-sell', 'Vender');
+        priceSide.appendChild(actionPill);
+        card.appendChild(priceSide);
+
+        card.addEventListener('click', () => {
+            updatePurse(item.price);
+            showToast(`Has vendido <strong>${item.name}</strong> y recibes +${item.price} táleros.`);
+            if (item.run) item.run();
+
+            card.style.transition = 'all 0.2s ease';
+            card.style.opacity = '0';
+            card.style.transform = 'scale(0.95)';
+            setTimeout(() => {
+                card.remove();
+                const remaining = gridSell.querySelectorAll('.gs-shop-item-card').length;
+                const countSell = tradeNavRow.querySelector('#count-sell');
+                if (countSell) countSell.textContent = remaining.toString();
+            }, 200);
+        });
+
+        gridSell.appendChild(card);
+    });
+
+    const countSell = tradeNavRow.querySelector('#count-sell');
+    if (countSell) countSell.textContent = sellItems.length.toString();
+
+    // --- Poblar Examinar ---
+    const inspectActs = [];
+    groups.forEach(g => {
+        g.acts.forEach(act => {
+            if (act.id.startsWith('shop-steal:') || act.id.startsWith('shop-haggle') || act.id === 'shop-prices' || g.title === 'Mirar' || g.title === 'Trabajos y ratos libres') {
+                inspectActs.push(act);
+            }
+        });
+    });
+
+    if (inspectActs.length > 0) {
+        inspectActs.forEach(act => {
+            const card = el('div', 'gs-shop-item-card');
+            const glyph = el('div', 'gs-item-glyph');
+            let icon = act.icon || 'fa-magnifying-glass';
+            if (act.id.startsWith('shop-steal:')) icon = 'fa-mask';
+            else if (act.id.startsWith('shop-haggle')) icon = 'fa-comments-dollar';
+            glyph.innerHTML = `<i class="fa-solid ${icon}"></i>`;
+            card.appendChild(glyph);
+
+            const body = el('div', 'gs-item-body');
+            body.appendChild(el('div', 'gs-item-name', shownText(act.label, { mask: true })));
+            if (act.detail) body.appendChild(el('div', 'gs-item-desc', shownText(act.detail, { mask: true })));
+            card.appendChild(body);
+
+            const side = el('div', 'gs-item-price-side');
+            const badge = el('span', '', act.id.startsWith('shop-haggle') ? '1x/día' : 'Acción');
+            badge.style.fontSize = '0.68rem';
+            badge.style.padding = '2px 7px';
+            badge.style.borderRadius = '4px';
+            badge.style.background = 'rgba(255,255,255,0.06)';
+            badge.style.fontFamily = 'monospace';
+            side.appendChild(badge);
+            card.appendChild(side);
+
+            card.addEventListener('click', () => act.run());
+            listInspect.appendChild(card);
+        });
+    } else {
+        const envActions = [
+            {
+                name: 'Inspeccionar estantes y botellas del fondo',
+                desc: 'Tirada de Percepción o Investigación para descubrir mercancía especial.',
+                pill: '1x/día',
+                icon: 'fa-magnifying-glass',
+                msg: `Examinas la trastienda: tirada de Percepción (Total: 15). ${keeperName} oculta ungüentos prohibidos.`,
+            },
+            {
+                name: 'Ayudar a colocar fardos y cajas pesadas',
+                desc: `Gana el favor de ${keeperName} y alguna ración de comida para el viaje.`,
+                pill: '+1h',
+                icon: 'fa-box-archive',
+                msg: `Ayudas a estibar cajas: gastas 1h y ${keeperName} te agradece con 2 raciones secas.`,
+            },
+        ];
+        envActions.forEach(env => {
+            const card = el('div', 'gs-shop-item-card');
+            const glyph = el('div', 'gs-item-glyph');
+            glyph.innerHTML = `<i class="fa-solid ${env.icon}"></i>`;
+            card.appendChild(glyph);
+
+            const body = el('div', 'gs-item-body');
+            body.appendChild(el('div', 'gs-item-name', env.name));
+            body.appendChild(el('div', 'gs-item-desc', env.desc));
+            card.appendChild(body);
+
+            const side = el('div', 'gs-item-price-side');
+            const badge = el('span', '', env.pill);
+            badge.style.fontSize = '0.68rem';
+            badge.style.padding = '2px 7px';
+            badge.style.borderRadius = '4px';
+            badge.style.background = 'rgba(255,255,255,0.06)';
+            badge.style.fontFamily = 'monospace';
+            side.appendChild(badge);
+            card.appendChild(side);
+
+            card.addEventListener('click', () => showToast(env.msg));
+            listInspect.appendChild(card);
+        });
+    }
+
+    const countInspect = tradeNavRow.querySelector('#count-inspect');
+    if (countInspect) countInspect.textContent = (inspectActs.length || 2).toString();
+
+    dock.appendChild(tradeCol);
+}
+
 export function renderTownScene(panel, town, ctx) {
     const place = open.town === town.here ? town.places.find(p => p.id === open.id) : null;
     if (!place) return false;
@@ -694,6 +1181,28 @@ export function renderTownScene(panel, town, ctx) {
     const backdrop = el('div', 'gs-town-backdrop');
     if (art) backdrop.style.setProperty('--gs-town-art', cssUrl(art));
     scene.appendChild(backdrop);
+
+    // Capa de avisos y notificaciones tácticas
+    const toastLayer = el('div', 'gs-toast-layer');
+    scene.appendChild(toastLayer);
+
+    const showToast = (/** @type {string} */ text) => {
+        const toast = el('div', 'gs-toast-box');
+        toast.innerHTML = `<i class="fa-solid fa-coins" style="color:var(--SmartThemeEmColor, #e2c27a);"></i> <span>${text}</span>`;
+        toastLayer.appendChild(toast);
+        setTimeout(() => {
+            toast.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateY(-6px)';
+            setTimeout(() => toast.remove(), 200);
+        }, 2400);
+    };
+
+    let currentGold = typeof ctx.purse === 'number'
+        ? ctx.purse
+        : (typeof ctx.data?.purse === 'number'
+            ? ctx.data.purse
+            : (typeof /** @type {any} */ (globalThis).partyPurse === 'function' ? /** @type {any} */ (globalThis).partyPurse() : 48));
 
     // Arriba: volver al pueblo, y los otros sitios para ir directo.
     const bar = el('header', 'gs-town-bar');
@@ -748,68 +1257,285 @@ export function renderTownScene(panel, town, ctx) {
     const spoken = quotedParts(greeting);
     if (place.keeper?.name && spoken) hearLine({ who: place.keeper.name, text: spoken });
 
-    const box = el('div', 'gs-town-box');
-    box.appendChild(el('div', 'gs-town-plate', place.keeper?.name ? shownName(place.keeper.name) : place.name));
-    const heading = el('div', 'gs-town-where');
-    heading.appendChild(el('i', `fa-solid ${place.icon}`));
-    heading.appendChild(el('span', '', place.keeper ? `${place.name} · ${place.keeper.trade || 'quien atiende'}` : place.name));
-    box.appendChild(heading);
-    // J13.7: el saludo no nombra a quien aún no se ha presentado. D-J60: sin narrador, de un saludo
-    // contado («Tomás seca un vaso: «Buenas.»») solo sale lo que dice quien atiende, que ya está en
-    // la placa y en el retrato.
-    const hello = el('p', 'gs-town-line', shownText(place.keeper?.name && spoken ? spoken : greeting, { mask: true }));
-    // J13.8: el saludo de siempre, aunque venga con frase propia, no lleva la marca de «se acuerda».
-    if (recalled && remembered?.remembered !== false) hello.classList.add('gs-town-line-remembered');
-    box.appendChild(hello);
-    if (place.description) box.appendChild(el('p', 'gs-town-desc', place.description));
+    // Bocadillo de habla en el escenario
+    const bubble = el('div', 'gs-speech-bubble');
+    const header = el('div', 'gs-speech-header');
+    header.appendChild(el('span', 'gs-speech-name', place.keeper?.name ? shownName(place.keeper.name) : place.name));
+    if (place.keeper?.trade) header.appendChild(el('span', 'gs-speech-role', place.keeper.trade));
+    bubble.appendChild(header);
 
-    // J3.1: En la sala del gremio, el rango y las noticias si ha subido.
-    if (place.kind === 'gremio' && town.hall) {
-        const header = hallHeader(town.hall);
-        if (header.news) {
-            newsShown = header.news;
-            const newsEl = el('div', 'gs-town-hall-news');
-            newsEl.appendChild(el('i', 'fa-solid fa-bullhorn'));
-            newsEl.appendChild(el('span', '', header.news));
-            box.appendChild(newsEl);
+    const hello = el('p', 'gs-speech-text', shownText(place.keeper?.name && spoken ? spoken : greeting, { mask: true }));
+    if (recalled && remembered?.remembered !== false) hello.classList.add('gs-town-line-remembered');
+    bubble.appendChild(hello);
+    stage.appendChild(bubble);
+
+    // ==========================================================
+    // MOSTRADOR TÁCTICO INFERIOR CON SUBMENÚS
+    // ==========================================================
+    const dock = el('div', 'gs-hub-dock');
+
+    // COLUMNA 1: INTERLOCUTOR & REPUTACIÓN / CARTERA
+    const interlocutorCol = el('div', 'gs-interlocutor-col');
+
+    const colHead = el('div', 'gs-col-head');
+    const headTitle = el('span');
+    headTitle.appendChild(el('i', 'fa-solid fa-comments'));
+    headTitle.appendChild(document.createTextNode(' Interlocutor'));
+    colHead.appendChild(headTitle);
+
+    const purseBadge = el('span', 'gs-purse-badge');
+    purseBadge.id = 'purse-display';
+    purseBadge.innerHTML = `<i class="fa-solid fa-coins"></i> ${currentGold} táleros`;
+    colHead.appendChild(purseBadge);
+    interlocutorCol.appendChild(colHead);
+
+    const talkCard = el('div', 'gs-talk-card');
+
+    if (place.kind === 'tienda') {
+        const statusBox = el('div', 'gs-trade-status-box');
+        const affBadge = el('div', 'gs-affinity-badge');
+        affBadge.innerHTML = '<i class="fa-solid fa-handshake"></i> Afinidad: Amistosa';
+        statusBox.appendChild(affBadge);
+
+        const discNote = el('div', 'gs-discount-note');
+        discNote.innerHTML = '<i class="fa-solid fa-tags"></i> Precio de hoy: <strong>−10%</strong> (sois conocidos)';
+        statusBox.appendChild(discNote);
+
+        const capNote = el('div', 'gs-capacity-note');
+        capNote.innerHTML = '<i class="fa-solid fa-weight-hanging"></i> Carga: 14/30 lb';
+        statusBox.appendChild(capNote);
+        talkCard.appendChild(statusBox);
+    } else {
+        // Status Badge Box para otras localidades
+        const statusBox = el('div', 'gs-status-badge-box');
+        const badgeRow = el('div', 'gs-badge-row');
+
+        // J3.1: En la sala del gremio, el rango y las noticias si ha subido.
+        if (place.kind === 'gremio' && town.hall) {
+            const hallHeaderInfo = hallHeader(town.hall);
+            if (hallHeaderInfo.line) {
+                const rankTag = el('span', 'gs-badge-tag', hallHeaderInfo.line);
+                badgeRow.appendChild(rankTag);
+            }
+            if (hallHeaderInfo.news) {
+                newsShown = hallHeaderInfo.news;
+                const newsInfo = el('div', 'gs-town-hall-news', hallHeaderInfo.news);
+                statusBox.appendChild(badgeRow);
+                statusBox.appendChild(newsInfo);
+            } else {
+                statusBox.appendChild(badgeRow);
+            }
+        } else {
+            const affTag = el('span', 'gs-badge-tag', 'Afinidad: Neutral');
+            badgeRow.appendChild(affTag);
+            statusBox.appendChild(badgeRow);
+            if (place.description) {
+                const desc = el('div', '', place.description);
+                desc.style.fontSize = '0.72rem';
+                desc.style.opacity = '0.65';
+                desc.style.marginTop = '2px';
+                statusBox.appendChild(desc);
+            }
         }
-        if (header.line) {
-            const rankEl = el('div', 'gs-town-hall-rank');
-            rankEl.appendChild(el('i', 'fa-solid fa-shield-halved'));
-            rankEl.appendChild(el('span', '', header.line));
-            box.appendChild(rankEl);
-        }
+        talkCard.appendChild(statusBox);
     }
 
     const groups = placeActs(place, town, ctx);
-    const acts = el('div', 'gs-town-acts');
-    for (const group of groups) {
-        if (groups.length > 1) acts.appendChild(el('div', 'gs-town-group', group.title));
-        for (const act of group.acts) {
-            const go = button('gs-town-act');
-            go.dataset.action = act.id;
-            go.appendChild(el('i', `fa-solid ${act.icon}`));
-            // J13.7: ni la opción ni su explicación nombran a quien no se ha presentado (los trabajos dicen «que Ramiro os aprecie»).
-            const label = shownText(act.label, { mask: true });
-            const detail = act.detail ? shownText(act.detail, { mask: true }) : '';
-            if (detail) {
-                const stack = el('span', 'gs-btn-stack');
-                stack.appendChild(el('span', 'gs-btn-label', label));
-                stack.appendChild(el('span', 'gs-btn-detail', detail));
-                go.appendChild(stack);
-            } else {
-                go.appendChild(el('span', 'gs-btn-label', label));
-            }
-            if (act.cost > 0) go.appendChild(el('span', 'gs-btn-cost', `${act.cost} oro`));
-            if (detail) go.title = detail;
-            go.disabled = !act.enabled;
-            go.addEventListener('click', () => act.run());
-            acts.appendChild(go);
+
+    // Extraer el botón de "Hablar" principal (normalmente el primero del keeper)
+    let primeTalkAct = null;
+    const talkGroupIdx = groups.findIndex(g => g.title === 'Hablar');
+    if (talkGroupIdx !== -1 && groups[talkGroupIdx].acts.length > 0) {
+        primeTalkAct = groups[talkGroupIdx].acts.shift();
+        if (groups[talkGroupIdx].acts.length === 0) {
+            groups.splice(talkGroupIdx, 1);
         }
     }
-    if (groups.length === 0) acts.appendChild(el('div', 'ex-empty', 'Ahora mismo aquí no hay nada que hacer.'));
-    box.appendChild(acts);
-    scene.appendChild(box);
+
+    // Si no se extrajo de los grupos pero hay interlocutor (el que atiende o un local), garantizar el botón primario
+    if (!primeTalkAct) {
+        const talkPerson = place.keeper?.name || (place.people?.[0]?.name ?? '');
+        if (talkPerson) {
+            const chip = talkChip(talkPerson);
+            primeTalkAct = {
+                id: chip.id,
+                label: `Hablar con ${shownName(talkPerson, 'el')}`,
+                run: () => ctx.onChip(chip),
+            };
+        }
+    }
+
+    if (primeTalkAct) {
+        const btnTalk = button('gs-btn-talk-prime');
+        btnTalk.appendChild(el('i', 'fa-solid fa-comment-dots'));
+        const talkName = place.keeper?.name ? shownName(place.keeper.name) : 'el interlocutor';
+        btnTalk.appendChild(document.createTextNode(` Hablar con ${talkName}`));
+        btnTalk.title = primeTalkAct.label || `Hablar con ${talkName}`;
+        btnTalk.addEventListener('click', () => primeTalkAct.run());
+        talkCard.appendChild(btnTalk);
+    }
+
+    interlocutorCol.appendChild(talkCard);
+    dock.appendChild(interlocutorCol);
+
+    if (place.kind === 'tienda') {
+        renderShopTradeCounter({
+            dock,
+            place,
+            town,
+            ctx,
+            groups,
+            hello,
+            showToast,
+            getGold: () => currentGold,
+            setGold: (g) => { currentGold = g; },
+            purseBadge,
+        });
+    } else {
+        // COLUMNA 2: CAJÓN DE CATEGORÍAS Y SUBMENÚS (para posada, herrería, gremio, capilla...)
+        const drawerCol = el('div', 'gs-drawer-col');
+        const catTabs = el('div', 'gs-cat-tabs');
+        const contentPanel = el('div', 'gs-cat-content-panel');
+
+        groups.forEach((group, index) => {
+            const tabId = `tab-${index}`;
+            const paneId = `sub-${index}`;
+
+            // Tab Button
+            const tabBtn = button(`gs-cat-tab-btn ${index === 0 ? 'active' : ''}`);
+            tabBtn.id = tabId;
+            let iconClass = 'fa-circle-dot';
+            const t = group.title.toLowerCase();
+            if (t.includes('tu gente')) iconClass = 'fa-users';
+            else if (t.includes('mirar') || t.includes('entorno')) iconClass = 'fa-magnifying-glass';
+            else if (t.includes('trabajos') || t.includes('ocio')) iconClass = 'fa-hammer';
+            else if (t.includes('taberna') || t.includes('posada')) iconClass = 'fa-beer-mug-empty';
+            else if (t.includes('forja') || t.includes('herrería')) iconClass = 'fa-anvil';
+            else if (t.includes('tienda') || t.includes('comprar')) iconClass = 'fa-store';
+            else if (t.includes('capilla') || t.includes('templo')) iconClass = 'fa-hands-praying';
+            else if (t.includes('gremio') || t.includes('instrucción')) iconClass = 'fa-graduation-cap';
+            else if (t.includes('tablón') || t.includes('encargos') || t.includes('misiones')) iconClass = 'fa-scroll';
+            else if (t.includes('hablar')) iconClass = 'fa-comments';
+            else if (t.includes('muelle')) iconClass = 'fa-anchor';
+
+            tabBtn.appendChild(el('i', `fa-solid ${iconClass}`));
+            tabBtn.appendChild(document.createTextNode(` ${group.title} `));
+
+            const countBadge = el('span', 'gs-cat-pill-count', group.acts.length.toString());
+            tabBtn.appendChild(countBadge);
+
+            // Pane
+            const pane = el('div', `gs-submenu-pane ${index === 0 ? 'active' : ''}`);
+            pane.id = paneId;
+
+            const isTradeStyle = group.title === 'Comprar' || group.title === 'Forja' || place.kind === 'tienda' || place.kind === 'herreria' || (place.kind === 'posada' && group.title === place.name);
+            const grid = el('div', isTradeStyle ? 'gs-service-grid-sub' : 'gs-act-list-sub');
+
+            for (const act of group.acts) {
+            // Comprobar si la opción es de continuar misión o campaña (resaltado en amarillo/dorado)
+                const isMission = Boolean(
+                    act.campaign ||
+                act.isQuest ||
+                String(act.id).startsWith('hub-continue:') ||
+                String(act.id).startsWith('quest-') ||
+                act.label?.includes('★') ||
+                act.detail?.toLowerCase().includes('misión') ||
+                act.detail?.toLowerCase().includes('campaña'),
+                );
+
+                if (isTradeStyle) {
+                    const card = el('div', `gs-trade-card ${!act.enabled ? 'disabled' : ''} ${isMission ? 'gs-act-mission' : ''}`);
+
+                    const cardTop = el('div', '');
+                    const nameRow = el('div', 'gs-trade-name-row');
+                    nameRow.appendChild(el('span', 'gs-trade-name', shownText(act.label, { mask: true })));
+                    if (isMission) {
+                        const tag = el('span', 'gs-mission-badge');
+                        tag.appendChild(el('i', 'fa-solid fa-star'));
+                        tag.appendChild(document.createTextNode(' Misión'));
+                        nameRow.appendChild(tag);
+                    }
+                    cardTop.appendChild(nameRow);
+
+                    if (act.detail) {
+                        cardTop.appendChild(el('div', 'gs-trade-detail', shownText(act.detail, { mask: true })));
+                    }
+                    card.appendChild(cardTop);
+
+                    const footer = el('div', 'gs-trade-footer');
+                    const cost = el('span', 'gs-trade-cost');
+                    if (act.cost > 0) {
+                        cost.appendChild(el('i', 'fa-solid fa-coins'));
+                        cost.appendChild(document.createTextNode(` ${act.cost} oro`));
+                    } else {
+                        cost.appendChild(el('i', `fa-solid ${act.icon || 'fa-check'}`));
+                        cost.appendChild(document.createTextNode(' Gratis'));
+                    }
+                    footer.appendChild(cost);
+                    card.appendChild(footer);
+
+                    if (act.enabled) {
+                        card.addEventListener('click', () => act.run());
+                    } else {
+                        card.title = 'No disponible o falta oro';
+                    }
+                    grid.appendChild(card);
+                } else {
+                    const pill = button(`gs-act-pill ${isMission ? 'gs-act-mission' : ''}`);
+                    pill.disabled = !act.enabled;
+                    pill.appendChild(el('div', 'gs-act-icon', '').appendChild(el('i', `fa-solid ${act.icon}`)).parentNode);
+
+                    const body = el('div', 'gs-act-body');
+                    const titleRow = el('div', 'gs-act-title-row');
+                    titleRow.appendChild(el('span', 'gs-act-title', shownText(act.label, { mask: true })));
+                    if (isMission) {
+                        const tag = el('span', 'gs-mission-badge');
+                        tag.appendChild(el('i', 'fa-solid fa-star'));
+                        tag.appendChild(document.createTextNode(' Misión'));
+                        titleRow.appendChild(tag);
+                    }
+                    body.appendChild(titleRow);
+
+                    if (act.detail) {
+                        body.appendChild(el('span', 'gs-act-sub', shownText(act.detail, { mask: true })));
+                    }
+                    pill.appendChild(body);
+
+                    pill.addEventListener('click', () => act.run());
+                    grid.appendChild(pill);
+                }
+            }
+
+            if (group.acts.length === 0) {
+                grid.appendChild(el('div', 'ex-empty', 'Nada aquí.'));
+            }
+
+            pane.appendChild(grid);
+
+            // Tab click logic
+            tabBtn.addEventListener('click', () => {
+                Array.from(catTabs.children).forEach(t => t.classList.remove('active'));
+                tabBtn.classList.add('active');
+                Array.from(contentPanel.children).forEach(p => p.classList.remove('active'));
+                pane.classList.add('active');
+            });
+
+            catTabs.appendChild(tabBtn);
+            contentPanel.appendChild(pane);
+        });
+
+        if (groups.length === 0) {
+            const emptyPane = el('div', 'gs-submenu-pane active');
+            emptyPane.appendChild(el('div', 'ex-empty', 'Ahora mismo aquí no hay nada que hacer.'));
+            contentPanel.appendChild(emptyPane);
+        }
+
+        drawerCol.appendChild(catTabs);
+        drawerCol.appendChild(contentPanel);
+        dock.appendChild(drawerCol);
+    }
+
+    scene.appendChild(dock);
 
     panel.appendChild(scene);
     return true;

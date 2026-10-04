@@ -737,8 +737,7 @@ export function buildServiceCards() {
         const sellable = partyMembers.flatMap(m => (m.items ?? []).filter((/** @type {any} */ i) => canSell(i, m))
             .map((/** @type {any} */ i) => ({ member: m, item: i, price: sellPrice(i) })))
             .filter(x => !junk.some(j => j.itemId === String(x.item.id)))
-            .sort((a, b) => b.price - a.price)
-            .slice(0, 2);
+            .sort((a, b) => b.price - a.price);
         /** @type {any[]} */
         const shopActions = shop.stock.map(offer => ({
             id: `shop-buy:${offer.name}`,
@@ -754,6 +753,12 @@ export function buildServiceCards() {
                 id: 'shop-junk', label: `Vender la chatarra (${junk.length} ${junk.length === 1 ? 'cosa' : 'cosas'}, ${total} de oro)`,
                 detail: junk.map(j => j.name).slice(0, 6).join(', '), enabled: !combatEncounter.active, cost: 0,
             });
+            for (const j of junk) {
+                shopActions.push({
+                    id: `shop-sell:${j.memberId}:${j.itemId}`, label: `Vender ${j.name} (${j.price} de oro)`,
+                    detail: 'Chatarra común de tu bolsa.', enabled: !combatEncounter.active, cost: 0,
+                });
+            }
         }
         for (const sale of sellable) {
             shopActions.push({

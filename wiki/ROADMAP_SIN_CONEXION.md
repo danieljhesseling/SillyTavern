@@ -276,7 +276,7 @@ Cómo está hecho, en corto (el detalle, en [[EMPEZAR_UNA_CAMPANA]], «Jugar sin
 | **J16** · Medir la diversión | ⬜ | En pausa: las vueltas automáticas (J16.1, J16.2, J16.4). La de dos jugadores (J16.3) va con J6, aparcado |
 | **J17** · Después: la IA como capa | ⏸️ | Aparcado (lo dijiste el 2026-09-29) |
 | **J19** · La magia de D&D | 🟢 | En juego: espacios, conocidos y preparados, concentración, invocaciones, zonas, reacciones, rituales, objetos mágicos, magia fuera de combate y enemigos que lanzan. Falta: lanzar a más nivel (J19.3), con la barra nueva |
-| **J20** · Jugar desde el móvil | 🟢 | La pantalla en el móvil (J20.1), el tablero a toques (J20.2), botones de dedo (J20.3), sin teclado (J20.4), ventanas que caben (J20.5), el icono y el nombre «DnD Coin» (J20.7) y la prueba del móvil (J20.9). Esperan al tablero nuevo: ligero en el móvil (J20.6) y la guía (J20.8). Más adelante: el APK |
+| **J20** · Jugar desde el móvil | 🟢 | La pantalla en el móvil (J20.1), el tablero a toques (J20.2), botones de dedo (J20.3), sin teclado (J20.4), ventanas que caben (J20.5), el icono y el nombre «Dnd Master» (J20.7) y la prueba del móvil (J20.9). Esperan al tablero nuevo: ligero en el móvil (J20.6) y la guía (J20.8). Más adelante: el APK |
 | **J18** · La cara del juego | 🟢 | Elegir personaje y crearlo, y la novela visual con su registro (J18.1 a J18.6). Sin chat, escenas por acciones, descansar como acción de sitio (J18.7 a J18.9). En pausa: sin etiquetas del motor en la caja (J18.10) |
 
 ---
@@ -404,7 +404,7 @@ Van antes que nada: cada una cambia lo que se construye. Con cada una, lo que te
 | **D-J6** ✅ | **El formato de las campañas** | (a) Tu JSON tal cual, con su propio lector. (b) Tu JSON convertido al paquete que el juego ya entiende | **Decidido: (b), el 2026-09-29.** Un conversor por formato; por dentro, un solo formato |
 | **D-J7** ✅ | **Qué pasa con 1387** | (a) Se queda como mundo aparte. (b) Es la primera campaña del tablón | **Decidido: (b), el 2026-09-29.** 1387 es de las primeras campañas del tablón (ya lo está) |
 | **D-J8** ✅ | **El prólogo** | (a) Uno fijo, escrito una vez. (b) Uno por especie o clase. (c) Nada: se empieza en el gremio | **Decidido: (a) para empezar, el 2026-09-29.** Uno fijo, corto y jugable: la prueba de la bodega del gremio |
-| **D-J9** ✅ | **El nombre del juego** | La cabecera decía «SillyTavern RPG» | **«DnD Coin»**, por ahora (lo dijiste el 2026-09-30) |
+| **D-J9** ✅ | **El nombre del juego** | La cabecera decía «SillyTavern RPG» | **«Dnd Master»**, por ahora (lo dijiste el 2026-09-30) |
 | **D-J10** ✅ | **La vida en el gremio** (romance, charlas de compañeros) | (a) Parte del plan. (b) Después, opcional | **Decidido: (b), el 2026-09-29.** Primero, que sea jugable; lo social, en J14. **Matizado el mismo día**: charlar y quedar con los compañeros es parte del juego (M3); lo que va después y es opcional son los romances y las capas de encima (M6) |
 
 

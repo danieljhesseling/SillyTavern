@@ -27,7 +27,7 @@ describe('J20.7: el manifiesto de la app', () => {
     const manifest = buildWebManifest();
 
     test('con el nombre del juego (D-J9), entra directo en el juego y a pantalla entera', () => {
-        expect(manifest.name).toBe('DnD Coin');
+        expect(manifest.name).toBe('Dnd Master');
         expect(manifest.short_name.length).toBeLessThanOrEqual(12);
         expect(manifest.start_url).toBe('./?juego');
         expect(manifest.id).toBe(manifest.start_url);

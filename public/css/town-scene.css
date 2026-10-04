@@ -203,15 +203,17 @@
 .gs-town-scene {
     position: relative;
     isolation: isolate;
-    display: grid;
-    grid-template-rows: auto minmax(140px, 1fr) auto;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
     min-height: 100%;
     max-width: 1280px;
     margin: 0 auto;
-    padding: 12px 16px 16px;
+    padding: 12px 16px 14px;
     box-sizing: border-box;
     border-radius: 12px;
     overflow: hidden;
+    gap: 8px;
 }
 
 .gs-town-backdrop {
@@ -278,169 +280,495 @@
     background: rgba(226, 194, 122, 0.15);
 }
 
-/* Quien atiende: grande, a la izquierda, de pie sobre la caja (bustos de 128×160). */
+/* Quien atiende: de pie sobre el mostrador, con su bocadillo al lado estilo novela visual */
 .gs-town-stage {
+    flex: 1 1 auto;
+    min-height: 0;
     display: flex;
     align-items: flex-end;
-    min-height: 0;
-    padding-left: 4%;
+    gap: 18px;
+    padding-left: 16px;
+    padding-right: 16px;
+    z-index: 10;
+    pointer-events: none;
+    overflow: hidden;
 }
 
 .gs-town-portrait {
     display: flex;
     align-items: flex-end;
     justify-content: center;
-    width: min(300px, 34%);
-    height: min(100%, 380px);
-    min-height: 140px;
-    background: radial-gradient(ellipse at 50% 100%, rgba(226, 194, 122, 0.18), transparent 70%);
+    height: 100%;
+    max-height: 340px;
+    min-width: 120px;
+    max-width: 260px;
+    pointer-events: auto;
+    flex-shrink: 0;
+    filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.95));
 }
 
 .gs-town-portrait-img {
-    width: 100%;
+    width: auto;
     height: 100%;
+    max-width: 100%;
     object-fit: contain;
-    object-position: bottom center;
+    object-position: bottom left;
     image-rendering: pixelated;
-    filter: drop-shadow(0 0 18px rgba(0, 0, 0, 0.9));
 }
 
 .gs-town-portrait-none,
 .gs-town-portrait-img-none {
-    font-size: min(9rem, 20vh);
+    font-size: min(8rem, 16vh);
     color: rgba(0, 0, 0, 0.8);
     text-shadow: 0 0 20px rgba(226, 194, 122, 0.2);
 }
 
-/* La caja, como la de la novela visual: ancha, con la placa encima. */
-.gs-town-box {
+/* Bocadillo de texto estilo visual novel junto al personaje */
+.gs-speech-bubble {
     position: relative;
+    background: rgba(18, 15, 12, 0.92);
+    border: 1px solid var(--SmartThemeBorderColor, rgba(214, 180, 106, 0.35));
+    border-radius: 12px;
+    padding: 12px 18px;
+    max-width: 520px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(12px);
+    margin-bottom: 12px;
+    pointer-events: auto;
+    animation: bubbleFade 0.2s ease-out;
+    flex: 0 1 auto;
+}
+
+@keyframes bubbleFade {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.gs-speech-header {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 4px;
+    border-bottom: 1px solid rgba(214, 180, 106, 0.2);
+    padding-bottom: 4px;
+}
+
+.gs-speech-name {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--gs-gold-bright, #ffd27a);
+    letter-spacing: 0.02em;
+}
+
+.gs-speech-role {
+    font-size: 0.74rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    opacity: 0.7;
+    color: var(--SmartThemeEmColor, #e2c27a);
+}
+
+.gs-speech-text {
+    font-family: Georgia, 'Palatino Linotype', serif;
+    font-size: 1.05rem;
+    line-height: 1.4;
+    color: #eee;
+    margin: 0;
+    font-style: italic;
+}
+
+/* ==========================================================
+   EL MOSTRADOR TACTICO CON ARQUITECTURA DE SUBMENUS
+   ========================================================== */
+.gs-hub-dock {
+    flex: 0 0 310px;
+    height: 310px;
+    background: var(--gs-hub-bg, rgba(18, 15, 12, 0.95));
+    border: 1px solid var(--SmartThemeBorderColor, rgba(214, 180, 106, 0.35));
+    border-radius: 14px;
+    backdrop-filter: blur(16px);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.95);
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    gap: 16px;
+    padding: 14px 18px;
+    z-index: 20;
+    box-sizing: border-box;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.2s ease;
+}
+
+/* COLUMNA 1: INTERLOCUTOR Y REPUTACION (Fijo) */
+.gs-interlocutor-col {
     display: flex;
     flex-direction: column;
-    gap: 0.7rem;
-    padding: 1.7rem 2rem 1.2rem;
-    background: var(--gs-bg-panel);
-    border: 1px solid var(--gs-gold-line);
-    border-radius: 12px;
-    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8), inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+    gap: 10px;
+    min-width: 0;
+    height: 100%;
 }
 
-.gs-town-plate {
-    position: absolute;
-    top: -20px;
-    left: 36px;
-    padding: 0.35rem 1.6rem;
-    font-weight: bold;
-    font-size: 1.05rem;
-    letter-spacing: 1px;
-    color: var(--gs-accent-gold);
-    background: linear-gradient(135deg, #2a2218, #181410);
-    border: 1px solid var(--gs-accent-gold);
-    border-radius: 6px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
-}
-
-.gs-town-where {
+.gs-col-head {
+    font-size: 0.74rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--SmartThemeEmColor, #e2c27a);
+    opacity: 0.9;
+    font-weight: 700;
     display: flex;
     align-items: center;
-    gap: 8px;
-    font-size: 0.8em;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    opacity: 0.7;
+    gap: 6px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    padding-bottom: 5px;
+    flex: 0 0 auto;
 }
 
-.gs-town-where > i {
-    color: var(--gs-accent-gold);
-}
-
-.gs-town-line {
-    margin: 0;
-    font-family: Georgia, "Palatino Linotype", serif;
-    font-size: calc(1.15rem * var(--gs-text-scale, 1));
-    line-height: 1.55;
-    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
-}
-
-/* J11.3 y J11.4: quien atiende se acuerda de lo que hicisteis. */
-.gs-town-line-remembered {
-    padding-left: 0.6rem;
-    border-left: 3px solid var(--gs-accent-gold, #e2c27a);
-}
-
-.gs-town-desc {
-    margin: 0;
-    font-size: 0.9em;
-    font-style: italic;
-    opacity: 0.75;
-}
-
-/* Lo que se hace aquí: en dos columnas, y con scroll si es mucho (la tienda). */
-.gs-town-acts {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-    gap: 6px 10px;
-    max-height: 34vh;
-    overflow-y: auto;
-    padding-top: 0.8rem;
-    border-top: 1px dashed rgba(214, 180, 106, 0.2);
-}
-
-.gs-town-group {
-    grid-column: 1 / -1;
-    margin-top: 4px;
-    font-size: 0.75em;
-    font-weight: bold;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    opacity: 0.6;
-}
-
-.gs-town-act {
+.gs-talk-card {
+    flex: 1 1 auto;
+    min-height: 0;
     display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 10px;
+    padding: 12px;
+}
+
+.gs-status-badge-box {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.gs-badge-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.76rem;
+}
+
+.gs-badge-tag {
+    padding: 2px 7px;
+    border-radius: 4px;
+    background: rgba(214, 180, 106, 0.15);
+    border: 1px solid rgba(214, 180, 106, 0.35);
+    color: var(--gs-gold-bright, #ffd27a);
+    font-weight: 700;
+}
+
+/* Boton primario de hablar */
+.gs-btn-talk-prime {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 13px 16px;
+    border-radius: 8px;
+    background: rgba(214, 180, 106, 0.18);
+    border: 1px solid var(--SmartThemeEmColor, #e2c27a);
+    color: var(--gs-gold-bright, #ffd27a);
+    font-weight: 700;
+    font-size: 0.92rem;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+    width: 100%;
+    box-sizing: border-box;
+}
+.gs-btn-talk-prime:hover {
+    background: rgba(214, 180, 106, 0.32);
+    box-shadow: 0 0 18px rgba(226, 194, 122, 0.35);
+    transform: translateY(-1px);
+}
+
+/* ==========================================================
+   COLUMNA 2: EL CAJON DE CATEGORIAS Y SUBMENUS
+   ========================================================== */
+.gs-drawer-col {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    height: 100%;
+}
+
+/* Barra de pestañas de categorias (Submenus) */
+.gs-cat-tabs {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding-bottom: 6px;
+    margin-bottom: 10px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    flex: 0 0 auto;
+}
+.gs-cat-tabs::-webkit-scrollbar { display: none; }
+
+.gs-cat-tab-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 6px 12px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.15s ease;
+}
+.gs-cat-tab-btn:hover {
+    background: rgba(255, 255, 255, 0.09);
+    color: #fff;
+    border-color: rgba(255, 255, 255, 0.2);
+}
+.gs-cat-tab-btn.active {
+    background: rgba(214, 180, 106, 0.18);
+    border-color: var(--SmartThemeEmColor, #e2c27a);
+    color: var(--gs-gold-bright, #ffd27a);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
+}
+
+.gs-cat-pill-count {
+    padding: 1px 6px;
+    border-radius: 10px;
+    background: rgba(0, 0, 0, 0.45);
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: var(--SmartThemeEmColor, #e2c27a);
+    border: 1px solid rgba(214, 180, 106, 0.25);
+}
+
+/* Contenedor del panel activo */
+.gs-cat-content-panel {
+    flex: 1 1 auto;
+    min-height: 0;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.gs-submenu-pane {
+    display: none;
+    flex-direction: column;
+    gap: 8px;
+    height: 100%;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+.gs-submenu-pane.active {
+    display: flex;
+    animation: paneSlide 0.16s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes paneSlide {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.gs-submenu-pane::-webkit-scrollbar {
+    width: 5px;
+}
+.gs-submenu-pane::-webkit-scrollbar-thumb {
+    background: rgba(214, 180, 106, 0.35);
+    border-radius: 3px;
+}
+
+/* GRID DE TARJETAS DE OFICIO / SERVICIOS DENTRO DEL SUBMENU */
+.gs-service-grid-sub {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+    gap: 8px;
+    align-content: start;
+}
+
+.gs-trade-card {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 10px 12px;
+    background: var(--gs-card-bg, rgba(255, 255, 255, 0.035));
+    border: 1px solid var(--gs-card-border, rgba(214, 180, 106, 0.22));
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    text-align: left;
+    min-height: 84px;
+    box-sizing: border-box;
+}
+.gs-trade-card:hover:not(.disabled) {
+    background: var(--gs-card-hover, rgba(255, 255, 255, 0.07));
+    border-color: var(--SmartThemeEmColor, #e2c27a);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+}
+.gs-trade-card.disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+    border-color: rgba(255, 255, 255, 0.06);
+    background: rgba(0, 0, 0, 0.25);
+}
+
+.gs-trade-name-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    margin-bottom: 3px;
+}
+
+.gs-trade-name {
+    font-weight: 700;
+    font-size: 0.84rem;
+    color: #fff;
+    line-height: 1.25;
+}
+
+.gs-trade-detail {
+    font-size: 0.72rem;
+    opacity: 0.72;
+    line-height: 1.3;
+}
+
+.gs-trade-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 8px;
+    padding-top: 6px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.gs-trade-cost {
+    font-size: 0.74rem;
+    font-weight: 700;
+    color: var(--gs-gold-bright, #ffd27a);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.gs-trade-alert {
+    font-size: 0.68rem;
+    color: #fca5a5;
+}
+
+/* LISTADO DE ACTIVIDADES / ENTORNO DENTRO DEL SUBMENU */
+.gs-act-list-sub {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.gs-act-pill {
+    display: grid;
+    grid-template-columns: 26px 1fr auto;
     align-items: center;
     gap: 10px;
-    width: 100%;
     padding: 8px 12px;
-    border: 1px solid var(--SmartThemeBorderColor, #444);
-    border-radius: 8px;
-    background: rgba(0, 0, 0, 0.35);
-    color: var(--SmartThemeBodyColor, #ddd);
-    font: inherit;
-    font-size: 0.92em;
-    text-align: left;
+    background: var(--gs-card-bg, rgba(255, 255, 255, 0.035));
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 7px;
     cursor: pointer;
-    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+    transition: all 0.15s ease;
+    color: inherit;
+    text-align: left;
+    box-sizing: border-box;
+}
+.gs-act-pill:hover:not(:disabled) {
+    background: var(--gs-card-hover, rgba(255, 255, 255, 0.07));
+    border-color: var(--SmartThemeQuoteColor, #6a8caf);
+    transform: translateX(2px);
+}
+.gs-act-pill:disabled {
+    opacity: 0.45;
+    cursor: default;
 }
 
-.gs-town-extra .gs-town-act {
-    width: auto;
+.gs-act-icon {
+    text-align: center;
+    font-size: 0.85rem;
+    color: var(--SmartThemeQuoteColor, #6a8caf);
 }
 
-.gs-town-act > i {
-    flex: none;
-    opacity: 0.7;
-}
-
-.gs-town-act > .gs-btn-label {
-    flex: 1 1 auto;
-}
-
-.gs-btn-stack {
+.gs-act-body {
     display: flex;
     flex-direction: column;
-    gap: 2px;
-    flex: 1 1 auto;
     min-width: 0;
 }
 
-.gs-btn-detail {
-    font-size: 0.82em;
-    opacity: 0.72;
-    color: var(--SmartThemeBodyColor, #bbb);
+.gs-act-title-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.gs-act-title {
+    font-size: 0.82rem;
+    font-weight: 600;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+
+.gs-act-sub {
+    font-size: 0.68rem;
+    opacity: 0.68;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.gs-act-badge {
+    font-size: 0.66rem;
+    padding: 2px 7px;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.06);
+    opacity: 0.85;
+    font-family: monospace;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* RESALTADO DE OPCIONES DE MISION EN AMARILLO/DORADO */
+.gs-trade-card.gs-act-mission,
+.gs-act-pill.gs-act-mission {
+    border-color: var(--SmartThemeEmColor, #e2c27a) !important;
+    background: linear-gradient(135deg, rgba(226, 194, 122, 0.12) 0%, rgba(18, 15, 12, 0.95) 100%) !important;
+    box-shadow: 0 0 14px rgba(226, 194, 122, 0.25) !important;
+}
+
+.gs-trade-card.gs-act-mission:hover:not(.disabled),
+.gs-act-pill.gs-act-mission:hover:not(:disabled) {
+    border-color: var(--gs-gold-bright, #ffd27a) !important;
+    box-shadow: 0 0 20px rgba(226, 194, 122, 0.45) !important;
+}
+
+.gs-trade-card.gs-act-mission .gs-trade-name,
+.gs-act-pill.gs-act-mission .gs-act-title {
+    color: var(--gs-gold-bright, #ffd27a) !important;
+    font-weight: 700;
+}
+
+.gs-mission-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 1px 7px;
+    border-radius: 4px;
+    background: rgba(226, 194, 122, 0.22);
+    border: 1px solid var(--SmartThemeEmColor, #e2c27a);
+    color: var(--gs-gold-bright, #ffd27a);
+    font-size: 0.66rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-left: 6px;
+    flex-shrink: 0;
 }
 
 .gs-town-hall-rank {
@@ -464,32 +792,447 @@
     border-radius: 6px;
     font-size: 0.9em;
     color: var(--SmartThemeBodyColor, #eee);
+    margin-bottom: 8px;
 }
 
-.gs-town-act:hover:not(:disabled),
-.gs-town-act:focus-visible {
-    outline: none;
-    border-color: var(--gs-accent-gold);
-    background: rgba(226, 194, 122, 0.1);
-    color: var(--gs-accent-gold);
+
+/* ==========================================================
+   MOSTRADOR TÁCTICO DE COMERCIO (Comprar / Vender / Examinar)
+   ========================================================== */
+
+/* Capa de avisos y notificaciones */
+.gs-toast-layer {
+    position: absolute;
+    top: 54px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 2000;
+    pointer-events: none;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    align-items: center;
 }
 
-.gs-town-act:disabled {
-    opacity: 0.45;
-    cursor: default;
+.gs-toast-box {
+    background: rgba(18, 15, 12, 0.95);
+    border: 1px solid var(--SmartThemeEmColor, #e2c27a);
+    color: var(--SmartThemeBodyColor, #eee4d2);
+    padding: 8px 18px;
+    border-radius: 20px;
+    font-size: 0.82rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.9);
+    backdrop-filter: blur(10px);
+    animation: toastPop 0.2s ease-out forwards;
 }
 
-@media (max-width: 900px) {
-    .gs-town-stage {
-        display: none;
-    }
+@keyframes toastPop {
+    from { opacity: 0; transform: translateY(-8px) scale(0.96); }
+    to { opacity: 1; transform: translateY(0); }
+}
 
+/* Bolsa de táleros / monedas */
+.gs-purse-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    color: var(--gs-gold-bright, #ffd27a);
+    font-size: 0.82rem;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Estado de afinidad y notas comerciales */
+.gs-trade-status-box {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.gs-affinity-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.74rem;
+    padding: 3px 8px;
+    border-radius: 5px;
+    background: rgba(214, 180, 106, 0.15);
+    border: 1px solid rgba(214, 180, 106, 0.35);
+    color: var(--gs-gold-bright, #ffd27a);
+    font-weight: 700;
+    width: fit-content;
+}
+
+.gs-discount-note {
+    font-size: 0.72rem;
+    color: #86efac;
+    line-height: 1.3;
+}
+
+.gs-capacity-note {
+    font-size: 0.7rem;
+    opacity: 0.7;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+/* Columna de comercio */
+.gs-trade-col {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+    height: 100%;
+    overflow: hidden;
+}
+
+/* Barra de Modos: Comprar | Vender | Examinar */
+.gs-trade-nav-row {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding-bottom: 8px;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+}
+
+.gs-trade-mode-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.gs-trade-mode-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 6px 14px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.75);
+    font-size: 0.8rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+.gs-trade-mode-btn:hover {
+    background: rgba(255, 255, 255, 0.09);
+    color: #fff;
+}
+.gs-trade-mode-btn.active-buy {
+    background: rgba(96, 165, 250, 0.18);
+    border-color: var(--gs-buy-accent, #60a5fa);
+    color: #93c5fd;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
+}
+.gs-trade-mode-btn.active-sell {
+    background: rgba(245, 158, 11, 0.2);
+    border-color: var(--gs-sell-accent, #f59e0b);
+    color: #fde047;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
+}
+.gs-trade-mode-btn.active-inspect {
+    background: rgba(214, 180, 106, 0.18);
+    border-color: var(--SmartThemeEmColor, #e2c27a);
+    color: var(--gs-gold-bright, #ffd27a);
+}
+
+.gs-badge-count {
+    padding: 1px 6px;
+    border-radius: 10px;
+    background: rgba(0, 0, 0, 0.45);
+    font-size: 0.68rem;
+    font-weight: 700;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+/* Filtros de Categoría */
+.gs-category-filter-row {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding-bottom: 6px;
+    margin-bottom: 6px;
+}
+.gs-category-filter-row::-webkit-scrollbar { display: none; }
+
+.gs-cat-filter-chip {
+    padding: 3px 10px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.72rem;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.15s ease;
+}
+.gs-cat-filter-chip:hover {
+    color: #fff;
+    border-color: rgba(255, 255, 255, 0.25);
+}
+.gs-cat-filter-chip.active {
+    background: rgba(214, 180, 106, 0.2);
+    border-color: var(--SmartThemeEmColor, #e2c27a);
+    color: var(--gs-gold-bright, #ffd27a);
+}
+
+/* Panel de estantería comercial */
+.gs-trade-shelf-panel {
+    flex: 1 1 0;
+    min-height: 0;
+    height: 0;
+    position: relative;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-right: 6px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(214, 180, 106, 0.5) rgba(0, 0, 0, 0.4);
+}
+.gs-trade-shelf-panel::-webkit-scrollbar {
+    width: 6px;
+    display: block;
+}
+.gs-trade-shelf-panel::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.4);
+    border-radius: 4px;
+}
+.gs-trade-shelf-panel::-webkit-scrollbar-thumb {
+    background: rgba(214, 180, 106, 0.5);
+    border-radius: 4px;
+    border: 1px solid rgba(214, 180, 106, 0.2);
+}
+.gs-trade-shelf-panel::-webkit-scrollbar-thumb:hover {
+    background: rgba(214, 180, 106, 0.85);
+}
+
+.gs-trade-item-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 8px;
+}
+
+.gs-shop-item-card {
+    display: grid;
+    grid-template-columns: 34px 1fr auto;
+    gap: 10px;
+    align-items: center;
+    padding: 8px 10px;
+    background: var(--gs-card-bg, rgba(255, 255, 255, 0.035));
+    border: 1px solid var(--gs-card-border, rgba(214, 180, 106, 0.22));
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    text-align: left;
+    min-height: 56px;
+}
+.gs-shop-item-card:hover:not(.disabled) {
+    background: var(--gs-card-hover, rgba(255, 255, 255, 0.07));
+    border-color: var(--SmartThemeEmColor, #e2c27a);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+}
+.gs-shop-item-card.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: rgba(0, 0, 0, 0.25);
+    border-color: rgba(255, 255, 255, 0.05);
+}
+
+.gs-item-glyph {
+    width: 34px;
+    height: 34px;
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.45);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.95rem;
+    color: var(--SmartThemeEmColor, #e2c27a);
+}
+.glyph-buy { color: #93c5fd; border-color: rgba(147, 197, 253, 0.3); }
+.glyph-sell { color: #fde047; border-color: rgba(253, 224, 71, 0.3); }
+
+.gs-item-body {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+}
+
+.gs-item-name {
+    font-weight: 700;
+    font-size: 0.82rem;
+    color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.gs-item-desc {
+    font-size: 0.68rem;
+    opacity: 0.7;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.gs-item-price-side {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+}
+
+.gs-price-tag {
+    font-size: 0.78rem;
+    font-weight: 800;
+    color: var(--gs-gold-bright, #ffd27a);
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    font-variant-numeric: tabular-nums;
+}
+
+.gs-old-price {
+    font-size: 0.64rem;
+    opacity: 0.5;
+    text-decoration: line-through;
+}
+
+.gs-item-action-pill {
+    font-size: 0.64rem;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 4px;
+    text-transform: uppercase;
+}
+.pill-buy {
+    background: rgba(96, 165, 250, 0.18);
+    border: 1px solid rgba(96, 165, 250, 0.4);
+    color: #bfdbfe;
+}
+.pill-sell {
+    background: rgba(245, 158, 11, 0.2);
+    border: 1px solid rgba(245, 158, 11, 0.4);
+    color: #fef08a;
+}
+
+.trade-pane { display: none; }
+.trade-pane.active { display: block; }
+
+/* ==========================================================
+   ADAPTACION RESPONSIVA Y MOVIL (< 768px)
+   ========================================================== */
+@media (max-width: 768px) {
     .gs-town-scene {
-        grid-template-rows: auto auto;
-        gap: 30px;
+        padding: 8px 10px 10px;
+        gap: 6px;
     }
 
-    .gs-town-box {
-        padding: 1.6rem 1rem 1rem;
+    .gs-town-stage {
+        padding-left: 6px;
+        padding-right: 6px;
+        gap: 10px;
+    }
+
+    .gs-town-portrait {
+        max-height: 160px;
+        max-width: 120px;
+        min-width: 80px;
+    }
+
+    .gs-speech-bubble {
+        padding: 8px 12px;
+        margin-bottom: 6px;
+        max-width: 100%;
+    }
+    .gs-speech-name { font-size: 0.9rem; }
+    .gs-speech-text { font-size: 0.92rem; line-height: 1.3; }
+
+    /* El mostrador pasa a 1 sola columna vertical con cajon */
+    .gs-hub-dock {
+        flex: 0 0 auto;
+        height: auto;
+        min-height: 290px;
+        grid-template-columns: 1fr;
+        grid-template-rows: auto 1fr;
+        gap: 8px;
+        padding: 10px 12px;
+    }
+
+    .gs-interlocutor-col {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        height: auto;
+    }
+
+    .gs-interlocutor-col .gs-col-head {
+        display: none; /* Ahorra altura en movil */
+    }
+
+    .gs-talk-card {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        padding: 6px 10px;
+        gap: 8px;
+        width: 100%;
+    }
+
+    .gs-btn-talk-prime {
+        width: auto;
+        padding: 8px 14px;
+        font-size: 0.82rem;
+        white-space: nowrap;
+    }
+
+    .gs-cat-tabs {
+        margin-bottom: 6px;
+        gap: 4px;
+    }
+    .gs-cat-tab-btn {
+        padding: 5px 9px;
+        font-size: 0.72rem;
+    }
+
+    .gs-service-grid-sub {
+        grid-template-columns: 1fr;
     }
 }
+
+@media (max-height: 560px) {
+    .gs-hub-dock {
+        flex: 0 0 230px;
+        height: 230px;
+        padding: 8px 12px;
+    }
+    .gs-town-portrait {
+        max-height: 160px;
+    }
+    .gs-speech-bubble {
+        padding: 6px 10px;
+        margin-bottom: 4px;
+    }
+    .gs-trade-card {
+        min-height: 68px;
+        padding: 6px 8px;
+    }
+}
+

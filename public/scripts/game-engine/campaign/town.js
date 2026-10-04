@@ -75,7 +75,7 @@ const SQUARE_TYPES = new Set(['city', 'village']);
 const text = (value) => String(value ?? '').trim();
 
 /** @param {any} a @param {any} b @returns {boolean} */
-const same = (a, b) => text(a).toLowerCase() === text(b).toLowerCase();
+const same = (a, b) => text(a).localeCompare(text(b), undefined, { sensitivity: 'base' }) === 0;
 
 /**
  * La lista `places` de una localización, limpia: solo las clases que existen, con lo escrito
@@ -148,7 +148,7 @@ export function townPlaces({ location, npcs = [], cards = null, guild = false })
     const person = (n) => ({ name: text(n.name), trade: text(n.trade || n.title) });
 
     // La lista escrita manda; sin ella, un sitio por servicio, y el gremio si lo hay.
-    const written = readPlaces(location?.places);
+    const written = readPlaces(location?.places, living);
     /** @type {TownPlaceSpec[]} */
     const specs = written.length > 0 ? written
         : services.filter(s => s in PLACE_KINDS).map(s => ({ kind: /** @type {keyof typeof PLACE_KINDS} */ (s) }));
@@ -166,7 +166,7 @@ export function townPlaces({ location, npcs = [], cards = null, guild = false })
         const kind = PLACE_KINDS[spec.kind];
         seen[spec.kind] = (seen[spec.kind] ?? 0) + 1;
         // Quien nombra el paquete, esté donde esté apuntado; si no, el primero de aquí con su servicio.
-        const named = spec.keeper ? living.find(n => same(n.name, spec.keeper)) : null;
+        const named = spec.keeper ? living.find(n => same(n.name, spec.keeper) || same(n.id, spec.keeper)) : null;
         const free = (/** @type {any} */ n) => !taken.has(text(n.name).toLowerCase());
         const keeper = named ?? (spec.keeper ? null
             : local.find(n => kind.service && same(n.service, kind.service) && free(n))

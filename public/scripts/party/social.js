@@ -728,6 +728,8 @@ export function townNow() {
     const confidants = confidantKeys();
     return {
         location,
+        purse: partyPurse(),
+        party: partyMembers,
         // Los confidentes son para reclutar, no gente del pueblo (como `townNpcsFromEntries`).
         npcs: lastWorldNpcs.filter(n => !confidants.has(keyOf(n.name))),
         people: townPeople(),

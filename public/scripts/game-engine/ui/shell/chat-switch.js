@@ -1,7 +1,7 @@
 /**
  * H10 de las vueltas: pasar de un chat a otro (del gremio a una campaña del tablón, o de vuelta
  * al gremio) deja un momento la partida sin chat abierto, y el Modo Juego enseñaba la portada
- * («DnD Coin», «Jugar sin conexión», «Partida nueva»…) un par de segundos en medio.
+ * («Dnd Master», «Jugar sin conexión», «Partida nueva»…) un par de segundos en medio.
  *
  * Quien cambia de chat lo dice aquí al empezar y al acabar; mientras dura, la pantalla se queda
  * como estaba en vez de saltar al menú del principio. Al acabar, avisa a quien se apuntó para

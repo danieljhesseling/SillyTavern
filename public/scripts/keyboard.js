@@ -44,7 +44,7 @@ export const DISABLED_CONTROL_CLASS = 'disabled';
  * @type {MutationObserver}
  */
 const observer = new MutationObserver(mutations => {
-    // J20.6 (DnD Coin): cada nodo una vez, y solo los de más arriba: lo que cuelga de otro ya lo
+    // J20.6 (Dnd Master): cada nodo una vez, y solo los de más arriba: lo que cuelga de otro ya lo
     // recorre `handleNodeChange` de ese. Un redibujado del juego añade cientos de nodos y cambia
     // clases a montones; antes se miraba cada uno, con su árbol entero, tantas veces como cambiaba.
     // Lo que ya no está en la página se salta: si vuelve, llega otra vez como añadido.
