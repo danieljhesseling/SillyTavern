@@ -21,9 +21,9 @@ created: 2026-10-02
 - 🟡 existe a medias o sin contenido que lo use;
 - ⬜ no existe.
 
-## 📍 Cómo va (2026-10-03, 23:45)
+## 📍 Cómo va (2026-10-04, 07:10)
 
-**Avance: ~97 %.** Las 32 ideas están escritas y cada una se ha probado en el navegador por su agente. Falta lo de todos a la vez: pasar la batería entera con todo junto (hay fallos sueltos que salen al cruzarse los cambios, ver abajo) y el commit del código. Sigue trabajando el agente de los ajustes de E2 (ganzúas y antorchas).
+**Avance: ~97 %.** Las 32 ideas están escritas y cada una se ha probado en el navegador por su agente. Todo el código está en tu commit 5344ba2fb («pre beta V2.0»). Falta pasar la batería entera con todo junto (hay fallos sueltos que salen al cruzarse los cambios, ver abajo). Sigue trabajando el agente de los ajustes de E2 (ganzúas y antorchas): le faltan las pruebas.
 
 | Bloque | Hecho | Prueba en el navegador |
 | :--- | :--- | :--- |

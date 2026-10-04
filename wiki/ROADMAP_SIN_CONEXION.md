@@ -134,12 +134,12 @@ Casi todo está en commits (el último, c9c41512b); los retoques y las tres camp
   - aspecto para los enemigos que hablan;
   - pasan los días al volver al gremio (H16).
 
-**En marcha ahora (2026-10-03, 22:50): nueve agentes.**
+**En marcha ahora (2026-10-04, 07:10): dos agentes.** Todo lo hecho está en el commit 5344ba2fb («pre beta V2.0»).
 
 | Tarea | % aprox. |
 | :--- | :---: |
-| Modo guiado (D-J62) y las pruebas que tocó: última pasada (e2e-quick, combate, vueltas de 1387 y del gremio). La campaña del Gem y Strahd ya salen bien con el flujo guiado | ~92 % |
-| Ocho agentes con [[ROADMAP_ENTRETENIDO]] (E1.4-E1.5, E3.2, E3.3, E4, E5, E6, E7, E8): su estado, allí | — |
+| Modo guiado (D-J62): repetir la vuelta de la campaña del Gem (se cortó en la ermita) y arreglar dos fallos de e2e-quick: la capa de victoria tapa la palanca y la barricada, y la salida no acaba en huida. Luego probar-campanas, jest entero, lint y tipos | ~92 % |
+| Ajustes de E2 en [[ROADMAP_ENTRETENIDO]] (ganzúas y antorchas): el código está; faltan sus pruebas | ~70 % |
 
 Al acabar el modo guiado este roadmap queda **al 100 %** de lo que no está aparcado.
 
