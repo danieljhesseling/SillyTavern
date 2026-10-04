@@ -199,7 +199,8 @@ Al acabar el modo guiado este roadmap queda **al 100 %** de lo que no está apar
 | La rareza del botín sale en inglés («common») en el texto (H20) | ✅ Arreglado |
 | A veces no sale la escena del principio de Strahd (H15), la puerta de la taberna aparece antes de «Empezar» (H17) y «Volver al gremio» falla a veces (H13) | ✅ Arreglado |
 | Al volver al gremio no pasa el tiempo y se arrastra el cansancio de Barovia (H16) | ✅ Arreglado |
-| En la campaña del Gem, la trampa del sótano se pisa sin verla: el sótano sale «A oscuras» por la luz de la mazmorra nueva (E2.1) | Abierto: lo mira el agente del modo guiado |
+| En la campaña del Gem, la trampa del sótano se pisa sin verla: el sótano sale «A oscuras» por la luz de la mazmorra nueva (E2.1) | ✅ Arreglado: los héroes empiezan con 5 antorchas (Daniel, 2026-10-03); al bajar se enciende una sola y la trampa se ve. La prueba ya no le da antorchas a mano |
+| `e2e-campana-gem` se queda parada tras ganar en «El camino del monte»: no llega a ir a La ermita (pasó dos veces, el 2026-10-03 y el 04) | Abierto |
 | En `e2e-magia` fallan la tarjeta de subir de nivel, el «+2 por la Luz» al examinar de noche, la pregunta de curar al llegar y las iniciales en el tablero (salió al cruzarse los cambios de entretenido) | ✅ Arreglado: el juego estaba bien; la prueba se quedó vieja con E7.4 (conjuros ya marcados), el modo guiado (lo de mirar dentro del sitio; los tableros de aquí, ocultos) y D-J60 (cómo llega cada uno, en el aviso de fuera de la caja). Puesta al día; sale entera bien |
 | Al pasar una semana viajando o acampando, el oro del grupo se queda en 0 (la cuenta semanal cobraba comida y posada en los días de camino, y si no llegaba vaciaba el bolsillo aunque los mercenarios se quedaran sin cobrar; `upkeep.js`) | ✅ Arreglado |
 | El rótulo «Vínculo 3 · …» se corta cuando la ficha está pegada al borde del tablero | ✅ Arreglado |
