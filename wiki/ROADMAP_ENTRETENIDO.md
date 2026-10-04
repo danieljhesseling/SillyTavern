@@ -36,6 +36,8 @@ created: 2026-10-02
 | E7 · Sin fricción aburrida | Todo, también el cuadro de preparar del héroe ya marcado | ✅ |
 | E8 · La larga vida | Todo | ✅ |
 
+**En marcha (2026-10-04, 07:15): cuatro agentes cierran lo que queda**: los fallos de abajo, los flecos de E5 (la ficha enseña el temple y la ración; mezclar materiales en la forja), las caras de las misiones de mercenarios, y probar en el navegador lo que solo tenía pruebas de código (el compañero que lanza Arma elemental, los veteranos al volver de una campaña, la columna del comedor del Conde).
+
 **Fallos que han salido al cruzarse los cambios** (los mira la batería final; también en la tabla de bugs de [[ROADMAP_SIN_CONEXION]]):
 - En `e2e-magia`: la tarjeta de subir de nivel, el «+2 por la Luz» al examinar de noche, la pregunta de curar al llegar y las iniciales en el tablero.
 - Al pasar una semana viajando o acampando, el oro del grupo se queda en 0 (seguramente la paga semanal de los mercenarios).
