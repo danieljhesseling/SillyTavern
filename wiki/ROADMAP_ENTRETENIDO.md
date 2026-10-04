@@ -36,6 +36,8 @@ created: 2026-10-02
 | E7 · Sin fricción aburrida | Todo, también el cuadro de preparar del héroe ya marcado | ✅ |
 | E8 · La larga vida | Todo | ✅ |
 
+**Pendiente pequeño:** la estatua con gema (E1.5) ya tiene su dibujo de PixelLab, pero el tablero aún no lo pide: falta engancharlo en `terrainTile` (`board/terrain.js`). Mientras, sale la estatua sin gema.
+
 **Hecho hoy (2026-10-04):** la ficha enseña lo preparado en el gremio (temple y ración) y la forja de la Casa del Gremio mezcla materiales (dos pieles: una capa; un colmillo, garra o escama: el arma a +1). Las misiones de mercenarios usan caras que ya había.
 
 **Probado ya en el navegador (2026-10-04)** lo que solo tenía pruebas de código, y va bien sin tocar nada:
