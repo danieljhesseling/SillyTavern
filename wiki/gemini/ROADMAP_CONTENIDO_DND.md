@@ -3,12 +3,12 @@
 ## 📍 Cómo va (2026-10-04)
 
 **Hecho casi todo.** Lo que queda, para que decidas:
-- **Acciones legendarias:** el motor no las tiene (los jefes contestan una vez por ronda). ¿Se hacen?
-- **Números de los bichos:** siguen la curva del juego, algo más baja que el SRD (el trol, 86 PV en vez de 94). ¿Exactos al SRD?
-- **Armaduras de 2024:** la Cota de malla y la Coraza cambian para quien ya las lleva (el guerrero pasa de CA 16 a 18).
-- **El ki y la Imposición de manos** van por usos de cada habilidad, no como bolsa compartida (el motor no tiene bolsas compartidas). ¿Se hace la bolsa?
-- **El paladín** lanza desde el nivel 2 (como el explorador; en 2024, desde el 1) y prepara pocos conjuros. Cambiarlo toca también al explorador.
-- **Falta:** Aura de protección (nivel 6), Desviar ataques, Sentido divino; 7 de los 10 linajes del dracónido y el aliento que sube con el nivel; otras herencias del Goliat; pociones de resistencia, escalada y aliento de fuego (el motor no sabe aplicarlas).
+- **Acciones legendarias:** el motor no las tiene (los jefes contestan una vez por ronda). ¿Se hacen? → ⭐ **Recomiendo:** **sí, pero con Strahd** (fase S7 de [[ROADMAP_MUNDO_SEMIABIERTO_STRAHD]]). Hoy ningún jefe del juego las necesita, y Strahd es el primero que las pide.
+- **Números de los bichos:** siguen la curva del juego, algo más baja que el SRD (el trol, 86 PV en vez de 94). ¿Exactos al SRD? → ⭐ **Recomiendo:** dejar la curva del juego. Las peleas están ajustadas con ella y con el ajuste de nivel (D-J56).
+- **Armaduras de 2024:** la Cota de malla y la Coraza cambian para quien ya las lleva (el guerrero pasa de CA 16 a 18). → ⭐ **Recomiendo:** **sí**, las de 2024 (D&D puro, D-J58). La CA de más es la correcta.
+- **El ki y la Imposición de manos** van por usos de cada habilidad, no como bolsa compartida (el motor no tiene bolsas compartidas). ¿Se hace la bolsa? → ⭐ **Recomiendo:** **sí, hacer la bolsa compartida.** Es el corazón del monje y del paladín de 2024. Es un cambio pequeño: un contador por personaje que gastan varias habilidades.
+- **El paladín** lanza desde el nivel 2 (como el explorador; en 2024, desde el 1) y prepara pocos conjuros. Cambiarlo toca también al explorador. → ⭐ **Recomiendo:** **sí, como en 2024:** el paladín y el explorador lanzan desde el nivel 1, con la tabla de conjuros preparados de 2024. Le sienta bien al explorador también.
+- **Falta:** Aura de protección (nivel 6), Desviar ataques, Sentido divino; 7 de los 10 linajes del dracónido y el aliento que sube con el nivel; otras herencias del Goliat; pociones de resistencia, escalada y aliento de fuego (el motor no sabe aplicarlas). → ⭐ **Recomiendo:** primero los 10 linajes del dracónido y el aliento que sube con el nivel, porque son solo datos. Aura de protección, cuando haya campañas de nivel 6 o más. Las pociones raras, cuando el motor sepa aplicarlas.
 - **Arte:** unos 55 dibujos (iconos de clase, raza, equipo y habilidad, retratos y 13 bichos), apuntados en [[PIXELLAB_PENDIENTE]].
 
 Este documento detalla el plan de acción para integrar el contenido faltante oficial de D&D 2024 (y 5e) en el motor del juego. Aunque el motor (la lógica subyacente en JavaScript) ya soporta la mayor parte de estas mecánicas, falta definirlas en los archivos del compendio (JSON).
