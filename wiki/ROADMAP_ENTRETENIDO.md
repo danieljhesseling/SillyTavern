@@ -181,6 +181,23 @@ Es la fase G5 de [[ROADMAP_AUTOMATIZAR]], que se puede adelantar.
 | E8.6 | **Veteranos que se ganan su historia.** Un mercenario que sobrevive varias expediciones gana un apodo, un rasgo, un recuerdo de lo que vivió con el grupo y una misión corta generada (E4.3). El cariño sale de jugar, no de escribir: como los soldados de *XCOM*. | ✅ | — | M |
 | E8.7 | **La muerte cuenta, pero se puede deshacer pagando.** Las salvaciones de muerte de siempre; resucitar en el templo cuesta oro y diamantes y deja una secuela. Los mercenarios mueren de verdad; un confidente caído queda malherido semanas, y solo muere si lo arriesgas en un final. Un **modo duro** opcional con muerte permanente para todos. | ✅ | Sí: Revivir y Resurrección cuestan componentes caros | M |
 
+## E9 · Lo salvable del análisis del 2026-10-04
+
+El análisis (bucle de *Persona*, exploración de *Darkest Dungeon*, gremio, botín y facciones) pide sobre todo cosas que ya están: las franjas del día que se gastan, las quedadas por rango, el vínculo en combate, raciones y antorchas, heridas por días, acampar con riesgo, mejoras del gremio, el banquillo, el templo que resucita. De lo que no está, esto merece la pena:
+
+| ID | Idea | Hoy | D&D | Tamaño |
+| :--- | :--- | :---: | :--- | :---: |
+| E9.1 | **Que el tiempo apriete sin plazos.** Sin los plazos de la historia (D-J46), gastar una franja no cuesta nada y el «¿con quién quedo hoy?» de *Persona* pierde fuerza. Sin castigos: tu gente tiene días y franjas en que está libre (la herrera solo por la tarde, la clériga no los días de templo), hay sucesos que solo pasan un día de la semana (el mercado, la feria) y las semanas cuestan oro (E5, la paga). | ⬜ | — | M |
+| E9.2 | **Botín con nombre.** `trophies.js` y la forja (E5) hacen recetas genéricas (dos pieles: una capa; un colmillo: el arma a +1). Que cada bicho grande deje su pieza con nombre y su receta única («Piel del Lobo Alfa» → capa con ventaja en Supervivencia; «Sangre de troll» → guanteletes que regeneran 1 PG por turno), para el bucle de «necesito otro troll». | 🟡 | Objetos mágicos de la *DMG*; las recetas, cosecha propia | M |
+| E9.3 | **Sumideros de oro para niveles altos** (E8.1, tramos 3 y 4): la sede del gremio a otra escala, un título de nobleza con sus ventajas en el pueblo, componentes de rituales caros. Hoy todas las campañas son del tramo 1, así que **va cuando haya campañas de nivel alto** (la expansión de Strahd). | ⬜ | Bastiones de la *DMG* 2024 | M |
+| E9.4 | **Las misiones como cadena de salas.** E2.4 («Seguir o volver») ya encadena salas en la mazmorra. Para los encargos menores (sin tablero escrito), un mapa corto de 3 a 5 pasos (trampa, suceso, pelea, descanso) generado. Es procedural: encaja mejor en [[ROADMAP_AUTOMATIZAR]] (G2) y el mundo semiabierto. | ⬜ | — | L |
+
+**Lo que no se coge:**
+- **El estrés de *Darkest Dungeon*:** no es D&D (D-J58). Lo cubren el agotamiento de 5e y el cansancio del camino (E5.2).
+- **Que el rescate caduque y pase a venganza:** son los plazos (D-J46), apagados ([[LO_OCULTO]]). Vuelven con el mundo semiabierto.
+- **Facciones que se enemistan entre sí:** la simulación de facciones está apagada (D-J58). Va con el mundo semiabierto.
+- **«Que el romance no suba a clics»:** ya es así desde D-J63 (saludo, «Pasar el rato», rango 9).
+
 ## Lo que se descartó o se corrigió del análisis del 2026-10-03
 
 - **El flujo social de *Persona*** (Palanca 1) ya está en marcha como D-J63, en [[ROADMAP_SIN_CONEXION]].
