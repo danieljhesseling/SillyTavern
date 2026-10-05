@@ -71,7 +71,7 @@ import {
 import { paintCombatLog } from './combat-log.js';
 import { planFor } from './enemy-turn.js';
 import {
-    judgeCurrentScenario, restoreChatPlaceholder, controlChoices, chooseControlOf,
+    judgeCurrentScenario, restoreChatPlaceholder, controlChoices, chooseControlOf, chooseAllPartyControl,
 } from './combat-flow.js';
 import { CONTROL_LABELS } from './spell-turn.js';
 import {
@@ -951,19 +951,27 @@ function buildCombatSection(board) {
         `);
     }
 
-    // J7.3 y D-J32: quién mueve a las invocaciones y a los compañeros que ya son amigos. Un
-    // botón por cada uno, que pasa de «Lo muevo yo» a «Que lo lleve el juego» y vuelta.
+    // Control de escuadra y de combatientes: elegir quién pelea en manual (Tú) o con IA (El juego).
     const choices = controlChoices();
     if (choices.length > 0) {
         const controlRow = $('<div class="wm-combat-control"></div>');
-        controlRow.append($('<span class="wm-combat-control-title"></span>').text('Quién le mueve'));
+        controlRow.append($('<span class="wm-combat-control-title"><i class="fa-solid fa-gamepad"></i> Mando:</span>'));
+
+        const allManualBtn = $('<button class="menu_button wm-combat-all-control-btn" type="button" title="Llevar a toda la escuadra manualmente"><i class="fa-solid fa-hand-pointer"></i> Todo Manual</button>');
+        allManualBtn.on('click', () => { chooseAllPartyControl('player'); });
+        controlRow.append(allManualBtn);
+
+        const allEngineBtn = $('<button class="menu_button wm-combat-all-control-btn wm-manager-btn" type="button" title="Activar Modo Manager: toda la escuadra combate con su IA aliada"><i class="fa-solid fa-robot"></i> Modo Manager (IA)</button>');
+        allEngineBtn.on('click', () => { chooseAllPartyControl('engine'); });
+        controlRow.append(allEngineBtn);
+
         for (const choice of choices) {
             const next = choice.control === 'player' ? 'engine' : 'player';
             const button = $('<button class="menu_button wm-combat-control-btn" type="button"></button>')
                 .attr('data-control-id', choice.id)
                 .attr('data-control', choice.control)
-                .attr('title', `Pulsa para cambiarlo a «${CONTROL_LABELS[next]}»`)
-                .text(`${choice.summon ? '🐾 ' : ''}${choice.name}: ${CONTROL_LABELS[choice.control]}`);
+                .attr('title', `Pulsa para cambiar a «${CONTROL_LABELS[next]}»`)
+                .html(`${choice.summon ? '🐾 ' : ''}${choice.name}: <i class="fa-solid ${choice.control === 'player' ? 'fa-hand-pointer' : 'fa-robot'}"></i> <strong>${CONTROL_LABELS[choice.control]}</strong>`);
             button.on('click', () => { chooseControlOf(choice.id, next); });
             controlRow.append(button);
         }

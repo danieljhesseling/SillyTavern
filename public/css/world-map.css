@@ -1360,6 +1360,31 @@
     opacity: 0.8;
 }
 
+.wm-combat-all-control-btn {
+    font-size: 0.78rem;
+    font-weight: 700;
+    padding: 3px 9px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #e2e8f0;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+.wm-combat-all-control-btn:hover {
+    background: rgba(255, 255, 255, 0.16);
+    color: #fff;
+}
+.wm-combat-all-control-btn.wm-manager-btn {
+    background: rgba(96, 165, 250, 0.15);
+    border-color: rgba(96, 165, 250, 0.4);
+    color: #93c5fd;
+}
+.wm-combat-all-control-btn.wm-manager-btn:hover {
+    background: rgba(96, 165, 250, 0.3);
+    color: #bfdbfe;
+}
+
 /* ---- Enemy mini-cards in board editor ---- */
 .wm-enemy-mini .wm-card-meta {
     font-size: 0.65rem;

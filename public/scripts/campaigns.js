@@ -10,7 +10,7 @@ import {
 } from '../script.js';
 import { Popup, POPUP_TYPE, POPUP_RESULT } from './popup.js';
 import { buildNewCampaignCta, createCampaign } from './game-engine/ui/campaign-wizard.js';
-import { openCampaignBuilder, loadDndCatalog, setPartyFromWorldEntries, beginCampaignPlot, adoptVeteranGear, giveStartingGear, applyCampaignRuleset, applyModeExtras, adoptPet, partySnapshot, adoptCarriedParty, giveStartingPurse, plotEndingTitle, postJourney, postHomecoming, recordFinishedCampaign, seatPartyHero, memberFromEntry, getCombatEncounter, campaignChronicle, scheduleGuildVisitor, settleCampaignCompanions, welcomeGuildCompanions, sayHomecomings, passGuildDays } from './party.js';
+import { openCampaignBuilder, loadDndCatalog, setPartyFromWorldEntries, beginCampaignPlot, adoptVeteranGear, giveStartingGear, applyCampaignRuleset, applyModeExtras, adoptPet, partySnapshot, adoptCarriedParty, giveStartingPurse, giveStartingRations, plotEndingTitle, postJourney, postHomecoming, recordFinishedCampaign, seatPartyHero, recruitPartyHero, memberFromEntry, getCombatEncounter, campaignChronicle, scheduleGuildVisitor, settleCampaignCompanions, welcomeGuildCompanions, sayHomecomings, passGuildDays } from './party.js';
 import { isCampaignWorld, getStartingPoint, uniqueWorldName } from './game-engine/campaign/campaign-worlds.js';
 import { syncGameState, holdGameSync } from './party/game-state.js';
 import {
@@ -1706,7 +1706,8 @@ export async function changeHubHero(choice) {
             toastr.warning('No mientras peleáis.');
             return false;
         }
-        const before = activeHero(partySnapshot());
+        const partyNow = partySnapshot();
+        const before = partyNow.length >= 4 ? activeHero(partyNow) : null;
         // D-J12: el día del gremio, con lo vivido en sus campañas: quien descansa en él se cura con él.
         const today = hubDay({ hub: data.metadata[HUB_KEY], day: normalizeCalendar(chat_metadata?.calendar).day });
 
@@ -2320,11 +2321,27 @@ async function adoptVeteran(worldName, data, hero) {
         str: vet.strength, dex: vet.dexterity, con: vet.constitution, int: vet.intelligence, wis: vet.wisdom, cha: vet.charisma,
         maxHp: vet.maxHp, ac: vet.armorClass, speed: vet.speed, abilities: Array.isArray(vet.abilities) ? vet.abilities : [],
     };
+    if (data.metadata?.commander) {
+        entry.dndData.isBodyguard = true;
+        entry.dndData.commander = data.metadata.commander.name;
+    }
     await saveWorldInfo(worldName, data, true);
     setPartyFromWorldEntries([entry], worldName);
     adoptVeteranGear({ items: vet.items, equippedItems: vet.equippedItems, perks: Array.isArray(vet.perks) ? vet.perks : [] });
+    if (data.metadata?.commander?.name) {
+        setUserName(data.metadata.commander.name, { toastPersonaNameChange: false });
+        if (chat_metadata) {
+            chat_metadata.commander = data.metadata.commander;
+            chat_metadata.companyName = data.metadata.companyName;
+            saveMetadata();
+        }
+    }
     toastr.success(`${vet.name} vuelve, a nivel ${vet.level}.`, 'Un veterano');
-    return `${vet.name}, que viene de otra historia. ${String(vet.description ?? '')}`.trim();
+    const heroDesc = `${vet.name}, que viene de otra historia. ${String(vet.description ?? '')}`.trim();
+    if (data.metadata?.commander) {
+        return `Compañía "${data.metadata.commander.companyName}", fundada por ${data.metadata.commander.name} (${data.metadata.commander.backgroundLabel || 'Estratega'}). Guardaespaldas en vanguardia: ${heroDesc}`;
+    }
+    return heroDesc;
 }
 
 /** T5: la mascota con la que llega el héroe hecho que se acaba de elegir. */
@@ -2435,6 +2452,23 @@ async function createStartingHero(worldName, { another = false } = {}) {
         return said.length > 320 ? `${said.slice(0, 317).replace(/\s+\S*$/, '')}…` : said;
     })();
 
+    // Paso 1 de 2: Si es una nueva compañía y no hay estratega definido aún, creamos al Estratega / Propietario
+    let strategist = data.metadata?.commander || null;
+    if (!another && existing.length === 0 && !strategist) {
+        const { openStrategistCreator } = await import('./game-engine/ui/strategist-creator.js');
+        strategist = await openStrategistCreator({
+            worldName,
+            uploadFace: (file) => uploadHeroFace(file, worldName),
+            Popup,
+            POPUP_TYPE,
+        });
+        if (!strategist) return '';
+        data.metadata = data.metadata ?? {};
+        data.metadata.commander = strategist;
+        data.metadata.companyName = strategist.companyName;
+        await saveWorldInfo(worldName, data, true);
+    }
+
     // Antes de hacer uno nuevo: los héroes hechos del mundo (R1) y los veteranos de otras
     // partidas (idea 179). Solo los de razas y clases que el mundo deja entrar.
     const premade = readPremadeHeroes(data.metadata?.heroes, {
@@ -2484,6 +2518,13 @@ async function createStartingHero(worldName, { another = false } = {}) {
         rollStats: () => rollStatBonus(createSeededRandom(derive(seed, 'atributos', statRolls++))),
         // D-J14: en un gremio no hay dos personajes con el mismo nombre.
         takenNames: takenHeroNames({ entries: existing, party: another ? partySnapshot() : [], resting: data.metadata?.[HUB_HEROES_KEY] }),
+        title: another ? 'Registrar nuevo aventurero' : (strategist ? 'Crear Guardaespaldas' : 'Crear personaje'),
+        kicker: another
+            ? 'Gremio de Aventureros · Reclutamiento'
+            : (strategist ? `${strategist.companyName || 'Compañía'} · Paso 2 de 2` : ''),
+        enterLabel: another
+            ? 'Reclutar para el grupo'
+            : (strategist ? 'Fundar Compañía y Comenzar' : 'Entrar al mundo'),
         Popup,
         POPUP_TYPE,
     });
@@ -2529,18 +2570,46 @@ async function createStartingHero(worldName, { another = false } = {}) {
         // En la ficha, con la forma que el panel de habilidades ya lee; los conjuros, por su id.
         entry.dndData.abilities = [...known, ...spells];
     }
+    if (strategist) {
+        entry.dndData.isBodyguard = true;
+        entry.dndData.commander = strategist.name;
+    }
 
     await saveWorldInfo(worldName, data, true);
 
-    // Y a la tira del grupo, sin recargar. J1.6: si es uno más, en el sitio del que iba, y
-    // con los mercenarios; al que iba lo guarda el gremio (`changeHubHero`).
-    if (another) seatPartyHero(memberFromEntry(entry, worldName));
+    // Y a la tira del grupo, sin recargar. J1.6: si es uno más, se une a la escuadra activa (hasta 4)
+    // o releva si ya está llena; al que sale lo guarda el gremio (`changeHubHero`).
+    if (another) recruitPartyHero(memberFromEntry(entry, worldName));
     else setPartyFromWorldEntries([entry], worldName);
     // J1.3: con el equipo de su clase puesto.
     const kit = kitOf(classRow, String(answers.background ?? ''));
     if (kit.length > 0) giveStartingGear(kit, kitSlots(kit));
-    // J0.2: tu nombre es el de tu personaje; nadie te lo ha preguntado antes.
-    setUserName(answers.name, { toastPersonaNameChange: false });
+    // J0.2: tu nombre en el chat es el del Estratega si lo hay, o el de tu personaje si no.
+    if (strategist?.name) {
+        setUserName(strategist.name, { toastPersonaNameChange: false });
+        if (chat_metadata) {
+            chat_metadata.commander = strategist;
+            chat_metadata.companyName = strategist.companyName;
+            saveMetadata();
+        }
+    } else {
+        setUserName(answers.name, { toastPersonaNameChange: false });
+    }
+
+    // Ventajas de mando iniciales del Estratega
+    if (strategist && !another) {
+        if (strategist.background === 'mercader') {
+            giveStartingPurse(50);
+            toastr.info('Patente mercantil: +50 táleros de oro en las arcas iniciales.', 'Ventaja de Mando');
+        } else if (strategist.background === 'campesino') {
+            giveStartingRations(5);
+            toastr.info('Despensa familiar: +5 raciones de viaje para el camino.', 'Ventaja de Mando');
+        } else if (strategist.background === 'veterano') {
+            toastr.info('Disciplina marcial: +1 a la iniciativa de toda la escuadra.', 'Ventaja de Mando');
+        } else if (strategist.background === 'escriba') {
+            toastr.info('Contabilidad rigurosa: -20% en costes de mantenimiento del gremio.', 'Ventaja de Mando');
+        }
+    }
 
     // Cortos: los números y el equipo ya se vieron al crearlo, y lo que sabe hacer, con su
     // explicación, está en su ficha. Antes eran dos párrafos que seguían tapando los botones
@@ -2571,7 +2640,11 @@ async function createStartingHero(worldName, { another = false } = {}) {
     }
     clearOnNextPopup(said);
     const who = [answers.race, answers.className, backgroundOf(answers.background)?.label].filter(Boolean).join(', ');
-    return [`${answers.name}${who ? ` (${who})` : ''}`, answers.about, backgroundOf(answers.background)?.contact].filter(Boolean).join('. ');
+    const heroDesc = [`${answers.name}${who ? ` (${who})` : ''}`, answers.about, backgroundOf(answers.background)?.contact].filter(Boolean).join('. ');
+    if (strategist && !another) {
+        return `Compañía "${strategist.companyName}", fundada por ${strategist.name} (${strategist.backgroundLabel || 'Estratega'}). Guardaespaldas en vanguardia: ${heroDesc}`;
+    }
+    return heroDesc;
 }
 
 /**

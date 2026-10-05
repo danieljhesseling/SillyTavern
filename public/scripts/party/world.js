@@ -287,6 +287,11 @@ export async function applyCampaignRuleset(worldName) {
         const data = await loadWorldInfo(worldName);
         worldPack = data?.metadata?.rulesetPack ?? null;
         setWorldItemCatalogue(Array.isArray(data?.metadata?.itemCatalogue) ? data.metadata.itemCatalogue : []);
+        if (chat_metadata && data?.metadata?.commander) {
+            chat_metadata.commander = data.metadata.commander;
+            chat_metadata.companyName = data.metadata.companyName;
+            saveMetadata();
+        }
     } catch (error) {
         console.error('[party] could not read the campaign rule pack', error);
         return;

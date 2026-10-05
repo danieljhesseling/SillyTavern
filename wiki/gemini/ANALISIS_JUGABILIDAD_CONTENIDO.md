@@ -35,8 +35,61 @@ Para misiones secundarias o encargos del mundo semiabierto, donde no hay un mapa
 
 ---
 
+## 5. El Nuevo Paradigma: La Dupla Inicial (Estratega + Guardaespaldas) y Brunilda (E10)
+
+Esta solución armoniza el rol de Manager con el contenido existente, permitiendo que la historia, el prólogo y los guiones sigan funcionando casi sin cambios.
+
+### 5.1 Identidad: La Dupla de Campo y la Intendente del Gremio
+* **El Jugador (Estratega / Propietario):** Es la mente táctica, el diplomático y el dueño del caserío/compañía. **NO aparece en el tablero de casillas**: no tiene token, no ocupa casilla, no tiene barra de PV que puedan golpear ni estorba en la cuadrícula. Su presencia es de mando (diálogos, descansos, contratos y la barra de órdenes/«Hablar»).
+* **El Guardaespaldas (Primer Combatiente):** Es el primer miembro físico del grupo (`partyMembers[0]`) y quien sí tiene token en el tablero, empuña el arma y recibe los golpes en el fango.
+* **Brunilda (Administrativa / Intendente):** Ex-guerrera de escudo retirada con libro de cuentas y pluma (ya en el compendio). Os espera en el gremio para gestionar contratos, cuentas, bajas y mantenimiento.
+
+### 5.2 Creación de Personaje: La Dupla al Inicio
+* **Al Empezar la Partida:**
+  1. **El Estratega:** Se define con rapidez (Nombre/Título, estandarte del Caserío/Compañía, retrato de líder y trasfondo de gestión). Cero estadísticas de combate.
+  2. **El Guardaespaldas:** Se crea usando el **Creador Completo de Personajes D&D 2024** (`hero-creator.js`), eligiendo su clase de combate (Guerrero, Paladín, Bárbaro, etc.), raza, tiradas de atributos y equipo inicial. Este es el personaje que entra físicamente al tablero.
+* **En el Gremio / Caserío:**
+  * La mesa de reclutamiento de Brunilda mantiene abierta la opción de **«Crear aventurero personalizado»** para incorporar nuevos combatientes a la compañía más adelante, además de contratar mercenarios locales de paso.
+
+### 5.3 El Prólogo del Muelle se Conserva (Adaptación Orgánica)
+* **No se descarta el prólogo:** Llegas a Puerto Alba junto a tu guardaespaldas.
+* **El Encuentro con el Ratero en el Tablero:**
+  * En el tablero de casillas del muelle solo hay dos tokens: el **Guardaespaldas** y el **Ratero** (el Estratega no está en la cuadrícula).
+  * Narrativamente, el ratero increpa al Estratega, pero es el Guardaespaldas quien se planta en combate para batirse.
+  * **Didáctica Impecable:**
+    * El jugador controla al guardaespaldas (o lo deja en combate automático con la IA aliada).
+    * La opción **«Hablar»** la ejecuta el Estratega para disuadir o negociar con el ratero desde la barra de mando.
+  * Tras resolver la pelea, la comitiva avanza hacia Tomás y el gremio donde Brunilda os recibe.
+* **Impacto en el código:** Mínimo. Los tests e2e existentes (`e2e-calabozo.mjs`, `e2e-entrada.mjs`, etc.) y las escenas siguen funcionando exactamente igual: el token aliado del muelle es el Guardaespaldas.
+
+### 5.4 Control Flexible de la Escuadra en Combate (0 a Todos / Modo Manager)
+* Las posturas tácticas de `ally-ai.js` son dinámicas **entre la propia escuadra de combatientes**:
+  * *En formación / Guardia (`cerca`):* Mantenerse cubriendo al líder de campo (el guardaespaldas) y no romper la línea.
+  * *A la carga (`carga`):* Ir al frente al cuerpo a cuerpo.
+  * *Atrás (`atras`):* Guardar distancias con armas a distancia/magia.
+* El jugador decide libremente su grado de intervención:
+  * **Modo Manager Puro (0 Manual):** Todos los combatientes del tablero pelean solos con su IA.
+  * **Modo Híbrido (1 a 3 Manuales):** El jugador maneja al guardaespaldas (o al que prefiera) y la IA lleva al resto.
+  * **Modo Táctico Clásico (Todos Manuales):** Control total de cada combatiente.
+
+---
+
+## 📋 Roadmap Técnico de Implementación (E10)
+
+| Tarea | Módulo / Archivos | Acción a Realizar | Estado |
+| :--- | :--- | :--- | :--- |
+| **E10.1** | `campaign/strategist.js`, `strategist-creator.js`, `campaigns.js` | Flujo de creación de la Dupla: Paso 1 (Estratega con trasfondo de gestión) y Paso 2 (Guardaespaldas con creador D&D 2024). | ✅ Hecho |
+| **E10.2** | `ui/hub-panel.js`, `party/hub.js`, `hero-creator.js` | Acción «Crear Aventurero Personalizado» en el tablón de reclutamiento de la Guild / Brunilda para incorporar nuevos miembros a la compañía. | ✅ Hecho |
+| **E10.3** | `party/spell-turn.js` | Desbloquear `partyMembers[0]` para permitirle `control = 'engine'` si se desea jugar en Modo Manager puro. | ✅ Hecho |
+| **E10.4** | `party/spell-turn.js`, `combat-flow.js` | Control flexible manual/engine para toda la escuadra sin bloqueos artificiales. | ✅ Hecho |
+| **E10.5** | UI de Combate / `board-view.js` | Añadir selector rápido de modo de control: `[Todo Manual]`, `[Modo Manager (IA)]` e individuales. | ✅ Hecho |
+| **E10.6** | `mundos/gremio.pack.json` | Ajustar líneas y pistas del prólogo del muelle para que el ratero increpe al estratega y el guardaespaldas intervenga en el tablero. | ✅ Hecho |
+
+---
+
 ## 🎯 Conclusión de Diseño
 
-La arquitectura actual del proyecto ya soluciona brillantemente el desgaste con el cansancio (E5.2), el uso de recursos vitales como la luz (E2.1), la supervivencia (acampar en zona hostil) y la utilidad táctica de los vínculos (ataques definitivos y de pareja E3.2). 
-
-El verdadero reto final de diseño (E9) es pulir la **gestión del tiempo** en el pueblo (para que las agendas y el mantenimiento del oro generen tensión orgánica) y convertir el farmeo en algo específico e ilusionante con el botín con nombre. Con esto, la experiencia será redonda.
+La dupla **Estratega + Guardaespaldas** resuelve magistralmente la ecuación:
+1. **Mantiene intacto el valor del trabajo previo:** No hay que tirar a la basura el prólogo del muelle, ni los tests e2e, ni el creador de personajes inicial.
+2. **Da sentido total al rol de Manager:** El estratega manda y el guardaespaldas actúa en el fango.
+3. **Flexibilidad total para el jugador:** El que quiera jugar como siempre, controla al guardaespaldas; el que quiera jugar como manager de D&D, pone a todos en automático y disfruta de la táctica y la gestión.

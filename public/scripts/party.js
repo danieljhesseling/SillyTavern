@@ -13,7 +13,7 @@ export {
     getPartyMembersSnapshot, getEngineSceneState, getBoardContextSnapshot,
 } from './party/simulation.js';
 export { adoptPet } from './party/pet.js';
-export { postHomecoming, recordFinishedCampaign, seatPartyHero, giveStartingPurse } from './party/hub.js';
+export { postHomecoming, recordFinishedCampaign, seatPartyHero, recruitPartyHero, giveStartingPurse, giveStartingRations } from './party/hub.js';
 export { enterStartingBoard, enterStartingLocation } from './party/board.js';
 export { refreshBoardView } from './party/board-view.js';
 export { applyCampaignRuleset } from './party/world.js';

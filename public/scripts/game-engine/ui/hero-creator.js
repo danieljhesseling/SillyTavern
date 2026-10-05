@@ -139,6 +139,7 @@ export async function openHeroCreator({
     worldName = '', races = [], classes = [], genre = '', premise = '',
     generate = null, uploadFace = null, rollName = null, preview = null, random = Math.random, rollStats = null,
     takenNames = [],
+    title = '', kicker = '', enterLabel = '',
     Popup, POPUP_TYPE,
 }) {
     // Los dibujos en pixel: el índice se lee una vez. Sin él, los iconos de siempre.
@@ -175,12 +176,15 @@ export async function openHeroCreator({
     // Arriba: qué es esto y las dos salidas.
     const back = $('<button type="button" class="menu_button hc-back"></button>')
         .append('<i class="fa-solid fa-arrow-left"></i>').append($('<span></span>').text('Volver'));
+    const enterText = enterLabel || 'Entrar al mundo';
     const enter = $('<button type="button" class="menu_button hc-enter"></button>')
-        .append('<i class="fa-solid fa-check"></i>').append($('<span></span>').text('Entrar al mundo'));
+        .append('<i class="fa-solid fa-check"></i>').append($('<span></span>').text(enterText));
+    const kickerText = kicker || (worldName ? `Para entrar en ${worldName}` : 'Preparativos de campaña');
+    const titleText = title || 'Crear personaje';
     root.append($('<div class="hc-head"></div>')
         .append($('<div class="hc-heading"></div>')
-            .append($('<p class="hc-kicker"></p>').text(worldName ? `Para entrar en ${worldName}` : 'Preparativos de campaña'))
-            .append($('<h2 class="hc-title"></h2>').text('Crear personaje')))
+            .append($('<p class="hc-kicker"></p>').text(kickerText))
+            .append($('<h2 class="hc-title"></h2>').text(titleText)))
         .append($('<div class="hc-head-actions"></div>').append(back, enter)));
 
     const layout = $('<div class="hc-layout"></div>');

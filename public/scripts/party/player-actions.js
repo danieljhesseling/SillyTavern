@@ -1606,8 +1606,8 @@ export async function confirmEndTurn() {
 
 export function endPlayerCombatTurn() {
     const entry = getCurrentTurnEntry();
-    if (!entry || entry.isEnemy) {
-        toastr.warning('No hay un turno de jugador que cerrar.');
+    if (!entry) {
+        toastr.warning('No hay un turno que cerrar.');
         return '';
     }
 

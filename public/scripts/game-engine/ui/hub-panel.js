@@ -649,9 +649,25 @@ export async function openHirePanel({ Popup, POPUP_TYPE, offers, purse }) {
 
     /** @type {any} */
     let popup = null;
-    /** @type {{action: 'hire'|'fire', name: string}|null} */
+    /** @type {{action: 'hire'|'fire'|'custom', name: string}|null} */
     let chosen = null;
     const grid = div('vt-grid hb-grid');
+    // E10.2: Registrar aventurero personalizado desde la oficina de Brunilda / tablón de reclutas
+    const customTile = card({
+        icon: 'fa-user-plus',
+        label: 'Crear nuevo aventurero personalizado para la compañía',
+        onClick: () => {
+            chosen = { action: 'custom', name: '' };
+            void popup?.completeCancelled();
+        },
+    }).attr('data-hire-custom', 'true').addClass('hb-custom-hero-card');
+    customTile.append(div('vt-name').text('Crear aventurero personalizado'));
+    customTile.append(div('vt-what').text('Ficha a medida (D&D 2024)'));
+    customTile.append(div('hb-pitch').text('«Registra un nuevo miembro para la compañía eligiendo clase, especie, tirada de atributos, trasfondo y equipo.»'));
+    customTile.append(div('hb-state hb-nueva').text('Reclutar a medida'));
+    customTile.append(div('vt-go').append('<i class="fa-solid fa-pen-nib"></i>').append($('<span></span>').text('Crear ficha')));
+    grid.append(customTile);
+
     // E8.4: los de paso de esta semana, aparte, debajo de los de siempre.
     const weeklyGrid = div('vt-grid hb-grid hb-weekly-grid');
     for (const offer of offers) {

@@ -1098,13 +1098,58 @@ export function chooseControlOf(id, control) {
 }
 
 /**
- * Quién se puede elegir que lo muevas tú o el juego ahora mismo: los compañeros que ya son
- * amigos y las invocaciones en pie que se dejan llevar. Con su lado de ahora.
+ * Cambiar el control de toda la escuadra de golpe (Modo Manager o Todo Manual).
+ *
+ * @param {'player'|'engine'} control
+ * @returns {boolean}
+ */
+export function chooseAllPartyControl(control) {
+    if (!['player', 'engine'].includes(control)) return false;
+    const living = partyMembers.filter(m => !m.dead);
+    let changed = false;
+    for (const member of living) {
+        if (canChooseControl(member) && controlOf(member) !== control) {
+            setControl(member, control);
+            changed = true;
+        }
+    }
+    if (combatEncounter.active) {
+        const summons = livingSummons();
+        for (const summon of summons) {
+            if (canChooseControl(summon) && controlOf(summon) !== control) {
+                setControl(summon, control);
+                changed = true;
+            }
+        }
+    }
+    if (!changed) return false;
+    savePartyState();
+    if (combatEncounter.active) saveCombatState();
+
+    if (control === 'engine') {
+        toastr.info('Modo Manager activado: la escuadra combatirá con su IA aliada.', '🛡️ Modo Manager');
+    } else {
+        toastr.info('Modo Manual activado: controlas los turnos de la escuadra.', '⚔️ Todo Manual');
+    }
+
+    const entry = getCurrentTurnEntry();
+    if (combatEncounter.active && entry && !entry.isEnemy && control === 'engine') {
+        setCombatBoardSelection({ tokenId: null, boardName: '', locationName: '' });
+        runCombatTurnLoop(true);
+    }
+    renderPartyMembers();
+    renderLocationMapsPreview();
+    return true;
+}
+
+/**
+ * Quién se puede elegir que lo muevas tú o el juego ahora mismo: cualquier miembro en pie
+ * y las invocaciones que se dejan llevar. Con su lado de ahora.
  *
  * @returns {Array<{id: string, name: string, summon: boolean, control: 'player'|'engine'}>}
  */
 export function controlChoices() {
-    const people = partyMembers.slice(1).filter(m => !m.dead);
+    const people = partyMembers.filter(m => !m.dead);
     const summons = combatEncounter.active ? livingSummons() : [];
     return [...people, ...summons]
         .filter(m => canChooseControl(m))
@@ -1588,12 +1633,14 @@ function beginEncounterWith(newEnemies, { enemiesFirst = false, brawl = null, su
     // Ideas 39 y 41: la moral del grupo y quien vigila mueven la iniciativa de todos.
     const morale = partyMorale();
     const sentinel = withJob(partyMembers, 'centinela') ? 1 : 0;
+    const commanderTactics = chat_metadata?.commander?.background === 'veterano' ? 1 : 0;
     // Quien ha muerto ya no pelea (idea 36): antes seguía tirando iniciativa, y un descanso
     // lo ponía en pie otra vez.
     for (const m of partyMembers.filter(member => !member.dead && !brawl?.watching.includes(String(member.id)))) {
-        const init = rollInitiative({ id: String(m.id), name: m.name, dexterity: m.dexterity || 10, enemy: false, extra: morale.value + sentinel + perkBonus(m, 'initiative'), surprised }, initiativeRows);
+        const init = rollInitiative({ id: String(m.id), name: m.name, dexterity: m.dexterity || 10, enemy: false, extra: morale.value + sentinel + commanderTactics + perkBonus(m, 'initiative'), surprised }, initiativeRows);
         turnEntries.push({ id: String(m.id), name: m.name, initiative: init, isEnemy: false });
     }
+    if (commanderTactics > 0) postCombatNarration('🎖️ [COMBAT] Disciplina marcial del Estratega: +1 a la iniciativa de la escuadra.');
     if (morale.value !== 0) postCombatNarration(`🫂 [COMBAT] Moral del grupo: ${morale.label}.`);
     if (surprised) postCombatNarration('😱 [COMBAT] Os han sorprendido: el grupo tira la iniciativa con desventaja.');
     // Ideas 73 y 90: la niebla, la lluvia, el viento o la noche, dichos antes del primer golpe.

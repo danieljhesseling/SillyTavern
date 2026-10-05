@@ -1434,8 +1434,8 @@
         "act": 1,
         "prologue": true,
         "title": "El ratero del muelle",
-        "hint": "Para al ratero. En el tablero, colócate y pulsa «Empezar»; en tu turno, acércate a él y atácale.",
-        "scene": "La barca del correo te deja en el muelle de Puerto Alba al caer la tarde, {cansado|cansada} del viaje. Huele a sal y a pescado frito. De pronto, un grito: «¡Al ladrón!». Un ratero le ha quitado la bolsa a un hombre con delantal de posadero, y se ha metido en el embarcadero. No tiene por dónde salir, y saca un cuchillo.",
+        "hint": "Para al ratero. Tu guardaespaldas toma posición en el tablero; pulsa «Empezar» y neutralízalo, o usa «Hablar» desde la barra de mando para disuadirlo.",
+        "scene": "La barca del correo te deja en el muelle de Puerto Alba al caer la tarde, {cansado|cansada} del viaje, mientras tu guardaespaldas asegura el desembarco del equipaje. Huele a sal y a pescado frito. De pronto, un grito: «¡Al ladrón!». Un ratero le ha quitado la bolsa a un hombre con delantal de posadero, y se ha metido en el embarcadero. No tiene por dónde salir, y al ver que os interponéis saca un cuchillo.",
         "backdrop": "muelle",
         "beats": [
           { "who": "Tomás", "mood": "enfadado", "text": "¡Al ladrón! ¡Ese desgraciado me ha quitado la bolsa!" },
@@ -1443,8 +1443,8 @@
           {
             "who": "Tomás", "mood": "triste", "text": "¡Eh, tú, {el|la} de la barca del correo! ¡Ahí dentro va la paga de toda la semana! ¡Sin ella no pago ni al panadero!",
             "options": [
-              { "id": "yo-me-encargo", "text": "Quédate atrás. Yo me encargo.", "effects": [{ "attitude": 1 }],
-                "reply": { "who": "Tomás", "mood": "alegre", "text": "¡Que los dioses te lo paguen! Cuidado con ese cuchillo." },
+              { "id": "yo-me-encargo", "text": "Quédate atrás. Mi escolta se encarga.", "effects": [{ "attitude": 1 }],
+                "reply": { "who": "Tomás", "mood": "alegre", "text": "¡Que los dioses os lo paguen! Cuidado con ese cuchillo." },
                 "later": {
                   "days": 3,
                   "name": "Un regalo de Tomás",
@@ -1455,8 +1455,8 @@
                     { "label": "Pedirle que te cuente lo que sabe", "effects": ["rumor"], "then": "Siéntate, que te cuento lo que se dice del gremio y de sus campañas. Aquí se oye todo." }
                   ]
                 } },
-              { "id": "cuanto-pagas", "text": "¿Y cuánto me das si te la devuelvo?", "effects": [{ "gold": 3 }, { "attitude": -1 }],
-                "reply": { "who": "Tomás", "mood": "enfadado", "text": "¿Encima me cobras? Toma, tres monedas. ¡Pero corre!" },
+              { "id": "cuanto-pagas", "text": "¿Y cuánto nos das si te la devolvemos?", "effects": [{ "gold": 3 }, { "attitude": -1 }],
+                "reply": { "who": "Tomás", "mood": "enfadado", "text": "¿Encima me cobráis? Toma, tres monedas. ¡Pero que se mueva tu escolta!" },
                 "later": {
                   "days": 2,
                   "name": "Lo que cuenta Tomás",
@@ -1469,7 +1469,7 @@
                 } }
             ]
           },
-          { "who": "Ratero del muelle", "mood": "enfadado", "text": "¿Tú? ¡Ven a por ella, si te atreves!" }
+          { "who": "Ratero del muelle", "mood": "enfadado", "text": "¿Mandas a tu escolta por delante? ¡Venid a por ella, si os atrevéis!" }
         ],
         "opens": { "kind": "start" },
         "asks": { "kind": "win", "board": "El muelle de Puerto Alba" },
@@ -1481,25 +1481,25 @@
         "prologue": true,
         "title": "Una charla con el posadero",
         "hint": "Pulsa «Hablar con Tomás» y pregúntale qué se cuenta en el puerto.",
-        "scene": "El ratero suelta la bolsa, y dos pescadores se lo llevan a rastras hacia la guardia. El posadero, un hombre redondo con el delantal lleno de manchas, recoge sus monedas del suelo. «¡Gracias! Soy Tomás, el de la posada del gremio. Te debo una. Pregúntame lo que quieras: por mi barra pasa todo el puerto.»",
+        "scene": "El ratero suelta la bolsa y dos pescadores se lo llevan a rastras hacia la guardia. El posadero, un hombre redondo con el delantal lleno de manchas, recoge sus monedas del suelo. «¡Gracias! Soy Tomás, el de la posada del gremio. Os debo una a ti y a tu escolta. Preguntadme lo que queráis: por mi barra pasa todo el puerto.»",
         "backdrop": "muelle",
         "beats": [
           { "who": "Ratero del muelle", "mood": "enfadado", "text": "¡Soltadme, que me hacéis daño! ¡Si la bolsa ni siquiera estaba llena!" },
           { "who": "Tomás", "mood": "alegre", "text": "¡Gracias! Soy Tomás, el de la posada del gremio. Te debo una, y yo pago lo que debo.",
             "alt": [{ "if": { "chose": "cuanto-pagas" }, "mood": "neutral", "text": "Gracias, aunque me hayas cobrado. Soy Tomás, el de la posada del gremio. La bolsa está entera, y eso vale más que tres monedas." }] },
           {
-            "who": "Tomás", "mood": "neutral", "text": "Dime qué quieres por ayudarme.",
-            "alt": [{ "if": { "chose": "cuanto-pagas" }, "text": "Bueno. ¿Quieres algo más, o con las tres monedas vamos en paz?" }],
+            "who": "Tomás", "mood": "neutral", "text": "Dime qué quieres por ayudarnos.",
+            "alt": [{ "if": { "chose": "cuanto-pagas" }, "text": "Bueno. ¿Queréis algo más, o con las tres monedas vamos en paz?" }],
             "options": [
               { "id": "una-cerveza", "text": "Con una cerveza me doy por {pagado|pagada}.", "effects": [{ "attitude": 1 }],
                 "reply": { "who": "Tomás", "mood": "alegre", "text": "¡Eso está hecho! Y cuando quieras otra, aquí estoy." } },
-              { "id": "unas-monedas", "text": "Unas monedas. El viaje me ha dejado sin nada.", "effects": [{ "gold": 2 }],
-                "reply": { "who": "Tomás", "mood": "neutral", "text": "Justo es. Toma, dos monedas. La cerveza, eso sí, te la cobro." } },
+              { "id": "unas-monedas", "text": "Unas monedas. El viaje nos ha dejado sin nada.", "effects": [{ "gold": 2 }],
+                "reply": { "who": "Tomás", "mood": "neutral", "text": "Justo es. Toma, dos monedas. La cerveza, eso sí, os la cobro." } },
               { "id": "que-se-cuenta", "text": "Cuéntame qué se dice por el puerto.", "effects": [{ "rumor": "r-vuelta-de-barovia" }],
                 "reply": { "who": "Tomás", "mood": "triste", "text": "¡Uy, de todo! Pero lo que más se oye estos días es que Barovia se traga a la gente." } }
             ]
           },
-          { "who": "Tomás", "mood": "alegre", "text": "Pásate por la taberna cuando quieras. Por mi barra pasa todo el puerto, y yo me entero de todo." }
+          { "who": "Tomás", "mood": "alegre", "text": "Pasaos por la taberna cuando queráis. Por mi barra pasa todo el puerto, y yo me entero de todo." }
         ],
         "opens": { "kind": "after", "milestone": "el-muelle" },
         "asks": { "kind": "talk", "npc": "Tomás" },
@@ -1511,30 +1511,30 @@
         "prologue": true,
         "title": "La Casa del Gremio",
         "hint": "Pulsa «Hablar con Brunilda»: es la maestra del gremio.",
-        "scene": "Mientras habláis, llega una mujer de pelo gris y corto, con una cicatriz en la barbilla. «Soy Brunilda, la maestra del gremio. Así que tú has parado al ratero. Ven conmigo.» Te lleva a la plaza, a la Casa del Gremio: una posada grande con un tablón en el salón. Ahí se apuntan las compañías y se reparten las campañas. Se vuelve con oro, aunque no siempre vuelven todos.",
+        "scene": "Mientras habláis, llega una mujer de pelo gris y corto, con una cicatriz en la barbilla. «Soy Brunilda, la maestra del gremio. Así que tu compañía ha parado al ratero: buena coordinación de mando y filo. Venid conmigo.» Te lleva a la plaza, a la Casa del Gremio: una posada grande con un tablón en el salón. Ahí se apuntan las compañías y se reparten las campañas. Se vuelve con oro, aunque no siempre vuelven todos.",
         "backdrop": "gremio",
         "beats": [
-          { "who": "Tomás", "mood": "alegre", "text": "¡Brunilda! Mira, {este es el que|esta es la que} ha parado al ratero.",
-            "alt": [{ "if": { "chose": "cuanto-pagas" }, "text": "¡Brunilda! Mira, {este es el que|esta es la que} ha parado al ratero. Cobrando, eso sí, pero lo ha parado." }] },
-          { "who": "Brunilda", "mood": "neutral", "text": "Ya lo he visto. Soy Brunilda, la maestra del gremio. Ven conmigo.",
-            "alt": [{ "if": { "chose": "cuanto-pagas" }, "text": "Ya lo he visto. Y lo de las tres monedas, también. Soy Brunilda, la maestra del gremio. Ven conmigo." }] },
+          { "who": "Tomás", "mood": "alegre", "text": "¡Brunilda! Mira, {este es el que|esta es la que} ha parado al ratero con su escolta.",
+            "alt": [{ "if": { "chose": "cuanto-pagas" }, "text": "¡Brunilda! Mira, {este es el que|esta es la que} ha parado al ratero con su escolta. Cobrando, eso sí, pero lo han parado." }] },
+          { "who": "Brunilda", "mood": "neutral", "text": "Ya lo he visto. Soy Brunilda, la maestra del gremio. Venid conmigo.",
+            "alt": [{ "if": { "chose": "cuanto-pagas" }, "text": "Ya lo he visto. Y lo de las tres monedas, también. Soy Brunilda, la maestra del gremio. Venid conmigo." }] },
           { "who": "Brunilda", "mood": "neutral", "text": "Esta es la Casa del Gremio. En el tablón del salón se apuntan las compañías y se reparten las campañas." },
           {
             "who": "Brunilda", "mood": "neutral", "text": "Aquí se vuelve con oro, aunque no siempre vuelven todos. ¿Qué te trae a Puerto Alba?",
             "alt": [
-              { "if": { "class": "Pícaro" }, "text": "Aquí se vuelve con oro, aunque no siempre vuelven todos. Y aquí dentro no se roba, que conste. ¿Qué te trae a Puerto Alba?" },
-              { "if": { "class": "Mago" }, "text": "Aquí se vuelve con oro, aunque no siempre vuelven todos. Y dentro de casa, nada de chispas. ¿Qué te trae a Puerto Alba?" },
-              { "if": { "class": "Clérigo" }, "text": "Aquí se vuelve con oro, aunque no siempre vuelven todos. A alguien que reza nos viene bien. ¿Qué te trae a Puerto Alba?" },
+              { "if": { "class": "Pícaro" }, "text": "Aquí se vuelve con oro, aunque no siempre vuelven todos. Y aquí dentro no se roba, que conste. ¿Qué os trae a Puerto Alba?" },
+              { "if": { "class": "Mago" }, "text": "Aquí se vuelve con oro, aunque no siempre vuelven todos. Y dentro de casa, nada de chispas. ¿Qué os trae a Puerto Alba?" },
+              { "if": { "class": "Clérigo" }, "text": "Aquí se vuelve con oro, aunque no siempre vuelven todos. A alguien que reza nos viene bien. ¿Qué os trae a Puerto Alba?" },
               { "if": { "class": ["Guerrero", "Soldado", "Bárbaro"] }, "text": "Aquí se vuelve con oro, aunque no siempre vuelven todos. Por cómo te has movido en el muelle, no es tu primera pelea. ¿Qué te trae a Puerto Alba?" }
             ],
             "options": [
-              { "id": "trabajo", "text": "Busco trabajo, del que se paga bien.", "effects": [{ "attitude": 1 }],
+              { "id": "trabajo", "text": "Buscamos trabajo, del que se paga bien.", "effects": [{ "attitude": 1 }],
                 "reply": { "who": "Brunilda", "mood": "alegre", "text": "Sin rodeos. Así me gusta." } },
               { "id": "que-es-el-tablon", "text": "¿Qué es eso del tablón?", "effects": [{ "rumor": "r-el-tablon" }],
                 "reply": { "who": "Brunilda", "mood": "neutral", "text": "Es donde se reparte el trabajo. Te lo explico, que la primera vez nadie lo entiende." } }
             ]
           },
-          { "who": "Brunilda", "mood": "neutral", "text": "Antes de apuntarte en el libro, tú y yo tenemos que hablar. Búscame en el salón." }
+          { "who": "Brunilda", "mood": "neutral", "text": "Antes de apuntar a vuestra compañía en el libro, tú y yo tenemos que hablar. Búscame en el salón." }
         ],
         "opens": { "kind": "after", "milestone": "la-charla" },
         "asks": { "kind": "talk", "npc": "Brunilda" },

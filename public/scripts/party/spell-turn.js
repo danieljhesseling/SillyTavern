@@ -245,30 +245,32 @@ function dismissFor(caster) {
  */
 export function canChooseControl(member) {
     if (!member) return false;
-    const hero = partyMembers[0];
-    if (!member.summon && hero && String(hero.id) === String(member.id)) return false;
     if (member.summon) {
         const spec = normalizeSummon(spellFor(member.spellId)?.summon);
         if (spec.control === 'engine') return false;
         return canPlayerControl({ ...member, control: 'player' }, getCampaignBonds(), { party: partyMembers });
     }
-    return canPlayerControl(member, getCampaignBonds(), { party: partyMembers });
+    return true;
 }
 
 /**
- * Quién le mueve ahora: `player` o `engine`. Un compañero que ya es amigo lo mueves tú hasta
- * que se lo devuelvas al juego; uno que aún no, el juego.
+ * Quién le mueve ahora: `player` o `engine`.
+ * Cualquier combatiente (incluido el primer miembro) puede llevarse en manual (`player`)
+ * o delegarse en el juego (`engine`) para el Modo Manager.
  *
  * @param {any} member
  * @returns {'player'|'engine'}
  */
 export function controlOf(member) {
     if (!member) return 'engine';
-    if (member.summon) return canPlayerControl(member, getCampaignBonds(), { party: partyMembers }) ? 'player' : 'engine';
-    if (!canPlayerControl(member, getCampaignBonds(), { party: partyMembers })) return 'engine';
-    const hero = partyMembers[0];
-    if (hero && String(hero.id) === String(member.id)) return 'player';
-    return member.control === 'engine' ? 'engine' : 'player';
+    if (member.summon) {
+        if (member.control === 'engine') return 'engine';
+        if (member.control === 'player') return 'player';
+        return canPlayerControl(member, getCampaignBonds(), { party: partyMembers }) ? 'player' : 'engine';
+    }
+    if (member.control === 'engine') return 'engine';
+    if (member.control === 'player') return 'player';
+    return 'player';
 }
 
 /**

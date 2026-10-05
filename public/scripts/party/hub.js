@@ -443,6 +443,15 @@ export async function openHubHire() {
     const offers = withHireReasons([...written, ...await weeklyHireOffers(written.map(o => o.name))]);
     const choice = await openHirePanel({ Popup, POPUP_TYPE, offers, purse: partyPurse() });
     if (!choice) return '';
+    if (choice.action === 'custom') {
+        const worldName = String(chat_metadata?.[METADATA_KEY] || '');
+        const { createStartingHero } = await import('../campaigns.js');
+        const hero = await createStartingHero(worldName, { another: true });
+        if (hero) {
+            toastr.success('Nuevo aventurero registrado en la compañía.', 'Gremio de Aventureros');
+        }
+        return '';
+    }
     const offer = offers.find(o => o.name === choice.name);
     if (!offer) return '';
     if (choice.action === 'fire') {
@@ -485,6 +494,32 @@ export async function openHubHire() {
 }
 
 /**
+ * E10.2: Suma un nuevo aventurero a la compañía: si la escuadra activa tiene hueco (< 4),
+ * entra directamente a su lado; si ya son cuatro, se sienta relevando a uno al descanso.
+ *
+ * @param {PartyMember} incoming
+ * @returns {{outgoing: PartyMember|null, line: string}}
+ */
+export function recruitPartyHero(incoming) {
+    if (partyMembers.length < 4) {
+        const member = migratePartyMember(incoming);
+        const hero = partyMembers.find(m => !m.guest) ?? partyMembers[0];
+        const at = hero?.mapPosition ?? { locationName: currentLocationName, gridX: 1, gridY: 1 };
+        member.mapPosition = { ...at, gridX: (Number(at.gridX) || 0) + partyMembers.length };
+        partyMembers.push(member);
+        savePartyState();
+        renderPartyMembers();
+        renderLocationMapsPreview();
+        const line = `${member.name} se une a la escuadra activa (${partyMembers.length}/4).`;
+        postCombatNarration(`🏠 [GREMIO] ${line}`);
+        toastr.success(line, 'Nuevo Aventurero');
+        if (isShellOpen()) refreshGameShell();
+        return { outgoing: null, line };
+    }
+    return seatPartyHero(incoming);
+}
+
+/**
  * J1.6: otro de tus personajes pasa a ir con el grupo, en el sitio y la casilla del de ahora.
  * Los mercenarios siguen. El que sale deja el grupo: lo guarda el gremio (`campaigns.js`).
  *
@@ -498,7 +533,7 @@ export function seatPartyHero(incoming) {
     renderPartyMembers();
     renderLocationMapsPreview();
     const hero = partyMembers.find(m => String(m.id) === String(incoming?.id)) ?? partyMembers[0];
-    if (hero) setUserName(hero.name, { toastPersonaNameChange: false });
+    if (hero && !chat_metadata?.commander) setUserName(hero.name, { toastPersonaNameChange: false });
     const line = swapLine(incoming, outgoing);
     postCombatNarration(`🏠 [GREMIO] ${line}`);
     if (isShellOpen()) refreshGameShell();
@@ -514,6 +549,27 @@ export function giveStartingPurse(amount) {
     const hero = partyMembers[0];
     if (!hero) return;
     hero.gold = (Number(hero.gold) || 0) + Math.max(0, Math.floor(Number(amount) || 0));
+    savePartyState();
+    renderPartyMembers();
+}
+
+/**
+ * Añade raciones iniciales de viaje al primer miembro del grupo.
+ *
+ * @param {number} amount
+ */
+export function giveStartingRations(amount) {
+    const hero = partyMembers[0];
+    if (!hero) return;
+    hero.items = Array.isArray(hero.items) ? hero.items : [];
+    hero.items.push({
+        id: `k_ration_${Date.now()}`,
+        name: 'Ración de viaje',
+        type: 'trasto',
+        quantity: Math.max(1, Math.floor(Number(amount) || 1)),
+        weight: 1,
+        cost: 0.5,
+    });
     savePartyState();
     renderPartyMembers();
 }

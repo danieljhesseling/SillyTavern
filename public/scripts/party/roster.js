@@ -112,10 +112,9 @@ export function loadPartyForChat() {
             delete chat_metadata.persona;
         }
         // Restore party leader as active speaker
-        if (partyMembers.length > 0) {
-            console.log('Restoring active chat speaker to party leader', partyMembers[0].name);
-            setUserName(partyMembers[0].name, { toastPersonaNameChange: false });
-        }
+        const speaker = chat_metadata?.commander?.name || partyMembers[0].name;
+        console.log('Restoring active chat speaker to', speaker);
+        setUserName(speaker, { toastPersonaNameChange: false });
     } else {
         console.log('No party found in chat_metadata');
         setPartyMembers([]);
@@ -405,6 +404,8 @@ export function setPartyFromWorldEntries(entries, worldName = null) {
             mapPosition: resolveEntryMapPosition(d),
             // R3: lo que la ficha del mundo dice que sabe hacer (se escribía y no se leía).
             abilities: abilityIdsOf(d),
+            isBodyguard: Boolean(d.isBodyguard),
+            commander: d.commander || '',
             // D-J52: la cara sin arte que eligió al crearse.
             ...(d.face && typeof d.face === 'object' ? { face: d.face } : {}),
         };
@@ -417,10 +418,12 @@ export function setPartyFromWorldEntries(entries, worldName = null) {
     renderLocationMapsPreview();
     savePartyState();
     console.log('setPartyFromWorldEntries built partyMembers', { partyMembers });
-    // Set party leader as active chat speaker
-    if (partyMembers.length > 0) {
-        console.log('Setting active chat speaker to party leader', partyMembers[0].name);
-        setUserName(partyMembers[0].name, { toastPersonaNameChange: false });
+    // Set active chat speaker: Estratega si existe, o el primer miembro del grupo
+    const commanderName = chat_metadata?.commander?.name;
+    const speaker = commanderName || (partyMembers.length > 0 ? partyMembers[0].name : '');
+    if (speaker) {
+        console.log('Setting active chat speaker to', speaker);
+        setUserName(speaker, { toastPersonaNameChange: false });
     }
 }
 
@@ -533,6 +536,8 @@ export function memberFromEntry(entry, worldName) {
         memories: [],
         mapPosition: resolveEntryMapPosition(d),
         abilities: abilityIdsOf(d),
+        isBodyguard: Boolean(d.isBodyguard),
+        commander: d.commander || '',
         // D-J52: la cara sin arte que eligió al crearse.
         ...(d.face && typeof d.face === 'object' ? { face: d.face } : {}),
     };
@@ -656,8 +661,8 @@ export function adoptCarriedParty(carried, { worldName, uids = {}, atStart = fal
     if (atStart) placePartyAtStart(getActiveBoardContext().board);
     savePartyState();
     renderPartyMembers();
-    renderLocationMapsPreview();
-    if (partyMembers[0]) setUserName(partyMembers[0].name, { toastPersonaNameChange: false });
+    const speaker = chat_metadata?.commander?.name || (partyMembers[0] ? partyMembers[0].name : '');
+    if (speaker) setUserName(speaker, { toastPersonaNameChange: false });
     if (isShellOpen()) refreshGameShell();
 }
 
