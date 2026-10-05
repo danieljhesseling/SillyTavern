@@ -46,7 +46,10 @@ import yaml from 'js-yaml';
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const engine = (/** @type {string} */ path) => import(pathToFileURL(join(ROOT, 'public/scripts/game-engine', path)).href);
 
-const { buildScript, reviewScript, blockParts, readParagraph, normalizeText, COMPENDIO_DOCS } = await engine('campaign/script-doc.js');
+const {
+    buildScript, reviewScript, blockParts, readParagraph, normalizeText, COMPENDIO_DOCS,
+    HOW_TO_EDIT, LEGEND, textHash,
+} = await engine('campaign/script-doc.js');
 const { scriptToDocx, docxBlocks } = await engine('campaign/script-docx.js');
 const { validatePack } = await engine('campaign/campaign-pack.js');
 const { checkWorldDensity } = await engine('campaign/world-density.js');
@@ -96,21 +99,69 @@ const showPath = (/** @type {Array<string|number>} */ path) => path.map((k, i) =
  * @property {Record<string, string>} compendioFiles
  * @property {string} root
  * @property {string} rounds La carpeta de sus rondas si sale de ellas (las experimentales); si no, vacío.
+ * @property {string} [campId] El identificador de campaña para prefijar líneas (`gremio`, `1387`...).
+ * @property {Campaign[]} [subCampaigns] Las subcampañas si es todo el juego.
  */
+
+/** ¿Pide todo el juego / todas las campañas a la vez? */
+const isAll = (which) => ['todo', 'juego', 'all'].includes(String(which ?? '').toLowerCase());
+
+/**
+ * Los ids de todas las campañas del juego: las tres principales y los paquetes de public/mundos.
+ *
+ * @param {string} [root]
+ * @returns {string[]}
+ */
+export function allCampaignIds(root = ROOT) {
+    const mundos = join(root, 'public', 'mundos');
+    const list = [];
+    for (const id of CAMPAIGNS) {
+        if (existsSync(join(mundos, `${id}.pack.json`))) list.push(id);
+    }
+    try {
+        if (existsSync(mundos)) {
+            for (const file of readdirSync(mundos)) {
+                const match = /^([\w-]+)\.pack\.json$/.exec(file);
+                if (match && !list.includes(match[1])) list.push(match[1]);
+            }
+        }
+    } catch { /* nada */ }
+    return list;
+}
 
 /**
  * La campaña, leída: su paquete y las filas del compendio.
  *
- * @param {string} which `gremio`, `1387`, `strahd` o la ruta de un paquete o JSON del Gem.
+ * @param {string} which `todo`, `gremio`, `1387`, `strahd` o la ruta de un paquete o JSON del Gem.
  * @param {{root?: string, compendio?: boolean}} [input]
  * @returns {Campaign}
  */
 export function loadCampaign(which, { root = ROOT, compendio = true } = {}) {
+    if (isAll(which)) {
+        const ids = allCampaignIds(root);
+        const subCampaigns = ids.map(id => {
+            const sub = loadCampaign(id, { root, compendio });
+            sub.campId = id;
+            return sub;
+        });
+        const first = subCampaigns[0];
+        return {
+            id: 'todo',
+            packFile: first?.packFile ?? join(root, 'public', 'mundos', 'mundos.json'),
+            pack: { world: { name: 'Todo el juego' } },
+            compendio: first?.compendio ?? {},
+            compendioFiles: first?.compendioFiles ?? {},
+            root,
+            rounds: '',
+            subCampaigns,
+        };
+    }
     // Por su nombre: las del juego y cualquier paquete de public/mundos (`ocaso`, `costa`…).
     const named = /^[\w-]+$/.test(String(which)) && existsSync(join(root, 'public', 'mundos', `${which}.pack.json`));
     const packFile = named ? join(root, 'public', 'mundos', `${which}.pack.json`) : resolve(String(which));
     if (!existsSync(packFile)) throw new Error(`No encuentro ${packFile}.`);
     const id = CAMPAIGNS.includes(String(which)) ? String(which) : (/^(gremio|1387|strahd)\.pack\.json$/.exec(basename(packFile))?.[1] ?? '');
+    const campId = CAMPAIGNS.includes(String(which)) ? String(which) : (/^([\w-]+)\.pack\.json$/.exec(basename(packFile))?.[1] ?? '');
     /** @type {Record<string, any>} */
     const docs = {};
     /** @type {Record<string, string>} */
@@ -123,7 +174,7 @@ export function loadCampaign(which, { root = ROOT, compendio = true } = {}) {
             files[doc] = file;
         }
     }
-    return { id, packFile, pack: readJson(packFile), compendio: docs, compendioFiles: files, root, rounds: roundsFolder(packFile, id, root) };
+    return { id, campId, packFile, pack: readJson(packFile), compendio: docs, compendioFiles: files, root, rounds: roundsFolder(packFile, id, root) };
 }
 
 /**
@@ -155,12 +206,85 @@ function today() {
 }
 
 /**
+ * Junta el guion de todas las campañas en un solo documento completo.
+ *
+ * @param {Campaign[]} subCampaigns
+ * @param {string} date
+ * @returns {any}
+ */
+export function buildAllScript(subCampaigns, date = today()) {
+    /** @type {any[]} */
+    const blocks = [];
+    const title = 'Todo el juego';
+    blocks.push({ type: 'titulo', text: `${title}: el guion completo` });
+    blocks.push({ type: 'subtitulo', text: ['Guion de lectura de todas las campañas', date].filter(Boolean).join(' · ') });
+
+    const countIndex = blocks.length;
+
+    blocks.push({ type: 'seccion', text: 'Cómo corregir' });
+    for (const said of HOW_TO_EDIT) blocks.push({ type: 'nota', text: said, bullet: true });
+    blocks.push({ type: 'seccion', text: 'Cómo leerlo' });
+    for (const said of LEGEND) blocks.push({ type: 'nota', text: said, bullet: true });
+
+    const allPeople = [];
+    const seenPeople = new Set();
+
+    for (const sub of subCampaigns) {
+        const script = buildScript(sub.pack, { campaign: sub.id, compendio: sub.compendio, date });
+        for (const person of script.people ?? []) {
+            const key = person?.id || person?.name;
+            if (key && !seenPeople.has(key)) {
+                seenPeople.add(key);
+                allPeople.push(person);
+            }
+        }
+
+        const campTitle = sub.pack?.world?.name || sub.name || script.title || sub.campId || sub.id;
+        blocks.push({ type: 'parte', text: `Campaña: ${campTitle}`, label: `Campaña: ${campTitle}` });
+        blocks.push({ type: 'nota', text: `${campTitle}: ${script.counts.lines} líneas en esta campaña.` });
+
+        for (const block of script.blocks) {
+            if (block.type === 'titulo' || block.type === 'subtitulo') continue;
+            if (block.type === 'seccion' && (block.text === 'Cómo corregir' || block.text === 'Cómo leerlo')) continue;
+            if (block.type === 'nota' && (HOW_TO_EDIT.includes(block.text) || LEGEND.includes(block.text) || COUNT_NOTE.test(String(block.text)))) continue;
+
+            const copy = { ...block, campaign: sub.campId || sub.id, subCampaign: sub };
+            if (copy.id) {
+                copy.originalId = copy.id;
+                copy.id = `${sub.campId || sub.id}:${copy.id}`;
+                if (!copy.hash) copy.hash = textHash(copy.text);
+            }
+            blocks.push(copy);
+        }
+    }
+
+    const lines = blocks.filter(b => b.id);
+    const counts = {
+        lines: lines.length,
+        said: lines.filter(b => b.kind === 'linea').length,
+        choices: lines.filter(b => b.kind === 'tu').length,
+        narrator: lines.filter(b => b.kind === 'narrador').length,
+    };
+
+    blocks.splice(countIndex, 0, {
+        type: 'nota',
+        text: `${counts.lines} líneas: ${counts.said} dichas por alguien, ${counts.choices} tuyas, `
+            + `${counts.lines - counts.said - counts.choices - counts.narrator} escritas en pantalla y ${counts.narrator} sin nadie que las diga (Narrador).`,
+    });
+
+    return { title, blocks, counts, people: allPeople };
+}
+
+/**
  * El guion de una campaña, tal como está ahora.
  *
  * @param {Campaign} campaign
  * @returns {any}
  */
 export function scriptOf(campaign) {
+    if (campaign.id === 'todo' && Array.isArray(campaign.subCampaigns)) {
+        return buildAllScript(campaign.subCampaigns, today());
+    }
     return buildScript(campaign.pack, { campaign: campaign.id, compendio: campaign.compendio, date: today() });
 }
 
@@ -371,6 +495,10 @@ const OLD_FOLDER = join(homedir(), 'Documents', 'Guiones');
  */
 export function defaultName(campaign, categories = null) {
     const name = campaign.id || basename(campaign.packFile, extname(campaign.packFile)).replace(/\.pack$/, '');
+    if (name === 'todo' || name === 'juego') {
+        if (!categories) return 'todo-el-juego-guion.docx';
+        return `todo-el-juego-guion-${categories.length <= 3 ? categories.join('-') : 'por-partes'}.docx`;
+    }
     if (!categories) return `${name}-guion.docx`;
     return `${name}-guion-${categories.length <= 3 ? categories.join('-') : 'por-partes'}.docx`;
 }
@@ -753,6 +881,13 @@ function strahdPlan(pack, path, said, layers) {
  * @returns {Plan|{error: string}}
  */
 function planFor(campaign, block, said, layers) {
+    if (campaign.id === 'todo') {
+        const subId = block.campaign || (typeof block.id === 'string' ? block.id.split(':')[0] : '');
+        const sub = (campaign.subCampaigns ?? []).find(c => c.campId === subId || c.id === subId);
+        if (!sub) return { error: `no sé a qué campaña pertenece ${block.id}` };
+        const subLayers = sub.id === 'strahd' ? (layers?.strahd ?? strahdLayers(sub.root)) : null;
+        return planFor(sub, block, said, subLayers);
+    }
     const { doc, path } = block.src ?? {};
     if (doc && doc !== 'pack') {
         const file = campaign.compendioFiles[doc];
@@ -761,8 +896,9 @@ function planFor(campaign, block, said, layers) {
     }
     if (campaign.id === 'strahd') return strahdPlan(campaign.pack, path, said, layers);
     // Las experimentales: a una ronda nueva de su guion (`applyRound`).
-    if (campaign.rounds) return { file: campaign.rounds, target: `pack:${showPath(path)}`, edit: { op: 'round', path, expect: valueAt(campaign.pack, path), value: said } };
-    return { file: campaign.packFile, target: `pack:${showPath(path)}`, edit: { op: 'replace', path, expect: valueAt(campaign.pack, path), value: said } };
+    const campPrefix = campaign.campId || campaign.id || 'pack';
+    if (campaign.rounds) return { file: campaign.rounds, target: `${campPrefix}:pack:${showPath(path)}`, edit: { op: 'round', path, expect: valueAt(campaign.pack, path), value: said } };
+    return { file: campaign.packFile, target: `${campPrefix}:pack:${showPath(path)}`, edit: { op: 'replace', path, expect: valueAt(campaign.pack, path), value: said } };
 }
 
 /**
@@ -852,6 +988,50 @@ function withoutOwnNotes(paragraphs) {
 }
 
 /**
+ * Normaliza las marcas de los párrafos para que coincidan con los bloques del script,
+ * permitiendo importar tanto si se exportó todo el juego como una campaña individual.
+ *
+ * @param {Array<{text: string, style: string}>} paragraphs
+ * @param {any} script
+ * @param {Campaign} campaign
+ */
+function normalizeParagraphMarks(paragraphs, script, campaign) {
+    /** @type {Map<string, any>} */
+    const byId = new Map();
+    for (const b of script.blocks) if (b.id) byId.set(b.id, b);
+
+    for (const p of paragraphs) {
+        const read = readParagraph(normalizeText(p.text));
+        if (!read || read.broken) continue;
+        if (byId.has(read.id)) continue;
+
+        if (campaign.id === 'todo') {
+            // El documento vino de una campaña suelta (ej. [#E:el-muelle/2~hash]).
+            // Buscamos si existe <camp>:<read.id> en byId.
+            const matches = [...byId.keys()].filter(k => k.endsWith(`:${read.id}`));
+            if (matches.length === 1) {
+                p.text = p.text.replace(`[#${read.id}~`, `[#${matches[0]}~`);
+            } else if (matches.length > 1) {
+                const hashMatch = matches.find(k => byId.get(k).hash === read.hash || textHash(byId.get(k).text) === read.hash);
+                if (hashMatch) {
+                    p.text = p.text.replace(`[#${read.id}~`, `[#${hashMatch}~`);
+                }
+            }
+        } else {
+            // El documento vino de "todo el juego" (ej. [#gremio:E:el-muelle/2~hash]), pero se importa en "gremio".
+            const campKey = campaign.campId || campaign.id;
+            const prefix = `${campKey}:`;
+            if (read.id.startsWith(prefix)) {
+                const stripped = read.id.slice(prefix.length);
+                if (byId.has(stripped)) {
+                    p.text = p.text.replace(`[#${read.id}~`, `[#${stripped}~`);
+                }
+            }
+        }
+    }
+}
+
+/**
  * Comparar un guion corregido con el juego y, si se pide, guardar lo cambiado.
  *
  * @param {string} file El .docx (o .txt, .md).
@@ -868,6 +1048,7 @@ export function importScript(file, which, { apply = false, root = ROOT, compendi
     const campaign = loadCampaign(which, { root, compendio });
     const script = scriptOf(campaign);
     const paragraphs = withoutOwnNotes(readParagraphs(file));
+    normalizeParagraphMarks(paragraphs, script, campaign);
     const review = reviewScript(script, paragraphs);
     /** @type {Map<string, any>} */
     const byId = new Map(script.blocks.filter((/** @type {any} */ b) => b.id).map((/** @type {any} */ b) => [b.id, b]));
@@ -884,7 +1065,7 @@ export function importScript(file, which, { apply = false, root = ROOT, compendi
     const only = categories ? new Set(categories) : null;
     /** @type {any[]} */
     const skipped = [];
-    const layers = campaign.id === 'strahd' ? strahdLayers(root) : null;
+    const layers = campaign.id === 'strahd' ? strahdLayers(root) : (campaign.id === 'todo' ? { strahd: strahdLayers(root) } : null);
     /** @type {Array<{change: any, plan: Plan}>} */
     const planned = [];
     /** @type {Array<{change: any, error: string}>} */
@@ -921,7 +1102,8 @@ export function importScript(file, which, { apply = false, root = ROOT, compendi
     };
     tallyCategories(result, inWord, catOfId);
     if (!apply || ready.length === 0) return result;
-    if (campaign.rounds) applyRound(campaign, ready, result, backup);
+    if (campaign.id === 'todo') applyTodo(campaign, ready, result, regenerate, backup);
+    else if (campaign.rounds) applyRound(campaign, ready, result, backup);
     else applyPlans(campaign, ready, result, regenerate, backup);
     tallyCategories(result, inWord, catOfId);
     return result;
@@ -1185,6 +1367,117 @@ function applyRound(campaign, ready, result, backup) {
     result.checks.push(`La densidad del mundo: ${after.density === 0 ? 'sin errores' : `${after.density} avisos del listón, como antes`}.`);
 }
 
+/**
+ * Guardar para «Todo el juego»: aplica los cambios a cada campaña y compendio,
+ * regenerando Strahd si procede y validando todos los paquetes tocados.
+ *
+ * @param {Campaign} campaign
+ * @param {Array<{changes: any[], plan: Plan}>} ready
+ * @param {ImportResult} result
+ * @param {(root: string) => {ok: boolean, output: string}} regenerate
+ * @param {string} [backup]
+ */
+function applyTodo(campaign, ready, result, regenerate, backup = '') {
+    const subCampaigns = campaign.subCampaigns ?? [];
+    // Averiguamos qué subcampañas y archivos se tocan
+    const touchedSubs = subCampaigns.filter(sub => {
+        return ready.some(({ plan }) => {
+            if (plan.file === sub.packFile || (sub.rounds && plan.file === sub.rounds)) return true;
+            if (sub.id === 'strahd' && plan.file.replace(/\\/g, '/').includes('campanas/strahd')) return true;
+            return false;
+        });
+    });
+
+    // Salud previa de los paquetes tocados
+    /** @type {Map<string, {errors: number, density: number, messages: string[]}>} */
+    const beforeHealth = new Map();
+    for (const sub of touchedSubs) {
+        if (existsSync(sub.packFile)) beforeHealth.set(sub.campId || sub.id, packHealth(readJson(sub.packFile)));
+    }
+
+    /** @type {Map<string, JsonEdit[]>} */
+    const byFile = new Map();
+    for (const { plan } of ready) {
+        if (plan.edit.op !== 'round') {
+            byFile.set(plan.file, [...(byFile.get(plan.file) ?? []), plan.edit]);
+        }
+    }
+
+    if (backup) {
+        const filesToBackup = [...byFile.keys(), ...touchedSubs.map(s => s.packFile)];
+        backupFiles(filesToBackup, backup, campaign.root);
+        result.backup = backup;
+    }
+
+    /** @type {Map<string, string>} */
+    const previous = new Map();
+    const undo = () => {
+        for (const [path, text] of previous) writeFileSync(path, text);
+        result.written = [];
+        result.undone = true;
+    };
+
+    for (const [path, edits] of byFile) {
+        const now = readFileSync(path, 'utf8');
+        let next = '';
+        try {
+            next = editJson(now, edits);
+        } catch (error) {
+            result.checks.push(`${path}: no se ha tocado (${/** @type {Error} */ (error).message}).`);
+            undo();
+            return;
+        }
+        previous.set(path, now);
+        writeFileSync(path, next);
+        result.written.push(path);
+    }
+
+    // Si Strahd se ha tocado en sus capas:
+    const touchedStrahd = touchedSubs.some(s => s.id === 'strahd') || [...byFile.keys()].some(f => f.replace(/\\/g, '/').includes('campanas/strahd'));
+    if (touchedStrahd) {
+        const made = regenerate(campaign.root);
+        if (!made.ok) {
+            result.checks.push(`El paquete de Strahd no sale con los cambios:\n${made.output}`);
+            undo();
+            regenerate(campaign.root);
+            return;
+        }
+        result.checks.push(made.output.split('\n').pop() ?? 'Paquete de Strahd hecho de nuevo.');
+    }
+
+    // Subcampañas con rondas experimentales
+    for (const sub of touchedSubs) {
+        if (sub.rounds) {
+            const subReady = ready.filter(({ plan }) => plan.file === sub.rounds);
+            if (subReady.length > 0) {
+                applyRound(sub, subReady, result, backup);
+                if (result.undone) {
+                    undo();
+                    if (touchedStrahd) regenerate(campaign.root);
+                    return;
+                }
+            }
+        }
+    }
+
+    // Comprobamos la salud de todos los paquetes tocados
+    for (const sub of touchedSubs) {
+        const key = sub.campId || sub.id;
+        if (!existsSync(sub.packFile) || sub.rounds) continue;
+        const b = beforeHealth.get(key);
+        const after = packHealth(readJson(sub.packFile));
+        if (b && (after.errors > b.errors || after.density > b.density)) {
+            const fresh = after.messages.filter(m => !b.messages.includes(m));
+            result.checks.push(`Con los cambios, el paquete de «${key}» tiene más errores que antes:\n  ${fresh.join('\n  ')}`);
+            undo();
+            if (touchedStrahd) regenerate(campaign.root);
+            return;
+        }
+        result.checks.push(`El validador (${key}): ${after.errors === 0 ? 'sin errores' : `${after.errors} errores, como antes`}.`);
+        result.checks.push(`La densidad (${key}): ${after.density === 0 ? 'sin errores' : `${after.density} avisos del listón, como antes`}.`);
+    }
+}
+
 // ---------------------------------------------------------------------------------------------
 // El informe, en castellano llano
 // ---------------------------------------------------------------------------------------------
@@ -1324,10 +1617,10 @@ function main() {
     };
     const plain = args.filter((arg, i) => !arg.startsWith('--') && args[i - 1] !== '--salida' && args[i - 1] !== '--categorias');
     const [command, first, second] = plain;
-    const usage = 'Uso:\n  node tools/guion-word.mjs export <campaña|paquete.json> [--categorias historia,charlas] [--salida guion.docx] [--md]\n'
-        + '  node tools/guion-word.mjs import <guion.docx> <campaña|paquete.json> [--categorias historia,charlas] [--aplicar]\n'
-        + '  node tools/guion-word.mjs categorias <campaña|paquete.json>\n'
-        + `La campaña: gremio, 1387, strahd o cualquier paquete de public/mundos (ocaso, costa, pantalla…). Las categorías: ${CATEGORIES.map(c => c.id).join(', ')} (o todo).`;
+    const usage = 'Uso:\n  node tools/guion-word.mjs export <campaña|todo|paquete.json> [--categorias historia,charlas] [--salida guion.docx] [--md]\n'
+        + '  node tools/guion-word.mjs import <guion.docx> <campaña|todo|paquete.json> [--categorias historia,charlas] [--aplicar]\n'
+        + '  node tools/guion-word.mjs categorias <campaña|todo|paquete.json>\n'
+        + `La campaña: todo (todas las campañas del juego a la vez), gremio, 1387, strahd o cualquier paquete de public/mundos (ocaso, costa, pantalla…). Las categorías: ${CATEGORIES.map(c => c.id).join(', ')} (o todo).`;
     /** @type {string[]|null} */
     let categories = null;
     try {

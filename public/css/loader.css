@@ -16,6 +16,15 @@
     opacity: 1;
 }
 
+/* En modo sin servidor / APK Android o si se desactiva manualmente, nunca bloquear la pantalla de forma ciega */
+html[data-sin-servidor] #preloader,
+body.sin-servidor #preloader,
+#preloader.preloader-desactivado {
+    display: none !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+}
+
 #load-spinner {
     --spinner-size: 2em;
     transition: all var(--animation-duration-2x) ease-out;

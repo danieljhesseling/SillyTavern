@@ -33,6 +33,7 @@ Con doble clic, sin consola:
 | :--- | :--- | :--- |
 | `ProbarCampañas.exe` | Un bot juega la campaña que elijas y te dice en pestañas qué tal ha ido (Bien, Regular, Mal), con su historial | [[TUTORIAL_PROBAR_CAMPANAS]] |
 | `GuionEnWord.exe` | El guion de una campaña en Word: lo sacas entero o por categorías (la historia, las charlas, las quedadas…), lo corriges y ves qué cambia antes de guardarlo en el juego | [[TUTORIAL_GUION_WORD]] |
+| `MontarAPK.exe` | Monta y compila la APK nativa de Android de Dnd Master con 1 solo clic, con servidor de bolsillo offline e instalación directa por USB | [[TUTORIAL_APK_ANDROID]] |
 
 Se lanzan desde una terminal en la carpeta del juego.
 

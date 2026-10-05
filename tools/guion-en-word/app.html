@@ -152,8 +152,11 @@ dialog .btns .btn.primary { width: auto; font-size: 15px; padding: 8px 14px; }
             <p class="sub">Elige qué texto quieres. Sale en orden de lectura, con quién lo dice.</p>
             <fieldset id="exp-cats">
                 <legend>Qué texto sale</legend>
-                <label class="cat all"><input type="checkbox" id="exp-all" checked><b>Todo el guion</b><span class="n" id="exp-all-n"></span><small>Todas las categorías de abajo, en un solo Word.</small></label>
-                <div class="cats" id="exp-list"></div>
+                <label class="cat all"><input type="checkbox" id="exp-all" checked><b>Todo el guion (todas las categorías)</b><span class="n" id="exp-all-n"></span><small>Exportar todo el texto en un solo Word sin dividir.</small></label>
+                <details id="exp-cats-details" style="margin-top: 8px;">
+                    <summary style="font-size: 13.5px; color: var(--muted); cursor: pointer; padding: 4px 0;">Elegir categorías específicas (opcional)</summary>
+                    <div class="cats" id="exp-list" style="margin-top: 8px;"></div>
+                </details>
             </fieldset>
             <div class="row">
                 <span class="note">Se guarda en:</span>
@@ -179,7 +182,14 @@ dialog .btns .btn.primary { width: auto; font-size: 15px; padding: 8px 14px; }
                 <div class="facts" id="imp-facts"></div>
                 <div class="table-wrap">
                     <table class="sum">
-                        <thead><tr><th>Guardar</th><th class="num">En el Word</th><th class="num">Cambian</th><th class="num">No se guardan</th></tr></thead>
+                        <thead>
+                            <tr>
+                                <th><label style="cursor: pointer; display: flex; align-items: center; gap: 6px;"><input type="checkbox" id="imp-all" checked> <b>Guardar todo el guion</b></label></th>
+                                <th class="num">En el Word</th>
+                                <th class="num">Cambian</th>
+                                <th class="num">No se guardan</th>
+                            </tr>
+                        </thead>
                         <tbody id="imp-table"></tbody>
                     </table>
                 </div>
@@ -385,6 +395,13 @@ $('imp-again').addEventListener('click', () => review());
 
 const toSave = () => [...document.querySelectorAll('#imp-table input')].filter(i => i.checked).map(i => i.value);
 
+$('imp-all').addEventListener('change', () => {
+    for (const box of document.querySelectorAll('#imp-table input')) {
+        if (!box.disabled) box.checked = $('imp-all').checked;
+    }
+    updateImport();
+});
+
 function renderLines(list, items) {
     $(list).replaceChildren(...items.map(item => el('li', {},
         el('div', {}, el('span', { class: 'who', text: item.label }), el('span', { class: 'where', text: ` · ${item.categoryName} · ${item.id}` })),
@@ -400,8 +417,13 @@ function updateImport() {
     if (!r) return;
     const ids = toSave();
     const n = r.changes.filter(c => ids.includes(c.category)).length;
+    const active = r.byCategory.filter(row => row.changed > 0);
+    const isAll = active.length > 0 && ids.length >= active.length;
     $('imp-go').disabled = state.busy || n === 0;
-    $('imp-go').textContent = n === 0 ? (r.changes.length === 0 ? 'No hay nada que guardar' : 'Marca al menos una categoría con cambios') : `Guardar en el juego ${plural(n, 'línea', 'líneas')}`;
+    $('imp-go').textContent = n === 0
+        ? (r.changes.length === 0 ? 'No hay nada que guardar' : 'Marca al menos una categoría con cambios')
+        : isAll ? `Guardar TODO el guion en el juego (${plural(n, 'línea cambiada', 'líneas cambiadas')})`
+        : `Guardar en el juego ${plural(n, 'línea', 'líneas')}`;
 }
 
 async function review() {
@@ -426,11 +448,16 @@ async function review() {
             r.notes ? el('span', { class: 'pill', text: plural(r.notes, 'línea nueva para el Gem', 'líneas nuevas para el Gem') }) : null,
         ];
         $('imp-facts').replaceChildren(...facts.filter(Boolean));
+        $('imp-all').checked = true;
         $('imp-table').replaceChildren(...r.byCategory.map(row => {
             const box = el('input', { type: 'checkbox', value: row.id });
             box.checked = row.changed > 0;
             box.disabled = row.changed === 0;
-            box.addEventListener('change', updateImport);
+            box.addEventListener('change', () => {
+                const active = [...document.querySelectorAll('#imp-table input')].filter(b => !b.disabled);
+                $('imp-all').checked = active.length > 0 && active.every(b => b.checked);
+                updateImport();
+            });
             return el('tr', {},
                 el('td', {}, el('label', {}, box, el('span', { text: row.name }))),
                 el('td', { class: 'num', text: String(row.lines) }),
@@ -461,7 +488,11 @@ $('imp-go').addEventListener('click', () => {
     const ids = toSave();
     const n = r.changes.filter(c => ids.includes(c.category)).length;
     const names = r.byCategory.filter(row => ids.includes(row.id)).map(row => row.name);
-    $('confirm-text').textContent = `Se van a cambiar ${plural(n, 'línea', 'líneas')} de «${r.title}», de: ${names.join(', ')}.`;
+    const active = r.byCategory.filter(row => row.changed > 0);
+    const isAll = active.length > 0 && ids.length >= active.length;
+    $('confirm-text').textContent = isAll
+        ? `Se van a cambiar ${plural(n, 'línea', 'líneas')} de «${r.title}» (todo el guion).`
+        : `Se van a cambiar ${plural(n, 'línea', 'líneas')} de «${r.title}», de: ${names.join(', ')}.`;
     $('confirm-note').textContent = `Antes se hace una copia de lo que hay ahora, en ${state.backups}. Si con los cambios la campaña queda peor, se deshace solo.`;
     $('confirm').showModal();
 });
@@ -473,7 +504,9 @@ $('confirm-yes').addEventListener('click', async () => {
     $('imp-busy').hidden = false;
     $('imp-busy').textContent = 'Guardando y comprobando la campaña…';
     try {
-        const r = await api('/api/guardar', { ...campaignInput(), file: state.word, categories: toSave() });
+        const active = state.review?.byCategory.filter(row => row.changed > 0) ?? [];
+        const isAll = active.length > 0 && toSave().length >= active.length;
+        const r = await api('/api/guardar', { ...campaignInput(), file: state.word, categories: isAll ? null : toSave() });
         $('imp-busy').hidden = true;
         if (!r.ok) return message('imp-msg', 'bad', [r.error]);
         const buttons = r.backup ? [showButton('Abrir la copia de antes', r.backup, 'carpeta')] : [];

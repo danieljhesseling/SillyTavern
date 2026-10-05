@@ -64,6 +64,14 @@ function campaigns() {
     /** @type {any[]} */
     let rows = [];
     try { rows = JSON.parse(readFileSync(join(ROOT, 'public/mundos/mundos.json'), 'utf8')).worlds ?? []; } catch { rows = []; }
+    const all = [
+        {
+            id: 'todo',
+            name: '⭐ Todo el juego (todas las campañas)',
+            group: 'Todo el juego',
+            note: 'Todo el guion del juego en un solo documento: gremio, 1387, strahd y demás campañas.',
+        },
+    ];
     const own = [
         { id: 'gremio', name: 'El prólogo y el gremio', group: 'Del juego', note: 'El texto va a su paquete (public/mundos/gremio.pack.json) y al compendio (charlas, quedadas…).' },
         { id: '1387', name: '1387 (El valle de Vane)', group: 'Del juego', note: 'El texto va a su paquete (public/mundos/1387.pack.json) y al compendio.' },
@@ -84,7 +92,7 @@ function campaigns() {
                 : `El texto va a su paquete (public/mundos/${file}).`,
         });
     }
-    return [...own, ...more, { id: 'json', name: 'Un .json suelto…', group: 'Tuya', note: 'Un paquete o la campaña que te ha dado tu Gem, en un archivo .json: el texto corregido va a ese mismo archivo.', json: true }];
+    return [...all, ...own, ...more, { id: 'json', name: 'Un .json suelto…', group: 'Tuya', note: 'Un paquete o la campaña que te ha dado tu Gem, en un archivo .json: el texto corregido va a ese mismo archivo.', json: true }];
 }
 
 /**
@@ -115,7 +123,9 @@ const categoryCache = new Map();
  */
 function categoriesOf(which) {
     const campaign = loadCampaign(which);
-    const stamp = [campaign.packFile, ...Object.values(campaign.compendioFiles)].map(f => `${f}:${statSync(f).mtimeMs}`).join('|');
+    const stamp = campaign.id === 'todo'
+        ? (campaign.subCampaigns ?? []).map(s => `${s.packFile}:${existsSync(s.packFile) ? statSync(s.packFile).mtimeMs : 0}`).join('|')
+        : [campaign.packFile, ...Object.values(campaign.compendioFiles)].map(f => `${f}:${existsSync(f) ? statSync(f).mtimeMs : 0}`).join('|');
     const cached = categoryCache.get(which);
     if (cached && cached.stamp === stamp) return cached.data;
     const script = scriptOf(campaign);

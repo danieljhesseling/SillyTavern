@@ -473,4 +473,58 @@ describe('tools/guion-word.mjs por categorías (GuionEnWord.exe)', () => {
         expect(changedRows).toHaveLength(1);
         expect(fs.readFileSync(path.join(root, 'copia/public/mundos/ocaso.pack.json'), 'utf8')).toBe(before);
     });
+
+    test('todo el juego: exporta todas las campañas con marcas prefijadas y las importa/revisa bidireccionalmente', () => {
+        const root = tempDir();
+        for (const rel of ['public/mundos/gremio.pack.json', 'public/mundos/1387.pack.json', 'public/mundos/mundos.json']) {
+            fs.cpSync(path.join(ROOT, rel), path.join(root, rel), { recursive: true });
+        }
+        const camp = tool.loadCampaign('todo', { root, compendio: false });
+        expect(camp.id).toBe('todo');
+        expect(camp.subCampaigns.length).toBeGreaterThanOrEqual(2);
+
+        const { file, script } = tool.exportScript('todo', { out: path.join(root, 'todo-guion.docx'), root, compendio: false });
+        expect(script.title).toBe('Todo el juego');
+        expect(script.counts.lines).toBeGreaterThan(1000);
+        expect(fs.existsSync(file)).toBe(true);
+
+        // Verificar que los ids vienen prefijados por campaña
+        const gremioLine = script.blocks.find(b => typeof b.id === 'string' && b.id.startsWith('gremio:'));
+        expect(gremioLine).toBeDefined();
+
+        // Importar y revisar contra 'todo'
+        const reviewAll = tool.importScript(file, 'todo', { root, compendio: false });
+        expect(reviewAll.title).toBe('Todo el juego');
+        expect(reviewAll.review.same).toBe(script.counts.lines);
+        expect(reviewAll.review.changed).toHaveLength(0);
+
+        // Compatibilidad bidireccional: importar el Word de 'todo' seleccionando 'gremio'
+        const reviewGremio = tool.importScript(file, 'gremio', { root, compendio: false });
+        expect(reviewGremio.review.same).toBeGreaterThan(0);
+        expect(reviewGremio.review.missing).toHaveLength(0);
+
+        // Modificar una línea de gremio y otra de 1387 en el docx
+        const gremioTarget = script.blocks.find(b => b.id?.startsWith('gremio:E:'));
+        const vaneTarget = script.blocks.find(b => b.id?.startsWith('1387:E:'));
+        expect(gremioTarget).toBeDefined();
+        expect(vaneTarget).toBeDefined();
+
+        const editedDocx = path.join(root, 'todo-corregido.docx');
+        editDocx(file, editedDocx, script, {
+            [gremioTarget.id]: () => 'Texto cambiado en el gremio.',
+            [vaneTarget.id]: () => 'Texto cambiado en 1387.',
+        });
+
+        const applied = tool.importScript(editedDocx, 'todo', { apply: true, root, compendio: false, backup: path.join(root, 'copia') });
+        expect(applied.undone).toBe(false);
+        expect(applied.ready).toHaveLength(2);
+        expect(applied.written.length).toBeGreaterThanOrEqual(2);
+
+        // Comprobar que ambos paquetes cambiaron
+        const gremioPack = JSON.parse(fs.readFileSync(path.join(root, 'public/mundos/gremio.pack.json'), 'utf8'));
+        const vanePack = JSON.parse(fs.readFileSync(path.join(root, 'public/mundos/1387.pack.json'), 'utf8'));
+        expect(valueAt(gremioPack, gremioTarget.src.path)).toBe('Texto cambiado en el gremio.');
+        expect(valueAt(vanePack, vaneTarget.src.path)).toBe('Texto cambiado en 1387.');
+    });
 });
+

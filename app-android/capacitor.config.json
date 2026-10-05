@@ -1,0 +1,13 @@
+{
+  "appId": "com.dndcoin.juego",
+  "appName": "Dnd Master",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https",
+    "hostname": "localhost"
+  },
+  "android": {
+    "allowMixedContent": false,
+    "backgroundColor": "#1a181b"
+  }
+}

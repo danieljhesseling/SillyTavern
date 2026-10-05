@@ -296,6 +296,9 @@ function getNameSelector(name, { prefix = 'third-party' } = {}) {
  * @returns {Promise<{name: string, type: string}[]>}
  */
 async function discoverExtensions() {
+    if (typeof window !== 'undefined' && window.SIN_SERVIDOR) {
+        return [];
+    }
     try {
         const response = await fetch('/api/extensions/discover');
 

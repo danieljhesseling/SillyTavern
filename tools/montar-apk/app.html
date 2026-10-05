@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Montar APK — Dnd Master</title>
+    <style>
+        :root {
+            --bg-dark: #0f0d11;
+            --bg-card: rgba(26, 23, 30, 0.85);
+            --bg-card-hover: rgba(34, 30, 40, 0.95);
+            --border-gold: rgba(200, 170, 110, 0.28);
+            --border-gold-glow: rgba(200, 170, 110, 0.65);
+            --gold-bright: #f3d48d;
+            --gold-main: #c8aa6e;
+            --gold-dim: #8c7647;
+            --text-main: #e8e6e3;
+            --text-dim: #9e9a93;
+            --crimson: #a62a3e;
+            --crimson-glow: #e63956;
+            --emerald: #2ec27e;
+            --emerald-bg: rgba(46, 194, 126, 0.12);
+            --azure: #3584e4;
+            --azure-bg: rgba(53, 132, 228, 0.12);
+            --terminal-bg: #09080b;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            background-image: 
+                radial-gradient(circle at 50% 0%, rgba(200, 170, 110, 0.08) 0%, transparent 60%),
+                radial-gradient(circle at 100% 100%, rgba(166, 42, 62, 0.06) 0%, transparent 50%);
+            color: var(--text-main);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+        }
+
+        /* Cabecera */
+        header {
+            padding: 16px 28px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--border-gold);
+            background: rgba(15, 13, 17, 0.9);
+            backdrop-filter: blur(12px);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .brand-icon {
+            width: 38px;
+            height: 38px;
+            background: linear-gradient(135deg, var(--gold-main), var(--crimson));
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 16px rgba(200, 170, 110, 0.3);
+            border: 1px solid var(--gold-bright);
+        }
+
+        .brand-icon svg {
+            width: 22px;
+            height: 22px;
+            fill: #fff;
+        }
+
+        .brand-text h1 {
+            font-size: 1.18rem;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            color: var(--gold-bright);
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+        }
+
+        .brand-text p {
+            font-size: 0.76rem;
+            color: var(--text-dim);
+            letter-spacing: 0.2px;
+        }
+
+        .header-badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 14px;
+            border-radius: 20px;
+            background: rgba(46, 194, 126, 0.1);
+            border: 1px solid rgba(46, 194, 126, 0.35);
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--emerald);
+        }
+
+        .header-badge.building {
+            background: rgba(243, 212, 141, 0.1);
+            border-color: rgba(243, 212, 141, 0.4);
+            color: var(--gold-bright);
+        }
+
+        .pulse-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: currentColor;
+            box-shadow: 0 0 8px currentColor;
+            animation: pulse 1.8s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.4; transform: scale(0.85); }
+        }
+
+        /* Contenedor principal */
+        main {
+            flex: 1;
+            padding: 24px 28px;
+            max-width: 1200px;
+            width: 100%;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 22px;
+        }
+
+        /* Matriz de diagnóstico */
+        .diag-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 14px;
+        }
+
+        .diag-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-gold);
+            border-radius: 10px;
+            padding: 14px 18px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            transition: all 0.2s ease;
+        }
+
+        .diag-card:hover {
+            border-color: var(--border-gold-glow);
+            background: var(--bg-card-hover);
+        }
+
+        .diag-icon {
+            font-size: 1.5rem;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            background: rgba(200, 170, 110, 0.1);
+            border: 1px solid rgba(200, 170, 110, 0.2);
+        }
+
+        .diag-info {
+            flex: 1;
+        }
+
+        .diag-title {
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            color: var(--text-dim);
+            margin-bottom: 2px;
+        }
+
+        .diag-value {
+            font-size: 0.88rem;
+            font-weight: 600;
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .status-pill {
+            font-size: 0.68rem;
+            padding: 2px 7px;
+            border-radius: 12px;
+            font-weight: 600;
+        }
+
+        .status-ok { background: var(--emerald-bg); color: var(--emerald); border: 1px solid rgba(46, 194, 126, 0.3); }
+        .status-warn { background: rgba(243, 212, 141, 0.12); color: var(--gold-bright); border: 1px solid rgba(243, 212, 141, 0.3); }
+
+        /* Panel de Acción Principal */
+        .action-hero {
+            background: linear-gradient(145deg, rgba(32, 28, 38, 0.95), rgba(20, 17, 24, 0.95));
+            border: 1px solid var(--border-gold);
+            border-radius: 14px;
+            padding: 28px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .action-hero::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--gold-bright), var(--crimson-glow), transparent);
+        }
+
+        .hero-layout {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 28px;
+            flex-wrap: wrap;
+        }
+
+        .hero-desc h2 {
+            font-size: 1.45rem;
+            color: var(--gold-bright);
+            margin-bottom: 6px;
+        }
+
+        .hero-desc p {
+            color: var(--text-dim);
+            font-size: 0.9rem;
+            line-height: 1.45;
+            max-width: 600px;
+        }
+
+        .hero-stats {
+            margin-top: 12px;
+            display: flex;
+            gap: 18px;
+            font-size: 0.8rem;
+            color: var(--gold-dim);
+        }
+
+        .hero-stats span {
+            color: var(--gold-main);
+            font-weight: 600;
+        }
+
+        /* Botón gigante Montar */
+        .btn-montar-grande {
+            background: linear-gradient(135deg, #c8aa6e 0%, #8c2230 100%);
+            color: #fff;
+            border: 1px solid var(--gold-bright);
+            padding: 16px 36px;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 0 24px rgba(200, 170, 110, 0.35);
+            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-montar-grande:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 0 32px rgba(230, 57, 86, 0.5), 0 0 16px rgba(200, 170, 110, 0.5);
+            border-color: #fff;
+        }
+
+        .btn-montar-grande:active:not(:disabled) {
+            transform: translateY(1px);
+        }
+
+        .btn-montar-grande:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            filter: grayscale(0.6);
+        }
+
+        /* Botonera Secundaria */
+        .quick-actions {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .btn-action {
+            background: var(--bg-card);
+            border: 1px solid var(--border-gold);
+            color: var(--text-main);
+            padding: 11px 20px;
+            border-radius: 8px;
+            font-size: 0.88rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s ease;
+        }
+
+        .btn-action:hover {
+            border-color: var(--gold-main);
+            background: var(--bg-card-hover);
+            color: var(--gold-bright);
+            transform: translateY(-1px);
+        }
+
+        /* Pasos del Montaje */
+        .steps-bar {
+            background: var(--bg-card);
+            border: 1px solid var(--border-gold);
+            border-radius: 12px;
+            padding: 18px 24px;
+        }
+
+        .steps-title {
+            font-size: 0.8rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            color: var(--gold-main);
+            margin-bottom: 14px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .steps-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 10px;
+        }
+
+        .step-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 12px;
+            border-radius: 6px;
+            background: rgba(0, 0, 0, 0.25);
+            font-size: 0.8rem;
+            color: var(--text-dim);
+            border: 1px solid transparent;
+        }
+
+        .step-item.active {
+            color: var(--gold-bright);
+            border-color: rgba(200, 170, 110, 0.3);
+            background: rgba(200, 170, 110, 0.08);
+        }
+
+        .step-item.done {
+            color: var(--emerald);
+            border-color: rgba(46, 194, 126, 0.3);
+            background: rgba(46, 194, 126, 0.06);
+        }
+
+        .step-num {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.72rem;
+            font-weight: 700;
+        }
+
+        .step-item.done .step-num {
+            background: var(--emerald);
+            color: #0f0d11;
+        }
+
+        /* Consola de Registros */
+        .terminal-panel {
+            background: var(--terminal-bg);
+            border: 1px solid rgba(200, 170, 110, 0.2);
+            border-radius: 12px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.8);
+        }
+
+        .terminal-header {
+            background: rgba(25, 22, 30, 0.8);
+            padding: 10px 18px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid rgba(200, 170, 110, 0.15);
+        }
+
+        .terminal-title {
+            font-size: 0.78rem;
+            font-weight: 600;
+            letter-spacing: 0.4px;
+            color: var(--gold-dim);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .terminal-clear {
+            background: transparent;
+            border: none;
+            color: var(--text-dim);
+            font-size: 0.72rem;
+            cursor: pointer;
+            padding: 3px 8px;
+            border-radius: 4px;
+        }
+
+        .terminal-clear:hover {
+            color: var(--gold-bright);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .terminal-body {
+            height: 230px;
+            padding: 14px 18px;
+            overflow-y: auto;
+            font-family: Consolas, "Courier New", monospace;
+            font-size: 0.8rem;
+            line-height: 1.5;
+            color: #d1cfc7;
+            user-select: text;
+        }
+
+        .log-line {
+            margin-bottom: 3px;
+            word-break: break-all;
+        }
+
+        .log-ok { color: var(--emerald); }
+        .log-warn { color: var(--gold-bright); }
+        .log-err { color: #ff6b7e; }
+        .log-meta { color: var(--azure); }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="brand">
+            <div class="brand-icon">
+                <svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 2.18l7 3.12v4.7c0 4.62-3.14 8.94-7 10.02-3.86-1.08-7-5.4-7-10.02V6.3l7-3.12zM11 7v2h2V7h-2zm0 4v6h2v-6h-2z"/></svg>
+            </div>
+            <div class="brand-text">
+                <h1>Dnd Master — Taller de Montaje de APK</h1>
+                <p>Compilador Android nativo, servidor de bolsillo offline e instalación directa por USB</p>
+            </div>
+        </div>
+        <div id="badge-estado" class="header-badge">
+            <span class="pulse-dot"></span>
+            <span id="txt-badge">Listo para montar</span>
+        </div>
+    </header>
+
+    <main>
+        <!-- Diagnóstico -->
+        <section class="diag-grid">
+            <div class="diag-card">
+                <div class="diag-icon">☕</div>
+                <div class="diag-info">
+                    <div class="diag-title">Java JDK</div>
+                    <div id="diag-jdk" class="diag-value">Detectando...</div>
+                </div>
+            </div>
+            <div class="diag-card">
+                <div class="diag-icon">🤖</div>
+                <div class="diag-info">
+                    <div class="diag-title">Android SDK</div>
+                    <div id="diag-sdk" class="diag-value">Detectando...</div>
+                </div>
+            </div>
+            <div class="diag-card">
+                <div class="diag-icon">📱</div>
+                <div class="diag-info">
+                    <div class="diag-title">Móvil por USB (ADB)</div>
+                    <div id="diag-usb" class="diag-value">Buscando dispositivo...</div>
+                </div>
+            </div>
+            <div class="diag-card">
+                <div class="diag-icon">📦</div>
+                <div class="diag-info">
+                    <div class="diag-title">Última APK</div>
+                    <div id="diag-apk" class="diag-value">Ninguna generada</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Acción Principal -->
+        <section class="action-hero">
+            <div class="hero-layout">
+                <div class="hero-desc">
+                    <h2>Montar APK Oficial de Dnd Master</h2>
+                    <p>
+                        Empaqueta el cliente ligero sin dependencias de servidor, inyecta el servidor
+                        de bolsillo sobre IndexedDB y compila el paquete <code>Dnd-Master.apk</code> listo para tu teléfono.
+                    </p>
+                    <div class="hero-stats">
+                        <div>Versión: <span>1.0.0-apk</span></div>
+                        <div>Destino: <span>app-android/salida/</span></div>
+                        <div>Tamaño previsto: <span>~25-30 MB</span></div>
+                    </div>
+                </div>
+                <div>
+                    <button id="btn-montar" class="btn-montar-grande">
+                        <svg style="width:24px;height:24px;fill:currentColor" viewBox="0 0 24 24"><path d="M12 2l-5.5 9h11L12 2zm0 3.84L13.93 9h-3.86L12 5.84zM4 13v7h16v-7h2v9H2v-9h2zm4 2h8v2H8v-2z"/></svg>
+                        <span>Montar APK Ahora</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Botones de Acción Rápida -->
+        <section class="quick-actions">
+            <button id="btn-instalar" class="btn-action">
+                <span>📲 Instalar en el móvil por USB</span>
+            </button>
+            <button id="btn-abrir-carpeta" class="btn-action">
+                <span>📂 Abrir carpeta de la APK</span>
+            </button>
+            <button id="btn-refrescar" class="btn-action">
+                <span>🔄 Comprobar conexión USB</span>
+            </button>
+        </section>
+
+        <!-- Pasos -->
+        <section class="steps-bar">
+            <div class="steps-title">
+                <span>Flujo de Compilación</span>
+                <span id="flujo-tiempo"></span>
+            </div>
+            <div class="steps-list">
+                <div id="step-1" class="step-item"><span class="step-num">1</span> Copia ligera (~40 MB)</div>
+                <div id="step-2" class="step-item"><span class="step-num">2</span> Librerías (lib.js)</div>
+                <div id="step-3" class="step-item"><span class="step-num">3</span> Servidor de bolsillo</div>
+                <div id="step-4" class="step-item"><span class="step-num">4</span> Capacitor & Iconos</div>
+                <div id="step-5" class="step-item"><span class="step-num">5</span> Gradle assembleDebug</div>
+                <div id="step-6" class="step-item"><span class="step-num">6</span> APK generada</div>
+            </div>
+        </section>
+
+        <!-- Terminal en Vivo -->
+        <section class="terminal-panel">
+            <div class="terminal-header">
+                <div class="terminal-title">
+                    <span>⚡ REGISTRO DE MONTAJE EN TIEMPO REAL</span>
+                </div>
+                <button id="btn-limpiar-log" class="terminal-clear">Limpiar</button>
+            </div>
+            <div id="terminal-body" class="terminal-body">
+                <div class="log-line log-meta">[Inicio] Taller de montaje de APK preparado. Pulsa «Montar APK Ahora» para comenzar.</div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        const btnMontar = document.getElementById('btn-montar');
+        const btnInstalar = document.getElementById('btn-instalar');
+        const btnAbrirCarpeta = document.getElementById('btn-abrir-carpeta');
+        const btnRefrescar = document.getElementById('btn-refrescar');
+        const btnLimpiar = document.getElementById('btn-limpiar-log');
+        const terminalBody = document.getElementById('terminal-body');
+        const txtBadge = document.getElementById('txt-badge');
+        const badgeEstado = document.getElementById('badge-estado');
+
+        function appendLog(line) {
+            const div = document.createElement('div');
+            div.className = 'log-line';
+            if (line.includes('❌') || line.includes('Error')) div.classList.add('log-err');
+            else if (line.includes('✅') || line.includes('🎉') || line.includes('✨')) div.classList.add('log-ok');
+            else if (line.includes('⚠️') || line.includes('Aviso')) div.classList.add('log-warn');
+            else if (line.includes('📦') || line.includes('⚙️') || line.includes('🔨')) div.classList.add('log-meta');
+            div.textContent = line;
+            terminalBody.appendChild(div);
+            terminalBody.scrollTop = terminalBody.scrollHeight;
+        }
+
+        async function actualizarEstado() {
+            try {
+                const res = await fetch('/api/estado');
+                if (!res.ok) return;
+                const data = await res.json();
+
+                // JDK
+                const diagJdk = document.getElementById('diag-jdk');
+                if (data.entorno.javaHome) {
+                    diagJdk.innerHTML = '<span class="status-pill status-ok">Listo</span> OpenJDK 21 LTS';
+                } else {
+                    diagJdk.innerHTML = '<span class="status-pill status-warn">No detectado</span>';
+                }
+
+                // SDK
+                const diagSdk = document.getElementById('diag-sdk');
+                if (data.entorno.androidHome) {
+                    diagSdk.innerHTML = '<span class="status-pill status-ok">Listo</span> Android 15 (API 35)';
+                } else {
+                    diagSdk.innerHTML = '<span class="status-pill status-warn">No detectado</span>';
+                }
+
+                // USB
+                const diagUsb = document.getElementById('diag-usb');
+                if (data.entorno.dispositivos && data.entorno.dispositivos.length > 0) {
+                    diagUsb.innerHTML = `<span class="status-pill status-ok">${data.entorno.dispositivos[0]}</span> Conectado`;
+                    btnInstalar.disabled = false;
+                } else {
+                    diagUsb.innerHTML = '<span class="status-pill status-warn">Sin dispositivo</span> Conectar USB';
+                    btnInstalar.disabled = true;
+                }
+
+                // APK
+                const diagApk = document.getElementById('diag-apk');
+                if (data.ultimaApk) {
+                    diagApk.innerHTML = `<span class="status-pill status-ok">${data.ultimaApk.sizeMb} MB</span> ${data.ultimaApk.fecha}`;
+                } else {
+                    diagApk.textContent = 'Ninguna generada';
+                }
+
+                // Estado construyendo
+                if (data.construyendo) {
+                    btnMontar.disabled = true;
+                    txtBadge.textContent = 'Montando APK...';
+                    badgeEstado.classList.add('building');
+                } else {
+                    btnMontar.disabled = false;
+                    txtBadge.textContent = 'Listo para montar';
+                    badgeEstado.classList.remove('building');
+                }
+            } catch (e) {
+                // error de red local temporal
+            }
+        }
+
+        // Conectar Server-Sent Events (SSE) para logs en vivo
+        function conectarLogs() {
+            const ev = new EventSource('/api/logs');
+            ev.onmessage = (e) => {
+                try {
+                    const msg = JSON.parse(e.data);
+                    appendLog(msg);
+
+                    // Actualizar pasos visuales según el log
+                    if (msg.includes('[1/4]')) document.getElementById('step-1').className = 'step-item active';
+                    if (msg.includes('lib.js copiado')) document.getElementById('step-2').className = 'step-item done';
+                    if (msg.includes('Copia completada')) {
+                        document.getElementById('step-1').className = 'step-item done';
+                        document.getElementById('step-3').className = 'step-item done';
+                    }
+                    if (msg.includes('[2/4]')) document.getElementById('step-4').className = 'step-item active';
+                    if (msg.includes('Sincronización completada')) document.getElementById('step-4').className = 'step-item done';
+                    if (msg.includes('[3/4]')) document.getElementById('step-5').className = 'step-item active';
+                    if (msg.includes('[4/4]')) {
+                        document.getElementById('step-5').className = 'step-item done';
+                        document.getElementById('step-6').className = 'step-item done';
+                        actualizarEstado();
+                    }
+                } catch {}
+            };
+        }
+
+        btnMontar.addEventListener('click', async () => {
+            btnMontar.disabled = true;
+            appendLog('🚀 Enviando orden de montaje al servidor...');
+            const res = await fetch('/api/montar', { method: 'POST' });
+            actualizarEstado();
+        });
+
+        btnInstalar.addEventListener('click', async () => {
+            appendLog('📲 Orden de instalación enviada...');
+            await fetch('/api/instalar', { method: 'POST' });
+        });
+
+        btnAbrirCarpeta.addEventListener('click', async () => {
+            await fetch('/api/abrir-carpeta', { method: 'POST' });
+        });
+
+        btnRefrescar.addEventListener('click', () => {
+            actualizarEstado();
+        });
+
+        btnLimpiar.addEventListener('click', () => {
+            terminalBody.innerHTML = '';
+        });
+
+        // Ping de actividad para mantener el servidor vivo
+        setInterval(() => fetch('/api/ping'), 15000);
+
+        actualizarEstado();
+        conectarLogs();
+    </script>
+</body>
+</html>

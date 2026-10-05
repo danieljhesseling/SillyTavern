@@ -1358,6 +1358,7 @@ export function storedNarratorMode() {
  * @returns {string}
  */
 export function narratorMode() {
+    if (typeof window !== 'undefined' && window.SIN_SERVIDOR) return 'motor';
     return online_status === 'no_connection' || offlineGame() ? 'motor' : storedNarratorMode();
 }
 

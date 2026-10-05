@@ -1,0 +1,14 @@
+{
+  "name": "dnd-master-android",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Dnd Master como APK nativa de Android sin servidor",
+  "dependencies": {
+    "@capacitor/android": "^7.6.9",
+    "@capacitor/app": "^7.1.2",
+    "@capacitor/core": "^7.6.9",
+    "@capacitor/filesystem": "^7.1.9",
+    "@capacitor/share": "^7.0.4",
+    "@capacitor/status-bar": "^7.0.6"
+  }
+}
